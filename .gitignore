@@ -1,0 +1,10 @@
+node_modules
+out
+dist
+.DS_Store
+*.log
+.env
+.env.*
+.pi
+resources/Slagent Computer.app/Contents/MacOS/
+resources/Slagent Computer.app/Contents/_CodeSignature/
