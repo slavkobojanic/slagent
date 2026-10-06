@@ -1,6 +1,7 @@
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 import type { ComputerUse } from "./computer"
+import type { ComputerGate } from "./computer-gate"
 
 const windowFields = {
   pid: Type.Number({ description: "Process id from computer_list_windows." }),
@@ -45,10 +46,10 @@ const scrollParams = Type.Object({
 const guidelines = [
   "Use computer_list_windows, then computer_snapshot, before clicking.",
   "Click with element_index when the accessibility tree has one. Pixel clicks are only for canvas and other nodes without an index.",
-  "These actions stay in the background. Do not ask the user to switch Spaces or focus the target.",
+  "These actions stay in the target app. The user's pointer is not moved.",
 ]
 
-export function computerTools(computer: ComputerUse): ToolDefinition[] {
+export function computerTools(computer: ComputerUse, gate: ComputerGate): ToolDefinition[] {
   return [
     {
       name: "computer_list_windows",
@@ -88,14 +89,16 @@ export function computerTools(computer: ComputerUse): ToolDefinition[] {
     {
       name: "computer_click",
       label: "Click",
-      description: "Click a window in the background. Prefer element_index. x and y are screen coordinates for non-accessibility targets.",
+      description: "Click a window without moving the user's pointer. Prefer element_index. A marker is drawn on the target. x and y are screen coordinates for non-accessibility targets.",
       promptSnippet: "Background click by element index or screen point",
       promptGuidelines: guidelines,
       parameters: clickParams,
       async execute(_id, params) {
         const input = params as { pid: number; window_id: number; element_index?: number; x?: number; y?: number }
-        await computer.call("click", { ...input })
-        return textResult("Clicked.")
+        return gate.run(async () => {
+          await computer.call("click", { ...input })
+          return textResult("Clicked.")
+        })
       },
     },
     {
@@ -106,8 +109,10 @@ export function computerTools(computer: ComputerUse): ToolDefinition[] {
       parameters: typeParams,
       async execute(_id, params) {
         const input = params as { pid: number; text: string }
-        await computer.call("type_text", { pid: input.pid, text: input.text })
-        return textResult("Typed.")
+        return gate.run(async () => {
+          await computer.call("type_text", { pid: input.pid, text: input.text })
+          return textResult("Typed.")
+        })
       },
     },
     {
@@ -118,8 +123,10 @@ export function computerTools(computer: ComputerUse): ToolDefinition[] {
       parameters: keyParams,
       async execute(_id, params) {
         const input = params as { pid: number; key: string }
-        await computer.call("key", { pid: input.pid, key: input.key })
-        return textResult(`Pressed ${input.key}.`)
+        return gate.run(async () => {
+          await computer.call("key", { pid: input.pid, key: input.key })
+          return textResult(`Pressed ${input.key}.`)
+        })
       },
     },
     {
@@ -130,8 +137,10 @@ export function computerTools(computer: ComputerUse): ToolDefinition[] {
       parameters: scrollParams,
       async execute(_id, params) {
         const input = params as { pid: number; window_id: number; x: number; y: number; delta_y?: number }
-        await computer.call("scroll", { ...input })
-        return textResult("Scrolled.")
+        return gate.run(async () => {
+          await computer.call("scroll", { ...input })
+          return textResult("Scrolled.")
+        })
       },
     },
   ]

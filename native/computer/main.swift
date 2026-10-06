@@ -11,15 +11,17 @@ struct ComputerMain {
         if line.isEmpty { continue }
         let box = ResponseBox()
         let semaphore = DispatchSemaphore(value: 0)
-        Task {
-          let response: String
-          if let request = parseRequest(line) {
-            response = await session.handle(request)
-          } else {
-            response = errorResponse(id: "", message: "Could not read the request.")
+        DispatchQueue.main.async {
+          Task { @MainActor in
+            let response: String
+            if let request = parseRequest(line) {
+              response = await session.handle(request)
+            } else {
+              response = errorResponse(id: "", message: "Could not read the request.")
+            }
+            box.value = response
+            semaphore.signal()
           }
-          box.value = response
-          semaphore.signal()
         }
         semaphore.wait()
         print(box.value)
@@ -28,7 +30,7 @@ struct ComputerMain {
       fflush(stdout)
       exit(0)
     }
-    dispatchMain()
+    NSApplication.shared.run()
   }
 }
 

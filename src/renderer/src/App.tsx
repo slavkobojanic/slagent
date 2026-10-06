@@ -1,18 +1,25 @@
 import { Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import type { AppMeta, ChatMessage, ComputerPermissions, QueuedMessage, Snapshot } from "@shared/types"
+import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot } from "@shared/types"
 import { BashTerminal } from "@/components/bash-terminal"
 import { Composer } from "@/components/composer"
+import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dialogs"
 import { ModelDialog } from "@/components/model-dialog"
 import { PermissionsWizard } from "@/components/permissions-wizard"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { ProjectMenu, Sidebar } from "@/components/sidebar"
 import { Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
-import { errorText, folderName, openRouterLabel } from "@/lib/format"
-import { cn } from "@/lib/utils"
+import { errorText, formatTranscript } from "@/lib/format"
 
 const emptyStatus = { configured: false, source: null, type: null } as const
+const emptyLibrary: LibraryState = {
+  projects: [],
+  openProjectId: null,
+  chats: [],
+  openChatId: null,
+}
 
 function App() {
   if (!window.slagent) {
@@ -27,6 +34,7 @@ function App() {
 
 function AgentApp() {
   const [meta, setMeta] = useState<AppMeta | null>(null)
+  const [library, setLibrary] = useState<LibraryState>(emptyLibrary)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streaming, setStreaming] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -36,14 +44,26 @@ function AgentApp() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [permissions, setPermissions] = useState<ComputerPermissions | null>(null)
+  const [deleteChat, setDeleteChat] = useState<ChatSummary | null>(null)
+  const [removeProject, setRemoveProject] = useState<ProjectSummary | null>(null)
   const transcriptRevision = useRef(0)
   const metaRevision = useRef(0)
+  const libraryRevision = useRef(0)
+  const openChatRef = useRef<string | null>(null)
+  const openProjectRef = useRef<string | null>(null)
   const permissionsLockedRef = useRef(false)
 
   useEffect(() => {
     const off = window.slagent.onEvent((event) => {
+      if (event.type === "library" && event.revision >= libraryRevision.current) {
+        libraryRevision.current = event.revision
+        openChatRef.current = event.library.openChatId
+        openProjectRef.current = event.library.openProjectId
+        setLibrary(event.library)
+      }
       if (event.type === "transcript" && event.revision >= transcriptRevision.current) {
         transcriptRevision.current = event.revision
+        if (event.chatId !== openChatRef.current || event.projectId !== openProjectRef.current) return
         setMessages(event.messages)
         setStreaming(event.streaming)
         setNotice(event.notice)
@@ -62,6 +82,12 @@ function AgentApp() {
     })
 
     function applySnapshot(snapshot: Snapshot) {
+      if (snapshot.revision >= libraryRevision.current) {
+        libraryRevision.current = snapshot.revision
+        openChatRef.current = snapshot.library.openChatId
+        openProjectRef.current = snapshot.library.openProjectId
+        setLibrary(snapshot.library)
+      }
       if (snapshot.revision >= transcriptRevision.current) {
         transcriptRevision.current = snapshot.revision
         setMessages(snapshot.messages)
@@ -144,8 +170,9 @@ function AgentApp() {
 
   let placeholder = "Describe a change"
   if (!configured) placeholder = "Connect OpenRouter to start"
+  if (!cwd) placeholder = "Choose a folder"
   if (!ready) placeholder = "Starting"
-  if (ready && configured && streaming) placeholder = "Queue a follow-up"
+  if (ready && configured && cwd && streaming) placeholder = "Queue a follow-up"
 
   async function chooseFolder() {
     try {
@@ -155,15 +182,38 @@ function AgentApp() {
     }
   }
 
-  async function newChat() {
+  async function copyTranscript(chat: ChatSummary) {
     try {
-      await window.slagent.newSession()
+      const stored = await window.slagent.readTranscript(chat.id)
+      const text = formatTranscript(chat.title, stored)
+      if (!text) {
+        toast.error("This chat is empty.")
+        return
+      }
+      await navigator.clipboard.writeText(text)
+      toast.success("Transcript copied")
     } catch (error) {
       toast.error(errorText(error))
     }
   }
 
-  const composerDisabled = !ready || !configured || !meta?.modelId
+  async function newChat() {
+    try {
+      await window.slagent.newChat()
+    } catch (error) {
+      toast.error(errorText(error))
+    }
+  }
+
+  async function runLibrary(task: () => Promise<void>) {
+    try {
+      await task()
+    } catch (error) {
+      toast.error(errorText(error))
+    }
+  }
+
+  const composerDisabled = !ready || !configured || !meta?.modelId || !cwd
   let permissionsLocked = false
   if (platform === "darwin") {
     if (!permissions) permissionsLocked = true
@@ -177,14 +227,7 @@ function AgentApp() {
       <header className={headerClass}>
         <span className="text-sm font-medium tracking-tight">slagent</span>
         <span className="text-white/25">/</span>
-        <button
-          type="button"
-          className="no-drag max-w-52 truncate text-sm text-white/80 hover:text-white"
-          title={cwd}
-          onClick={() => void chooseFolder()}
-        >
-          {cwd ? folderName(cwd) : "Choose folder"}
-        </button>
+        <ProjectMenu library={library} onOpen={(projectId) => void runLibrary(() => window.slagent.openProject(projectId))} onChoose={() => void chooseFolder()} />
         <div className="no-drag ml-auto flex items-center gap-1">
           <Button
             type="button"
@@ -207,40 +250,19 @@ function AgentApp() {
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-60 shrink-0 flex-col gap-6 border-r border-white/10 p-4">
-          <Button type="button" variant="outline" disabled={!ready} onClick={() => void newChat()}>
-            New chat
-          </Button>
-          <section className="space-y-2">
-            <h2 className="text-xs font-medium tracking-wide text-white/40 uppercase">OpenRouter</h2>
-            <p className="flex items-center gap-2 text-sm">
-              <span className={cn("size-1.5 rounded-full bg-white/30", configured && "bg-white")} />
-              {openRouterLabel(meta?.openRouter ?? emptyStatus)}
-            </p>
-          </section>
-          <section className="min-h-0 space-y-2">
-            <h2 className="text-xs font-medium tracking-wide text-white/40 uppercase">Extensions</h2>
-            {meta && meta.extensions.length === 0 ? (
-              <p className="text-sm text-white/50">None loaded</p>
-            ) : null}
-            <ul className="space-y-1">
-              {meta?.extensions.map((extension) => (
-                <li key={extension.id} className="truncate text-sm" title={extension.id}>
-                  {extension.name}
-                  <span className="ml-2 text-xs text-white/40">{extension.scope}</span>
-                </li>
-              ))}
-            </ul>
-            {meta?.extensionErrors.map((item) => (
-              <p key={item} className="text-xs text-[#ff5c5c]">
-                {item}
-              </p>
-            ))}
-          </section>
-          <p className="mt-auto text-xs leading-5 text-white/40">
-            Pi loads extensions, skills, and AGENTS.md from this folder.
-          </p>
-        </aside>
+        <Sidebar
+          library={library}
+          onNewChat={() => void newChat()}
+          onChooseFolder={() => void chooseFolder()}
+          onOpenProject={(projectId) => void runLibrary(() => window.slagent.openProject(projectId))}
+          onOpenChat={(chatId) => void runLibrary(() => window.slagent.openChat(chatId))}
+          onPinProject={(projectId, pinned) => void runLibrary(() => window.slagent.pinProject(projectId, pinned))}
+          onPinChat={(chatId, pinned) => void runLibrary(() => window.slagent.pinChat(chatId, pinned))}
+          onRenameChat={(chatId, title) => void runLibrary(() => window.slagent.renameChat(chatId, title))}
+          onDeleteChat={setDeleteChat}
+          onCopyTranscript={(chat) => void copyTranscript(chat)}
+          onRemoveProject={setRemoveProject}
+        />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           {meta?.error ? (
             <p className="border-b border-white/10 px-6 py-2 text-sm text-[#ff5c5c]">{meta.error}</p>
@@ -254,14 +276,16 @@ function AgentApp() {
               configured={configured}
               cwd={cwd}
               onConnect={() => setSettingsOpen(true)}
+              onChoose={() => void chooseFolder()}
             />
           )}
           <Composer
+            key={library.openChatId ?? "draft"}
             streaming={streaming}
             disabled={composerDisabled}
             placeholder={placeholder}
             queue={queue}
-            onPrompt={(text) => window.slagent.prompt(text)}
+            onPrompt={(request) => window.slagent.prompt(request)}
             onAbort={() => window.slagent.abort()}
             onQueueMode={(id, mode) => window.slagent.setQueueMode(id, mode)}
             onRemoveQueued={(id) => window.slagent.removeQueued(id)}
@@ -280,14 +304,18 @@ function AgentApp() {
         onOpenChange={setSettingsOpen}
         status={meta?.openRouter ?? emptyStatus}
         authFile={`${meta?.agentDir ?? ""}/auth.json`}
+        extensions={meta?.extensions ?? []}
+        extensionErrors={meta?.extensionErrors ?? []}
       />
       <ModelDialog
         open={modelOpen}
         onOpenChange={setModelOpen}
         models={meta?.models ?? []}
         modelId={meta?.modelId ?? null}
-        disabled={streaming}
+        disabled={!ready}
       />
+      <DeleteChatDialog chat={deleteChat} onOpenChange={(open) => { if (!open) setDeleteChat(null) }} />
+      <RemoveProjectDialog project={removeProject} onOpenChange={(open) => { if (!open) setRemoveProject(null) }} />
     </div>
     <PermissionsWizard
       open={permissionsLocked}

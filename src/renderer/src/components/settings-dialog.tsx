@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import type { OpenRouterStatus } from "@shared/types"
+import type { ExtensionInfo, OpenRouterStatus } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -14,11 +14,15 @@ function SettingsDialog({
   onOpenChange,
   status,
   authFile,
+  extensions,
+  extensionErrors,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   status: OpenRouterStatus
   authFile: string
+  extensions: ExtensionInfo[]
+  extensionErrors: string[]
 }) {
   const [apiKey, setApiKey] = useState("")
   const [visible, setVisible] = useState(false)
@@ -125,6 +129,23 @@ function SettingsDialog({
             ) : null}
           </div>
         </form>
+        <section className="mt-6 space-y-2 border-t border-white/10 pt-4">
+          <h2 className="text-sm font-medium">Extensions</h2>
+          {extensions.length === 0 ? <p className="text-sm text-white/50">None loaded</p> : null}
+          <ul className="space-y-1">
+            {extensions.map((extension) => (
+              <li key={extension.id} className="truncate text-sm" title={extension.id}>
+                {extension.name}
+                <span className="ml-2 text-xs text-white/40">{extension.scope}</span>
+              </li>
+            ))}
+          </ul>
+          {extensionErrors.map((item) => (
+            <p key={item} className="text-xs text-[#ff5c5c]">
+              {item}
+            </p>
+          ))}
+        </section>
       </DialogContent>
     </Dialog>
   )

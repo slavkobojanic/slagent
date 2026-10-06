@@ -1,52 +1,31 @@
-import { realpath, stat } from "node:fs/promises"
-import { basename, dirname } from "node:path"
-import { homedir } from "node:os"
-import {
-  type AgentSession,
-  type AgentSessionEvent,
-  createAgentSession,
-  getAgentDir,
-  type ModelRuntime,
-  ModelRuntime as ModelRuntimeClass,
-} from "@earendil-works/pi-coding-agent"
+import { randomUUID } from "node:crypto"
+import { mkdir, stat, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+import { getAgentDir, ModelRuntime as ModelRuntimeClass, type ModelRuntime } from "@earendil-works/pi-coding-agent"
 import type {
   AppMeta,
-  AssistantMessage,
   ChatMessage,
+  ChatSummary,
   ExtensionInfo,
+  LibraryState,
+  ModelChange,
   OpenRouterStatus,
+  ProjectSummary,
+  PromptRequest,
   QueueMode,
-  QueuedMessage,
   Snapshot,
-  ToolMessage,
   TranscriptState,
   UiEvent,
 } from "../shared/types"
-import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultText } from "./format"
-import { readPrefs, writePrefs, type Prefs } from "./prefs"
-import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
+import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import type { ComputerUse } from "./computer"
+import { ComputerGate } from "./computer-gate"
+import { searchProjectFiles } from "./files"
+import { errorMessage } from "./format"
+import { assertDirectory, Library, type StoredChat } from "./library"
+import { readPrefs, writePrefs, type Prefs } from "./prefs"
 
 const PROVIDER = "openrouter"
-const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"]
-function extensionLabel(filePath: string): string {
-  const file = basename(filePath)
-  const dot = file.lastIndexOf(".")
-  const stem = dot > 0 ? file.slice(0, dot) : file
-  if (stem !== "index") return stem
-
-  const skip = new Set(["src", "dist", "lib", "extensions", "node_modules"])
-  let dir = dirname(filePath)
-  for (let depth = 0; depth < 4; depth += 1) {
-    const parent = basename(dir)
-    if (parent && !skip.has(parent)) return parent
-    const next = dirname(dir)
-    if (next === dir) break
-    dir = next
-  }
-  return stem
-}
-
 const PREFERRED_MODELS = [
   "anthropic/claude-sonnet-5.5",
   "anthropic/claude-sonnet-5",
@@ -56,50 +35,51 @@ const PREFERRED_MODELS = [
 
 type Emit = (event: UiEvent) => void
 
+type ExtensionCache = {
+  extensions: ExtensionInfo[]
+  errors: string[]
+}
+
 export class AgentHost {
   private modelRuntime: ModelRuntime | null = null
-  private session: AgentSession | null = null
-  private unsubscribe: (() => void) | null = null
-  private sessionToken: object | null = null
+  private readonly library: Library
+  private readonly gate = new ComputerGate()
+  private readonly runtimes = new Map<string, ChatRuntime>()
+  private readonly timers = new Map<string, ReturnType<typeof setTimeout>>()
+  private readonly extensionCache = new Map<string, ExtensionCache>()
   private prefs: Prefs = {}
-  private cwd = homedir()
+  private projectId: string | null = null
+  private chatId: string | null = null
+  private cwd = ""
   private agentDir = getAgentDir()
-  private modelId: string | null = null
-  private modelName: string | null = null
+  private draftModelId: string | null = null
+  private draftModelName: string | null = null
   private models: AppMeta["models"] = []
   private openRouter: OpenRouterStatus = { configured: false, source: null, type: null }
-  private extensions: ExtensionInfo[] = []
-  private extensionErrors: string[] = []
-  private messages: ChatMessage[] = []
-  private queue: QueuedMessage[] = []
-  private terminal = ""
-  private terminalStreaming = false
-  private bashBlocks = new Map<string, { command: string; output: string }>()
-  private bashOrder: string[] = []
-  private streaming = false
-  private sending = false
-  private notice: string | null = null
   private ready = false
   private startupError: string | null = null
-  private currentAssistantId: string | null = null
-  private idCounter = 0
   private revision = 0
   private tail: Promise<void> = Promise.resolve()
 
   constructor(
     private readonly prefsPath: string,
+    libraryRoot: string,
     private readonly emit: Emit,
     private readonly computer: ComputerUse,
-  ) {}
+  ) {
+    this.library = new Library(libraryRoot)
+  }
 
   getCwd(): string {
-    return this.cwd
+    if (this.cwd) return this.cwd
+    return this.prefs.cwd ?? ""
   }
 
   getSnapshot(): Snapshot {
     return {
       revision: this.revision,
       meta: this.buildMeta(),
+      library: this.libraryState(),
       ...this.transcriptState(),
     }
   }
@@ -107,113 +87,185 @@ export class AgentHost {
   async start(): Promise<void> {
     try {
       this.prefs = await readPrefs(this.prefsPath)
-      this.modelId = this.prefs.modelId ?? null
-      this.cwd = await this.resolveInitialCwd(this.prefs.cwd)
+      this.draftModelId = this.prefs.modelId ?? null
+      await this.library.load()
       this.modelRuntime = await ModelRuntimeClass.create({ refreshOnCreate: false })
       this.models = this.catalog()
       this.openRouter = await this.readAuth()
-      await this.replaceSession()
+      this.applyDraftModel()
+      const initial = await this.initialProject()
+      if (initial) await this.openProjectUnlocked(initial.id)
     } catch (error) {
       this.startupError = errorMessage(error)
-      this.publishMeta()
     } finally {
       this.ready = true
-      this.publishMeta()
-      this.publishTranscript()
+      this.publishAll()
     }
   }
 
-  async prompt(text: string): Promise<void> {
-    const trimmed = text.trim()
-    if (!trimmed) throw new Error("Write a message first.")
-    if (!this.session) throw new Error(this.startupError ?? "The session is not ready.")
-    if (!this.openRouter.configured) throw new Error("Add an OpenRouter API key in settings.")
-    if (this.streaming || this.sending || this.session.isStreaming) {
-      this.queue.push({ id: this.nextId("queue"), text: trimmed, mode: "follow-up" })
-      this.publishTranscript()
-      return
-    }
-    await this.send(trimmed)
-  }
-
-  async setQueueMode(id: string, mode: QueueMode): Promise<void> {
-    const index = this.queue.findIndex((item) => item.id === id)
-    const item = this.queue[index]
-    if (!item) return
-    if (mode === "follow-up") {
-      item.mode = "follow-up"
-      this.publishTranscript()
-      return
-    }
-    const session = this.session
-    if (!session) throw new Error(this.startupError ?? "The session is not ready.")
-    if (session.isStreaming || this.streaming) {
-      this.queue.splice(index, 1)
-      this.messages.push({ id: this.nextId("user"), role: "user", text: item.text })
-      this.publishTranscript()
-      await session.steer(item.text)
-      return
-    }
-    if (this.sending) {
-      item.mode = "steer"
-      this.publishTranscript()
-      return
-    }
-    this.queue.splice(index, 1)
-    this.publishTranscript()
-    await this.send(item.text)
-  }
-
-  removeQueued(id: string): void {
-    this.queue = this.queue.filter((item) => item.id !== id)
-    this.publishTranscript()
-  }
-
-  clearTerminal(): void {
-    this.bashBlocks.clear()
-    this.bashOrder = []
-    this.terminal = ""
-    this.terminalStreaming = false
-    this.publishTranscript()
+  async prompt(request: PromptRequest): Promise<void> {
+    const runtime = await this.run(() => this.ensureRuntime())
+    await runtime.prompt(request)
   }
 
   async abort(): Promise<void> {
-    if (!this.session) return
-    await this.session.abort()
+    const runtime = this.openRuntime()
+    if (!runtime) return
+    await runtime.abort()
   }
 
-  async newSession(): Promise<void> {
+  async newChat(): Promise<void> {
     await this.run(async () => {
-      if (this.session?.isStreaming) await this.session.abort()
-      await this.replaceSession()
+      if (!this.projectId) throw new Error("Choose a folder first.")
+      this.chatId = null
+      await this.library.rememberChat(this.projectId, null)
+      this.publishLibrary()
+      this.publishTranscript()
     })
   }
 
-  async setCwd(cwd: string): Promise<void> {
-    const resolved = await this.assertDirectory(cwd)
+  async openFolder(folder: string): Promise<void> {
     await this.run(async () => {
-      if (resolved === this.cwd && this.session) return
-      if (this.session?.isStreaming) await this.session.abort()
-      this.cwd = resolved
-      await this.persistPrefs()
-      await this.replaceSession()
+      const project = await this.library.ensureProject(folder)
+      await this.openProjectUnlocked(project.id)
     })
   }
 
-  async setModel(modelId: string): Promise<void> {
-    const runtime = this.modelRuntime
-    if (!runtime) throw new Error("Pi is not ready.")
-    const model = runtime.getModel(PROVIDER, modelId)
+  async openProject(projectId: string): Promise<void> {
+    await this.run(() => this.openProjectUnlocked(projectId))
+  }
+
+  async openChat(chatId: string): Promise<void> {
+    await this.run(async () => {
+      if (!this.projectId) throw new Error("Choose a folder first.")
+      await this.loadChat(this.projectId, chatId)
+      this.publishAll()
+    })
+  }
+
+  async pinProject(projectId: string, pinned: boolean): Promise<void> {
+    await this.run(async () => {
+      await this.library.setPinned(projectId, pinned)
+      this.publishLibrary()
+    })
+  }
+
+  async pinChat(chatId: string, pinned: boolean): Promise<void> {
+    await this.run(async () => {
+      if (!this.projectId) return
+      await this.library.setChatPinned(this.projectId, chatId, pinned)
+      this.publishLibrary()
+    })
+  }
+
+  async renameChat(chatId: string, title: string): Promise<void> {
+    await this.run(async () => {
+      if (!this.projectId) return
+      const next = title.trim()
+      if (!next) throw new Error("Enter a name.")
+      await this.library.updateChat(this.projectId, chatId, {
+        title: next.slice(0, 80),
+        titleCustom: true,
+        named: true,
+      })
+      this.runtimeFor(this.projectId, chatId)?.lockTitle()
+      this.publishLibrary()
+    })
+  }
+
+  async readTranscript(chatId: string): Promise<ChatMessage[]> {
+    if (!this.projectId) throw new Error("Choose a folder first.")
+    const live = this.runtimeFor(this.projectId, chatId)
+    if (live) return live.messages
+    return this.library.readTranscript(this.projectId, chatId)
+  }
+
+  async deleteChat(chatId: string): Promise<void> {
+    await this.run(async () => {
+      if (!this.projectId) return
+      await this.disposeChat(this.projectId, chatId)
+      await this.library.deleteChat(this.projectId, chatId)
+      if (this.chatId === chatId) this.chatId = null
+      this.publishAll()
+    })
+  }
+
+  async removeProject(projectId: string, typedName: string): Promise<void> {
+    await this.run(async () => {
+      const project = this.library.project(projectId)
+      if (!project) return
+      if (project.name !== typedName) throw new Error("Type the folder name to delete it.")
+      const doomed: ChatRuntime[] = []
+      for (const runtime of this.runtimes.values()) {
+        if (runtime.projectId === projectId) doomed.push(runtime)
+      }
+      for (const runtime of doomed) {
+        await runtime.abort()
+        this.clearTimer(runtime.key)
+        runtime.dispose()
+        this.runtimes.delete(runtime.key)
+      }
+      await this.library.removeProject(projectId)
+      this.extensionCache.delete(projectId)
+      if (this.projectId !== projectId) {
+        this.publishAll()
+        return
+      }
+      this.projectId = null
+      this.chatId = null
+      this.cwd = ""
+      const next = this.latestProject()
+      if (!next) {
+        await this.persistPrefs()
+        this.publishAll()
+        return
+      }
+      await this.openProjectUnlocked(next.id)
+    })
+  }
+
+  async searchFiles(query: string) {
+    if (!this.projectId) return []
+    const project = this.library.project(this.projectId)
+    if (!project) return []
+    return searchProjectFiles(project.path, query)
+  }
+
+  async setQueueMode(id: string, mode: QueueMode): Promise<void> {
+    const runtime = this.openRuntime()
+    if (!runtime) return
+    await runtime.setQueueMode(id, mode)
+  }
+
+  removeQueued(id: string): void {
+    this.openRuntime()?.removeQueued(id)
+  }
+
+  clearTerminal(): void {
+    this.openRuntime()?.clearTerminal()
+  }
+
+  async setModel(modelId: string): Promise<ModelChange> {
+    const runtimeModel = this.modelRuntime
+    if (!runtimeModel) throw new Error("Pi is not ready.")
+    const model = runtimeModel.getModel(PROVIDER, modelId)
     if (!model || model.id.includes(":batch")) throw new Error("That model is not available.")
-    if (this.session?.isStreaming || this.streaming) {
-      throw new Error("Stop the agent before changing models.")
-    }
-    this.modelId = model.id
-    this.modelName = model.name
+    this.draftModelId = model.id
+    this.draftModelName = model.name
     await this.persistPrefs()
-    if (this.session) await this.session.setModel(model)
-    this.startupError = null
+    const runtime = this.openRuntime()
+    if (!runtime) {
+      this.publishMeta()
+      return { applied: true }
+    }
+    const applied = await runtime.setModel(model)
+    if (applied) {
+      await this.library.updateChat(runtime.projectId, runtime.chatId, { modelId: model.id })
+      this.publishMeta()
+      return { applied: true }
+    }
     this.publishMeta()
+    return { applied: false }
   }
 
   async saveOpenRouterKey(apiKey: string): Promise<void> {
@@ -239,7 +291,7 @@ export class AgentHost {
 
     this.models = this.catalog()
     this.openRouter = await this.readAuth()
-    if (!this.session) await this.replaceSession()
+    this.applyDraftModel()
     this.publishMeta()
   }
 
@@ -251,333 +303,216 @@ export class AgentHost {
     this.publishMeta()
   }
 
+  async flush(): Promise<void> {
+    for (const timer of this.timers.values()) clearTimeout(timer)
+    this.timers.clear()
+    const writes: Promise<void>[] = []
+    for (const runtime of this.runtimes.values()) {
+      writes.push(this.library.writeTranscript(runtime.projectId, runtime.chatId, runtime.messages))
+    }
+    await Promise.all(writes)
+  }
+
   close(): void {
-    this.closeSession()
+    for (const runtime of this.runtimes.values()) runtime.dispose()
+    this.runtimes.clear()
   }
 
-  private async replaceSession(): Promise<void> {
-    this.closeSession()
-    this.messages = []
-    this.queue = []
-    this.bashBlocks.clear()
-    this.bashOrder = []
-    this.terminal = ""
-    this.terminalStreaming = false
-    this.streaming = false
-    this.sending = false
-    this.notice = null
-    this.currentAssistantId = null
-    this.extensions = []
-    this.extensionErrors = []
-    this.publishTranscript()
-
-    const runtime = this.modelRuntime
-    if (!runtime) throw new Error("Pi is not ready.")
-
-    const model = this.selectModel(runtime)
-    if (!model) {
-      this.modelId = null
-      this.modelName = null
-      this.startupError = "No OpenRouter models are available."
-      this.publishMeta()
-      return
+  private async openProjectUnlocked(projectId: string): Promise<void> {
+    const project = this.library.project(projectId)
+    if (!project) throw new Error("That project is gone.")
+    try {
+      await assertDirectory(project.path)
+    } catch {
+      throw new Error("That folder is missing.")
     }
-
-    this.modelId = model.id
-    this.modelName = model.name
+    this.projectId = project.id
+    this.cwd = project.path
     await this.persistPrefs()
-
-    let toolNames = CODING_TOOLS
-    let customTools: ReturnType<typeof computerTools> = []
-    if (process.platform === "darwin") {
-      toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]
-      customTools = computerTools(this.computer)
+    const chatId = project.openChatId
+    if (chatId && this.library.chat(project.id, chatId)) {
+      await this.loadChat(project.id, chatId)
+    } else {
+      this.chatId = null
+      await this.library.touchProject(project.id, null)
     }
+    this.publishAll()
+  }
 
-    const { session, extensionsResult } = await createAgentSession({
-      cwd: this.cwd,
-      modelRuntime: runtime,
+  private async ensureRuntime(): Promise<ChatRuntime> {
+    if (!this.projectId) throw new Error("Choose a folder first.")
+    if (!this.openRouter.configured) throw new Error("Add an OpenRouter API key in settings.")
+    if (this.chatId) {
+      const existing = this.runtimeFor(this.projectId, this.chatId)
+      if (existing) return existing
+      await this.loadChat(this.projectId, this.chatId)
+      const loaded = this.runtimeFor(this.projectId, this.chatId)
+      if (!loaded) throw new Error("The session is not ready.")
+      return loaded
+    }
+    const model = this.selectModel(null)
+    const chat = await this.library.createChat(this.projectId, model?.id ?? this.draftModelId)
+    this.chatId = chat.id
+    await this.loadChat(this.projectId, chat.id)
+    const created = this.runtimeFor(this.projectId, chat.id)
+    if (!created) throw new Error("The session is not ready.")
+    this.publishLibrary()
+    return created
+  }
+
+  private async loadChat(projectId: string, chatId: string): Promise<void> {
+    const project = this.library.project(projectId)
+    const chat = this.library.chat(projectId, chatId)
+    if (!project || !chat) throw new Error("That chat is gone.")
+    this.projectId = projectId
+    this.chatId = chatId
+    this.cwd = project.path
+    await this.library.touchProject(projectId, chatId)
+    const existing = this.runtimeFor(projectId, chatId)
+    if (existing) return
+    const runtimeModel = this.modelRuntime
+    if (!runtimeModel) throw new Error("Pi is not ready.")
+    const model = this.selectModel(chat.modelId)
+    if (!model) throw new Error("No OpenRouter models are available.")
+    const messages = await this.library.readTranscript(projectId, chatId)
+    const runtime = new ChatRuntime({
+      projectId,
+      chatId,
+      cwd: project.path,
+      sessionDir: this.library.sessionDir(projectId),
+      sessionFile: chat.sessionFile,
       model,
-      tools: toolNames,
-      customTools,
+      named: chat.named || chat.titleCustom,
+      computer: this.computer,
+      gate: this.gate,
+      modelRuntime: runtimeModel,
+      onChange: (runningChanged) => {
+        this.onRuntimeChange(runtime, runningChanged)
+      },
+      onExtensions: (extensions, errors) => {
+        this.extensionCache.set(projectId, { extensions, errors })
+        if (this.projectId === projectId) this.publishMeta()
+      },
+      onTitle: (title) => {
+        void this.library
+          .updateChat(projectId, chatId, { title, named: true, updatedAt: Date.now() })
+          .then(() => this.publishLibrary())
+      },
+      onModel: (modelId) => {
+        void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
+          if (this.projectId === projectId && this.chatId === chatId) this.publishMeta()
+        })
+      },
+      saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
     })
-
-    this.session = session
-    this.rememberExtensions(extensionsResult)
-    const token = {}
-    this.sessionToken = token
-    this.unsubscribe = session.subscribe((event) => {
-      if (this.sessionToken !== token) return
-      this.onEvent(event)
-    })
-
+    runtime.load(messages)
     try {
-      await session.bindExtensions({
-        mode: "print",
-        onError: (extensionError) => {
-          const name = basename(extensionError.extensionPath)
-          this.extensionErrors = [...this.extensionErrors, `${name}: ${extensionError.error}`].slice(-20)
-          this.publishMeta()
-        },
-        commandContextActions: {
-          waitForIdle: () => session.waitForIdle(),
-          newSession: async () => ({ cancelled: true }),
-          fork: async () => ({ cancelled: true }),
-          navigateTree: async () => ({ cancelled: true }),
-          switchSession: async () => ({ cancelled: true }),
-          reload: async () => {
-            await session.reload()
-          },
-        },
-      })
-    } catch (error) {
-      this.extensionErrors = [...this.extensionErrors, errorMessage(error)].slice(-20)
-    }
-
-    this.startupError = null
-    this.publishMeta()
-  }
-
-  private closeSession(): void {
-    this.sessionToken = null
-    this.unsubscribe?.()
-    this.unsubscribe = null
-    const session = this.session
-    this.session = null
-    session?.dispose()
-  }
-
-  private onEvent(event: AgentSessionEvent): void {
-    if (event.type === "message_start" && event.message.role === "assistant") {
-      this.ensureAssistant()
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "message_update" && event.message.role === "assistant") {
-      const bubble = this.ensureAssistant()
-      const update = event.assistantMessageEvent
-      if (update.type === "text_delta") bubble.text += update.delta
-      if (update.type === "thinking_delta") {
-        if (bubble.thinking) bubble.thinking += update.delta
-        else bubble.thinking = update.delta
+      const sessionFile = await runtime.open()
+      this.runtimes.set(runtime.key, runtime)
+      if (sessionFile && sessionFile !== chat.sessionFile) {
+        await this.library.updateChat(projectId, chatId, { sessionFile })
       }
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "message_end" && event.message.role === "assistant") {
-      const bubble = this.ensureAssistant()
-      const parts = assistantParts(event.message.content)
-      if (parts.text) bubble.text = parts.text
-      if (parts.thinking) bubble.thinking = parts.thinking
-      bubble.streaming = false
-      bubble.error = event.message.errorMessage ?? null
-      this.currentAssistantId = null
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "tool_execution_start") {
-      const tool: ToolMessage = {
-        id: event.toolCallId,
-        role: "tool",
-        name: event.toolName,
-        label: toolLabel(event.toolName, event.args),
-        args: formatValue(event.args),
-        output: "",
-        running: true,
-        isError: false,
-      }
-      this.messages.push(tool)
-      if (event.toolName === "bash") this.noteBash(event.toolCallId, bashCommand(event.args), "")
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "tool_execution_update") {
-      const tool = this.findTool(event.toolCallId)
-      if (!tool) return
-      tool.output = toolResultText(event.partialResult)
-      if (tool.name === "bash") this.noteBash(event.toolCallId, tool.label, tool.output)
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "tool_execution_end") {
-      const tool = this.findTool(event.toolCallId)
-      if (!tool) return
-      tool.output = toolResultText(event.result)
-      tool.running = false
-      tool.isError = event.isError
-      if (tool.name === "bash") this.noteBash(event.toolCallId, tool.label, tool.output)
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "agent_start") {
-      this.streaming = true
-      this.notice = null
-      this.publishTranscript()
-      void this.deliverPendingSteers()
-      return
-    }
-
-    if (event.type === "agent_settled") {
-      this.streaming = false
-      this.notice = null
-      this.finishStreamingMessages()
-      this.publishTranscript()
-      this.scheduleFlush()
-      return
-    }
-
-    if (event.type === "auto_retry_start") {
-      this.notice = `Retrying ${event.attempt} of ${event.maxAttempts}`
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "compaction_start") {
-      this.notice = "Summarizing earlier messages"
-      this.publishTranscript()
-      return
-    }
-
-    if (event.type === "compaction_end" || event.type === "auto_retry_end") {
-      this.notice = null
-      this.publishTranscript()
-    }
-  }
-
-  private ensureAssistant(): AssistantMessage {
-    if (this.currentAssistantId) {
-      const existing = this.messages.find((message) => message.id === this.currentAssistantId)
-      if (existing && existing.role === "assistant") return existing
-    }
-    const message: AssistantMessage = {
-      id: this.nextId("assistant"),
-      role: "assistant",
-      text: "",
-      thinking: "",
-      streaming: true,
-      error: null,
-    }
-    this.currentAssistantId = message.id
-    this.messages.push(message)
-    return message
-  }
-
-  private findTool(id: string): ToolMessage | null {
-    const message = this.messages.find((item) => item.id === id)
-    if (!message || message.role !== "tool") return null
-    return message
-  }
-
-  private finishStreamingMessages(): void {
-    for (const message of this.messages) {
-      if (message.role === "assistant") message.streaming = false
-      if (message.role === "tool") message.running = false
-    }
-    this.currentAssistantId = null
-    this.syncTerminal()
-  }
-
-  private async send(text: string): Promise<void> {
-    const session = this.session
-    if (!session) throw new Error(this.startupError ?? "The session is not ready.")
-    const id = this.nextId("user")
-    this.messages.push({ id, role: "user", text })
-    this.notice = null
-    this.sending = true
-    this.publishTranscript()
-    try {
-      await session.prompt(text)
     } catch (error) {
-      const last = this.messages[this.messages.length - 1]
-      if (last?.id === id) this.messages = this.messages.filter((message) => message.id !== id)
-      this.streaming = false
-      this.notice = errorMessage(error)
-      this.publishTranscript()
+      runtime.dispose()
       throw error
-    } finally {
-      this.sending = false
-      this.scheduleFlush()
     }
   }
 
-  private async deliverPendingSteers(): Promise<void> {
-    const session = this.session
-    if (!session) return
-    const pending = this.queue.filter((item) => item.mode === "steer")
-    if (pending.length === 0) return
-    const ids = new Set(pending.map((item) => item.id))
-    this.queue = this.queue.filter((item) => !ids.has(item.id))
-    for (const item of pending) {
-      this.messages.push({ id: this.nextId("user"), role: "user", text: item.text })
-    }
-    this.publishTranscript()
-    for (const item of pending) {
-      try {
-        await session.steer(item.text)
-      } catch (error) {
-        this.notice = errorMessage(error)
-        this.publishTranscript()
-      }
+  private async disposeChat(projectId: string, chatId: string): Promise<void> {
+    const runtime = this.runtimeFor(projectId, chatId)
+    if (!runtime) return
+    await runtime.abort()
+    runtime.dispose()
+    this.clearTimer(runtime.key)
+    await this.library.writeTranscript(projectId, chatId, runtime.messages)
+    this.runtimes.delete(runtime.key)
+  }
+
+  private onRuntimeChange(runtime: ChatRuntime, runningChanged: boolean): void {
+    this.scheduleTranscript(runtime)
+    if (runningChanged) this.publishLibrary()
+    if (runtime.projectId === this.projectId && runtime.chatId === this.chatId) this.publishTranscript()
+  }
+
+  private scheduleTranscript(runtime: ChatRuntime): void {
+    this.clearTimer(runtime.key)
+    this.timers.set(
+      runtime.key,
+      setTimeout(() => {
+        this.timers.delete(runtime.key)
+        void this.library.writeTranscript(runtime.projectId, runtime.chatId, runtime.messages)
+      }, 200),
+    )
+  }
+
+  private clearTimer(key: string): void {
+    const timer = this.timers.get(key)
+    if (!timer) return
+    clearTimeout(timer)
+    this.timers.delete(key)
+  }
+
+  private async saveBytes(projectId: string, chatId: string, name: string, mimeType: string, bytes: Buffer) {
+    const dir = this.library.attachmentDir(projectId, chatId)
+    await mkdir(dir, { recursive: true })
+    let safe = name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60) || "file"
+    if (!safe.includes(".")) safe = `${safe}${extensionForMime(mimeType)}`
+    const file = `${randomUUID()}-${safe}`
+    await writeFile(join(dir, file), bytes)
+    return {
+      url: this.library.attachmentUrl(projectId, chatId, file),
+      path: join(dir, file),
     }
   }
 
-  private scheduleFlush(): void {
-    queueMicrotask(() => {
-      void this.flushFollowUp()
-    })
-  }
-
-  private async flushFollowUp(): Promise<void> {
-    if (this.sending || this.streaming || this.session?.isStreaming) return
-    const next = this.queue.find((item) => item.mode === "follow-up")
-    if (!next) return
-    this.queue = this.queue.filter((item) => item.id !== next.id)
-    this.publishTranscript()
+  private async initialProject() {
+    const openId = this.library.openProjectId
+    if (openId) {
+      const project = this.library.project(openId)
+      if (project && (await directoryExists(project.path))) return project
+    }
+    if (!this.prefs.cwd) return null
     try {
-      await this.send(next.text)
-    } catch (error) {
-      this.notice = errorMessage(error)
-      this.publishTranscript()
+      return await this.library.ensureProject(this.prefs.cwd)
+    } catch {
+      return null
     }
   }
 
-  private noteBash(id: string, command: string, output: string): void {
-    const existing = this.bashBlocks.get(id)
-    if (!existing) this.bashOrder.push(id)
-    let nextCommand = command
-    if (existing) nextCommand = existing.command
-    this.bashBlocks.set(id, { command: nextCommand, output })
-    this.syncTerminal()
+  private latestProject() {
+    const projects = this.library.projects()
+    let latest = projects[0]
+    if (!latest) return null
+    for (const project of projects) {
+      if (project.lastOpenedAt > latest.lastOpenedAt) latest = project
+    }
+    return latest
   }
 
-  private syncTerminal(): void {
-    const parts: string[] = []
-    for (const id of this.bashOrder) {
-      const block = this.bashBlocks.get(id)
-      if (!block) continue
-      if (block.output) parts.push(`$ ${block.command}\n${block.output}`)
-      else parts.push(`$ ${block.command}`)
-    }
-    this.terminal = parts.join("\n\n")
-    this.terminalStreaming = this.messages.some((message) => {
-      return message.role === "tool" && message.name === "bash" && message.running
-    })
+  private openRuntime(): ChatRuntime | null {
+    if (!this.projectId || !this.chatId) return null
+    return this.runtimeFor(this.projectId, this.chatId)
   }
 
-  private selectModel(runtime: ModelRuntime): ReturnType<ModelRuntime["getModel"]> {
-    if (this.modelId) {
-      const saved = runtime.getModel(PROVIDER, this.modelId)
-      if (saved && !saved.id.includes(":batch")) return saved
-    }
-    for (const id of PREFERRED_MODELS) {
-      const preferred = runtime.getModel(PROVIDER, id)
-      if (preferred) return preferred
+  private runtimeFor(projectId: string, chatId: string): ChatRuntime | null {
+    return this.runtimes.get(`${projectId}:${chatId}`) ?? null
+  }
+
+  private applyDraftModel(): void {
+    const model = this.selectModel(this.draftModelId)
+    if (!model) return
+    this.draftModelId = model.id
+    this.draftModelName = model.name
+  }
+
+  private selectModel(preferred: string | null): AgentModel | undefined {
+    const runtime = this.modelRuntime
+    if (!runtime) return undefined
+    const ids = [preferred, this.draftModelId, ...PREFERRED_MODELS]
+    for (const id of ids) {
+      if (!id) continue
+      const model = runtime.getModel(PROVIDER, id)
+      if (model && !model.id.includes(":batch")) return model
     }
     const first = this.models[0]
     if (!first) return undefined
@@ -614,56 +549,93 @@ export class AgentHost {
     }
   }
 
-  private rememberExtensions(result: { extensions: { hidden?: boolean; sourceInfo: { path: string; scope: string } }[]; errors: { path: string; error: string }[] }): void {
-    const extensions: ExtensionInfo[] = []
-    for (const extension of result.extensions) {
-      if (extension.hidden) continue
-      extensions.push({
-        id: extension.sourceInfo.path,
-        name: extensionLabel(extension.sourceInfo.path),
-        scope: extension.sourceInfo.scope,
-      })
-    }
-    this.extensions = extensions
-    this.extensionErrors = result.errors.map((item) => `${basename(item.path)}: ${item.error}`)
-  }
-
-  private async resolveInitialCwd(preferred: string | undefined): Promise<string> {
-    if (preferred) {
-      try {
-        return await this.assertDirectory(preferred)
-      } catch {
-        return homedir()
-      }
-    }
-    return homedir()
-  }
-
-  private async assertDirectory(cwd: string): Promise<string> {
-    const resolved = await realpath(cwd)
-    const info = await stat(resolved)
-    if (!info.isDirectory()) throw new Error("Choose a folder.")
-    return resolved
-  }
-
   private async persistPrefs(): Promise<void> {
-    this.prefs = { cwd: this.cwd, modelId: this.modelId ?? undefined }
+    this.prefs = { cwd: this.cwd || undefined, modelId: this.draftModelId ?? undefined }
     await writePrefs(this.prefsPath, this.prefs)
   }
 
+  private viewModel(): { id: string | null; name: string | null } {
+    const runtime = this.openRuntime()
+    if (runtime) return { id: runtime.modelId, name: runtime.modelName }
+    return { id: this.draftModelId, name: this.draftModelName }
+  }
+
   private buildMeta(): AppMeta {
+    const model = this.viewModel()
+    const cached = this.projectId ? this.extensionCache.get(this.projectId) : undefined
     return {
       ready: this.ready,
       error: this.startupError,
       cwd: this.cwd,
       agentDir: this.agentDir,
-      modelId: this.modelId,
-      modelName: this.modelName,
+      modelId: model.id,
+      modelName: model.name,
       models: this.models,
       openRouter: this.openRouter,
-      extensions: this.extensions,
-      extensionErrors: this.extensionErrors,
+      extensions: cached?.extensions ?? [],
+      extensionErrors: cached?.errors ?? [],
     }
+  }
+
+  private libraryState(): LibraryState {
+    const projects: ProjectSummary[] = this.library.projects().map((project) => ({
+      id: project.id,
+      path: project.path,
+      name: project.name,
+      pinned: project.pinned,
+      pinnedAt: project.pinnedAt,
+      lastOpenedAt: project.lastOpenedAt,
+      running: this.projectRunning(project.id),
+    }))
+    let chats: ChatSummary[] = []
+    if (this.projectId) chats = this.library.projectChats(this.projectId).map((chat) => this.chatSummary(chat))
+    return {
+      projects,
+      openProjectId: this.projectId,
+      chats,
+      openChatId: this.chatId,
+    }
+  }
+
+  private chatSummary(chat: StoredChat): ChatSummary {
+    const runtime = this.projectId ? this.runtimeFor(this.projectId, chat.id) : null
+    return {
+      id: chat.id,
+      title: chat.title,
+      pinned: chat.pinned,
+      pinnedAt: chat.pinnedAt,
+      updatedAt: chat.updatedAt,
+      running: runtime?.running ?? false,
+    }
+  }
+
+  private projectRunning(projectId: string): boolean {
+    for (const runtime of this.runtimes.values()) {
+      if (runtime.projectId !== projectId) continue
+      if (runtime.running) return true
+    }
+    return false
+  }
+
+  private transcriptState(): TranscriptState {
+    const runtime = this.openRuntime()
+    if (!runtime) {
+      return {
+        messages: [],
+        streaming: false,
+        notice: null,
+        queue: [],
+        terminal: "",
+        terminalStreaming: false,
+      }
+    }
+    return runtime.transcript()
+  }
+
+  private publishAll(): void {
+    this.publishMeta()
+    this.publishLibrary()
+    this.publishTranscript()
   }
 
   private publishMeta(): void {
@@ -671,15 +643,9 @@ export class AgentHost {
     this.emit({ type: "meta", revision: this.revision, meta: this.buildMeta() })
   }
 
-  private transcriptState(): TranscriptState {
-    return {
-      messages: this.messages,
-      streaming: this.streaming,
-      notice: this.notice,
-      queue: this.queue.map((item) => ({ id: item.id, text: item.text, mode: item.mode })),
-      terminal: this.terminal,
-      terminalStreaming: this.terminalStreaming,
-    }
+  private publishLibrary(): void {
+    this.revision += 1
+    this.emit({ type: "library", revision: this.revision, library: this.libraryState() })
   }
 
   private publishTranscript(): void {
@@ -687,21 +653,36 @@ export class AgentHost {
     this.emit({
       type: "transcript",
       revision: this.revision,
+      projectId: this.projectId,
+      chatId: this.chatId,
       ...this.transcriptState(),
     })
   }
 
-  private nextId(prefix: string): string {
-    this.idCounter += 1
-    return `${prefix}-${this.idCounter}`
-  }
-
-  private run(task: () => Promise<void>): Promise<void> {
+  private run<T>(task: () => Promise<T>): Promise<T> {
     const next = this.tail.then(task, task)
     this.tail = next.then(
       () => undefined,
       () => undefined,
     )
     return next
+  }
+}
+
+function extensionForMime(mimeType: string): string {
+  if (mimeType === "image/jpeg") return ".jpg"
+  if (mimeType === "image/png") return ".png"
+  if (mimeType === "image/gif") return ".gif"
+  if (mimeType === "image/webp") return ".webp"
+  if (mimeType === "application/pdf") return ".pdf"
+  return ""
+}
+
+async function directoryExists(folder: string): Promise<boolean> {
+  try {
+    const info = await stat(folder)
+    return info.isDirectory()
+  } catch {
+    return false
   }
 }

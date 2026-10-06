@@ -1,12 +1,28 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron"
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from "electron"
 import { channels, type SlagentApi, type UiEvent } from "../shared/types"
 
 const api: SlagentApi = {
   platform: process.platform,
   getSnapshot: () => ipcRenderer.invoke(channels.snapshot),
-  prompt: (text) => ipcRenderer.invoke(channels.prompt, text),
+  prompt: (request) => ipcRenderer.invoke(channels.prompt, request),
   abort: () => ipcRenderer.invoke(channels.abort),
-  newSession: () => ipcRenderer.invoke(channels.newSession),
+  newChat: () => ipcRenderer.invoke(channels.newChat),
+  openProject: (projectId) => ipcRenderer.invoke(channels.openProject, projectId),
+  openChat: (chatId) => ipcRenderer.invoke(channels.openChat, chatId),
+  pinProject: (projectId, pinned) => ipcRenderer.invoke(channels.pinProject, projectId, pinned),
+  pinChat: (chatId, pinned) => ipcRenderer.invoke(channels.pinChat, chatId, pinned),
+  renameChat: (chatId, title) => ipcRenderer.invoke(channels.renameChat, chatId, title),
+  deleteChat: (chatId) => ipcRenderer.invoke(channels.deleteChat, chatId),
+  readTranscript: (chatId) => ipcRenderer.invoke(channels.readTranscript, chatId),
+  removeProject: (projectId, typedName) => ipcRenderer.invoke(channels.removeProject, projectId, typedName),
+  searchFiles: (query) => ipcRenderer.invoke(channels.searchFiles, query),
+  pathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file)
+    } catch {
+      return ""
+    }
+  },
   chooseFolder: () => ipcRenderer.invoke(channels.chooseFolder),
   setModel: (modelId) => ipcRenderer.invoke(channels.setModel, modelId),
   saveOpenRouterKey: (apiKey) => ipcRenderer.invoke(channels.saveKey, apiKey),

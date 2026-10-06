@@ -53,7 +53,7 @@ final class ComputerSession {
       let x = jsonDouble(request.params["x"]) ?? 0
       let y = jsonDouble(request.params["y"]) ?? 0
       let delta = jsonInt(request.params["delta_y"]) ?? -120
-      try scrollWindow(pid: pid, windowID: windowID, x: x, y: y, deltaY: delta)
+      try await scrollWindow(pid: pid, windowID: windowID, x: x, y: y, deltaY: delta)
       return ["ok": true]
     default:
       throw ComputerError("Unknown method \(request.method).")
@@ -93,7 +93,10 @@ final class ComputerSession {
       guard let element = elements[key]?[index] else {
         throw ComputerError("Element \(index) is not in the latest snapshot.")
       }
-      try pressElement(element)
+      guard let center = elementCenter(element) else {
+        throw ComputerError("That element has no position.")
+      }
+      try await clickPoint(pid: pid, windowID: windowID, x: center.x, y: center.y)
       return
     }
     guard let x = jsonDouble(params["x"]), let y = jsonDouble(params["y"]) else {

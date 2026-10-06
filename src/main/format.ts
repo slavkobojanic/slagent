@@ -59,6 +59,20 @@ export function toolResultText(result: unknown): string {
   return truncate(parts.join("\n"), TEXT_LIMIT)
 }
 
+export function toolResultImages(result: unknown): { data: string; mimeType: string }[] {
+  if (typeof result !== "object" || result === null) return []
+  const content = (result as { content?: unknown }).content
+  if (!Array.isArray(content)) return []
+  const images: { data: string; mimeType: string }[] = []
+  for (const part of content) {
+    if (typeof part !== "object" || part === null) continue
+    const block = part as { type?: string; data?: string; mimeType?: string }
+    if (block.type !== "image" || typeof block.data !== "string" || !block.mimeType) continue
+    images.push({ data: block.data, mimeType: block.mimeType })
+  }
+  return images
+}
+
 type ContentPart = { type?: string; text?: string; thinking?: string }
 
 export function assistantParts(content: readonly ContentPart[]): { text: string; thinking: string } {

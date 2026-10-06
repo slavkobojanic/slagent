@@ -139,11 +139,10 @@ final class AxTree {
   }
 }
 
-func pressElement(_ element: AXUIElement) throws {
-  let error = AXUIElementPerformAction(element, kAXPressAction as CFString)
-  if error != .success {
-    throw ComputerError("Accessibility press failed (\(error.rawValue)).")
-  }
+func elementCenter(_ element: AXUIElement) -> CGPoint? {
+  guard let position = pointAttribute(element, kAXPositionAttribute as String) else { return nil }
+  guard let size = sizeAttribute(element, kAXSizeAttribute as String) else { return nil }
+  return CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
 }
 
 private func remoteToken(pid: Int32, elementID: UInt64) -> Data {

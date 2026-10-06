@@ -2,7 +2,16 @@ export const channels = {
   snapshot: "agent:snapshot",
   prompt: "agent:prompt",
   abort: "agent:abort",
-  newSession: "agent:new-session",
+  newChat: "agent:new-chat",
+  openProject: "agent:open-project",
+  openChat: "agent:open-chat",
+  pinProject: "agent:pin-project",
+  pinChat: "agent:pin-chat",
+  renameChat: "agent:rename-chat",
+  deleteChat: "agent:delete-chat",
+  readTranscript: "agent:read-transcript",
+  removeProject: "agent:remove-project",
+  searchFiles: "agent:search-files",
   chooseFolder: "agent:choose-folder",
   setModel: "agent:set-model",
   saveKey: "agent:save-key",
@@ -50,10 +59,21 @@ export type AppMeta = {
   extensionErrors: string[]
 }
 
+export type AttachmentKind = "image" | "pdf" | "code" | "file"
+
+export type UserAttachment = {
+  id: string
+  name: string
+  kind: AttachmentKind
+  path?: string
+  url?: string
+}
+
 export type UserMessage = {
   id: string
   role: "user"
   text: string
+  attachments: UserAttachment[]
 }
 
 export type AssistantMessage = {
@@ -72,6 +92,7 @@ export type ToolMessage = {
   label: string
   args: string
   output: string
+  images: string[]
   running: boolean
   isError: boolean
 }
@@ -84,6 +105,56 @@ export type QueuedMessage = {
   id: string
   text: string
   mode: QueueMode
+  detail: string
+}
+
+export type PromptFile = {
+  name: string
+  mimeType: string
+  path?: string
+  dataBase64?: string
+}
+
+export type PromptMention = {
+  path: string
+  name: string
+}
+
+export type PromptRequest = {
+  text: string
+  mentions: PromptMention[]
+  files: PromptFile[]
+}
+
+export type FileMatch = {
+  path: string
+  name: string
+}
+
+export type ProjectSummary = {
+  id: string
+  path: string
+  name: string
+  pinned: boolean
+  pinnedAt: number
+  lastOpenedAt: number
+  running: boolean
+}
+
+export type ChatSummary = {
+  id: string
+  title: string
+  pinned: boolean
+  pinnedAt: number
+  updatedAt: number
+  running: boolean
+}
+
+export type LibraryState = {
+  projects: ProjectSummary[]
+  openProjectId: string | null
+  chats: ChatSummary[]
+  openChatId: string | null
 }
 
 export type TranscriptState = {
@@ -98,11 +169,13 @@ export type TranscriptState = {
 export type Snapshot = TranscriptState & {
   revision: number
   meta: AppMeta
+  library: LibraryState
 }
 
 export type UiEvent =
   | { type: "meta"; revision: number; meta: AppMeta }
-  | ({ type: "transcript"; revision: number } & TranscriptState)
+  | { type: "library"; revision: number; library: LibraryState }
+  | ({ type: "transcript"; revision: number; projectId: string | null; chatId: string | null } & TranscriptState)
 
 export type ComputerPermissions = {
   accessibility: boolean
@@ -110,14 +183,28 @@ export type ComputerPermissions = {
   error: string | null
 }
 
+export type ModelChange = {
+  applied: boolean
+}
+
 export type SlagentApi = {
   platform: string
   getSnapshot: () => Promise<Snapshot>
-  prompt: (text: string) => Promise<void>
+  prompt: (request: PromptRequest) => Promise<void>
   abort: () => Promise<void>
-  newSession: () => Promise<void>
+  newChat: () => Promise<void>
+  openProject: (projectId: string) => Promise<void>
+  openChat: (chatId: string) => Promise<void>
+  pinProject: (projectId: string, pinned: boolean) => Promise<void>
+  pinChat: (chatId: string, pinned: boolean) => Promise<void>
+  renameChat: (chatId: string, title: string) => Promise<void>
+  deleteChat: (chatId: string) => Promise<void>
+  readTranscript: (chatId: string) => Promise<ChatMessage[]>
+  removeProject: (projectId: string, typedName: string) => Promise<void>
+  searchFiles: (query: string) => Promise<FileMatch[]>
+  pathForFile: (file: File) => string
   chooseFolder: () => Promise<void>
-  setModel: (modelId: string) => Promise<void>
+  setModel: (modelId: string) => Promise<ModelChange>
   saveOpenRouterKey: (apiKey: string) => Promise<void>
   logoutOpenRouter: () => Promise<void>
   openExternal: (url: string) => Promise<void>

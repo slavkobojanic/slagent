@@ -77,23 +77,35 @@ function waitingForText(assistant: AssistantMessage | null, tools: ToolMessage[]
 }
 
 function ToolOutput({ message }: { message: ToolMessage }) {
-  if (!message.output) return null
+  const images = message.images ?? []
+  if (!message.output && images.length === 0) return null
   return (
-    <Collapsible>
-      <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground">
-        Output
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <pre
-          className={cn(
-            "mt-2 max-h-48 overflow-auto font-mono text-xs whitespace-pre-wrap text-muted-foreground",
-            message.isError && "text-destructive",
-          )}
-        >
-          {message.output}
-        </pre>
-      </CollapsibleContent>
-    </Collapsible>
+    <div className="space-y-2">
+      {images.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {images.map((url) => (
+            <img key={url} src={url} alt="" className="max-h-48 max-w-full rounded-md" />
+          ))}
+        </div>
+      ) : null}
+      {message.output ? (
+        <Collapsible>
+          <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground">
+            Output
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <pre
+              className={cn(
+                "mt-2 max-h-48 overflow-auto font-mono text-xs whitespace-pre-wrap text-muted-foreground",
+                message.isError && "text-destructive",
+              )}
+            >
+              {message.output}
+            </pre>
+          </CollapsibleContent>
+        </Collapsible>
+      ) : null}
+    </div>
   )
 }
 
@@ -149,9 +161,31 @@ function AssistantText({ text, streaming }: { text: string; streaming: boolean }
 }
 
 function UserTurn({ message }: { message: UserMessage }) {
+  const attachments = message.attachments ?? []
   return (
     <Message from="user">
-      <MessageContent className="whitespace-pre-wrap">{message.text}</MessageContent>
+      {attachments.length > 0 ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          {attachments.map((attachment) => {
+            if (attachment.kind === "image" && attachment.url) {
+              return (
+                <img
+                  key={attachment.id}
+                  src={attachment.url}
+                  alt={attachment.name}
+                  className="max-h-48 max-w-full rounded-md"
+                />
+              )
+            }
+            return (
+              <span key={attachment.id} className="rounded-md border border-white/15 px-2 py-1 text-xs">
+                {attachment.name}
+              </span>
+            )
+          })}
+        </div>
+      ) : null}
+      {message.text ? <MessageContent className="whitespace-pre-wrap">{message.text}</MessageContent> : null}
     </Message>
   )
 }
@@ -160,11 +194,29 @@ function EmptyState({
   configured,
   cwd,
   onConnect,
+  onChoose,
 }: {
   configured: boolean
   cwd: string
   onConnect: () => void
+  onChoose: () => void
 }) {
+  if (!cwd) {
+    return (
+      <ConversationEmptyState>
+        <h1 className="text-xl font-medium tracking-tight">Choose a folder</h1>
+        <p className="max-w-md text-sm text-muted-foreground">A project is the folder the agent works in.</p>
+        <button
+          type="button"
+          className="mt-2 h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-white/90"
+          onClick={onChoose}
+        >
+          Choose folder
+        </button>
+      </ConversationEmptyState>
+    )
+  }
+
   if (!configured) {
     return (
       <ConversationEmptyState>
@@ -201,19 +253,23 @@ function Transcript({
   configured,
   cwd,
   onConnect,
+  onChoose,
 }: {
   messages: ChatMessage[]
   notice: string | null
   configured: boolean
   cwd: string
   onConnect: () => void
+  onChoose: () => void
 }) {
   const blocks = groupMessages(messages)
 
   return (
-    <Conversation className="min-h-0">
+    <Conversation className="chat-transcript min-h-0">
       <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-6 py-8">
-        {messages.length === 0 ? <EmptyState configured={configured} cwd={cwd} onConnect={onConnect} /> : null}
+        {messages.length === 0 ? (
+          <EmptyState configured={configured} cwd={cwd} onConnect={onConnect} onChoose={onChoose} />
+        ) : null}
         {blocks.map((block) => {
           if (block.kind === "user") return <UserTurn key={block.message.id} message={block.message} />
           return <AssistantTurn key={block.turn.id} turn={block.turn} />

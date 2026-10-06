@@ -43,7 +43,8 @@ function ModelDialog({
     if (disabled) return
     setPendingId(id)
     try {
-      await window.slagent.setModel(id)
+      const change = await window.slagent.setModel(id)
+      if (!change.applied) toast.message("This chat keeps its model until the run finishes.")
       onOpenChange(false)
     } catch (error) {
       toast.error(errorText(error))

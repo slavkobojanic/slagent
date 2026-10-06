@@ -1,0 +1,629 @@
+import { randomUUID } from "node:crypto"
+import { mkdir } from "node:fs/promises"
+import { basename, dirname } from "node:path"
+import {
+  type AgentSession,
+  type AgentSessionEvent,
+  createAgentSession,
+  type ModelRuntime,
+  SessionManager,
+} from "@earendil-works/pi-coding-agent"
+import type { ImageContent } from "@earendil-works/pi-ai"
+import type {
+  AssistantMessage,
+  ChatMessage,
+  ExtensionInfo,
+  QueueMode,
+  PromptRequest,
+  ToolMessage,
+  TranscriptState,
+  UserAttachment,
+  UserMessage,
+} from "../shared/types"
+import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
+import type { ComputerGate } from "./computer-gate"
+import type { ComputerUse } from "./computer"
+import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
+import { preparePrompt, queueDetail } from "./prompt"
+
+const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"]
+
+export type AgentModel = NonNullable<ReturnType<ModelRuntime["getModel"]>>
+
+type Pending = {
+  id: string
+  mode: QueueMode
+  request: PromptRequest
+}
+
+type SavedFile = {
+  url: string
+  path: string
+}
+
+export type ChatRuntimeOptions = {
+  projectId: string
+  chatId: string
+  cwd: string
+  sessionDir: string
+  sessionFile: string | null
+  model: AgentModel
+  named: boolean
+  computer: ComputerUse
+  gate: ComputerGate
+  modelRuntime: ModelRuntime
+  onChange: (runningChanged: boolean) => void
+  onExtensions: (extensions: ExtensionInfo[], errors: string[]) => void
+  onTitle: (title: string) => void
+  onModel: (modelId: string) => void
+  saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
+}
+
+export class ChatRuntime {
+  readonly projectId: string
+  readonly chatId: string
+  modelId: string
+  modelName: string
+  messages: ChatMessage[] = []
+  private queue: Pending[] = []
+  private terminal = ""
+  private terminalStreaming = false
+  private streaming = false
+  private sending = false
+  private notice: string | null = null
+  private named: boolean
+  private session: AgentSession | null = null
+  private unsubscribe: (() => void) | null = null
+  private sessionToken: object | null = null
+  private bashBlocks = new Map<string, { command: string; output: string }>()
+  private bashOrder: string[] = []
+  private currentAssistantId: string | null = null
+  private pendingModel: AgentModel | null = null
+  private lastRunning = false
+  private readonly options: ChatRuntimeOptions
+
+  constructor(options: ChatRuntimeOptions) {
+    this.options = options
+    this.projectId = options.projectId
+    this.chatId = options.chatId
+    this.modelId = options.model.id
+    this.modelName = options.model.name
+    this.named = options.named
+  }
+
+  get key(): string {
+    return `${this.projectId}:${this.chatId}`
+  }
+
+  get running(): boolean {
+    return this.streaming || this.sending
+  }
+
+  load(messages: ChatMessage[]): void {
+    this.messages = messages.map(normalizeMessage)
+    this.bashBlocks.clear()
+    this.bashOrder = []
+    for (const message of this.messages) {
+      if (message.role !== "tool" || message.name !== "bash") continue
+      this.bashOrder.push(message.id)
+      let command = message.label
+      if (command.startsWith("bash  ")) command = command.slice("bash  ".length)
+      this.bashBlocks.set(message.id, { command, output: message.output })
+    }
+    this.syncTerminal()
+  }
+
+  lockTitle(): void {
+    this.named = true
+  }
+
+  transcript(): TranscriptState {
+    return {
+      messages: this.messages,
+      streaming: this.streaming,
+      notice: this.notice,
+      queue: this.queue.map((item) => ({
+        id: item.id,
+        text: item.request.text,
+        mode: item.mode,
+        detail: queueDetail(item.request),
+      })),
+      terminal: this.terminal,
+      terminalStreaming: this.terminalStreaming,
+    }
+  }
+
+  async open(): Promise<string | null> {
+    await mkdir(this.options.sessionDir, { recursive: true })
+    const sessionManager = this.sessionManager()
+    let toolNames = CODING_TOOLS
+    let customTools: ReturnType<typeof computerTools> = []
+    if (process.platform === "darwin") {
+      toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]
+      customTools = computerTools(this.options.computer, this.options.gate)
+    }
+
+    const { session, extensionsResult } = await createAgentSession({
+      cwd: this.options.cwd,
+      modelRuntime: this.options.modelRuntime,
+      model: this.options.model,
+      tools: toolNames,
+      customTools,
+      sessionManager,
+    })
+
+    this.session = session
+    this.rememberExtensions(extensionsResult)
+    const token = {}
+    this.sessionToken = token
+    this.unsubscribe = session.subscribe((event) => {
+      if (this.sessionToken !== token) return
+      this.onEvent(event)
+    })
+
+    try {
+      await session.bindExtensions({
+        mode: "print",
+        onError: (extensionError) => {
+          const name = basename(extensionError.extensionPath)
+          this.extensionErrors = [...this.extensionErrors, `${name}: ${extensionError.error}`].slice(-20)
+          this.options.onExtensions(this.extensions, this.extensionErrors)
+        },
+        commandContextActions: {
+          waitForIdle: () => session.waitForIdle(),
+          newSession: async () => ({ cancelled: true }),
+          fork: async () => ({ cancelled: true }),
+          navigateTree: async () => ({ cancelled: true }),
+          switchSession: async () => ({ cancelled: true }),
+          reload: async () => {
+            await session.reload()
+          },
+        },
+      })
+    } catch (error) {
+      this.extensionErrors = [...this.extensionErrors, errorMessage(error)].slice(-20)
+      this.options.onExtensions(this.extensions, this.extensionErrors)
+    }
+
+    return session.sessionManager.getSessionFile() ?? null
+  }
+
+  private extensions: ExtensionInfo[] = []
+  private extensionErrors: string[] = []
+  private disposed = false
+
+  async prompt(request: PromptRequest): Promise<void> {
+    if (!this.session) throw new Error("The session is not ready.")
+    if (this.streaming || this.sending || this.session.isStreaming) {
+      this.enqueue(request, "follow-up")
+      return
+    }
+    this.sending = true
+    this.emit(true)
+    try {
+      await this.send(request)
+    } finally {
+      this.sending = false
+      this.emit(true)
+      this.scheduleFlush()
+    }
+  }
+
+  async setQueueMode(id: string, mode: QueueMode): Promise<void> {
+    const index = this.queue.findIndex((item) => item.id === id)
+    const item = this.queue[index]
+    if (!item) return
+    if (mode === "follow-up") {
+      item.mode = "follow-up"
+      this.emit(false)
+      return
+    }
+    const session = this.session
+    if (!session) throw new Error("The session is not ready.")
+    if (session.isStreaming || this.streaming) {
+      this.queue.splice(index, 1)
+      const prepared = await preparePrompt(item.request, this.options.saveBytes)
+      this.pushUser(item.request, prepared.attachments)
+      this.emit(false)
+      await session.steer(prepared.text, promptImages(prepared.images))
+      return
+    }
+    if (this.sending) {
+      item.mode = "steer"
+      this.emit(false)
+      return
+    }
+    this.queue.splice(index, 1)
+    this.emit(false)
+    await this.prompt(item.request)
+  }
+
+  removeQueued(id: string): void {
+    this.queue = this.queue.filter((item) => item.id !== id)
+    this.emit(false)
+  }
+
+  clearTerminal(): void {
+    this.bashBlocks.clear()
+    this.bashOrder = []
+    this.terminal = ""
+    this.terminalStreaming = false
+    this.emit(false)
+  }
+
+  async abort(): Promise<void> {
+    if (!this.session) return
+    await this.session.abort()
+  }
+
+  async setModel(model: AgentModel): Promise<boolean> {
+    if (this.streaming || this.sending || this.session?.isStreaming) {
+      this.pendingModel = model
+      return false
+    }
+    if (this.session) await this.session.setModel(model)
+    this.modelId = model.id
+    this.modelName = model.name
+    this.options.onModel(model.id)
+    this.emit(false)
+    return true
+  }
+
+  dispose(): void {
+    this.disposed = true
+    this.sessionToken = null
+    this.unsubscribe?.()
+    this.unsubscribe = null
+    const session = this.session
+    this.session = null
+    session?.dispose()
+  }
+
+  private sessionManager(): SessionManager {
+    if (!this.options.sessionFile) return SessionManager.create(this.options.cwd, this.options.sessionDir)
+    try {
+      return SessionManager.open(this.options.sessionFile, this.options.sessionDir, this.options.cwd)
+    } catch {
+      return SessionManager.create(this.options.cwd, this.options.sessionDir)
+    }
+  }
+
+  private enqueue(request: PromptRequest, mode: QueueMode): void {
+    this.queue.push({ id: randomUUID(), mode, request })
+    this.emit(false)
+  }
+
+  private async send(request: PromptRequest): Promise<void> {
+    const session = this.session
+    if (!session) throw new Error("The session is not ready.")
+    const prepared = await preparePrompt(request, this.options.saveBytes)
+    const message = this.pushUser(request, prepared.attachments)
+    this.notice = null
+    this.emit(true)
+    try {
+      await session.prompt(prepared.text, { images: promptImages(prepared.images) })
+    } catch (error) {
+      const last = this.messages[this.messages.length - 1]
+      if (last?.id === message.id) this.messages = this.messages.filter((item) => item.id !== message.id)
+      this.streaming = false
+      this.notice = errorMessage(error)
+      this.emit(true)
+      throw error
+    }
+  }
+
+  private pushUser(request: PromptRequest, attachments: UserAttachment[]): UserMessage {
+    const message: UserMessage = {
+      id: randomUUID(),
+      role: "user",
+      text: request.text.trim(),
+      attachments,
+    }
+    this.messages.push(message)
+    this.markTitle(message.text, attachments)
+    return message
+  }
+
+  private markTitle(text: string, attachments: UserAttachment[]): void {
+    if (this.named) return
+    this.named = true
+    let title = text.split("\n")[0]?.trim() ?? ""
+    if (!title) {
+      const first = attachments[0]
+      if (first) title = first.name
+    }
+    if (!title) title = "New chat"
+    this.options.onTitle(title.slice(0, 80))
+  }
+
+  private onEvent(event: AgentSessionEvent): void {
+    if (event.type === "message_start" && event.message.role === "assistant") {
+      this.ensureAssistant()
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "message_update" && event.message.role === "assistant") {
+      const bubble = this.ensureAssistant()
+      const update = event.assistantMessageEvent
+      if (update.type === "text_delta") bubble.text += update.delta
+      if (update.type === "thinking_delta") {
+        if (bubble.thinking) bubble.thinking += update.delta
+        else bubble.thinking = update.delta
+      }
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "message_end" && event.message.role === "assistant") {
+      const bubble = this.ensureAssistant()
+      const parts = assistantParts(event.message.content)
+      if (parts.text) bubble.text = parts.text
+      if (parts.thinking) bubble.thinking = parts.thinking
+      bubble.streaming = false
+      bubble.error = event.message.errorMessage ?? null
+      this.currentAssistantId = null
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "tool_execution_start") {
+      const tool: ToolMessage = {
+        id: event.toolCallId,
+        role: "tool",
+        name: event.toolName,
+        label: toolLabel(event.toolName, event.args),
+        args: formatValue(event.args),
+        output: "",
+        images: [],
+        running: true,
+        isError: false,
+      }
+      this.messages.push(tool)
+      if (event.toolName === "bash") this.noteBash(event.toolCallId, bashCommand(event.args), "")
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "tool_execution_update") {
+      const tool = this.findTool(event.toolCallId)
+      if (!tool) return
+      tool.output = toolResultText(event.partialResult)
+      if (tool.name === "bash") this.noteBash(event.toolCallId, tool.label, tool.output)
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "tool_execution_end") {
+      const tool = this.findTool(event.toolCallId)
+      if (!tool) return
+      tool.output = toolResultText(event.result)
+      tool.running = false
+      tool.isError = event.isError
+      if (tool.name === "bash") this.noteBash(event.toolCallId, tool.label, tool.output)
+      const images = toolResultImages(event.result)
+      if (images.length > 0) void this.attachImages(tool, images)
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "agent_start") {
+      this.streaming = true
+      this.notice = null
+      this.emit(true)
+      void this.deliverPendingSteers()
+      return
+    }
+
+    if (event.type === "agent_settled") {
+      this.streaming = false
+      this.notice = null
+      this.finishStreamingMessages()
+      const pending = this.pendingModel
+      this.pendingModel = null
+      if (pending && this.session) {
+        const session = this.session
+        void session.setModel(pending).then(() => {
+          this.modelId = pending.id
+          this.modelName = pending.name
+          this.options.onModel(pending.id)
+          this.emit(false)
+        })
+      }
+      this.emit(true)
+      this.scheduleFlush()
+      return
+    }
+
+    if (event.type === "auto_retry_start") {
+      this.notice = `Retrying ${event.attempt} of ${event.maxAttempts}`
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "compaction_start") {
+      this.notice = "Summarizing earlier messages"
+      this.emit(false)
+      return
+    }
+
+    if (event.type === "compaction_end" || event.type === "auto_retry_end") {
+      this.notice = null
+      this.emit(false)
+    }
+  }
+
+  private async attachImages(tool: ToolMessage, images: { data: string; mimeType: string }[]): Promise<void> {
+    const urls: string[] = []
+    for (const image of images) {
+      const saved = await this.options.saveBytes(imageName(image.mimeType), image.mimeType, Buffer.from(image.data, "base64"))
+      urls.push(saved.url)
+    }
+    tool.images = urls
+    this.emit(false)
+  }
+
+  private ensureAssistant(): AssistantMessage {
+    if (this.currentAssistantId) {
+      const existing = this.messages.find((message) => message.id === this.currentAssistantId)
+      if (existing && existing.role === "assistant") return existing
+    }
+    const message: AssistantMessage = {
+      id: randomUUID(),
+      role: "assistant",
+      text: "",
+      thinking: "",
+      streaming: true,
+      error: null,
+    }
+    this.currentAssistantId = message.id
+    this.messages.push(message)
+    return message
+  }
+
+  private findTool(id: string): ToolMessage | null {
+    const message = this.messages.find((item) => item.id === id)
+    if (!message || message.role !== "tool") return null
+    return message
+  }
+
+  private finishStreamingMessages(): void {
+    for (const message of this.messages) {
+      if (message.role === "assistant") message.streaming = false
+      if (message.role === "tool") message.running = false
+    }
+    this.currentAssistantId = null
+    this.syncTerminal()
+  }
+
+  private async deliverPendingSteers(): Promise<void> {
+    const session = this.session
+    if (!session) return
+    const pending = this.queue.filter((item) => item.mode === "steer")
+    if (pending.length === 0) return
+    const ids = new Set(pending.map((item) => item.id))
+    this.queue = this.queue.filter((item) => !ids.has(item.id))
+    for (const item of pending) {
+      const prepared = await preparePrompt(item.request, this.options.saveBytes)
+      this.pushUser(item.request, prepared.attachments)
+      this.emit(false)
+      try {
+        await session.steer(prepared.text, promptImages(prepared.images))
+      } catch (error) {
+        this.notice = errorMessage(error)
+        this.emit(false)
+      }
+    }
+  }
+
+  private scheduleFlush(): void {
+    queueMicrotask(() => {
+      void this.flushFollowUp()
+    })
+  }
+
+  private async flushFollowUp(): Promise<void> {
+    if (this.sending || this.streaming || this.session?.isStreaming) return
+    const next = this.queue.find((item) => item.mode === "follow-up")
+    if (!next) return
+    this.queue = this.queue.filter((item) => item.id !== next.id)
+    this.sending = true
+    this.emit(true)
+    try {
+      await this.send(next.request)
+    } catch (error) {
+      this.notice = errorMessage(error)
+      this.emit(false)
+    } finally {
+      this.sending = false
+      this.emit(true)
+      this.scheduleFlush()
+    }
+  }
+
+  private noteBash(id: string, command: string, output: string): void {
+    const existing = this.bashBlocks.get(id)
+    if (!existing) this.bashOrder.push(id)
+    let nextCommand = command
+    if (existing) nextCommand = existing.command
+    this.bashBlocks.set(id, { command: nextCommand, output })
+    this.syncTerminal()
+  }
+
+  private syncTerminal(): void {
+    const parts: string[] = []
+    for (const id of this.bashOrder) {
+      const block = this.bashBlocks.get(id)
+      if (!block) continue
+      if (block.output) parts.push(`$ ${block.command}\n${block.output}`)
+      else parts.push(`$ ${block.command}`)
+    }
+    this.terminal = parts.join("\n\n")
+    this.terminalStreaming = this.messages.some((message) => {
+      return message.role === "tool" && message.name === "bash" && message.running
+    })
+  }
+
+  private rememberExtensions(result: {
+    extensions: { hidden?: boolean; sourceInfo: { path: string; scope: string } }[]
+    errors: { path: string; error: string }[]
+  }): void {
+    const extensions: ExtensionInfo[] = []
+    for (const extension of result.extensions) {
+      if (extension.hidden) continue
+      extensions.push({
+        id: extension.sourceInfo.path,
+        name: extensionLabel(extension.sourceInfo.path),
+        scope: extension.sourceInfo.scope,
+      })
+    }
+    this.extensions = extensions
+    this.extensionErrors = result.errors.map((item) => `${basename(item.path)}: ${item.error}`)
+    this.options.onExtensions(extensions, this.extensionErrors)
+  }
+
+  private emit(runningChanged: boolean): void {
+    if (this.disposed) return
+    const running = this.streaming || this.sending
+    let changed = runningChanged
+    if (running !== this.lastRunning) changed = true
+    this.lastRunning = running
+    this.options.onChange(changed)
+  }
+}
+
+function extensionLabel(filePath: string): string {
+  const file = basename(filePath)
+  const dot = file.lastIndexOf(".")
+  const stem = dot > 0 ? file.slice(0, dot) : file
+  if (stem !== "index") return stem
+
+  const skip = new Set(["src", "dist", "lib", "extensions", "node_modules"])
+  let dir = dirname(filePath)
+  for (let depth = 0; depth < 4; depth += 1) {
+    const parent = basename(dir)
+    if (parent && !skip.has(parent)) return parent
+    const next = dirname(dir)
+    if (next === dir) break
+    dir = next
+  }
+  return stem
+}
+
+function imageName(mimeType: string): string {
+  if (mimeType === "image/jpeg") return "snapshot.jpg"
+  if (mimeType === "image/gif") return "snapshot.gif"
+  if (mimeType === "image/webp") return "snapshot.webp"
+  return "snapshot.png"
+}
+
+function normalizeMessage(message: ChatMessage): ChatMessage {
+  if (message.role === "user" && !message.attachments) message.attachments = []
+  if (message.role === "tool" && !message.images) message.images = []
+  return message
+}
+
+function promptImages(images: ImageContent[]): ImageContent[] | undefined {
+  if (images.length === 0) return undefined
+  return images
+}

@@ -179,6 +179,12 @@
   line-height: 1.5;
 }
 
+.chat-transcript img {
+  border-radius: 6px;
+  max-width: 100%;
+  height: auto;
+}
+
 .markdown :not(pre) > code {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.08);

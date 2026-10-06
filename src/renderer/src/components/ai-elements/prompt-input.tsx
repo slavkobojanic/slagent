@@ -610,14 +610,21 @@ export const PromptInput = ({
             message: "Too many files. Some were not added.",
           });
         }
-        const next: (FileUIPart & { id: string })[] = [];
+        const next: (FileUIPart & { id: string; path?: string })[] = [];
         for (const file of capped) {
+          let diskPath = "";
+          try {
+            diskPath = window.slagent.pathForFile(file);
+          } catch {
+            diskPath = "";
+          }
           next.push({
             filename: file.name,
             id: nanoid(),
             mediaType: file.type,
             type: "file",
             url: URL.createObjectURL(file),
+            path: diskPath,
           });
         }
         return [...prev, ...next];
@@ -1059,10 +1066,10 @@ export const PromptInputTextarea = ({
       name="message"
       onCompositionEnd={handleCompositionEnd}
       onCompositionStart={handleCompositionStart}
-      onKeyDown={handleKeyDown}
-      onPaste={handlePaste}
       placeholder={placeholder}
       {...props}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
       {...controlledProps}
     />
   );
