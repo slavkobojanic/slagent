@@ -30,7 +30,7 @@ function Sidebar({
   onNewChat: () => void
   onChooseFolder: () => void
   onOpenProject: (projectId: string) => void
-  onOpenChat: (chatId: string, projectId?: string) => void
+  onOpenChat: (chatId: string, projectId?: string, messageId?: string | null) => void
   onPinProject: (projectId: string, pinned: boolean) => void
   onPinChat: (chatId: string, pinned: boolean) => void
   onRenameChat: (chatId: string, title: string) => void
@@ -105,7 +105,7 @@ function Sidebar({
             onKeyDown={(event) => {
               if (event.key === "Escape") setQuery("")
               if (event.key === "Enter" && results?.[0]) {
-                onOpenChat(results[0].chatId, results[0].projectId)
+                onOpenChat(results[0].chatId, results[0].projectId, results[0].messageId)
                 setQuery("")
               }
             }}
@@ -129,7 +129,7 @@ function Sidebar({
               results={results}
               openChatId={library.openChatId}
               onOpen={(result) => {
-                onOpenChat(result.chatId, result.projectId)
+                onOpenChat(result.chatId, result.projectId, result.messageId)
                 setQuery("")
               }}
             />

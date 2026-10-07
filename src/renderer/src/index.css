@@ -53,9 +53,35 @@
   --accent: #161616;
   --accent-foreground: #ffffff;
   --destructive: #ff5c5c;
-  --border: rgba(255, 255, 255, 0.14);
-  --input: rgba(255, 255, 255, 0.14);
+  --border: color-mix(in srgb, var(--foreground) 14%, transparent);
+  --input: color-mix(in srgb, var(--foreground) 14%, transparent);
   --ring: #ffffff;
+}
+
+/* Light is the dark theme inverted. The UI is written with white-on-black
+   utilities (text-white/50, border-white/10, bg-black...), so swapping what
+   Tailwind's white and black mean flips all of them at once. */
+html.light {
+  color-scheme: light;
+  --color-white: #000000;
+  --color-black: #ffffff;
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+  --secondary: #eeeeee;
+  --secondary-foreground: #000000;
+  --muted: #eeeeee;
+  --muted-foreground: #777777;
+  --accent: #e9e9e9;
+  --accent-foreground: #000000;
+  --border: rgba(0, 0, 0, 0.14);
+  --input: rgba(0, 0, 0, 0.14);
+  --ring: #000000;
 }
 
 @layer base {
@@ -76,8 +102,8 @@
   }
 
   ::selection {
-    background: #fff;
-    color: #000;
+    background: var(--foreground);
+    color: var(--background);
   }
 }
 
@@ -153,7 +179,7 @@
 
 .resize-handle:hover::after,
 .resize-handle:active::after {
-  background: rgb(255 255 255 / 0.35);
+  background: color-mix(in srgb, var(--foreground) 35%, transparent);
 }
 
 body.resizing {
@@ -234,9 +260,9 @@ body.resizing * {
 }
 
 .markdown blockquote {
-  border-left: 2px solid rgba(255, 255, 255, 0.3);
+  border-left: 2px solid color-mix(in srgb, var(--foreground) 30%, transparent);
   padding-left: 0.75rem;
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
 }
 
 .markdown table {
@@ -246,16 +272,16 @@ body.resizing * {
 
 .markdown th,
 .markdown td {
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
   padding: 0.35rem 0.5rem;
   text-align: left;
 }
 
 .markdown pre {
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
   border-radius: 6px;
-  background: #0a0a0a;
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
   padding: 0.75rem;
   font-family: var(--font-mono);
   font-size: 13px;
@@ -270,7 +296,7 @@ body.resizing * {
 
 .markdown :not(pre) > code {
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
   padding: 0.1em 0.35em;
   font-family: var(--font-mono);
   font-size: 0.9em;
@@ -282,7 +308,25 @@ body.resizing * {
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 2px solid #000;
+  border: 2px solid var(--background);
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+
+/* A message opened from chat search flashes briefly so it is easy to spot. */
+.search-hit {
+  border-radius: 0.5rem;
+  animation: search-hit 1.6s ease-out;
+}
+
+@keyframes search-hit {
+  0%,
+  30% {
+    background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 6px transparent;
+  }
 }

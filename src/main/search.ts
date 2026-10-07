@@ -30,13 +30,17 @@ export async function searchChats(library: Library, query: string, live: LiveMes
     if (results.length >= LIMIT) break
     const messages = live(candidate.projectId, candidate.chatId) ?? (await library.readTranscript(candidate.projectId, candidate.chatId))
     let snippet: string | null = null
+    let messageId: string | null = null
     for (const message of messages) {
       if (message.role === "tool") continue
       snippet = excerpt(message.text, needle)
-      if (snippet) break
+      if (snippet) {
+        messageId = message.id
+        break
+      }
     }
     if (!snippet && !candidate.title.toLowerCase().includes(needle)) continue
-    results.push({ ...candidate, snippet: snippet ?? "" })
+    results.push({ ...candidate, snippet: snippet ?? "", messageId })
   }
   return results
 }

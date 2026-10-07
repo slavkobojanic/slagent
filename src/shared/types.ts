@@ -188,7 +188,11 @@ export type ProjectSummary = {
   attention: boolean
 }
 
-export type ChatStatus = "idle" | "running" | "waiting" | "unread" | "error"
+// "done" means the last run finished cleanly; the renderer shows it for
+// DONE_WINDOW_MS after finishedAt, then falls back to idle.
+export type ChatStatus = "idle" | "running" | "waiting" | "done" | "error"
+
+export const DONE_WINDOW_MS = 5 * 60 * 1000
 
 export type ChatSummary = {
   id: string
@@ -198,6 +202,7 @@ export type ChatSummary = {
   updatedAt: number
   running: boolean
   status: ChatStatus
+  finishedAt: number | null
 }
 
 export type ChatSearchResult = {
@@ -206,6 +211,8 @@ export type ChatSearchResult = {
   chatId: string
   title: string
   snippet: string
+  // The first message whose text matched, or null for a title-only match.
+  messageId: string | null
   updatedAt: number
 }
 

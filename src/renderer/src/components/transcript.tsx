@@ -1,4 +1,5 @@
 import Ansi from "ansi-to-react"
+import { useStickToBottomContext } from "use-stick-to-bottom"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { AssistantMessage, ChatMessage, QuestionRequest, ToolMessage, UserMessage } from "@shared/types"
@@ -271,7 +272,7 @@ function ToolChain({ tools }: { tools: ToolMessage[] }) {
 function AssistantTurn({ turn }: { turn: Turn }) {
   const assistant = turn.assistant
   return (
-    <Message from="assistant" className="max-w-full">
+    <Message from="assistant" className="max-w-full" data-message-id={turn.id}>
       {assistant?.thinking && (
         <Reasoning isStreaming={assistant.streaming}>
           <ReasoningTrigger />
@@ -348,7 +349,7 @@ function UserTurn({
     return <EditMessage message={message} onCancel={() => onEditing(false)} onSave={(text) => onEdit(message.id, text)} />
   }
   return (
-    <Message from="user" className="group">
+    <Message from="user" className="group" data-message-id={message.id}>
       {attachments.length > 0 ? (
         <div className="flex flex-wrap justify-end gap-2">
           {attachments.map((attachment) => {
@@ -602,6 +603,8 @@ function Transcript({
   onConnect,
   onChoose,
   onEdit,
+  jumpTo,
+  onJumped,
 }: {
   messages: ChatMessage[]
   notice: string | null
@@ -614,6 +617,8 @@ function Transcript({
   onConnect: () => void
   onChoose: () => void
   onEdit: (id: string, text: string) => Promise<void>
+  jumpTo: string | null
+  onJumped: () => void
 }) {
   const blocks = groupMessages(messages)
   const pending = awaitingModel(messages, streaming) && !planProposal
@@ -664,8 +669,35 @@ function Transcript({
         {notice && !pending ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
       </ConversationContent>
       <ConversationScrollButton />
+      <JumpToMessage messages={messages} messageId={jumpTo} onJumped={onJumped} />
     </Conversation>
   )
+}
+
+// Scrolls a search result's message into view once it has rendered, and
+// releases the stick-to-bottom lock so the chat does not snap back down.
+function JumpToMessage({ messages, messageId, onJumped }: { messages: ChatMessage[]; messageId: string | null; onJumped: () => void }) {
+  const { stopScroll } = useStickToBottomContext()
+  const found = messageId !== null && messages.some((message) => message.id === messageId)
+  const done = useRef(onJumped)
+  done.current = onJumped
+
+  useEffect(() => {
+    if (!found || !messageId) return
+    const frame = window.requestAnimationFrame(() => {
+      const element = document.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(messageId)}"]`)
+      done.current()
+      if (!element) return
+      stopScroll()
+      element.scrollIntoView({ block: "center" })
+      element.classList.remove("search-hit")
+      void element.offsetWidth
+      element.classList.add("search-hit")
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [found, messageId, stopScroll])
+
+  return null
 }
 
 export { Transcript }

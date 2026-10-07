@@ -51,6 +51,8 @@ function AgentApp() {
   const [tasks, setTasks] = useState<TaskInfo[]>([])
   const [planProposal, setPlanProposal] = useState<string | null>(null)
   const [question, setQuestion] = useState<QuestionRequest | null>(null)
+  // A search result's message to scroll to once its chat has loaded.
+  const [jumpTo, setJumpTo] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -462,7 +464,10 @@ function AgentApp() {
           onNewChat={() => void newChat()}
           onChooseFolder={() => void chooseFolder()}
           onOpenProject={(projectId) => void runLibrary(() => window.slagent.openProject(projectId))}
-          onOpenChat={(chatId, projectId) => void runLibrary(() => window.slagent.openChat(chatId, projectId))}
+          onOpenChat={(chatId, projectId, messageId) => {
+            setJumpTo(messageId ?? null)
+            void runLibrary(() => window.slagent.openChat(chatId, projectId))
+          }}
           onPinProject={(projectId, pinned) => void runLibrary(() => window.slagent.pinProject(projectId, pinned))}
           onPinChat={(chatId, pinned) => void runLibrary(() => window.slagent.pinChat(chatId, pinned))}
           onRenameChat={(chatId, title) => void runLibrary(() => window.slagent.renameChat(chatId, title))}
@@ -503,6 +508,8 @@ function AgentApp() {
               onConnect={() => setSettingsOpen(true)}
               onChoose={() => void chooseFolder()}
               onEdit={(id, text) => window.slagent.editMessage(id, text)}
+              jumpTo={jumpTo}
+              onJumped={() => setJumpTo(null)}
             />
           )}
           <Composer
