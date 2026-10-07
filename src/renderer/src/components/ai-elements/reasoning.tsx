@@ -217,12 +217,24 @@ export const ReasoningContent = memo(
     const contentRef = useRef<HTMLDivElement>(null);
     const [isScrollable, setIsScrollable] = useState(false);
 
+    const pinnedOnceRef = useRef(false);
+
     // Keep the box pinned to the newest thoughts while streaming so the
     // user can see it is active. Overflow is hidden, so this is the only
     // way the content moves (the user cannot scroll it manually).
+    // scroll-behavior: smooth (on the element) makes each retarget glide,
+    // turning token-by-token growth into one continuous motion; the first
+    // pin on mount jumps instantly so reopening doesn't scroll through the
+    // whole backlog.
     useEffect(() => {
       const el = scrollRef.current;
-      if (el) {
+      if (!el) return;
+      if (!pinnedOnceRef.current) {
+        el.style.scrollBehavior = "auto";
+        el.scrollTop = el.scrollHeight;
+        el.style.scrollBehavior = "";
+        pinnedOnceRef.current = true;
+      } else {
         el.scrollTop = el.scrollHeight;
       }
     }, [children, isStreaming]);
@@ -254,7 +266,7 @@ export const ReasoningContent = memo(
         <div
           ref={scrollRef}
           style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX, minHeight: THOUGHTS_MIN_HEIGHT_PX }}
-          className="relative overflow-hidden"
+          className="relative overflow-hidden scroll-smooth motion-reduce:scroll-auto"
         >
           <div ref={contentRef}>
             <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
