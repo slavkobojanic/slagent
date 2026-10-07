@@ -230,7 +230,8 @@ export class ComposerPresenter {
   private switchChat = () => {
     this.suggestionsPresenter.resetForChat()
     this.promptHistoryPresenter.resetForChat()
-    this.attachmentsPresenter.clear()
+    // The attachments stay with their chat, like the draft text does.
+    this.attachmentsPresenter.follow(this.store.draftKey)
     this.restoreDraft()
     if (this.dialogOpen()) {
       return
@@ -301,6 +302,7 @@ export class ComposerPresenter {
     const endFirstToken = this.log.time("first-token", { chatId })
     const { mentions, chatMentions } = this.suggestionsPresenter.mentionsIn(text)
     const attached = this.attachmentsPresenter.take()
+    this.attachmentsPresenter.forget(draftKey)
     const snapshot = this.reviewPresenter.takeForSubmit()
     this.store.setText("")
     this.store.setCaret(0)

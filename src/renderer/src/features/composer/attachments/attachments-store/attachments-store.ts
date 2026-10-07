@@ -14,6 +14,8 @@ export type AttachmentChip = { id: string; name: string; imageUrl: string | null
 
 export class AttachmentsStore {
   items: ComposerAttachment[] = []
+  // Attachments parked when the user moved to another chat, kept per draft key until they return.
+  stash: Record<string, ComposerAttachment[]> = {}
 
   constructor() {
     makeAutoObservable(this)
@@ -29,5 +31,34 @@ export class AttachmentsStore {
 
   setItems(items: ComposerAttachment[]) {
     this.items = items
+  }
+
+  park(key: string, items: ComposerAttachment[]) {
+    const next = { ...this.stash }
+    if (items.length === 0) {
+      delete next[key]
+    } else {
+      next[key] = items
+    }
+    this.stash = next
+  }
+
+  adopt(key: string): ComposerAttachment[] {
+    const items = this.stash[key] ?? []
+    this.park(key, [])
+    this.items = items
+    return items
+  }
+
+  forget(key: string) {
+    this.park(key, [])
+  }
+
+  replaceStash(stash: Record<string, ComposerAttachment[]>) {
+    this.stash = stash
+  }
+
+  stashed(): ComposerAttachment[] {
+    return Object.values(this.stash).flat()
   }
 }

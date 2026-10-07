@@ -18,6 +18,7 @@ type PasteEventLike = { clipboardData: { items: Iterable<PasteItemLike> } | null
 export class AttachmentsPresenter {
   private fileInput: HTMLInputElement | null = null
   private count = 0
+  private key: string | null = null
 
   constructor(
     private readonly store: AttachmentsStore,
@@ -87,6 +88,34 @@ export class AttachmentsPresenter {
     this.add(pasted)
   }
 
+  // The open attachments are parked under the chat the user leaves and the parked ones come back
+  // when they return, so a draft survives moving between threads.
+  follow = (key: string) => {
+    if (this.key !== null) {
+      this.store.park(this.key, this.store.items)
+    }
+    this.key = key
+    this.store.adopt(key)
+  }
+
+  // The sent chat keeps no parked attachments.
+  forget = (key: string) => {
+    this.store.forget(key)
+  }
+
+  clear = () => {
+    this.take()
+  }
+
+  stop = () => {
+    for (const item of [...this.store.items, ...this.store.stashed()]) {
+      this.window.URL.revokeObjectURL(item.url)
+    }
+    this.store.setItems([])
+    this.store.replaceStash({})
+    this.key = null
+  }
+
   remove = (id: string) => {
     this.log.action("remove-attachment", { id })
     for (const item of this.store.items) {
@@ -114,14 +143,6 @@ export class AttachmentsPresenter {
     }
     this.store.setItems([])
     return items
-  }
-
-  clear = () => {
-    this.take()
-  }
-
-  stop = () => {
-    this.clear()
   }
 
   // A file with a disk path is sent by path. Any other file is sent as base64 bytes, and one that cannot be read is dropped.
