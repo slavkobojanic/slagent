@@ -1,18 +1,12 @@
-import { Loader2 } from "lucide-react"
+import type { ComponentType } from "react"
 import type { CliStatus } from "@shared/types"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export type CliSettingsProps = {
   status: CliStatus | null
-  ownsCommand: boolean
-  canInstall: boolean
-  canUninstall: boolean
-  installing: boolean
-  uninstalling: boolean
   error: string | null
-  onInstall: () => void
-  onUninstall: () => void
+  InstallCommand: ComponentType
+  UninstallCommand: ComponentType
 }
 
 const CLI_STATE_LABELS: Record<CliStatus["state"], { label: string; dot: string }> = {
@@ -23,25 +17,8 @@ const CLI_STATE_LABELS: Record<CliStatus["state"], { label: string; dot: string 
   unsupported: { label: "macOS only", dot: "bg-white/30" },
 }
 
-export function CliSettings({
-  status,
-  ownsCommand,
-  canInstall,
-  canUninstall,
-  installing,
-  uninstalling,
-  error,
-  onInstall,
-  onUninstall,
-}: CliSettingsProps) {
+export function CliSettings({ status, error, InstallCommand, UninstallCommand }: CliSettingsProps) {
   const state = status?.state
-  let installLabel = "Install command"
-  if (state === "outdated") {
-    installLabel = "Update command"
-  }
-  if (installing) {
-    installLabel = "Installing"
-  }
 
   return (
     <div className="space-y-4">
@@ -79,73 +56,17 @@ export function CliSettings({
           {error}
         </p>
       ) : null}
-      <CommandActions
-        unsupported={state === "unsupported"}
-        showInstall={state !== "installed"}
-        showUninstall={ownsCommand}
-        canInstall={canInstall}
-        canUninstall={canUninstall}
-        installing={installing}
-        uninstalling={uninstalling}
-        installLabel={installLabel}
-        onInstall={onInstall}
-        onUninstall={onUninstall}
-      />
+      {state === "unsupported" ? null : (
+        <div className="flex flex-wrap items-center gap-2">
+          <InstallCommand />
+          <UninstallCommand />
+        </div>
+      )}
       {status ? (
         <p className="text-xs text-white/35">
           Installs to <span className="font-mono text-white/45">{status.path}</span>, which is already on your PATH. macOS
           asks for your password to write there.
         </p>
-      ) : null}
-    </div>
-  )
-}
-
-function CommandActions({
-  unsupported,
-  showInstall,
-  showUninstall,
-  canInstall,
-  canUninstall,
-  installing,
-  uninstalling,
-  installLabel,
-  onInstall,
-  onUninstall,
-}: {
-  unsupported: boolean
-  showInstall: boolean
-  showUninstall: boolean
-  canInstall: boolean
-  canUninstall: boolean
-  installing: boolean
-  uninstalling: boolean
-  installLabel: string
-  onInstall: () => void
-  onUninstall: () => void
-}) {
-  if (unsupported) {
-    return null
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {showInstall ? (
-        <Button type="button" disabled={!canInstall} onClick={onInstall}>
-          {installing ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          {installLabel}
-        </Button>
-      ) : null}
-      {showUninstall ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className="ml-auto text-white/50 hover:text-destructive"
-          disabled={!canUninstall}
-          onClick={onUninstall}
-        >
-          {uninstalling ? "Removing" : "Uninstall"}
-        </Button>
       ) : null}
     </div>
   )

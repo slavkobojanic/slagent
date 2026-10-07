@@ -1,29 +1,28 @@
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { SettingsTab } from "@/features/settings/settings-tab"
-import type { CommandRegistry } from "@/state/command-registry"
-import type { OverlayStore } from "@/state/overlay-store"
+import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 
-// Owns the dialog's section and its keyboard command. Whether the dialog is open lives in the overlay store.
 export class SettingsPresenter {
   private disposeCommand: (() => void) | null = null
 
   constructor(
     private readonly store: SettingsStore,
-    private readonly overlay: Pick<OverlayStore, "setOpen">,
-    private readonly commands: Pick<CommandRegistry, "register">,
+    private readonly overlayStore: OverlayStore,
+    private readonly commandRegistry: CommandRegistry,
   ) {}
 
   start = () => {
     if (this.disposeCommand !== null) {
       return
     }
-    this.disposeCommand = this.commands.register({
+    this.disposeCommand = this.commandRegistry.register({
       id: "settings.open",
       label: "Settings",
       group: "Actions",
       shortcut: { key: ",", mod: true },
       run: () => {
-        this.overlay.setOpen("settings", true)
+        this.overlayStore.setOpen("settings", true)
       },
     })
   }
@@ -38,6 +37,6 @@ export class SettingsPresenter {
   }
 
   handleOpenChange = (open: boolean) => {
-    this.overlay.setOpen("settings", open)
+    this.overlayStore.setOpen("settings", open)
   }
 }

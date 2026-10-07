@@ -4,9 +4,9 @@ import { EMPTY_PERSONALISATION, type AppMeta } from "@shared/types"
 import { PersonalisationSettingsPresenter } from "@/features/settings/personalisation-settings/personalisation-settings-presenter/personalisation-settings-presenter"
 import { PersonalisationSettingsStore } from "@/features/settings/personalisation-settings/personalisation-settings-store/personalisation-settings-store"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
-import type { SettingsService } from "@/ipc/settings-service/settings-service"
-import { MetaStore } from "@/mirror/meta-store"
-import { OverlayStore } from "@/state/overlay-store"
+import type { API } from "@/ipc/api"
+import { MetaStore } from "@/mirror/meta-store/meta-store"
+import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -31,13 +31,13 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
 }
 
 function setup() {
-  const settings = createMockInstance<SettingsService>(["setPersonalisation"])
+  const api = createMockInstance<API>(["setPersonalisation"])
   const meta = new MetaStore()
   const overlay = new OverlayStore()
   const tabs = new SettingsStore()
   const store = new PersonalisationSettingsStore()
-  const presenter = new PersonalisationSettingsPresenter(store, meta, settings, overlay, tabs)
-  return { settings, meta, overlay, tabs, store, presenter }
+  const presenter = new PersonalisationSettingsPresenter(store, api, meta, overlay, tabs)
+  return { api, meta, overlay, tabs, store, presenter }
 }
 
 describe("PersonalisationSettingsPresenter", () => {
@@ -57,22 +57,22 @@ describe("PersonalisationSettingsPresenter", () => {
 
   describe("handleSave", () => {
     it("can save the draft and report it", async () => {
-      const { settings, meta, store, presenter } = setup()
+      const { api, meta, store, presenter } = setup()
       meta.setMeta(metaWith({}))
-      settings.setPersonalisation.mockResolvedValue(undefined)
+      api.setPersonalisation.mockResolvedValue(undefined)
       presenter.handlePatch({ tone: "direct" })
 
       await presenter.handleSave()
 
-      expect(settings.setPersonalisation).toHaveBeenCalledWith({ ...EMPTY_PERSONALISATION, tone: "direct" })
+      expect(api.setPersonalisation).toHaveBeenCalledWith({ ...EMPTY_PERSONALISATION, tone: "direct" })
       expect(store.saving).toBe(false)
       expect(toast.success).toHaveBeenCalledWith("Personalisation saved")
     })
 
     it("can keep the draft and show the error when saving fails", async () => {
-      const { settings, meta, store, presenter } = setup()
+      const { api, meta, store, presenter } = setup()
       meta.setMeta(metaWith({}))
-      settings.setPersonalisation.mockRejectedValue(new Error("Disk full"))
+      api.setPersonalisation.mockRejectedValue(new Error("Disk full"))
       presenter.handlePatch({ tone: "direct" })
 
       await presenter.handleSave()
@@ -84,13 +84,13 @@ describe("PersonalisationSettingsPresenter", () => {
     })
 
     it("can ignore a save when nothing has changed from the saved settings", async () => {
-      const { settings, meta, store, presenter } = setup()
+      const { api, meta, store, presenter } = setup()
       meta.setMeta(metaWith({}))
       store.reset(EMPTY_PERSONALISATION)
 
       await presenter.handleSave()
 
-      expect(settings.setPersonalisation).not.toHaveBeenCalled()
+      expect(api.setPersonalisation).not.toHaveBeenCalled()
     })
   })
 

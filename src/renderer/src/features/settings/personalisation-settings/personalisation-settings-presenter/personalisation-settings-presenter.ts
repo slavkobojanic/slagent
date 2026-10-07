@@ -3,23 +3,22 @@ import { toast } from "sonner"
 import { EMPTY_PERSONALISATION, type Personalisation } from "@shared/types"
 import type { PersonalisationSettingsStore } from "@/features/settings/personalisation-settings/personalisation-settings-store/personalisation-settings-store"
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
-import type { SettingsService } from "@/ipc/settings-service/settings-service"
+import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
-import type { MetaStore } from "@/mirror/meta-store"
-import type { OverlayStore } from "@/state/overlay-store"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 
 export class PersonalisationSettingsPresenter {
   private disposeShown: (() => void) | null = null
 
   constructor(
     private readonly store: PersonalisationSettingsStore,
-    private readonly meta: Pick<MetaStore, "meta">,
-    private readonly settings: Pick<SettingsService, "setPersonalisation">,
-    private readonly overlay: Pick<OverlayStore, "settingsOpen">,
-    private readonly tabs: Pick<SettingsStore, "tab">,
+    private readonly api: API,
+    private readonly metaStore: MetaStore,
+    private readonly overlayStore: OverlayStore,
+    private readonly settingsStore: SettingsStore,
   ) {}
 
-  // Each time the personalisation section is shown, the draft starts from the saved settings.
   start = () => {
     if (this.disposeShown !== null) {
       return
@@ -51,7 +50,7 @@ export class PersonalisationSettingsPresenter {
     this.store.setError(null)
     this.store.setSaving(true)
     try {
-      await this.settings.setPersonalisation(this.store.draft)
+      await this.api.setPersonalisation(this.store.draft)
       toast.success("Personalisation saved")
     } catch (error) {
       this.store.setError(errorText(error))
@@ -60,7 +59,7 @@ export class PersonalisationSettingsPresenter {
     }
   }
 
-  private saved = (): Personalisation => this.meta.meta?.personalisation ?? EMPTY_PERSONALISATION
+  private saved = (): Personalisation => this.metaStore.meta?.personalisation ?? EMPTY_PERSONALISATION
 
-  private shown = () => this.overlay.settingsOpen && this.tabs.tab === "personalisation"
+  private shown = () => this.overlayStore.settingsOpen && this.settingsStore.tab === "personalisation"
 }

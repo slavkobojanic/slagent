@@ -1,16 +1,14 @@
-import { makeAutoObservable, observableRef } from "mobx"
+import { makeAutoObservable } from "mobx"
 import { EMPTY_PERSONALISATION, type Personalisation } from "@shared/types"
 
-// The personalisation form. The saved settings come from the mirror, so the store holds only
-// the draft, and every check takes the saved settings as an argument.
+// The saved settings come from the mirror, so every check takes them as an argument.
 export class PersonalisationSettingsStore {
-  // A ref, not a deep observable: the draft goes over IPC as a plain object.
   draft: Personalisation = { ...EMPTY_PERSONALISATION }
   saving = false
   error: string | null = null
 
   constructor() {
-    makeAutoObservable(this, { draft: observableRef })
+    makeAutoObservable(this)
   }
 
   isDirty(saved: Personalisation): boolean {
@@ -27,7 +25,6 @@ export class PersonalisationSettingsStore {
     return true
   }
 
-  // Starts a visit from the saved settings, as the legacy section did when it mounted.
   reset(saved: Personalisation) {
     this.draft = { ...saved }
     this.error = null

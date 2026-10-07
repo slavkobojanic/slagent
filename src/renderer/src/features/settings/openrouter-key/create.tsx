@@ -1,38 +1,42 @@
 import { observer } from "mobx-react-lite"
-import type { OpenRouterStatus } from "@shared/types"
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
-import type { AppDeps } from "@/state/app-deps"
+import type { API } from "@/ipc/api"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
+import { createKeyActions } from "./key-actions/create"
+import { createKeyField } from "./key-field/create"
 import { OpenRouterKey } from "./openrouter-key"
 import { OpenRouterKeyPresenter } from "./openrouter-key-presenter/openrouter-key-presenter"
+import { authFilePath, openRouterStatusOf } from "./openrouter-key-status"
 import { OpenRouterKeyStore } from "./openrouter-key-store/openrouter-key-store"
-import { authFilePath, canRemoveSavedKey } from "./openrouter-key-status"
 
-const EMPTY_STATUS: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
+export function createOpenRouterKey({
+  api,
+  metaStore,
+  overlayStore,
+  settingsStore,
+}: {
+  api: API
+  metaStore: MetaStore
+  overlayStore: OverlayStore
+  settingsStore: SettingsStore
+}) {
+  const openRouterKeyStore = new OpenRouterKeyStore()
+  const openRouterKeyPresenter = new OpenRouterKeyPresenter(openRouterKeyStore, api, overlayStore, settingsStore)
+  openRouterKeyPresenter.start()
 
-export function createOpenRouterKey({ services, mirror, shared, tabs }: AppDeps & { tabs: SettingsStore }) {
-  const store = new OpenRouterKeyStore()
-  const presenter = new OpenRouterKeyPresenter(store, services.settings, services.app, shared.overlay, tabs)
-  presenter.start()
+  const KeyField = createKeyField({ metaStore, openRouterKeyStore, openRouterKeyPresenter })
+  const KeyActions = createKeyActions({ metaStore, openRouterKeyStore, openRouterKeyPresenter })
 
   return observer(function OpenRouterKeyHost() {
-    // The configured state, the environment key and the removable key all come from the mirror.
-    const status = mirror.meta.meta?.openRouter ?? EMPTY_STATUS
     return (
       <OpenRouterKey
-        status={status}
-        authFile={authFilePath(mirror.meta.meta?.agentDir)}
-        apiKey={store.apiKey}
-        visible={store.visible}
-        saving={store.saving}
-        removing={store.removing}
-        canSave={store.canSave}
-        canRemove={canRemoveSavedKey(status)}
-        error={store.error}
-        onApiKeyChange={presenter.handleApiKeyChange}
-        onToggleVisible={presenter.handleToggleVisible}
-        onCreateKey={presenter.handleCreateKey}
-        onSave={presenter.handleSave}
-        onRemove={presenter.handleRemove}
+        status={openRouterStatusOf(metaStore.meta)}
+        authFile={authFilePath(metaStore.meta?.agentDir)}
+        error={openRouterKeyStore.error}
+        onSave={openRouterKeyPresenter.handleSave}
+        KeyField={KeyField}
+        KeyActions={KeyActions}
       />
     )
   })

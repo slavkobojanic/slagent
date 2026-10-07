@@ -3,21 +3,19 @@ import { toast } from "sonner"
 import { OpenRouterKeyPresenter } from "@/features/settings/openrouter-key/openrouter-key-presenter/openrouter-key-presenter"
 import { OpenRouterKeyStore } from "@/features/settings/openrouter-key/openrouter-key-store/openrouter-key-store"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
-import type { AppService } from "@/ipc/app-service/app-service"
-import type { SettingsService } from "@/ipc/settings-service/settings-service"
-import { OverlayStore } from "@/state/overlay-store"
+import type { API } from "@/ipc/api"
+import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function setup() {
-  const settings = createMockInstance<SettingsService>(["saveOpenRouterKey", "logoutOpenRouter"])
-  const app = createMockInstance<AppService>(["openExternal"])
+  const api = createMockInstance<API>(["saveOpenRouterKey", "logoutOpenRouter", "openExternal"])
   const overlay = new OverlayStore()
   const tabs = new SettingsStore()
   const store = new OpenRouterKeyStore()
-  const presenter = new OpenRouterKeyPresenter(store, settings, app, overlay, tabs)
-  return { settings, app, overlay, tabs, store, presenter }
+  const presenter = new OpenRouterKeyPresenter(store, api, overlay, tabs)
+  return { api, overlay, tabs, store, presenter }
 }
 
 describe("OpenRouterKeyPresenter", () => {
@@ -27,21 +25,21 @@ describe("OpenRouterKeyPresenter", () => {
 
   describe("handleSave", () => {
     it("can save the trimmed key, clear the field and report it", async () => {
-      const { settings, store, presenter } = setup()
-      settings.saveOpenRouterKey.mockResolvedValue(undefined)
+      const { api, store, presenter } = setup()
+      api.saveOpenRouterKey.mockResolvedValue(undefined)
       presenter.handleApiKeyChange("  sk-or-1  ")
 
       await presenter.handleSave()
 
-      expect(settings.saveOpenRouterKey).toHaveBeenCalledWith("sk-or-1")
+      expect(api.saveOpenRouterKey).toHaveBeenCalledWith("sk-or-1")
       expect(store.apiKey).toBe("")
       expect(store.saving).toBe(false)
       expect(toast.success).toHaveBeenCalledWith("OpenRouter key saved")
     })
 
     it("can keep the key and show the error when saving fails", async () => {
-      const { settings, store, presenter } = setup()
-      settings.saveOpenRouterKey.mockRejectedValue(new Error("Invalid key"))
+      const { api, store, presenter } = setup()
+      api.saveOpenRouterKey.mockRejectedValue(new Error("Invalid key"))
       presenter.handleApiKeyChange("sk-or-1")
 
       await presenter.handleSave()
@@ -53,40 +51,40 @@ describe("OpenRouterKeyPresenter", () => {
     })
 
     it("can ignore a save while the key is blank", async () => {
-      const { settings, presenter } = setup()
+      const { api, presenter } = setup()
       presenter.handleApiKeyChange("   ")
 
       await presenter.handleSave()
 
-      expect(settings.saveOpenRouterKey).not.toHaveBeenCalled()
+      expect(api.saveOpenRouterKey).not.toHaveBeenCalled()
     })
 
     it("can ignore a save while another save is running", async () => {
-      const { settings, store, presenter } = setup()
+      const { api, store, presenter } = setup()
       presenter.handleApiKeyChange("sk-or-1")
       store.setSaving(true)
 
       await presenter.handleSave()
 
-      expect(settings.saveOpenRouterKey).not.toHaveBeenCalled()
+      expect(api.saveOpenRouterKey).not.toHaveBeenCalled()
     })
   })
 
   describe("handleRemove", () => {
     it("can remove the saved key and report it", async () => {
-      const { settings, store, presenter } = setup()
-      settings.logoutOpenRouter.mockResolvedValue(undefined)
+      const { api, store, presenter } = setup()
+      api.logoutOpenRouter.mockResolvedValue(undefined)
 
       await presenter.handleRemove()
 
-      expect(settings.logoutOpenRouter).toHaveBeenCalledOnce()
+      expect(api.logoutOpenRouter).toHaveBeenCalledOnce()
       expect(store.removing).toBe(false)
       expect(toast.success).toHaveBeenCalledWith("OpenRouter credential removed")
     })
 
     it("can show the error when removing fails", async () => {
-      const { settings, store, presenter } = setup()
-      settings.logoutOpenRouter.mockRejectedValue(new Error("Locked"))
+      const { api, store, presenter } = setup()
+      api.logoutOpenRouter.mockRejectedValue(new Error("Locked"))
 
       await presenter.handleRemove()
 
@@ -97,11 +95,11 @@ describe("OpenRouterKeyPresenter", () => {
 
   describe("handleCreateKey", () => {
     it("can open the OpenRouter key page in the browser", () => {
-      const { app, presenter } = setup()
+      const { api, presenter } = setup()
 
       presenter.handleCreateKey()
 
-      expect(app.openExternal).toHaveBeenCalledWith("https://openrouter.ai/keys")
+      expect(api.openExternal).toHaveBeenCalledWith("https://openrouter.ai/keys")
     })
   })
 

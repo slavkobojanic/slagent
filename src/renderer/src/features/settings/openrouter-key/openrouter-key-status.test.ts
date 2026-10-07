@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import type { OpenRouterStatus } from "@shared/types"
-import { authFilePath, canRemoveSavedKey } from "@/features/settings/openrouter-key/openrouter-key-status"
+import { EMPTY_PERSONALISATION, type AppMeta, type OpenRouterStatus } from "@shared/types"
+import { authFilePath, canRemoveSavedKey, openRouterStatusOf } from "@/features/settings/openrouter-key/openrouter-key-status"
 
 const unconfigured: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
 
@@ -29,5 +29,32 @@ describe("authFilePath", () => {
 
   it("can fall back to an empty folder before the meta arrives", () => {
     expect(authFilePath(undefined)).toBe("/auth.json")
+  })
+})
+
+describe("openRouterStatusOf", () => {
+  it("can report nothing configured before the meta arrives", () => {
+    expect(openRouterStatusOf(null)).toEqual(unconfigured)
+  })
+
+  it("can read the status the meta reports", () => {
+    const openRouter: OpenRouterStatus = { configured: true, source: "OAuth", type: "oauth", envKey: false }
+    const meta: AppMeta = {
+      ready: true,
+      error: null,
+      cwd: "",
+      agentDir: "/agent",
+      modelId: null,
+      modelName: null,
+      modelProvider: null,
+      models: [],
+      openRouter,
+      extensions: [],
+      extensionErrors: [],
+      usageTotals: { tokens: 0, cost: 0, chats: 0 },
+      personalisation: EMPTY_PERSONALISATION,
+    }
+
+    expect(openRouterStatusOf(meta)).toEqual(openRouter)
   })
 })

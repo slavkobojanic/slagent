@@ -1,24 +1,22 @@
 import { reaction } from "mobx"
 import type { McpServerStatus } from "@shared/types"
 import type { McpSettingsStore } from "@/features/settings/mcp-settings/mcp-settings-store/mcp-settings-store"
-import type { McpService } from "@/ipc/mcp-service/mcp-service"
+import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
-import type { MetaStore } from "@/mirror/meta-store"
-import type { McpStore } from "@/state/mcp-store"
-import type { OverlayStore } from "@/state/overlay-store"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { McpStore } from "@/state/mcp/mcp-store/mcp-store"
+import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 
-// Loads the MCP server list when the dialog opens and when the mirror becomes ready, and
-// applies every sign-in, sign-out and enable change to the shared McpStore.
 export class McpSettingsPresenter {
   private disposeReady: (() => void) | null = null
   private disposeOpen: (() => void) | null = null
 
   constructor(
     private readonly store: McpSettingsStore,
-    private readonly servers: Pick<McpStore, "setServers">,
-    private readonly mcp: Pick<McpService, "mcpList" | "mcpSignIn" | "mcpSignOut" | "mcpSetEnabled">,
-    private readonly overlay: Pick<OverlayStore, "settingsOpen">,
-    private readonly meta: Pick<MetaStore, "ready">,
+    private readonly api: API,
+    private readonly mcpStore: McpStore,
+    private readonly overlayStore: OverlayStore,
+    private readonly metaStore: MetaStore,
   ) {}
 
   start = () => {
@@ -26,7 +24,7 @@ export class McpSettingsPresenter {
       return
     }
     this.disposeReady = reaction(
-      () => this.meta.ready,
+      () => this.metaStore.ready,
       (ready) => {
         if (ready) {
           void this.loadQuietly()
@@ -35,7 +33,7 @@ export class McpSettingsPresenter {
       { fireImmediately: true },
     )
     this.disposeOpen = reaction(
-      () => this.overlay.settingsOpen,
+      () => this.overlayStore.settingsOpen,
       (open) => {
         if (open) {
           // An error from an earlier visit is stale by now, as the legacy toast would have been.
@@ -63,7 +61,7 @@ export class McpSettingsPresenter {
     this.store.setBusyName(null)
     this.store.setError(null)
     try {
-      this.servers.setServers(await this.mcp.mcpList())
+      this.mcpStore.setServers(await this.api.mcpList())
     } catch (error) {
       this.store.setError(errorText(error))
     } finally {
@@ -71,16 +69,16 @@ export class McpSettingsPresenter {
     }
   }
 
-  handleSignIn = (name: string) => this.run(name, () => this.mcp.mcpSignIn(name))
+  handleSignIn = (name: string) => this.run(name, () => this.api.mcpSignIn(name))
 
-  handleSignOut = (name: string) => this.run(name, () => this.mcp.mcpSignOut(name))
+  handleSignOut = (name: string) => this.run(name, () => this.api.mcpSignOut(name))
 
-  handleSetEnabled = (name: string, enabled: boolean) => this.run(name, () => this.mcp.mcpSetEnabled(name, enabled))
+  handleSetEnabled = (name: string, enabled: boolean) => this.run(name, () => this.api.mcpSetEnabled(name, enabled))
 
   // Background loads keep the list on screen when they fail. A refresh from the dialog reports its error.
   private loadQuietly = async () => {
     try {
-      this.servers.setServers(await this.mcp.mcpList())
+      this.mcpStore.setServers(await this.api.mcpList())
     } catch {
       // Keep the list that is already shown.
     }
@@ -90,7 +88,7 @@ export class McpSettingsPresenter {
     this.store.setBusyName(name)
     this.store.setError(null)
     try {
-      this.servers.setServers(await action())
+      this.mcpStore.setServers(await action())
     } catch (error) {
       this.store.setError(errorText(error))
     } finally {
