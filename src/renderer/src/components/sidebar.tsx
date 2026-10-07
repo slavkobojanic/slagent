@@ -69,14 +69,14 @@ function Sidebar({
   }
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-white/10">
+    <aside className="flex h-full w-64 min-w-0 flex-col overflow-hidden border-r border-white/10">
       <div className="p-3">
         <Button type="button" variant="outline" className="w-full" disabled={!library.openProjectId} onClick={onNewChat}>
           New chat
         </Button>
       </div>
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-4 px-2 pb-4">
+      <ScrollArea className="min-h-0 w-full min-w-0 flex-1">
+        <div className="w-full min-w-0 space-y-4 px-2 pb-4">
           {open ? (
             <section className="space-y-1">
               <ProjectRow
@@ -185,7 +185,7 @@ function ProjectRow({
   let pinLabel = "Pin"
   if (project.pinned) pinLabel = "Unpin"
   return (
-    <div className={cn("flex items-center rounded-md", active && "bg-white/10")}>
+    <div className={cn("flex w-full min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}>
       <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm" onClick={onOpen}>
         <RunningDot running={project.running} />
         <span className="truncate">{project.name}</span>
@@ -256,7 +256,7 @@ function ChatRow({
   }
   return (
     <div
-      className={cn("ml-3 flex items-center rounded-md", active && "bg-white/10")}
+      className={cn("ml-3 flex min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}
       onContextMenu={(event) => {
         event.preventDefault()
         setMenuPoint({ x: event.clientX, y: event.clientY })

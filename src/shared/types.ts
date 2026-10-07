@@ -189,6 +189,7 @@ export type ModelChange = {
 
 export type SlagentApi = {
   platform: string
+  systemVersion: string
   getSnapshot: () => Promise<Snapshot>
   prompt: (request: PromptRequest) => Promise<void>
   abort: () => Promise<void>

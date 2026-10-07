@@ -19,6 +19,14 @@ function PermissionsWizard({
   const accessibility = permissions?.accessibility ?? false
   let step = 0
   if (accessibility) step = 1
+  let major = 0
+  if (window.slagent.systemVersion) major = Number(window.slagent.systemVersion.split(".")[0])
+  let accessibilityPane = "Accessibility"
+  let screenPane = "Screen Recording"
+  if (major >= 26) {
+    accessibilityPane = "Device Control and Data Access"
+    screenPane = "Screen & System Audio Recording"
+  }
 
   function keepOpen(event: { preventDefault: () => void }) {
     event.preventDefault()
@@ -45,7 +53,7 @@ function PermissionsWizard({
   let body = (
     <>
       <DialogHeader>
-        <DialogTitle>Allow screen recording</DialogTitle>
+        <DialogTitle>Allow {screenPane}</DialogTitle>
         <DialogDescription>Step 2 of 2. slagent stays locked until this is allowed.</DialogDescription>
       </DialogHeader>
       <p className="text-sm leading-6 text-white/70">
@@ -53,8 +61,8 @@ function PermissionsWizard({
         window.
       </p>
       <p className="mt-3 text-sm text-white/50">
-        The system prompt may say Electron while you are running from the terminal. Allow that app, then come back
-        here.
+        If slagent is already listed under {screenPane}, turn that switch off and back on. macOS keeps the old switch
+        after a rebuild and does not apply it until you do. This step closes when the grant is active.
       </p>
       {permissions?.error ? <p className="mt-3 text-sm text-[#ff5c5c]">{permissions.error}</p> : null}
       <div className="mt-5 flex flex-wrap justify-end gap-2">
@@ -62,7 +70,7 @@ function PermissionsWizard({
           Open Settings
         </Button>
         <Button type="button" disabled={busy} onClick={() => void allowScreen()}>
-          Allow screen recording
+          Allow {screenPane}
         </Button>
       </div>
     </>
@@ -71,16 +79,16 @@ function PermissionsWizard({
     body = (
       <>
         <DialogHeader>
-          <DialogTitle>Allow Accessibility</DialogTitle>
+          <DialogTitle>Allow {accessibilityPane}</DialogTitle>
           <DialogDescription>Step 1 of 2. slagent stays locked until this is allowed.</DialogDescription>
         </DialogHeader>
         <p className="text-sm leading-6 text-white/70">
-          Accessibility lets slagent read buttons and type into other apps without taking over your cursor or your
-          current window.
+          This lets slagent read buttons and type into other apps without taking over your cursor or your current
+          window.
         </p>
         <p className="mt-3 text-sm text-white/50">
-          The system prompt may say Electron while you are running from the terminal. Allow that app, then come back
-          here.
+          If slagent is already listed under {accessibilityPane}, turn that switch off and back on. macOS keeps the old
+          switch after a rebuild and does not apply it until you do. This step closes when the grant is active.
         </p>
         {permissions?.error ? <p className="mt-3 text-sm text-[#ff5c5c]">{permissions.error}</p> : null}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
@@ -92,7 +100,7 @@ function PermissionsWizard({
             Open Settings
           </Button>
           <Button type="button" disabled={busy || !permissions} onClick={() => void allowAccessibility()}>
-            Allow Accessibility
+            Allow {accessibilityPane}
           </Button>
         </div>
       </>

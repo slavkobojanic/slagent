@@ -3,6 +3,7 @@ import { channels, type SlagentApi, type UiEvent } from "../shared/types"
 
 const api: SlagentApi = {
   platform: process.platform,
+  systemVersion: process.getSystemVersion(),
   getSnapshot: () => ipcRenderer.invoke(channels.snapshot),
   prompt: (request) => ipcRenderer.invoke(channels.prompt, request),
   abort: () => ipcRenderer.invoke(channels.abort),

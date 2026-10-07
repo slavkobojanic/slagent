@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react"
+import { PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot } from "@shared/types"
@@ -33,6 +33,7 @@ function App() {
 }
 
 function AgentApp() {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [meta, setMeta] = useState<AppMeta | null>(null)
   const [library, setLibrary] = useState<LibraryState>(emptyLibrary)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -137,10 +138,13 @@ function AgentApp() {
   useEffect(() => {
     if (platform !== "darwin") return
     let stop = false
+    let timer = 0
     async function refresh() {
       try {
         const next = await window.slagent.getPermissions()
-        if (!stop) setPermissions(next)
+        if (stop) return
+        setPermissions(next)
+        if (next.accessibility && next.screenRecording) window.clearInterval(timer)
       } catch (error) {
         if (stop) return
         setPermissions({
@@ -151,7 +155,7 @@ function AgentApp() {
       }
     }
     void refresh()
-    const timer = window.setInterval(() => {
+    timer = window.setInterval(() => {
       void refresh()
     }, 1000)
     return () => {
@@ -225,6 +229,17 @@ function AgentApp() {
     <>
     <div className="flex h-full flex-col bg-black text-white" inert={permissionsLocked}>
       <header className={headerClass}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="no-drag"
+          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          aria-pressed={sidebarOpen}
+          onClick={() => setSidebarOpen((open) => !open)}
+        >
+          <PanelLeft className="size-4" />
+        </Button>
         <span className="text-sm font-medium tracking-tight">slagent</span>
         <span className="text-white/25">/</span>
         <ProjectMenu library={library} onOpen={(projectId) => void runLibrary(() => window.slagent.openProject(projectId))} onChoose={() => void chooseFolder()} />
@@ -250,6 +265,7 @@ function AgentApp() {
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
+        <div className="sidebar-slot" data-closed={sidebarOpen ? undefined : true} inert={sidebarOpen ? undefined : true}>
         <Sidebar
           library={library}
           onNewChat={() => void newChat()}
@@ -263,6 +279,7 @@ function AgentApp() {
           onCopyTranscript={(chat) => void copyTranscript(chat)}
           onRemoveProject={setRemoveProject}
         />
+        </div>
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           {meta?.error ? (
             <p className="border-b border-white/10 px-6 py-2 text-sm text-[#ff5c5c]">{meta.error}</p>
