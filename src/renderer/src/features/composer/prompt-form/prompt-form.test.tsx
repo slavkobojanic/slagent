@@ -21,7 +21,7 @@ describe("PromptForm", () => {
   it("can lay out the attachments, the textarea, the tools and the submit button in that order", () => {
     const markup = viewMarkup(<PromptForm {...props()} />)
 
-    const order = ["attachments", "textarea", "attach", "plan", "submit", "usage"].map((name) => markup.indexOf(`<i>${name}</i>`))
+    const order = ["attachments", "textarea", "attach", "plan", "usage", "submit"].map((name) => markup.indexOf(`<i>${name}</i>`))
     expect(order.every((index) => index >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })
