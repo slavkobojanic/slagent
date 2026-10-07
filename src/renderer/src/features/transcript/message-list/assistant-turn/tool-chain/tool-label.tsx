@@ -16,7 +16,10 @@ export function ToolLabel({ label, onOpenFile }: ToolLabelProps) {
         type="button"
         className="text-left underline-offset-2 hover:text-foreground hover:underline"
         title="View file"
-        onClick={() => onOpenFile(label.path)}
+        onClick={(event) => {
+          event.stopPropagation()
+          onOpenFile(label.path)
+        }}
       >
         {label.path}
       </button>
