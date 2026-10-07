@@ -4,6 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, pr
 import { channels } from "../shared/types"
 import { AgentHost, type Notifier } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
+import { McpManager } from "./mcp"
 import { openInEditor, readFileView } from "./editor"
 import { parsePrompt } from "./prompt"
 import { parseReply } from "./extensions/ask-user"
@@ -12,6 +13,7 @@ const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
 let host: AgentHost | null = null
 let computer: ComputerUse | null = null
+let mcp: McpManager | null = null
 let quitting = false
 
 protocol.registerSchemesAsPrivileged([
@@ -46,6 +48,11 @@ function requireHost(): AgentHost {
 function requireComputer(): ComputerUse {
   if (!computer) throw new Error("Computer use is not ready.")
   return computer
+}
+
+function requireMcp(): McpManager {
+  if (!mcp) throw new Error("MCP is not ready.")
+  return mcp
 }
 
 function loadAppIcon() {
@@ -202,17 +209,35 @@ function registerIpc(): void {
     if (pane !== "accessibility" && pane !== "screen") throw new Error("Unknown permission.")
     return shell.openExternal(permissionSettings[pane])
   })
+  ipcMain.handle(channels.mcpList, () => requireMcp().list())
+  ipcMain.handle(channels.mcpSignIn, (_event, name: unknown) => requireMcp().signIn(requireName(name)))
+  ipcMain.handle(channels.mcpSignOut, (_event, name: unknown) => requireMcp().signOut(requireName(name)))
+  ipcMain.handle(channels.mcpSetEnabled, (_event, name: unknown, enabled: unknown) => {
+    return requireMcp().setEnabled(requireName(name), enabled === true)
+  })
 }
 
-app.whenReady().then(() => {
+function requireName(name: unknown): string {
+  if (typeof name !== "string" || !name) throw new Error("Unknown MCP server.")
+  return name
+}
+
+app.whenReady().then(async () => {
   const icon = loadAppIcon()
   if (app.dock && !icon.isEmpty()) app.dock.setIcon(icon)
 
   const libraryRoot = join(app.getPath("userData"), "library")
   protocol.handle("slagent", (request) => serveAttachment(libraryRoot, request))
   computer = new ComputerUse(computerExecutable(app.getAppPath(), process.resourcesPath))
+  mcp = new McpManager({
+    configPath: join(app.getPath("userData"), "mcp.json"),
+    openUrl: (url) => shell.openExternal(url),
+  })
+  await mcp.start().catch((error) => console.error("mcp:", error))
   registerIpc()
-  host = new AgentHost(join(app.getPath("userData"), "settings.json"), libraryRoot, broadcast, computer, notifier)
+  host = new AgentHost(join(app.getPath("userData"), "settings.json"), libraryRoot, broadcast, computer, notifier, () =>
+    mcp?.serversForSession() ?? {},
+  )
   createWindow()
   void host.start()
 

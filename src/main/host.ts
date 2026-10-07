@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto"
 import { mkdir, stat, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { getAgentDir, ModelRuntime as ModelRuntimeClass, type ModelRuntime } from "@earendil-works/pi-coding-agent"
+import {
+  getAgentDir,
+  ModelRuntime as ModelRuntimeClass,
+  type McpServerConfig,
+  type ModelRuntime,
+} from "@earendil-works/pi-coding-agent"
 import type {
   AppMeta,
   ChatMessage,
@@ -93,6 +98,7 @@ export class AgentHost {
     private readonly emit: Emit,
     private readonly computer: ComputerUse,
     private readonly notifier: Notifier,
+    private readonly getMcpServers: () => Record<string, McpServerConfig>,
   ) {
     this.library = new Library(libraryRoot)
   }
@@ -544,6 +550,7 @@ export class AgentHost {
       computer: this.computer,
       gate: this.gate,
       modelRuntime: runtimeModel,
+      mcpServers: this.getMcpServers(),
       onChange: (runningChanged) => {
         this.onRuntimeChange(runtime, runningChanged)
       },

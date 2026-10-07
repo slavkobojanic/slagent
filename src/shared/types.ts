@@ -42,6 +42,10 @@ export const channels = {
   requestAccessibility: "computer:request-accessibility",
   requestScreenRecording: "computer:request-screen-recording",
   openPermissionSettings: "computer:open-permission-settings",
+  mcpList: "mcp:list",
+  mcpSignIn: "mcp:sign-in",
+  mcpSignOut: "mcp:sign-out",
+  mcpSetEnabled: "mcp:set-enabled",
   event: "agent:event",
 } as const
 
@@ -340,6 +344,23 @@ export type ComputerPermissions = {
   error: string | null
 }
 
+// Whether an MCP server is reachable. "needs-auth" means the server
+// rejected the connection and the user has to complete OAuth sign-in.
+export type McpServerState = "connected" | "needs-auth" | "error" | "disabled"
+
+export type McpServerStatus = {
+  name: string
+  state: McpServerState
+  enabled: boolean
+  // Whether the server authenticates with OAuth, and so can be signed in or out.
+  oauth: boolean
+  // Tools the server offered at the last successful connection.
+  tools: number
+  description: string | null
+  // Error text or the server's own instructions.
+  detail: string | null
+}
+
 export type RewindMode = "both" | "chat" | "code"
 
 export type RewindResult = {
@@ -425,5 +446,9 @@ export type SlagentApi = {
   requestAccessibility: () => Promise<ComputerPermissions>
   requestScreenRecording: () => Promise<ComputerPermissions>
   openPermissionSettings: (pane: "accessibility" | "screen") => Promise<void>
+  mcpList: () => Promise<McpServerStatus[]>
+  mcpSignIn: (name: string) => Promise<McpServerStatus[]>
+  mcpSignOut: (name: string) => Promise<McpServerStatus[]>
+  mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
   onEvent: (listener: (event: UiEvent) => void) => () => void
 }

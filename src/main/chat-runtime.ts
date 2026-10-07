@@ -6,9 +6,12 @@ import {
   type AgentSession,
   type AgentSessionEvent,
   createAgentSession,
+  createMcpExtension,
   DefaultResourceLoader,
+  type ExtensionFactory,
   getAgentDir,
   type InlineExtension,
+  type McpServerConfig,
   type ModelRuntime,
   SessionManager,
   SettingsManager,
@@ -104,6 +107,8 @@ export type ChatRuntimeOptions = {
   computer: ComputerUse
   gate: ComputerGate
   modelRuntime: ModelRuntime
+  // Servers slagent manages, registered with Pi's MCP extension for this session.
+  mcpServers?: Record<string, McpServerConfig>
   onChange: (runningChanged: boolean) => void
   onExtensions: (extensions: ExtensionInfo[], errors: string[]) => void
   onTitle: (title: string, generated: boolean) => void
@@ -114,6 +119,20 @@ export type ChatRuntimeOptions = {
   onTaskFinished: (task: TaskInfo) => void
   onQuestion: (request: QuestionRequest) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
+}
+
+// Registers slagent's managed MCP servers with Pi's MCP extension. Servers
+// registered during load are connected on session_start.
+function mcpServersExtension(servers: Record<string, McpServerConfig>): ExtensionFactory {
+  return (pi) => {
+    for (const [name, config] of Object.entries(servers)) {
+      try {
+        pi.registerMcpServer(name, config)
+      } catch (error) {
+        console.error(`mcp: could not register ${name}:`, error)
+      }
+    }
+  }
 }
 
 export class ChatRuntime {
@@ -327,6 +346,8 @@ export class ChatRuntime {
           this.emit(false)
         }),
       },
+      { name: "slagent-mcp-servers", hidden: true, factory: mcpServersExtension(this.options.mcpServers ?? {}) },
+      { name: "slagent-mcp", hidden: true, factory: createMcpExtension() },
     ]
     if (process.platform === "darwin") {
       toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]

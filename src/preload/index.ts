@@ -54,6 +54,10 @@ const api: SlagentApi = {
   requestAccessibility: () => ipcRenderer.invoke(channels.requestAccessibility),
   requestScreenRecording: () => ipcRenderer.invoke(channels.requestScreenRecording),
   openPermissionSettings: (pane) => ipcRenderer.invoke(channels.openPermissionSettings, pane),
+  mcpList: () => ipcRenderer.invoke(channels.mcpList),
+  mcpSignIn: (name) => ipcRenderer.invoke(channels.mcpSignIn, name),
+  mcpSignOut: (name) => ipcRenderer.invoke(channels.mcpSignOut, name),
+  mcpSetEnabled: (name, enabled) => ipcRenderer.invoke(channels.mcpSetEnabled, name, enabled),
   onEvent: (listener) => {
     const wrapped = (_event: IpcRendererEvent, payload: UiEvent) => {
       listener(payload)
