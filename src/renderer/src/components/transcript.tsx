@@ -1,4 +1,5 @@
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import type { AssistantMessage, ChatMessage, ToolMessage, UserMessage } from "@shared/types"
 import { FadingResponse } from "@/components/fading-response"
 import {
@@ -13,7 +14,9 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation"
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message"
+import { Message, MessageAction, MessageActions, MessageContent, MessageResponse } from "@/components/ai-elements/message"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning"
 import { Shimmer } from "@/components/ai-elements/shimmer"
 import {
@@ -21,10 +24,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { openPath } from "@/lib/format"
+import { errorText, openPath } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import { FileTextIcon, FolderIcon, PencilIcon, SearchIcon, TerminalIcon } from "lucide-react"
+
+export const EDIT_LAST_EVENT = "slagent:edit-last"
 
 type Turn = {
   id: string
@@ -194,10 +199,25 @@ function AssistantText({ text, streaming }: { text: string; streaming: boolean }
   return <MessageResponse>{text}</MessageResponse>
 }
 
-function UserTurn({ message }: { message: UserMessage }) {
+function UserTurn({
+  message,
+  editable,
+  editing,
+  onEditing,
+  onEdit,
+}: {
+  message: UserMessage
+  editable: boolean
+  editing: boolean
+  onEditing: (editing: boolean) => void
+  onEdit: (id: string, text: string) => Promise<void>
+}) {
   const attachments = message.attachments ?? []
+  if (editing) {
+    return <EditMessage message={message} onCancel={() => onEditing(false)} onSave={(text) => onEdit(message.id, text)} />
+  }
   return (
-    <Message from="user">
+    <Message from="user" className="group">
       {attachments.length > 0 ? (
         <div className="flex flex-wrap justify-end gap-2">
           {attachments.map((attachment) => {
@@ -220,7 +240,70 @@ function UserTurn({ message }: { message: UserMessage }) {
         </div>
       ) : null}
       {message.text ? <MessageContent className="whitespace-pre-wrap">{message.text}</MessageContent> : null}
+      {editable ? (
+        <MessageActions className="justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <MessageAction tooltip="Edit and resend" onClick={() => onEditing(true)}>
+            <PencilIcon className="size-3.5" />
+          </MessageAction>
+        </MessageActions>
+      ) : null}
     </Message>
+  )
+}
+
+function EditMessage({
+  message,
+  onCancel,
+  onSave,
+}: {
+  message: UserMessage
+  onCancel: () => void
+  onSave: (text: string) => Promise<void>
+}) {
+  const [draft, setDraft] = useState(message.text)
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    const text = draft.trim()
+    if (!text || saving) return
+    setSaving(true)
+    try {
+      await onSave(text)
+    } catch (error) {
+      toast.error(errorText(error))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="ml-auto w-full max-w-[80%] space-y-2">
+      <Textarea
+        value={draft}
+        autoFocus
+        aria-label="Edit message"
+        className="min-h-20 text-sm"
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault()
+            onCancel()
+          }
+          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault()
+            void save()
+          }
+        }}
+      />
+      <p className="text-xs text-muted-foreground">Sending replaces this message and everything after it.</p>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+          Cancel
+        </Button>
+        <Button type="button" size="sm" onClick={() => void save()} disabled={saving || !draft.trim()}>
+          Send
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -286,17 +369,38 @@ function Transcript({
   notice,
   configured,
   cwd,
+  streaming,
   onConnect,
   onChoose,
+  onEdit,
 }: {
   messages: ChatMessage[]
   notice: string | null
   configured: boolean
   cwd: string
+  streaming: boolean
   onConnect: () => void
   onChoose: () => void
+  onEdit: (id: string, text: string) => Promise<void>
 }) {
   const blocks = groupMessages(messages)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const latest = useRef(messages)
+  latest.current = messages
+
+  useEffect(() => {
+    function editLast() {
+      const last = [...latest.current].reverse().find((message) => message.role === "user" && message.entryId)
+      if (last) setEditingId(last.id)
+    }
+    window.addEventListener(EDIT_LAST_EVENT, editLast)
+    return () => window.removeEventListener(EDIT_LAST_EVENT, editLast)
+  }, [])
+
+  async function edit(id: string, text: string) {
+    await onEdit(id, text)
+    setEditingId(null)
+  }
 
   return (
     <Conversation className="chat-transcript min-h-0">
@@ -305,7 +409,18 @@ function Transcript({
           <EmptyState configured={configured} cwd={cwd} onConnect={onConnect} onChoose={onChoose} />
         ) : null}
         {blocks.map((block) => {
-          if (block.kind === "user") return <UserTurn key={block.message.id} message={block.message} />
+          if (block.kind === "user") {
+            return (
+              <UserTurn
+                key={block.message.id}
+                message={block.message}
+                editable={!streaming && Boolean(block.message.entryId)}
+                editing={editingId === block.message.id}
+                onEditing={(editing) => setEditingId(editing ? block.message.id : null)}
+                onEdit={edit}
+              />
+            )
+          }
           return <AssistantTurn key={block.turn.id} turn={block.turn} />
         })}
         {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}

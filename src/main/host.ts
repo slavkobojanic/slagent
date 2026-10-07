@@ -267,6 +267,12 @@ export class AgentHost {
     await runtime.setQueueMode(id, mode)
   }
 
+  async editMessage(id: string, text: string): Promise<void> {
+    const runtime = this.openRuntime()
+    if (!runtime) throw new Error("Open a chat first.")
+    await runtime.editMessage(id, text)
+  }
+
   removeQueued(id: string): void {
     this.openRuntime()?.removeQueued(id)
   }

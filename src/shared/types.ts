@@ -22,6 +22,7 @@ export const channels = {
   openInEditor: "agent:open-in-editor",
   setQueueMode: "agent:set-queue-mode",
   removeQueued: "agent:remove-queued",
+  editMessage: "agent:edit-message",
   clearTerminal: "agent:clear-terminal",
   compact: "agent:compact",
   permissions: "computer:permissions",
@@ -78,6 +79,7 @@ export type UserMessage = {
   role: "user"
   text: string
   attachments: UserAttachment[]
+  entryId?: string
 }
 
 export type AssistantMessage = {
@@ -257,6 +259,7 @@ export type SlagentApi = {
   openInEditor: (path: string) => Promise<boolean>
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
+  editMessage: (id: string, text: string) => Promise<void>
   clearTerminal: () => Promise<void>
   compact: () => Promise<void>
   getPermissions: () => Promise<ComputerPermissions>

@@ -137,6 +137,10 @@ function registerIpc(): void {
     if (mode !== "follow-up" && mode !== "steer") throw new Error("Unknown queue mode.")
     return requireHost().setQueueMode(id, mode)
   })
+  ipcMain.handle(channels.editMessage, (_event, id: string, text: string) => {
+    if (typeof text !== "string" || !text.trim()) throw new Error("Write a message first.")
+    return requireHost().editMessage(id, text)
+  })
   ipcMain.handle(channels.removeQueued, (_event, id: string) => {
     requireHost().removeQueued(id)
   })

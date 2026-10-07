@@ -10,7 +10,7 @@ import { ModelDialog } from "@/components/model-dialog"
 import { PermissionsWizard } from "@/components/permissions-wizard"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { modKey, orderedChats, ProjectMenu, Sidebar } from "@/components/sidebar"
-import { Transcript } from "@/components/transcript"
+import { EDIT_LAST_EVENT, Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
 import { focusComposer } from "@/lib/composer"
 import { errorText, formatTranscript, looksLikePath, openPath } from "@/lib/format"
@@ -146,6 +146,12 @@ function AgentApp() {
         event.preventDefault()
         setSidebarOpen(true)
         window.requestAnimationFrame(() => document.getElementById("chat-search")?.focus())
+        return
+      }
+      if (key === "e" && event.shiftKey) {
+        if (streamingRef.current) return
+        event.preventDefault()
+        window.dispatchEvent(new Event(EDIT_LAST_EVENT))
         return
       }
       if (key === "b" && !event.shiftKey) {
@@ -297,6 +303,15 @@ function AgentApp() {
       },
     },
     { id: "sidebar", label: sidebarOpen ? "Hide sidebar" : "Show sidebar", shortcut: `${mod}B`, run: () => setSidebarOpen((open) => !open) },
+    {
+      id: "edit-last",
+      label: "Edit last message",
+      shortcut: `${mod}⇧E`,
+      disabled: streaming || !messages.some((message) => message.role === "user" && message.entryId),
+      run: () => {
+        window.dispatchEvent(new Event(EDIT_LAST_EVENT))
+      },
+    },
     { id: "model", label: "Change model", disabled: !ready || streaming, run: () => setModelOpen(true) },
     { id: "compact", label: "Summarize earlier messages", disabled: !usage || streaming, run: () => window.slagent.compact() },
     { id: "folder", label: "Open folder", run: () => chooseFolder() },
@@ -378,8 +393,10 @@ function AgentApp() {
               notice={notice}
               configured={configured}
               cwd={cwd}
+              streaming={streaming}
               onConnect={() => setSettingsOpen(true)}
               onChoose={() => void chooseFolder()}
+              onEdit={(id, text) => window.slagent.editMessage(id, text)}
             />
           )}
           <Composer

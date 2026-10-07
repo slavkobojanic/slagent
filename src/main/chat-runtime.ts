@@ -90,6 +90,8 @@ export class ChatRuntime {
   private awaiting = false
   private usageState: UsageState | null = null
   private todos: TodoItem[] = []
+  // Transcript user messages waiting for Pi to persist them, oldest first.
+  private pendingUserIds: string[] = []
   private named: boolean
   private titleGenerated: boolean
   private session: AgentSession | null = null
@@ -416,7 +418,30 @@ export class ChatRuntime {
       this.setNotice(errorMessage(error), true)
       this.emit(true)
       throw error
+    } finally {
+      // Extension commands finish without a user message reaching the session.
+      this.pendingUserIds = this.pendingUserIds.filter((item) => item !== message.id)
     }
+  }
+
+  // Moves the session leaf to just before the message, drops it and everything
+  // after it from the transcript, and sends the new text on a fresh branch.
+  async editMessage(id: string, text: string): Promise<void> {
+    const session = this.session
+    if (!session) throw new Error("The session is not ready.")
+    if (this.running || session.isStreaming) throw new Error("Stop the run before editing a message.")
+    const index = this.messages.findIndex((message) => message.id === id)
+    const message = this.messages[index]
+    if (!message || message.role !== "user") throw new Error("That message is gone.")
+    if (!message.entryId) throw new Error("This message was sent before editing was available.")
+    const result = await session.navigateTree(message.entryId)
+    if (result.cancelled) return
+    this.load(this.messages.slice(0, index))
+    this.pendingUserIds = []
+    this.setNotice(null)
+    this.refreshUsage()
+    this.emit(false)
+    await this.prompt({ text, mentions: [], files: [] })
   }
 
   private pushUser(request: PromptRequest, attachments: UserAttachment[]): UserMessage {
@@ -427,8 +452,30 @@ export class ChatRuntime {
       attachments,
     }
     this.messages.push(message)
+    this.pendingUserIds.push(message.id)
     this.markTitle(message.text, attachments)
     return message
+  }
+
+  // Pi appends the entry right after emitting message_end, so the leaf is read
+  // once the current tick finishes. User messages that slagent did not send,
+  // such as ones from extensions, are added to the transcript here.
+  private noteUserEntry(content: unknown): void {
+    const session = this.session
+    const id = this.pendingUserIds.shift()
+    queueMicrotask(() => {
+      if (!session || this.session !== session) return
+      const entryId = session.sessionManager.getLeafId() ?? undefined
+      if (id) {
+        const message = this.messages.find((item) => item.id === id)
+        if (message?.role === "user") message.entryId = entryId
+        return
+      }
+      const text = userText(content)
+      if (!text) return
+      this.messages.push({ id: randomUUID(), role: "user", text, attachments: [], entryId })
+      this.emit(false)
+    })
   }
 
   private markTitle(text: string, attachments: UserAttachment[]): void {
@@ -465,6 +512,11 @@ export class ChatRuntime {
   }
 
   private onEvent(event: AgentSessionEvent): void {
+    if (event.type === "message_end" && event.message.role === "user") {
+      this.noteUserEntry(event.message.content)
+      return
+    }
+
     if (event.type === "message_start" && event.message.role === "assistant") {
       this.ensureAssistant()
       this.emit(false)
@@ -754,6 +806,18 @@ function normalizeMessage(message: ChatMessage): ChatMessage {
   if (message.role === "user" && !message.attachments) message.attachments = []
   if (message.role === "tool" && !message.images) message.images = []
   return message
+}
+
+function userText(content: unknown): string {
+  if (typeof content === "string") return content.trim()
+  if (!Array.isArray(content)) return ""
+  const parts: string[] = []
+  for (const part of content) {
+    if (typeof part === "object" && part !== null && (part as { type?: string }).type === "text") {
+      parts.push(String((part as { text?: unknown }).text ?? ""))
+    }
+  }
+  return parts.join("\n").trim()
 }
 
 function promptImages(images: ImageContent[]): ImageContent[] | undefined {
