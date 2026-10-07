@@ -12,7 +12,7 @@ This file is the source of truth. Do not invent a different state, folder, styli
 - **Server state is not optimistic.** A command calls a service and returns. The new state arrives as an event, and the mirror applies it. If the call throws, the presenter sets an `error` on its own store and leaves mirrored state alone.
 - **UI state is renderer-owned.** Sidebar and panel widths, dialog open flags, drafts, comment drafts, theme, and keyboard commands live in renderer stores.
 - **There is no router.** No `react-router`, no `navigate`, no `assign`, no URL. The open project and chat are mirrored `library` state.
-- **Transport is IPC.** `window.slagent` is read only in `ipc/`. Services are interfaces with a real (preload) and a fake (in-memory) implementation.
+- **Transport is IPC.** `window.slagent` is read only in `ipc/`. One thin class, `API` in `ipc/api.ts`, wraps it. There are no per-domain services and no fakes.
 - **Styling is Tailwind plus shadcn.** No CSS modules. Classes live on the view. `cn()` merges them.
 
 ## Layers
@@ -24,12 +24,12 @@ This file is the source of truth. Do not invent a different state, folder, styli
 | **View** (`name.tsx`) | Render props. Calls the callbacks it receives. | Hooks, stores, presenters, IPC, `window`, formatting rules |
 | **Owning `create.tsx`** | Called **once** at boot. Constructs store and presenter, starts the presenter, and returns a stable component. `observer` iff it reads a store. | Called during render, styling the view, business rules |
 | **Assemble `create.tsx`** | Re-runnable. Returns a `ReactElement`. Composes already-built pieces. | Store, presenter, IPC, `observer` |
-| **`ipc/<domain>-service/`** | Interface, real class over `window.slagent`, fake, `install.ts`. | UI, stores, presenters |
+| **`ipc/api.ts`** | `API`: one thin class over `window.slagent`, `toJS` on object arguments. | UI, stores, presenters, logic |
 | **`mirror/`** | Applies `UiEvent`s and the snapshot to mirrored stores, with revision gates. | UI, IPC outside the service interfaces |
 
 Dumb units (a row, a pill, a label) are `name.tsx` with classes inline. No `create.tsx`, no store.
 
-`create` builds a UI unit. `install` wires a service. Presenters receive the one service they use, typed as `Pick<XService, ...>` of the methods they call, never a bag of services.
+`create` builds a UI unit. Presenters that call IPC take the whole `api: API`. Injected stores, presenters and ports are taken whole too: no `Pick<...>` of a collaborator.
 
 ## Two kinds of `create.tsx`
 
@@ -42,42 +42,48 @@ Never call an owning `create` during React render. Assemble `create` is usually 
 
 A wrapper is not concerned with a child's rows, fetch, or clicks. It only knows its slots.
 
-- The **root `create.tsx`** calls each slice's owning `create` once, in the order the wiring table shows, and passes the returned **component types** into the shell view (`Sidebar={Sidebar}`). The view renders `<Sidebar />`.
+- The **root `create.tsx`** builds the shared stores, then calls each slice's owning `create` once and passes the returned **component types** to `createShell` (`Library`, `Settings`, `Models`, `Transcript`, `Composer`, `Changes`). The shell renders `<Library />`.
+- A parent's owning `create` builds its children's owning creates (the composer builds its run status, the transcript builds its question card). The root only builds what the shell slots.
 - Assemble results are **elements**, not component types (`rows={createMessageRow(...)}`).
 - Mapping a list of N lives in the unit that owns that list (the transcript view), not in the shell chrome.
-- Feature creates receive `AppDeps` (see [`state/app-deps.ts`](src/renderer/src/state/app-deps.ts)) and any slot a parent slice provides. They never import another feature's `create`.
+- **Explicit deps.** Every `create` takes one destructured object naming exactly what it uses (`{ api, runStore, commandRegistry }`), typed inline. No deps bags, no spreading a parent's deps into a child. A child gets only what the child uses. Shared names: `api`, `window`, `libraryStore`, `metaStore`, `runStore`, `layoutStore`, `layoutPresenter`, `overlayStore`, `panelStore`, `panelPresenter`, `themeStore`, `themePresenter`, `permissionsStore`, `reviewStore`, `reviewPresenter`, `mcpStore`, `commandRegistry`, `composerPort`, `jumpPort`.
+- Each create returns one component. There is no shared slots file: a view types its own slot props (`Library: ComponentType`). Features never import another feature's `create`.
+- **One component per `.tsx` file**, `create.tsx` included (one host per create). Views stay small: a view with a long prop list is split into child units that each read their own store and pass themselves up as slots.
 - Shared dumb components used by two features live in `components/`, never imported from another feature's folder.
 
 ## Directory and names
 
 ```
 src/renderer/src/
-  main.tsx                          # entry: mounts the root host, Toaster, TooltipProvider
-  create.tsx                        # root owning create: services, mirror, shared state, slices
+  main.tsx                          # entry: mounts the root host
+  create.tsx                        # root owning create: API, mirror, shared stores, slices, shell
   index.css                         # Tailwind import, theme tokens, global base only
-  ipc/                              # window.slagent facade
-    install-context.ts              # resolves real vs fake once
-    services.ts                     # the Services object passed to creates
-    <domain>-service/               # interface, Ipc<Domain>Service, Fake<Domain>Service, install.ts
+  ipc/api.ts                        # API: the window.slagent wrapper
   mirror/                           # main-process state mirrored from events (single writer)
+    <name>-store/<name>-store.ts
+    mirror-presenter/mirror-presenter.ts
   state/                            # shared stores, presenters, and ports used by 2+ features
-    app-deps.ts                     # the AppDeps type every feature create receives
-  features/<slice>/                 # one folder per vertical slice
+    <concept>/<concept>-store/<concept>-store.ts
+    <concept>/<concept>-presenter/<concept>-presenter.ts
+  features/<unit>/                  # one folder per unit; slices nest their children
     create.tsx
-    <slice>.tsx
-    <slice>.css                     # only if the slice needs CSS beyond Tailwind classes
-    <slice>-store/<slice>-store.ts
-    <slice>-presenter/<slice>-presenter.ts
-    <unit>/                         # colocated sub-units, dumb or SPC
+    <unit>.tsx                      # the one view
+    <unit>.test.tsx
+    <unit>.css                      # only if Tailwind cannot express it
+    <unit>-store/<unit>-store.ts    # only if the unit owns state
+    <unit>-presenter/<unit>-presenter.ts
+    <child-unit>/                   # same shape, recursively
   components/ui/                    # shadcn primitives (CLI-managed)
   components/ai-elements/           # vendored primitives
-  components/                       # dumb or SPC units used by 2+ features
+  components/                       # dumb units used by 2+ features
   lib/                              # pure helpers: no state, no hooks, no globals
 ```
 
 Place a unit at its **nearest shared parent**. If two features need it, move it to `components/` or `state/`.
 
-Folders and files are **kebab-case** (matches shadcn). Exports are **PascalCase**: `createComposer`, `Composer`, `ComposerStore`, `ComposerPresenter`, `installSettingsService`.
+A store or presenter folder is named after the unit folder it sits in. A store/presenter pair with no component of its own does not float beside another unit's store: it belongs to the unit that owns the concept.
+
+Folders and files are **kebab-case** (matches shadcn). Exports are **PascalCase**: `createComposer`, `Composer`, `ComposerStore`, `ComposerPresenter`.
 
 No `index.ts` barrels. Import from `create.tsx` or `<unit>.tsx`.
 
@@ -87,51 +93,15 @@ Always destructure `props` and `deps` at the function boundary. Do not write `pr
 
 Formatting follows the existing code: no semicolons, double quotes, two-space indent. The examples below add semicolons only to keep their shape readable.
 
+Comments record a non-obvious *why* (an ordering constraint, an Electron or browser quirk, a workaround). Do not comment what the code or a name already says, and do not add header blurbs to files, classes, or creates.
+
 ## IPC
 
-- Services are one interface per domain, typed with the existing types in `src/shared/types.ts`. Method names match `SlagentApi`, so the mapping is one-to-one.
-- Mode is resolved **once** in `ipc/install-context.ts`. The real service is used when `window.slagent` exists (the preload ran). The fake is used when `import.meta.env.VITE_USE_FAKE_IPC === "1"`, or when there is no bridge and `import.meta.env.DEV` is true (Vite in a browser, tests). With no bridge in production, the root renders an error view and mounts nothing.
-- `install.ts` is the only place outside `install-context.ts` that branches on mode. It takes no arguments and returns the interface.
-- The real class is a thin wrapper over `window.slagent`. Do not call `ipcRenderer`, `fetch`, or `window.slagent` anywhere else. Only `ipc/` reads `window.slagent`, and a `check:spc` rule enforces it.
-- Fakes own their data, keep state per instance, and touch no storage. No module-level arrays. A fake exposes `emit(event)` so tests can drive `onEvent` listeners.
-- Anything the presenter needs from the browser (`window`, `document`, `navigator.clipboard`, `matchMedia`) is passed in through `env` or a port. Presenters never touch globals directly. That keeps them testable.
-
-```ts
-// ipc/settings-service/settings-service.ts
-import type { ModelChange, Personalisation } from "@shared/types";
-
-export interface SettingsService {
-  saveOpenRouterKey(apiKey: string): Promise<void>;
-  logoutOpenRouter(): Promise<void>;
-  setModel(modelId: string): Promise<ModelChange>;
-  setPersonalisation(value: Personalisation): Promise<void>;
-}
-
-export class IpcSettingsService implements SettingsService {
-  constructor(private readonly api: SlagentApi) {}
-
-  saveOpenRouterKey = (apiKey: string) => this.api.saveOpenRouterKey(apiKey);
-  logoutOpenRouter = () => this.api.logoutOpenRouter();
-  setModel = (modelId: string) => this.api.setModel(modelId);
-  setPersonalisation = (value: Personalisation) => this.api.setPersonalisation(value);
-}
-```
-
-```ts
-// ipc/settings-service/install.ts
-import { getInstallContext } from "@/ipc/install-context";
-import { FakeSettingsService } from "./fake-settings-service";
-import { IpcSettingsService, type SettingsService } from "./settings-service";
-
-export function installSettingsService(): SettingsService {
-  const ctx = getInstallContext();
-  if (ctx.mode === "fake") {
-    return new FakeSettingsService();
-  }
-
-  return new IpcSettingsService(ctx.api);
-}
-```
+- `ipc/api.ts` exports `class API implements SlagentApi`. Method names match `SlagentApi` one to one. Its methods close over the bridge (no private field), so `createMockInstance<API>([...])` satisfies the type in tests.
+- The root calls `API.fromWindow(window)` once. A `null` result (no preload) renders the bridge-missing view and mounts nothing.
+- Store values are deep MobX observables (proxies), which the preload bridge cannot clone. `API` passes object arguments through `toJS`. A new IPC method that takes an object does the same.
+- Do not call `ipcRenderer`, `fetch`, or `window.slagent` anywhere else. A `check:spc` rule enforces it.
+- Anything the presenter needs from the browser (`window`, `document`, `navigator.clipboard`, `matchMedia`) is passed in as `window: Window` or a port. Presenters never touch globals directly.
 
 ## Mirror (main-process state)
 
@@ -143,7 +113,7 @@ export function installSettingsService(): SettingsService {
 
 ## MobX, wiring, lifetime
 
-- Store constructor calls `makeAutoObservable(this)`. Store constructors do no I/O.
+- Store constructor calls `makeAutoObservable(this)` with no overrides. Values are deep observables: compare objects by id, not identity, and assert with `toEqual` in tests. Store constructors do no I/O.
 - Presenter is a plain class. Methods are **arrow functions**. No `.bind` in the constructor. Do not `makeAutoObservable` a presenter.
 - Prefer store methods for mutations with invariants (`setSelection` also clears the draft). Skip one-line setters: the owning presenter may assign that field on **its own** store. Never assign fields on an injected store, call its method.
 - Owning `create` is the only `observer` when it reads a store. It reads the **store** for values and the **presenter** for commands, and passes them as **individual JSX props**. No `presenter.props`. No `toProps()`.
@@ -186,7 +156,7 @@ export function installSettingsService(): SettingsService {
 - **Presenters:** mocked collaborators (`createMockInstance(IpcXService)`, real stores where practical). One guard per test. Assert IPC calls and store changes. Tests that cover listeners call `start()`, then `stop()`.
 - **Views:** props in, markup out. Each named state gets one test. No clicks or submits in view tests. Interaction is covered by presenter tests. Snapshot with `viewMarkup()` when the markup is the contract.
 - **No Storybook.** A view's test file renders the same named states a story would.
-- **Not unit-tested:** `create.tsx` and `install.ts`. The mirror's ordering and revision gates are tested directly.
+- **Not unit-tested:** `create.tsx`. The mirror's ordering and revision gates are tested directly.
 - Test names: the outer `describe` is the unit name. `it("can ... when ...")`.
 - Runner: Vitest with jsdom. `pnpm test` runs once. Setup lives in `src/renderer/src/test/setup.ts`.
 
@@ -217,35 +187,11 @@ Views: exclusive states (loading, error, empty, list) are early returns in a sam
 
 These examples are the contract in code. Comments mark **why**, not what the next line does. Copy the shape; do not invent a fourth layer.
 
-Shared ports used below live in `state/`:
-
-```ts
-// state/app-deps.ts — what every feature create receives (abridged)
-export type AppDeps = {
-  services: Services;                       // ipc/services.ts
-  env: { window: Window };                  // injected so presenters never touch globals
-  mirror: { library: LibraryStore; meta: MetaStore; run: RunStore };
-  shared: {
-    layout: LayoutStore; layoutPresenter: LayoutPresenter;
-    overlay: OverlayStore;
-    panel: PanelStore; panelPresenter: PanelPresenter;
-    theme: ThemeStore; themePresenter: ThemePresenter;
-    commands: CommandRegistry;              // features register keyboard commands here
-    composer: ComposerPort;                 // focus and fill the prompt box
-    permissions: PermissionsStore; mcp: McpStore;
-  };
-};
-```
-
 ### 1. Simple — OpenRouter key form
 
 One form, one store, one presenter, no children. Teaches: `canSave` rule getter on the store, arrow methods, the presenter waits for the server instead of optimistic writes, and `observer` on the owning create.
 
 ```
-ipc/settings-service/
-  settings-service.ts
-  fake-settings-service.ts
-  install.ts
 features/settings/openrouter-key/
   create.tsx
   openrouter-key.tsx
@@ -296,13 +242,13 @@ export class OpenRouterKeyStore {
 
 ```ts
 // openrouter-key-presenter/openrouter-key-presenter.ts
-import type { SettingsService } from "@/ipc/settings-service/settings-service";
+import type { API } from "@/ipc/api";
 import type { OpenRouterKeyStore } from "@/features/settings/openrouter-key/openrouter-key-store/openrouter-key-store";
 
 export class OpenRouterKeyPresenter {
   constructor(
     private readonly store: OpenRouterKeyStore,
-    private readonly settings: SettingsService,
+    private readonly api: API,
   ) {}
 
   handleApiKeyChange = (value: string) => {
@@ -316,7 +262,7 @@ export class OpenRouterKeyPresenter {
 
     this.store.setBusy(true);
     try {
-      await this.settings.saveOpenRouterKey(this.store.apiKey.trim());
+      await this.api.saveOpenRouterKey(this.store.apiKey.trim());
       // Do not mark the key as configured here. The meta event does that.
       this.store.clear();
     } catch (err) {
@@ -383,14 +329,14 @@ export function OpenRouterKey({
 ```tsx
 // create.tsx — owning: called once at boot, returns observer
 import { observer } from "mobx-react-lite";
-import type { Services } from "@/ipc/services";
+import type { API } from "@/ipc/api";
 import { OpenRouterKey } from "./openrouter-key";
 import { OpenRouterKeyPresenter } from "./openrouter-key-presenter/openrouter-key-presenter";
 import { OpenRouterKeyStore } from "./openrouter-key-store/openrouter-key-store";
 
-export function createOpenRouterKey({ services }: { services: Pick<Services, "settings"> }) {
+export function createOpenRouterKey({ api }: { api: API }) {
   const store = new OpenRouterKeyStore();
-  const presenter = new OpenRouterKeyPresenter(store, services.settings);
+  const presenter = new OpenRouterKeyPresenter(store, api);
 
   return observer(function OpenRouterKeyHost() {
     return (
@@ -450,13 +396,13 @@ export class ChatDeletionStore {
 ```ts
 // chat-deletion-presenter/chat-deletion-presenter.ts
 import type { ChatSummary } from "@shared/types";
-import type { LibraryService } from "@/ipc/library-service/library-service";
+import type { API } from "@/ipc/api";
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store";
 
 export class ChatDeletionPresenter {
   constructor(
     private readonly store: ChatDeletionStore,
-    private readonly library: LibraryService,
+    private readonly api: API,
   ) {}
 
   handleRequest = (chat: ChatSummary) => {
@@ -477,7 +423,7 @@ export class ChatDeletionPresenter {
 
     this.store.setBusy(true);
     try {
-      await this.library.deleteChat(this.store.target.id);
+      await this.api.deleteChat(this.store.target.id);
       // The library event removes the row. Close the dialog after the call succeeds.
       this.store.setTarget(null);
     } finally {
@@ -515,18 +461,19 @@ export function createMessageRow({ key, message }: { key: string; message: ChatM
 
 ```tsx
 // transcript/create.tsx — owning
-export function createTranscript({ services, mirror, shared, review, question }: TranscriptDeps) {
+export function createTranscript({ api, runStore, composerPort }: { api: API; runStore: RunStore; composerPort: ComposerPort }) {
   const store = new TranscriptStore();
-  const presenter = new TranscriptPresenter(store, mirror.run, shared.composer, services.chat);
+  const presenter = new TranscriptPresenter(store, runStore, composerPort, api);
+  const QuestionCard = createQuestionCard({ api, runStore });
 
   return observer(function TranscriptHost() {
     // Mapping lives here: the list owner maps data to assemble elements.
-    const rows = mirror.run.messages.map((message) => createMessageRow({ key: message.id, message }));
+    const rows = runStore.messages.map((message) => createMessageRow({ key: message.id, message }));
     return (
       <Transcript
         rows={rows}
-        empty={mirror.run.messages.length === 0}
-        Question={question}          // slot from the agent slice; never created here
+        empty={runStore.messages.length === 0}
+        QuestionCard={QuestionCard}  // child unit, built by this create
         CommentableResponse={review.CommentableResponse}
         onJumped={presenter.handleJumped}
       />
@@ -586,24 +533,24 @@ export class MirrorPresenter {
 `useResizableWidth` held state, persisted to `localStorage`, and attached pointer listeners in an effect. Under SPC the state is a store field, persistence and listeners are in the presenter, and the view receives a press handler.
 
 ```ts
-// state/layout-presenter.ts (shape only)
+// state/layout/layout-presenter/layout-presenter.ts (shape only)
 export class LayoutPresenter {
   private dragCleanup: (() => void) | null = null;
 
   constructor(
     private readonly store: LayoutStore,
-    private readonly env: AppDeps["env"],
+    private readonly window: Window,
   ) {}
 
   handleResizeStart = (edge: "sidebar" | "diff", event: PointerEvent) => {
     event.preventDefault();
     const onMove = (move: PointerEvent) => this.store.setWidth(edge, this.clamp(edge, move.clientX));
     const onUp = () => this.endDrag();
-    this.env.window.addEventListener("pointermove", onMove as EventListener);
-    this.env.window.addEventListener("pointerup", onUp);
+    this.window.addEventListener("pointermove", onMove as EventListener);
+    this.window.addEventListener("pointerup", onUp);
     this.dragCleanup = () => {
-      this.env.window.removeEventListener("pointermove", onMove as EventListener);
-      this.env.window.removeEventListener("pointerup", onUp);
+      this.window.removeEventListener("pointermove", onMove as EventListener);
+      this.window.removeEventListener("pointerup", onUp);
     };
   };
 
@@ -627,40 +574,41 @@ The `resize-handle` view receives `onPointerDown={(event) => onResizeStart(event
 ```tsx
 // src/renderer/src/create.tsx — root: builds everything once, then the shell
 export function createApp(): ComponentType {
-  const services = installServices();
-  const mirror = createMirror(services);
-  const shared = createSharedState(services, window);
-  const deps: AppDeps = { services, env: { window }, mirror, shared };
+  const api = API.fromWindow(window);
+  if (api === null) {
+    return BridgeMissing;
+  }
 
-  const agent = createAgent(deps);
-  const review = createReview(deps);
-  const runStatus = createRunStatus(deps);
-  const composer = createComposer({ ...deps, review, runStatus });
-  const transcript = createTranscript({ ...deps, review, question: agent.Question });
-  const changes = createChanges({ ...deps, review });
-  const library = createLibrary(deps);
-  const settings = createSettings(deps);
-  const models = createModels(deps);
-  const Shell = createShell({ ...deps, slots: { ...library, ...settings, ...models, ...transcript, ...composer, ...changes } });
+  const libraryStore = new LibraryStore();
+  const runStore = new RunStore();
+  const mirrorPresenter = new MirrorPresenter(api, libraryStore, metaStore, runStore);
+  const commandRegistry = new CommandRegistry();
+  // ...each shared store and presenter, constructed once
 
-  mirror.start();
-  shared.keyboard.start();
-  shared.links.start();
-  shared.themePresenter.start();
+  const Transcript = createTranscript({ api, window, runStore, commandRegistry /* ...only what it uses */ });
+  const Composer = createComposer({ api, window, libraryStore, runStore /* ... */ });
+  // ...Library, Settings, Models, Changes
+  const Shell = createShell({ Library, Settings, Models, Transcript, Composer, Changes, api /* ...stores it reads */ });
 
-  return Shell;
+  mirrorPresenter.start();
+  keyboardPresenter.start();
+
+  return observer(function AppHost() {
+    return <Shell />;
+  });
 }
 ```
 
-`main.tsx` awaits nothing. It mounts the root host, which renders a loading state until the snapshot arrives. It does not construct stores or call `install`.
+`main.tsx` awaits nothing. It mounts the root host, which renders a loading state until the snapshot arrives. It does not construct stores.
 
 ## AI checklist
 
 - New feature → `src/renderer/src/features/<name>/` with an owning `create.tsx`.
 - Used by two features → `components/` or `state/`.
-- New IPC method → add it to the matching `ipc/<domain>-service/`, then the real class, the fake, and `Services`. Never call `window.slagent` from a feature.
-- Server state? Do not write it locally. Call the service and wait for the event.
-- Service call, DOM listener, clipboard, or timer? Presenter method (arrow), started and stopped in the presenter.
+- New IPC method → add it to `SlagentApi`, the preload, and `API` (with `toJS` for object arguments). Never call `window.slagent` from a feature.
+- New create → destructure exactly the deps it uses, by their shared names. No bags, no `Pick` of collaborators, one component returned.
+- Server state? Do not write it locally. Call `api` and wait for the event.
+- IPC call, DOM listener, clipboard, or timer? Presenter method (arrow), started and stopped in the presenter.
 - Own-store pure one-liner? The presenter may assign the field. Injected store? Call a method.
 - View takes a model when the owner would only unwrap fields. Formatted or derived values come as primitives from the owning store.
 - Global keyboard shortcut? Register a command in `shared.commands`. Do not add a window-level `keydown` listener in a feature. An element's own `onKeyDown` (a card or a field handling its keys while it has focus) is a view prop and is fine.
