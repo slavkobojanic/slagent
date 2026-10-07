@@ -1,0 +1,143 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { EMPTY_PERSONALISATION, type AppMeta, type UsageState } from "@shared/types"
+import type { ChatService } from "@/ipc/chat-service/chat-service"
+import type { Command, CommandRegistry } from "@/state/command-registry"
+import { MetaStore } from "@/mirror/meta-store"
+import { RunStore } from "@/mirror/run-store"
+import { UsageMeterPresenter } from "@/features/run-status/usage-meter/usage-meter-presenter/usage-meter-presenter"
+import { UsageMeterStore } from "@/features/run-status/usage-meter/usage-meter-store/usage-meter-store"
+import { createMockInstance } from "@/test/create-mock-instance"
+
+const usage: UsageState = {
+  contextTokens: 42_000,
+  contextWindow: 200_000,
+  percent: 21,
+  inputTokens: 1_200,
+  outputTokens: 800,
+  cacheTokens: 300,
+  totalTokens: 2_000,
+  cost: 0.12,
+}
+
+const meta: AppMeta = {
+  ready: true,
+  error: null,
+  cwd: "/work",
+  agentDir: "/agent",
+  modelId: "model",
+  modelName: "Model",
+  modelProvider: null,
+  models: [],
+  openRouter: { configured: true, source: null, type: null, envKey: false },
+  extensions: [],
+  extensionErrors: [],
+  usageTotals: { tokens: 0, cost: 0, chats: 0 },
+  personalisation: EMPTY_PERSONALISATION,
+}
+
+describe("UsageMeterPresenter", () => {
+  let run: RunStore
+  let store: UsageMeterStore
+  let chat: ReturnType<typeof createMockInstance<ChatService>>
+  let commands: ReturnType<typeof createMockInstance<CommandRegistry>>
+  let presenter: UsageMeterPresenter
+
+  beforeEach(() => {
+    run = new RunStore()
+    run.usage = usage
+    const metaStore = new MetaStore()
+    metaStore.setMeta(meta)
+    store = new UsageMeterStore(run, metaStore)
+    chat = createMockInstance<ChatService>(["compact"])
+    commands = createMockInstance<CommandRegistry>(["register"])
+    presenter = new UsageMeterPresenter(store, chat, commands)
+  })
+
+  afterEach(() => {
+    presenter.stop()
+    vi.restoreAllMocks()
+  })
+
+  describe("handleCompact", () => {
+    it("can ask the chat service to summarize earlier messages", async () => {
+      chat.compact.mockResolvedValue(undefined)
+
+      await presenter.handleCompact()
+
+      expect(chat.compact).toHaveBeenCalledTimes(1)
+    })
+
+    it("can leave the chat alone while a run streams", async () => {
+      run.streaming = true
+
+      await presenter.handleCompact()
+
+      expect(chat.compact).not.toHaveBeenCalled()
+    })
+
+    it("can set the error when summarizing fails", async () => {
+      chat.compact.mockRejectedValue(new Error("Compact failed"))
+
+      await presenter.handleCompact()
+
+      expect(store.error).toBe("Compact failed")
+    })
+  })
+
+  describe("start", () => {
+    it("can register the summarize command in the Actions group", () => {
+      commands.register.mockReturnValue(() => undefined)
+
+      presenter.start()
+
+      expect(commands.register).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "compact", label: "Summarize earlier messages", group: "Actions" }),
+      )
+    })
+
+    it("can enable the command only while the meter has usage and no run is live", () => {
+      const registered: Command[] = []
+      commands.register.mockImplementation((command: Command) => {
+        registered.push(command)
+        return () => undefined
+      })
+      presenter.start()
+      const command = registered[0]
+
+      expect(command?.enabled?.()).toBe(true)
+
+      run.streaming = true
+      expect(command?.enabled?.()).toBe(false)
+
+      run.streaming = false
+      run.usage = null
+      expect(command?.enabled?.()).toBe(false)
+    })
+
+    it("can run the summary from the command", () => {
+      const registered: Command[] = []
+      commands.register.mockImplementation((command: Command) => {
+        registered.push(command)
+        return () => undefined
+      })
+      chat.compact.mockResolvedValue(undefined)
+      presenter.start()
+
+      registered[0]?.run()
+
+      expect(chat.compact).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("stop", () => {
+    it("can remove the command it registered", () => {
+      const unregister = vi.fn()
+      commands.register.mockReturnValue(unregister)
+      presenter.start()
+
+      presenter.stop()
+
+      expect(unregister).toHaveBeenCalledTimes(1)
+    })
+  })
+})

@@ -1,0 +1,187 @@
+.reveal-block {
+  animation: sd-fadeIn 180ms ease-out both;
+}
+
+.markdown {
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre,
+.markdown blockquote,
+.markdown table {
+  margin: 0.75em 0;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  margin: 1.15em 0 0.4em;
+  font-weight: 560;
+  letter-spacing: -0.02em;
+}
+
+.markdown h1 {
+  font-size: 1.25rem;
+}
+
+.markdown h2 {
+  font-size: 1.1rem;
+}
+
+.markdown h3 {
+  font-size: 1rem;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 1.25rem;
+}
+
+.markdown ul {
+  list-style: disc;
+}
+
+.markdown ol {
+  list-style: decimal;
+}
+
+.markdown a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown blockquote {
+  border-left: 2px solid color-mix(in srgb, var(--foreground) 30%, transparent);
+  padding-left: 0.75rem;
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.markdown pre {
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
+  padding: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-transcript img {
+  border-radius: 6px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Streamdown renders each fenced block with a language header and actions
+   pinned to the top-right. The language label is noise here, and the copy
+   button reads better floating over the code in the bottom-right. */
+[data-streamdown="code-block-header"] {
+  display: none;
+}
+
+/* Streamdown draws a border on both the block container and the scroll body,
+   which reads as a double outline. Keep only the outer one, and let the code
+   itself scroll so the frame and copy button stay put. */
+[data-streamdown="code-block-body"] {
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+[data-streamdown="code-block-body"] pre {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Keep wrapped continuations aligned with the code rather than under the
+   line-number gutter (the gutter is 1.5rem wide plus 1rem of margin). */
+[data-streamdown="code-block-body"] code > span {
+  padding-left: 2.5rem;
+  text-indent: -2.5rem;
+}
+
+/* Streamdown draws list markers inside the text box, so wrapped lines run back
+   under the bullet. Hang the markers outside instead, indented from the
+   paragraph edge, so every line of an item lines up with its first. */
+[data-streamdown="unordered-list"],
+[data-streamdown="ordered-list"] {
+  list-style-position: outside;
+  padding-left: 1.75em;
+}
+
+[data-streamdown="list-item"] {
+  padding-left: 0.25em;
+}
+
+[data-streamdown="list-item"]::marker {
+  color: var(--muted-foreground);
+}
+
+[data-streamdown="list-item"] [data-streamdown="unordered-list"] {
+  list-style-type: circle;
+}
+
+[data-streamdown="list-item"] [data-streamdown="ordered-list"] {
+  list-style-type: lower-roman;
+}
+
+[data-streamdown="code-block"] > div:has(> [data-streamdown="code-block-actions"]) {
+  top: auto;
+  right: 0.5rem;
+  bottom: 0.5rem;
+}
+
+.markdown :not(pre) > code {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  padding: 0.1em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* A message opened from chat search flashes briefly so it is easy to spot. */
+.search-hit {
+  border-radius: 0.5rem;
+  animation: search-hit 1.6s ease-out;
+}
+
+@keyframes search-hit {
+  0%,
+  30% {
+    background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
