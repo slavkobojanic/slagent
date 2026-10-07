@@ -1,0 +1,33 @@
+appId: com.slagent.app
+productName: slagent
+directories:
+  buildResources: build
+  output: dist
+files:
+  - "!**/.vscode/*"
+  - "!src/*"
+  - "!native/**"
+  - "!scripts/**"
+  - "!resources/**"
+  - "!.agents/**"
+  - "!electron.vite.config.{js,ts,mjs,cjs}"
+  - "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
+  - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
+  - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
+extraResources:
+  - from: resources/slagent.app
+    to: slagent.app
+  - from: resources/icon.png
+    to: icon.png
+mac:
+  category: public.app-category.developer-tools
+  icon: icon.icns
+  identity: null
+  target:
+    - target: dir
+      arch:
+        - arm64
+  extendInfo:
+    NSAccessibilityUsageDescription: slagent uses Accessibility to read and control the apps you ask it to use.
+    NSScreenCaptureUsageDescription: slagent captures one window so it can see the app it is using.
+npmRebuild: false

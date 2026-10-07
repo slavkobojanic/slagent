@@ -1,6 +1,6 @@
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from "electron"
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, protocol, shell } from "electron"
 import { channels } from "../shared/types"
 import { AgentHost } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
@@ -46,10 +46,17 @@ function requireComputer(): ComputerUse {
   return computer
 }
 
+function loadAppIcon() {
+  const packaged = nativeImage.createFromPath(join(process.resourcesPath, "icon.png"))
+  if (!packaged.isEmpty()) return packaged
+  return nativeImage.createFromPath(join(app.getAppPath(), "resources", "icon.png"))
+}
+
 function createWindow(): BrowserWindow {
   let titleBarStyle: "default" | "hiddenInset" = "default"
   if (process.platform === "darwin") titleBarStyle = "hiddenInset"
 
+  const icon = loadAppIcon()
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -60,6 +67,7 @@ function createWindow(): BrowserWindow {
     titleBarStyle,
     trafficLightPosition: { x: 14, y: 17 },
     autoHideMenuBar: true,
+    icon,
     webPreferences: {
       preload: join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
@@ -161,6 +169,9 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
+  const icon = loadAppIcon()
+  if (app.dock && !icon.isEmpty()) app.dock.setIcon(icon)
+
   const libraryRoot = join(app.getPath("userData"), "library")
   protocol.handle("slagent", (request) => serveAttachment(libraryRoot, request))
   computer = new ComputerUse(computerExecutable(app.getAppPath(), process.resourcesPath))

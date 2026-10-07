@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { createInterface } from "node:readline"
 import { existsSync } from "node:fs"
+import { desktopCapturer, systemPreferences } from "electron"
 
 export type ComputerPermissions = {
   accessibility: boolean
@@ -18,18 +19,33 @@ export class ComputerUse {
   private nextId = 0
   private pending = new Map<string, Pending>()
 
+  private workerAccessibility = false
+  private workerScreen = false
+
   constructor(private readonly executable: string) {}
 
   permissions(): Promise<ComputerPermissions> {
-    return this.call("permissions").then(readPermissions)
+    const result = currentPermissions()
+    this.noteTrust(result)
+    return Promise.resolve(result)
   }
 
   requestAccessibility(): Promise<ComputerPermissions> {
-    return this.call("request_accessibility").then(readPermissions)
+    if (process.platform === "darwin" && !systemPreferences.isTrustedAccessibilityClient(false)) {
+      systemPreferences.isTrustedAccessibilityClient(true)
+    }
+    return this.permissions()
   }
 
-  requestScreenRecording(): Promise<ComputerPermissions> {
-    return this.call("request_screen_recording").then(readPermissions)
+  async requestScreenRecording(): Promise<ComputerPermissions> {
+    const current = currentPermissions()
+    if (process.platform === "darwin" && !current.screenRecording) {
+      await Promise.race([
+        desktopCapturer.getSources({ types: ["screen"] }).catch(() => undefined),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ])
+    }
+    return this.permissions()
   }
 
   call(method: string, params: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
@@ -67,9 +83,28 @@ export class ComputerUse {
       if (text) console.error("computer-use", text)
     })
     child.on("exit", () => {
-      if (this.child === child) this.child = null
+      if (this.child !== child) return
+      this.child = null
       this.failAll("Computer use stopped.")
     })
+  }
+
+  private noteTrust(result: ComputerPermissions): void {
+    const gainedAccessibility = result.accessibility && !this.workerAccessibility
+    const gainedScreen = result.screenRecording && !this.workerScreen
+    if (this.child && (gainedAccessibility || gainedScreen)) {
+      if (this.pending.size > 0) return
+      this.restartWorker()
+    }
+    this.workerAccessibility = result.accessibility
+    this.workerScreen = result.screenRecording
+  }
+
+  private restartWorker(): void {
+    const child = this.child
+    if (!child) return
+    this.child = null
+    child.kill()
   }
 
   private receive(line: string): void {
@@ -101,16 +136,19 @@ export class ComputerUse {
   }
 }
 
-function readPermissions(result: Record<string, unknown>): ComputerPermissions {
+function currentPermissions(): ComputerPermissions {
+  if (process.platform !== "darwin") {
+    return { accessibility: true, screenRecording: true, error: null }
+  }
   return {
-    accessibility: result.accessibility === true,
-    screenRecording: result.screenRecording === true,
+    accessibility: systemPreferences.isTrustedAccessibilityClient(false),
+    screenRecording: systemPreferences.getMediaAccessStatus("screen") === "granted",
     error: null,
   }
 }
 
 export function computerExecutable(appPath: string, resourcesPath: string): string {
-  const name = "Slagent Computer.app/Contents/MacOS/slagent-computer"
+  const name = "slagent.app/Contents/MacOS/slagent"
   const packaged = `${resourcesPath}/${name}`
   if (existsSync(packaged)) return packaged
   return `${appPath}/resources/${name}`

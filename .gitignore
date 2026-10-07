@@ -1,10 +1,12 @@
 node_modules
 out
 dist
+build
 .DS_Store
 *.log
 .env
 .env.*
 .pi
-resources/Slagent Computer.app/Contents/MacOS/
-resources/Slagent Computer.app/Contents/_CodeSignature/
+resources/slagent.app/Contents/MacOS/
+resources/slagent.app/Contents/Resources/
+resources/slagent.app/Contents/_CodeSignature/
