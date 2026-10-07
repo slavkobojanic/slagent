@@ -206,19 +206,51 @@ type ReasoningContentProps = ComponentProps<
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
+const THOUGHTS_MAX_HEIGHT_PX = 100;
+const THOUGHTS_FADE_PX = 20;
+
 export const ReasoningContent = memo(
-  ({ className, children, ...props }: ReasoningContentProps) => (
-    <CollapsibleContent
-      className={cn(
-        "mt-4 text-sm",
-        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
-        className
-      )}
-      {...props}
-    >
-      <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
-    </CollapsibleContent>
-  )
+  ({ className, children, ...props }: ReasoningContentProps) => {
+    const { isStreaming } = useReasoning();
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [isScrollable, setIsScrollable] = useState(false);
+
+    // Keep the box pinned to the newest thoughts while streaming so the
+    // user can see it is active. Overflow is hidden, so this is the only
+    // way the content moves (the user cannot scroll it manually).
+    useEffect(() => {
+      const el = scrollRef.current;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+      setIsScrollable(
+        el !== null && el.scrollHeight > el.clientHeight + 1
+      );
+    }, [children, isStreaming]);
+
+    return (
+      <CollapsibleContent
+        className={cn(
+          "mt-4 text-sm",
+          "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+          className
+        )}
+        {...props}
+      >
+        <div
+          ref={scrollRef}
+          style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX }}
+          className={cn(
+            "overflow-hidden",
+            isScrollable &&
+              `[mask-image:linear-gradient(to_bottom,transparent,black_${THOUGHTS_FADE_PX}px,black_calc(100%-${THOUGHTS_FADE_PX}px),transparent)]`
+          )}
+        >
+          <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+        </div>
+      </CollapsibleContent>
+    );
+  }
 );
 
 Reasoning.displayName = "Reasoning";
