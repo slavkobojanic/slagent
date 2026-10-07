@@ -243,7 +243,7 @@ function ProjectRow({
   let pinLabel = "Pin"
   if (project.pinned) pinLabel = "Unpin"
   return (
-    <div className={cn("flex w-full min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}>
+    <div className={cn("group flex w-full min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}>
       <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm" onClick={onOpen}>
         <StatusDot status={projectStatus(project)} />
         <span className="truncate">{project.name}</span>
@@ -289,7 +289,6 @@ function ChatRow({
   let pinLabel = "Pin"
   if (chat.pinned) pinLabel = "Unpin"
   const [menuOpen, setMenuOpen] = useState(false)
-  const [menuPoint, setMenuPoint] = useState({ x: 0, y: 0 })
   if (renaming) {
     return (
       <form
@@ -314,10 +313,9 @@ function ChatRow({
   }
   return (
     <div
-      className={cn("ml-3 flex min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}
+      className={cn("group ml-3 flex min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}
       onContextMenu={(event) => {
         event.preventDefault()
-        setMenuPoint({ x: event.clientX, y: event.clientY })
         setMenuOpen(true)
       }}
     >
@@ -326,21 +324,15 @@ function ChatRow({
         <span className="truncate">{chat.title}</span>
         {chat.pinned && <PinIcon className="size-3 shrink-0 text-white/40" />}
       </button>
-      <RowMenu label={`${chat.title} actions`}>
+      <RowMenu label={`${chat.title} actions`} open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuItem onSelect={onPin}>{pinLabel}</DropdownMenuItem>
         <DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onCopy}>Copy transcript</DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={onDelete}>
           Delete
         </DropdownMenuItem>
       </RowMenu>
-      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenuTrigger asChild>
-          <span aria-hidden className="pointer-events-none fixed size-px" style={{ left: menuPoint.x, top: menuPoint.y }} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onSelect={onCopy}>Copy transcript</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   )
 }
@@ -400,11 +392,27 @@ function SearchResults({
   )
 }
 
-function RowMenu({ label, children }: { label: string; children: ReactNode }) {
+function RowMenu({
+  label,
+  children,
+  open,
+  onOpenChange,
+}: {
+  label: string
+  children: ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="icon-xs" className="mr-1 shrink-0" aria-label={label}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="mr-1 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+          aria-label={label}
+        >
           <EllipsisIcon className="size-3.5" />
         </Button>
       </DropdownMenuTrigger>
