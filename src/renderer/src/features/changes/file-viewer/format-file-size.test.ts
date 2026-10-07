@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatFileSize } from "@/features/changes/file-viewer/format-file-size"
+import { formatFileSize } from "./format-file-size"
 
 describe("formatFileSize", () => {
   it("can show a size under one kilobyte in bytes", () => {

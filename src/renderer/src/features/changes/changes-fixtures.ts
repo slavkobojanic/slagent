@@ -1,7 +1,5 @@
 import { EMPTY_PERSONALISATION, type AppMeta, type DiffComment, type FileView, type GitStatus } from "@shared/types"
-import type { RunTranscript } from "@/mirror/run-store"
-
-// Complete values for the changes tests. A test names only the fields it changes.
+import type { RunTranscript } from "@/mirror/run-store/run-store"
 
 export const SAMPLE_DIFF = [
   "diff --git a/src/app.ts b/src/app.ts",

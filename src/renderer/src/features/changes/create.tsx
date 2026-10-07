@@ -1,132 +1,72 @@
-import type { ReactNode } from "react"
+import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
-import { toast } from "sonner"
-import { DiffFooter } from "@/features/changes/diff-panel/diff-footer"
-import { DiffPanel } from "@/features/changes/diff-panel/diff-panel"
-import { DiffPresenter, type DiffNotifier } from "@/features/changes/diff-presenter/diff-presenter"
-import { DiffStore } from "@/features/changes/diff-store/diff-store"
-import { FileViewer } from "@/features/changes/file-viewer/file-viewer"
-import { formatFileSize } from "@/features/changes/file-viewer/format-file-size"
-import { FileViewerPresenter } from "@/features/changes/file-viewer-presenter/file-viewer-presenter"
-import { FileViewerStore } from "@/features/changes/file-viewer-store/file-viewer-store"
-import { PlanDocument } from "@/features/changes/plan-document"
-import { RightPanel } from "@/features/changes/right-panel"
-import { RightPanelPresenter } from "@/features/changes/right-panel-presenter/right-panel-presenter"
-import { RightPanelStore } from "@/features/changes/right-panel-store/right-panel-store"
-import { preloadPierreHighlighter } from "@/lib/pierre"
-import type { AppDeps } from "@/state/app-deps"
-import type { ChangesSlots, ReviewSlots } from "@/state/slots"
+import type { API } from "@/ipc/api"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { RunStore } from "@/mirror/run-store/run-store"
+import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import type { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
+import type { LayoutStore } from "@/state/layout/layout-store/layout-store"
+import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import type { PanelStore } from "@/state/panel/panel-store/panel-store"
+import type { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import type { ReviewStore } from "@/state/review/review-store/review-store"
+import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
+import { Changes } from "./changes"
+import { ChangesPresenter } from "./changes-presenter/changes-presenter"
+import { ChangesStore } from "./changes-store/changes-store"
+import { createChangesTabs } from "./changes-tabs/create"
+import { createDiffPanel } from "./diff-panel/create"
+import { createFileViewer } from "./file-viewer/create"
+import { createPlanDocument } from "./plan-document/create"
 
-// The changes tab reports through the app's toaster, as it always has.
-const notifier: DiffNotifier = {
-  success: (message, options) => toast.success(message, options),
-  error: (message) => toast.error(message),
-}
+export function createChanges({
+  api,
+  window,
+  metaStore,
+  runStore,
+  panelStore,
+  panelPresenter,
+  layoutStore,
+  layoutPresenter,
+  reviewStore,
+  reviewPresenter,
+  themeStore,
+  commandRegistry,
+}: {
+  api: API
+  window: Window
+  metaStore: MetaStore
+  runStore: RunStore
+  panelStore: PanelStore
+  panelPresenter: PanelPresenter
+  layoutStore: LayoutStore
+  layoutPresenter: LayoutPresenter
+  reviewStore: ReviewStore
+  reviewPresenter: ReviewPresenter
+  themeStore: ThemeStore
+  commandRegistry: CommandRegistry
+}): ComponentType {
+  const changesStore = new ChangesStore(panelStore, runStore, metaStore)
+  const changesPresenter = new ChangesPresenter(changesStore, panelStore, panelPresenter, layoutPresenter, commandRegistry)
+  changesPresenter.start()
 
-// Builds the right panel once at boot: its stores, presenters, and the host that renders it. The
-// host reads the stores and passes primitives and callbacks down; the rules live in the stores.
-export function createChanges({ services, env, mirror, shared }: AppDeps & { review: ReviewSlots }): ChangesSlots {
-  const right = new RightPanelStore(shared.panel, mirror.run, mirror.meta)
-  const rightPresenter = new RightPanelPresenter(right, shared.panel, shared.panelPresenter, shared.layoutPresenter, shared.commands)
-  const diff = new DiffStore()
-  const diffPresenter = new DiffPresenter(
-    diff,
-    right,
-    mirror.run,
-    services.git,
-    services.app,
-    shared.panelPresenter,
-    shared.reviewPresenter,
-    notifier,
-    () => env.window.crypto.randomUUID(),
-  )
-  const viewer = new FileViewerStore()
-  const viewerPresenter = new FileViewerPresenter(viewer, shared.panel, services.files, env, preloadPierreHighlighter)
+  const ChangesTabs = createChangesTabs({ changesStore, changesPresenter })
+  const DiffPanel = createDiffPanel({ api, window, runStore, panelPresenter, reviewStore, reviewPresenter, themeStore, changesStore })
+  const FileViewer = createFileViewer({ api, window, panelStore, themeStore })
+  const PlanDocument = createPlanDocument({ changesStore })
 
-  rightPresenter.start()
-  diffPresenter.start()
-  viewerPresenter.start()
-
-  // The changes tab: the diff, its commit box when the folder is a repository, and the comments.
-  function diffTab(): ReactNode {
+  return observer(function ChangesHost() {
     return (
-      <DiffPanel
-        branch={diff.branchLabel}
-        scope={diff.scope}
-        loading={diff.loading}
-        files={diff.files}
-        emptyText={diff.emptyText}
-        comments={shared.review.diffComments}
-        draft={diff.draft}
-        themeType={shared.theme.resolved}
-        footer={
-          diff.repo ? (
-            <DiffFooter
-              message={diff.message}
-              placeholder={diff.commitPlaceholder}
-              canEditMessage={diff.canEditMessage}
-              canWriteMessage={diff.canWriteMessage}
-              writingMessage={diff.writingMessage}
-              canCommit={diff.canCommit}
-              canPublish={diff.canPublish}
-              pushLabel={diff.pushLabel}
-              onMessageChange={diffPresenter.handleMessageChange}
-              onCommitShortcut={diffPresenter.handleCommitShortcut}
-              onWriteMessage={diffPresenter.handleWriteMessage}
-              onCommit={diffPresenter.handleCommit}
-              onPush={diffPresenter.handlePush}
-              onOpenPr={diffPresenter.handleOpenPr}
-            />
-          ) : null
-        }
-        onScope={diffPresenter.handleScope}
-        onRefresh={diffPresenter.handleRefresh}
-        onStartDraft={diffPresenter.handleStartDraft}
-        onDraftSave={diffPresenter.handleDraftSave}
-        onDraftCancel={diffPresenter.handleDraftCancel}
-        onRemoveComment={diffPresenter.handleRemoveComment}
-        onViewFile={diffPresenter.handleViewFile}
+      <Changes
+        resizing={layoutStore.resizing === "diff"}
+        showing={changesStore.showing}
+        Tabs={ChangesTabs}
+        DiffPanel={DiffPanel}
+        FileViewer={FileViewer}
+        PlanDocument={PlanDocument}
+        onResizeStart={changesPresenter.handleResizeStart}
+        onResizeReset={changesPresenter.handleResizeReset}
       />
     )
-  }
-
-  // The tab's content. The open file shows on the file tab, the plan on the plan tab, and the diff otherwise.
-  function panelBody(): ReactNode {
-    const viewed = shared.panel.viewedFile
-    if (right.showing === "file" && viewed !== null) {
-      return (
-        <FileViewer
-          file={viewed}
-          sizeLabel={formatFileSize(viewed.size)}
-          ready={viewer.highlighterReady}
-          themeType={shared.theme.resolved}
-          scrollRef={viewerPresenter.attachScroller}
-          onOpenInEditor={viewerPresenter.handleOpenInEditor}
-        />
-      )
-    }
-    if (right.showing === "plan" && right.plan !== null) {
-      return <PlanDocument plan={right.plan} />
-    }
-    return diffTab()
-  }
-
-  return {
-    RightPanel: observer(function RightPanelHost() {
-      return (
-        <RightPanel
-          resizing={shared.layout.resizing === "diff"}
-          showing={right.showing}
-          file={right.fileTab}
-          hasPlan={right.hasPlan}
-          body={panelBody()}
-          onTab={rightPresenter.handleTab}
-          onCloseFile={rightPresenter.handleCloseFile}
-          onClose={rightPresenter.handleClose}
-          onResizeStart={rightPresenter.handleResizeStart}
-          onResizeReset={rightPresenter.handleResizeReset}
-        />
-      )
-    }),
-  }
+  })
 }

@@ -1,8 +1,7 @@
-import { File } from "@pierre/diffs/react"
 import { ExternalLinkIcon } from "lucide-react"
 import type { FileView } from "@shared/types"
 import { Button } from "@/components/ui/button"
-import { PIERRE_CSS, PIERRE_THEME } from "@/lib/pierre"
+import { FileBody } from "./file-body/file-body"
 
 export type FileViewerProps = {
   file: FileView
@@ -10,12 +9,10 @@ export type FileViewerProps = {
   // Pierre paints nothing until its highlighter has loaded, so the file mounts once it has.
   ready: boolean
   themeType: "light" | "dark"
-  // Binds the scroller, which the presenter follows the target line in.
   scrollRef: (element: HTMLDivElement | null) => void
   onOpenInEditor: () => void
 }
 
-// An open file with its path, line, size, and a button that opens it in the editor.
 export function FileViewer({ file, sizeLabel, ready, themeType, scrollRef, onOpenInEditor }: FileViewerProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -34,23 +31,5 @@ export function FileViewer({ file, sizeLabel, ready, themeType, scrollRef, onOpe
         <FileBody file={file} ready={ready} themeType={themeType} />
       </div>
     </div>
-  )
-}
-
-function FileBody({ file, ready, themeType }: Pick<FileViewerProps, "file" | "ready" | "themeType">) {
-  if (file.binary) {
-    return <p className="px-4 py-6 text-sm text-white/50">This is a binary file.</p>
-  }
-  return (
-    <>
-      {file.truncated ? <p className="border-b border-white/10 px-4 py-2 text-xs text-white/50">Showing the first 2 MB.</p> : null}
-      {ready ? (
-        <File
-          file={{ name: file.path, contents: file.contents, cacheKey: `${file.absolutePath}:${file.size}` }}
-          selectedLines={file.line ? { start: file.line, end: file.line } : null}
-          options={{ theme: PIERRE_THEME, themeType, disableFileHeader: true, overflow: "scroll", unsafeCSS: PIERRE_CSS }}
-        />
-      ) : null}
-    </>
   )
 }
