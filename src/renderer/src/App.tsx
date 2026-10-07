@@ -73,6 +73,24 @@ function AgentApp() {
   const streamingRef = useRef(false)
   libraryRef.current = library
   streamingRef.current = streaming
+  const contextRef = useRef({ projectId: library.openProjectId, chatId: library.openChatId, chatIds: new Set<string>() })
+
+  // The side panel, the open file and pending diff comments belong to the chat
+  // they were opened in, so they reset when you switch chats or projects. A
+  // draft turning into a new chat on its first message keeps them.
+  useEffect(() => {
+    const previous = contextRef.current
+    const projectId = library.openProjectId
+    const chatId = library.openChatId
+    contextRef.current = { projectId, chatId, chatIds: new Set(library.chats.map((chat) => chat.id)) }
+    if (projectId === previous.projectId && chatId === previous.chatId) return
+    const draftBecameChat = projectId === previous.projectId && previous.chatId === null && chatId !== null && !previous.chatIds.has(chatId)
+    if (draftBecameChat) return
+    setPanelOpen(false)
+    setPanelTab("changes")
+    setViewedFile(null)
+    setDiffComments([])
+  }, [library])
 
   useEffect(() => {
     const off = window.slagent.onEvent((event) => {
