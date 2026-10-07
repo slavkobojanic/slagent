@@ -277,7 +277,7 @@ function FileSection({
             )
           }
           return (
-            <div className="mx-3 my-1.5 flex items-start gap-2 rounded-md bg-white/[0.06] px-3 py-2 font-sans text-xs whitespace-pre-wrap text-white/90">
+            <div className="mx-3 my-1.5 flex items-start gap-2 rounded-md border border-white/10 bg-[#141414] px-3 py-2 font-sans text-xs whitespace-pre-wrap text-white shadow-md">
               <span className="min-w-0 flex-1">{comment.text}</span>
               <button type="button" className="text-white/40 hover:text-white" aria-label="Delete comment" onClick={() => onRemove(comment.id)}>
                 <XIcon className="size-3.5" />
@@ -306,7 +306,7 @@ function CommentDraft({ onSave, onCancel }: { onSave: (text: string) => void; on
     if (text.trim()) onSave(text.trim())
   }
   return (
-    <div className="mx-3 my-1.5 space-y-1.5 font-sans">
+    <div className="mx-3 my-1.5 space-y-1.5 rounded-md border border-white/10 bg-[#141414] p-2 font-sans shadow-md">
       <Textarea
         ref={input}
         value={text}
