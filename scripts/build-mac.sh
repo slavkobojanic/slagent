@@ -3,8 +3,7 @@ set -eu
 root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$root"
 sh "$root/scripts/build-computer.sh"
-mkdir -p "$root/build"
-cp "$root/resources/slagent.app/Contents/Resources/icon.icns" "$root/build/icon.icns"
+sh "$root/scripts/make-icon.sh"
 pnpm exec electron-vite build
 # electron-builder owns signing from here: it imports the Developer ID from CSC_LINK,
 # signs the app and the nested helper, notarizes when APPLE_* env vars are present,
