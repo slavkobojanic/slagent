@@ -3,6 +3,7 @@ import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/
 import { homedir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import type { ChatMessage } from "../shared/types"
+import { SearchIndex, type SearchHit } from "./search-index"
 
 export type StoredProject = {
   id: string
@@ -49,6 +50,7 @@ const emptyIndex: IndexFile = { openProjectId: null, projects: [] }
 export class Library {
   private index: IndexFile = emptyIndex
   private chats = new Map<string, StoredChat[]>()
+  private search: SearchIndex | null = null
 
   constructor(private readonly root: string) {}
 
@@ -60,6 +62,37 @@ export class Library {
       const file = await readJson<ProjectFile>(this.projectFile(project.id), { chats: [] })
       const chats = Array.isArray(file.chats) ? file.chats : []
       this.chats.set(project.id, chats)
+    }
+    if (!this.search) {
+      await mkdir(this.root, { recursive: true })
+      this.search = new SearchIndex(join(this.root, "search.db"))
+    }
+  }
+
+  searchMessages(terms: string[]): SearchHit[] {
+    return this.search?.search(terms) ?? []
+  }
+
+  // Indexes chats the search index hasn't seen, such as every chat on the
+  // first launch with search, and drops chats that no longer exist. Yields
+  // between transcripts so the app stays responsive.
+  async indexMissingChats(): Promise<void> {
+    const search = this.search
+    if (!search) return
+    const indexed = search.indexedChats()
+    const live = new Set<string>()
+    for (const project of this.index.projects) {
+      for (const chat of this.projectChats(project.id)) {
+        live.add(chat.id)
+        if (indexed.has(chat.id)) continue
+        const messages = await this.readTranscript(project.id, chat.id)
+        // A transcript write may have indexed the chat while this one read.
+        if (!this.chat(project.id, chat.id) || search.hasChat(chat.id)) continue
+        this.indexSafely(() => search.indexChat(project.id, chat.id, messages))
+      }
+    }
+    for (const chatId of indexed.keys()) {
+      if (!live.has(chatId)) this.indexSafely(() => search.removeChat(chatId))
     }
   }
 
@@ -184,6 +217,7 @@ export class Library {
     await this.writeProject(projectId)
     await rm(this.chatDir(projectId, chatId), { recursive: true, force: true })
     if (chat?.sessionFile) await rm(chat.sessionFile, { force: true })
+    this.indexSafely((search) => search.removeChat(chatId))
     const project = this.project(projectId)
     if (project?.openChatId === chatId) {
       project.openChatId = null
@@ -200,6 +234,7 @@ export class Library {
     if (this.index.openProjectId === id) this.index.openProjectId = null
     await this.writeIndex()
     await rm(this.projectDir(id), { recursive: true, force: true })
+    this.indexSafely((search) => search.removeProject(id))
   }
 
   async readTranscript(projectId: string, chatId: string): Promise<ChatMessage[]> {
@@ -212,6 +247,7 @@ export class Library {
   async writeTranscript(projectId: string, chatId: string, messages: ChatMessage[]): Promise<void> {
     const file = join(this.chatDir(projectId, chatId), "transcript.json")
     await writeJson(file, { messages })
+    if (this.chat(projectId, chatId)) this.indexSafely((search) => search.indexChat(projectId, chatId, messages))
   }
 
   sessionDir(projectId: string): string {
@@ -240,6 +276,16 @@ export class Library {
 
   private chatDir(projectId: string, chatId: string): string {
     return join(this.projectDir(projectId), "chats", chatId)
+  }
+
+  // Search is a convenience; a failing index must never block saving a chat.
+  private indexSafely(work: (search: SearchIndex) => void): void {
+    if (!this.search) return
+    try {
+      work(this.search)
+    } catch (error) {
+      console.error("search index:", error)
+    }
   }
 
   private async writeProject(projectId: string): Promise<void> {

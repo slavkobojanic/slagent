@@ -1,48 +1,38 @@
-import type { ChatMessage, ChatSearchResult } from "../shared/types"
+import type { ChatSearchResult } from "../shared/types"
 import type { Library } from "./library"
 
 const LIMIT = 50
 const CONTEXT = 60
 
-type LiveMessages = (projectId: string, chatId: string) => ChatMessage[] | null
-
 // Case-insensitive search over chat titles and the user and assistant text of
-// every chat in every project. Newest chats come first.
-export async function searchChats(library: Library, query: string, live: LiveMessages): Promise<ChatSearchResult[]> {
-  const needle = query.trim().toLowerCase()
-  if (!needle) return []
-  const candidates: { projectId: string; projectName: string; chatId: string; title: string; updatedAt: number }[] = []
+// every chat in every project. A chat matches when its title or one of its
+// messages contains every term. Newest chats come first, each showing its
+// best-matching message.
+export function searchChats(library: Library, query: string): ChatSearchResult[] {
+  const terms = [...new Set(query.toLowerCase().split(/\s+/).filter(Boolean))]
+  if (terms.length === 0) return []
+  const hits = new Map(library.searchMessages(terms).map((hit) => [hit.chatId, hit]))
+  const focus = terms.reduce((longest, term) => (term.length > longest.length ? term : longest))
+
+  const results: ChatSearchResult[] = []
   for (const project of library.projects()) {
     for (const chat of library.projectChats(project.id)) {
-      candidates.push({
+      const hit = hits.get(chat.id)
+      const title = chat.title.toLowerCase()
+      if (!hit && !terms.every((term) => title.includes(term))) continue
+      results.push({
         projectId: project.id,
         projectName: project.name,
         chatId: chat.id,
         title: chat.title,
         updatedAt: chat.updatedAt,
+        snippet: hit ? (excerpt(hit.text, focus) ?? "") : "",
+        messageId: hit?.messageId ?? null,
       })
     }
   }
-  candidates.sort((left, right) => right.updatedAt - left.updatedAt)
-
-  const results: ChatSearchResult[] = []
-  for (const candidate of candidates) {
-    if (results.length >= LIMIT) break
-    const messages = live(candidate.projectId, candidate.chatId) ?? (await library.readTranscript(candidate.projectId, candidate.chatId))
-    let snippet: string | null = null
-    let messageId: string | null = null
-    for (const message of messages) {
-      if (message.role === "tool") continue
-      snippet = excerpt(message.text, needle)
-      if (snippet) {
-        messageId = message.id
-        break
-      }
-    }
-    if (!snippet && !candidate.title.toLowerCase().includes(needle)) continue
-    results.push({ ...candidate, snippet: snippet ?? "", messageId })
-  }
-  return results
+  results.sort((left, right) => right.updatedAt - left.updatedAt)
+  return results.slice(0, LIMIT)
 }
 
 function excerpt(text: string, needle: string): string | null {

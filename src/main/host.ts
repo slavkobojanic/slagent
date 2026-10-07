@@ -116,6 +116,7 @@ export class AgentHost {
       this.prefs = await readPrefs(this.prefsPath)
       this.draftModelId = this.prefs.modelId ?? null
       await this.library.load()
+      void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
       this.modelRuntime = await ModelRuntimeClass.create({ refreshOnCreate: false })
       this.models = this.catalog()
       this.openRouter = await this.readAuth()
@@ -184,7 +185,7 @@ export class AgentHost {
   }
 
   async searchChats(query: string): Promise<ChatSearchResult[]> {
-    return searchChats(this.library, query, (projectId, chatId) => this.runtimeFor(projectId, chatId)?.messages ?? null)
+    return searchChats(this.library, query)
   }
 
   async pinProject(projectId: string, pinned: boolean): Promise<void> {
