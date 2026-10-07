@@ -9,7 +9,8 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 mkdir -p "$tmp/icon.iconset"
-swift "$root/scripts/round-icon.swift" "$root/resources/icon.png" "$tmp/rounded.png"
+# Apple's Big Sur grid: 824pt body on a 1024pt canvas, 22.5% corner radius.
+swift "$root/scripts/round-icon.swift" "$root/resources/icon.png" "$tmp/rounded.png" 0.8047 0.225
 for size in 16 32 128 256 512; do
   sips -s format png -z "$size" "$size" "$tmp/rounded.png" --out "$tmp/icon.iconset/icon_${size}x${size}.png" >/dev/null
   sips -s format png -z $((size * 2)) $((size * 2)) "$tmp/rounded.png" --out "$tmp/icon.iconset/icon_${size}x${size}@2x.png" >/dev/null
