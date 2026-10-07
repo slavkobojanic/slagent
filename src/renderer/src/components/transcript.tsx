@@ -2,8 +2,8 @@ import Ansi from "ansi-to-react"
 import { useStickToBottomContext } from "use-stick-to-bottom"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { toast } from "sonner"
-import type { AssistantMessage, ChatMessage, QuestionRequest, ReplyComment, ToolMessage, TranscriptPage, UserMessage } from "@shared/types"
-import { AnsweredQuestions, QuestionCard } from "@/components/question-card"
+import type { AssistantMessage, ChatMessage, ReplyComment, ToolMessage, TranscriptPage, UserMessage } from "@shared/types"
+import { AnsweredQuestions } from "@/components/question-card"
 import { FadingResponse } from "@/components/fading-response"
 import { CommentableResponse, ReplyCommentsContext } from "@/components/response-comments"
 import {
@@ -609,7 +609,6 @@ function Transcript({
   cwd,
   streaming,
   planProposal,
-  question,
   onApprovePlan,
   onConnect,
   onChoose,
@@ -629,7 +628,6 @@ function Transcript({
   cwd: string
   streaming: boolean
   planProposal: string | null
-  question: QuestionRequest | null
   onApprovePlan: () => Promise<void>
   onConnect: () => void
   onChoose: () => void
@@ -692,7 +690,6 @@ function Transcript({
             return <AssistantTurn key={block.turn.id} turn={block.turn} />
           })}
           {live && planProposal ? <PlanCard plan={planProposal} onApprove={onApprovePlan} /> : null}
-          {live && question ? <QuestionCard key={question.id} request={question} /> : null}
           {live && pending ? <PendingReply label={notice ?? "Thinking"} /> : null}
           {live && notice && !pending ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
         </ConversationContent>

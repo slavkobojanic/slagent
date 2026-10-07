@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState } from "react"
+import { AnimatePresence, MotionConfig, motion } from "motion/react"
 import { toast } from "sonner"
 import type {
   AnsweredQuestion,
@@ -8,14 +9,12 @@ import type {
   QuestionReply,
   QuestionRequest,
 } from "@shared/types"
-import { HtmlFrame, hasMedia, Media } from "@/components/question-media"
+import { HtmlFrame, Media } from "@/components/question-media"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { errorText } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, MessageCircleQuestionIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, ChevronLeftIcon, XIcon } from "lucide-react"
 
 type Draft = {
   selected: string[]
@@ -39,11 +38,9 @@ function visual(question: Question): boolean {
   return question.options.some((option) => option.image || option.html)
 }
 
-function Marker({ checked, index }: { checked: boolean; index: number }) {
-  return (
-    <span className={cn("shrink-0 tabular-nums text-muted-foreground", checked && "text-white")}>{index + 1}.</span>
-  )
-}
+// Motion needs the curves as numbers; they mirror index.css tokens.
+const EASE_OUT = [0.23, 1, 0.32, 1] as const
+const EASE_DRAWER = [0.32, 0.72, 0, 1] as const
 
 function RecommendedBadge() {
   return (
@@ -51,57 +48,17 @@ function RecommendedBadge() {
   )
 }
 
-// Truncated text that only offers a popover when it actually truncated, and
-// then shows the full line. Measured at hover time so it stays correct as
-// widths change.
-function TruncatedTip({ tip, children }: { tip: ReactNode; children: ReactNode }) {
-  const ref = useRef<HTMLSpanElement | null>(null)
-  const [open, setOpen] = useState(false)
+// The numbered chip at the end of a row; it flips to a check when picked.
+function Marker({ checked, index }: { checked: boolean; index: number }) {
   return (
-    <Tooltip
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) {
-          setOpen(false)
-          return
-        }
-        const el = ref.current
-        setOpen(!!el && el.scrollWidth > el.clientWidth + 1)
-      }}
+    <span
+      className={cn(
+        "flex size-5 shrink-0 items-center justify-center rounded-md border border-white/15 text-[11px] tabular-nums text-white/50 transition-colors",
+        checked && "border-transparent bg-white text-black",
+      )}
     >
-      <TooltipTrigger asChild>
-        <span ref={ref} className="min-w-0 flex-1 truncate">
-          {children}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" align="start" className="max-w-sm">
-        {tip}
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
-// Card text: label and description share one line, so every row is the same
-// height; the popover carries the full text when the line truncates.
-function OptionLine({ option }: { option: QuestionOption }) {
-  return (
-    <TruncatedTip
-      tip={
-        <span className="grid gap-0.5 text-start">
-          <span className="font-medium">{option.label}</span>
-          {option.description ? <span className="text-white/70">{option.description}</span> : null}
-        </span>
-      }
-    >
-      <span className="font-medium">{option.label}</span>
-      {option.recommended ? <RecommendedBadge /> : null}
-      {option.description ? (
-        <span className="text-muted-foreground">
-          <span className="text-white/30"> — </span>
-          {option.description}
-        </span>
-      ) : null}
-    </TruncatedTip>
+      {checked ? <CheckIcon className="size-3" strokeWidth={2.5} /> : index + 1}
+    </span>
   )
 }
 
@@ -112,48 +69,94 @@ function OptionText({ option }: { option: QuestionOption }) {
         <span className="font-medium">{option.label}</span>
         {option.recommended ? <RecommendedBadge /> : null}
       </span>
-      {option.description ? <span className="mt-0.5 block text-xs text-muted-foreground">{option.description}</span> : null}
+      {option.description ? (
+        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{option.description}</span>
+      ) : null}
     </span>
   )
 }
 
-function OptionCards({
+// A compact numbered row. Picking it selects the answer and advances; the
+// parent decides what a click means, the row only reports it.
+function OptionRow({
+  option,
+  index,
+  checked,
+  onPick,
+}: {
+  option: QuestionOption
+  index: number
+  checked: boolean
+  onPick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      className={cn(
+        "flex w-full items-start gap-3 rounded-lg border border-white/10 px-3.5 py-2.5 text-left transition-colors hover:bg-white/[0.04]",
+        checked && "border-white/70 bg-white/[0.06] hover:bg-white/[0.06]",
+      )}
+      onClick={onPick}
+    >
+      <OptionText option={option} />
+      <Marker checked={checked} index={index} />
+    </button>
+  )
+}
+
+function OptionRows({
   question,
   draft,
-  fill,
-  onToggle,
+  onPick,
 }: {
   question: Question
   draft: Draft
-  fill: boolean
-  onToggle: (label: string) => void
+  onPick: (label: string) => void
 }) {
   return (
-    <div
-      className={cn("grid gap-3 sm:grid-cols-3", fill && "min-h-0 flex-1")}
-      role={question.multiSelect ? "group" : "radiogroup"}
-      aria-label={question.question}
-    >
-      {question.options.map((option, index) => {
+    <div className="space-y-1.5" role="radiogroup" aria-label={question.question}>
+      {question.options.map((option, index) => (
+        <OptionRow
+          key={option.label}
+          option={option}
+          index={index}
+          checked={draft.selected.includes(option.label)}
+          onPick={() => onPick(option.label)}
+        />
+      ))}
+    </div>
+  )
+}
+
+// Visual options keep the large preview cards; a pick still advances.
+function OptionCards({
+  question,
+  draft,
+  onPick,
+}: {
+  question: Question
+  draft: Draft
+  onPick: (label: string) => void
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label={question.question}>
+      {question.options.map((option) => {
         const checked = draft.selected.includes(option.label)
         return (
           <button
             key={option.label}
             type="button"
-            role={question.multiSelect ? "checkbox" : "radio"}
+            role="radio"
             aria-checked={checked}
             className={cn(
               "flex flex-col overflow-hidden rounded-lg border border-white/10 text-left text-sm transition-colors hover:border-white/25",
               checked && "border-white ring-1 ring-white hover:border-white",
             )}
-            onClick={() => onToggle(option.label)}
+            onClick={() => onPick(option.label)}
           >
-            <span
-              className={cn(
-                "relative block w-full overflow-hidden bg-white/[0.03]",
-                fill ? "min-h-40 flex-1" : "aspect-[4/3]",
-              )}
-            >
+            <span className="relative block aspect-[4/3] w-full overflow-hidden bg-white/[0.03]">
               {option.image ? (
                 <img src={option.image} alt={option.label} className="absolute inset-0 size-full object-cover" />
               ) : option.html ? (
@@ -168,7 +171,6 @@ function OptionCards({
               )}
             </span>
             <span className={cn("flex flex-1 items-start gap-2.5 px-3 py-2.5", checked && "bg-white/[0.06]")}>
-              <Marker checked={checked} index={index} />
               <OptionText option={option} />
             </span>
           </button>
@@ -178,141 +180,112 @@ function OptionCards({
   )
 }
 
-function OptionList({
+// The free-text row. On single-choice questions typing here clears the pick.
+function OtherRow({
   question,
   draft,
-  onToggle,
+  onChange,
+  onEnter,
 }: {
   question: Question
   draft: Draft
-  onToggle: (label: string) => void
+  onChange: (draft: Draft) => void
+  onEnter: () => void
 }) {
-  // The preview follows the pointer and focus, and falls back to the pick.
-  const [focused, setFocused] = useState<string | null>(null)
-  const shown = focused ?? draft.selected[draft.selected.length - 1] ?? null
-  const shownOption = question.options.find((option) => option.label === shown)
-  const hasPreviews = question.options.some(hasMedia)
-
+  const filled = Boolean(draft.other.trim())
   return (
-    <div className={cn("grid gap-3", hasPreviews && "md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]")}>
-      <div className="space-y-1.5" role={question.multiSelect ? "group" : "radiogroup"} aria-label={question.question}>
-        {question.options.map((option, index) => {
-          const checked = draft.selected.includes(option.label)
-          return (
-            <button
-              key={option.label}
-              type="button"
-              role={question.multiSelect ? "checkbox" : "radio"}
-              aria-checked={checked}
-              className={cn(
-                "flex h-9 w-full items-center gap-2.5 rounded-md border border-white/10 px-3 text-left text-sm transition-colors hover:bg-white/[0.04]",
-                checked && "border-white bg-white/[0.06] hover:bg-white/[0.06]",
-              )}
-              onClick={() => onToggle(option.label)}
-              onMouseEnter={() => setFocused(option.label)}
-              onMouseLeave={() => setFocused(null)}
-              onFocus={() => setFocused(option.label)}
-              onBlur={() => setFocused(null)}
-            >
-              <Marker checked={checked} index={index} />
-              <OptionLine option={option} />
-            </button>
-          )
-        })}
-      </div>
-      {hasPreviews ? (
-        <div className="max-h-[32rem] min-h-24 overflow-auto rounded-md border border-white/10 bg-white/[0.02] px-3 py-2 text-sm">
-          {shownOption && hasMedia(shownOption) ? (
-            <Media media={shownOption} title={shownOption.label} />
-          ) : (
-            <p className="text-xs text-muted-foreground">Point at an option to preview it.</p>
-          )}
-        </div>
-      ) : null}
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-lg border border-white/10 py-1.5 pr-3.5 pl-3.5 transition-colors hover:bg-white/[0.04] focus-within:border-white/40",
+        filled && "border-white/70 bg-white/[0.06] hover:bg-white/[0.06]",
+      )}
+    >
+      <span className="shrink-0 text-sm font-medium">Other</span>
+      <Input
+        value={draft.other}
+        placeholder={question.multiSelect ? "Type your own answer (optional)" : "Type your own answer"}
+        className="h-8 min-w-0 flex-1 border-0 px-0 text-sm focus-visible:ring-0"
+        onChange={(event) => {
+          const other = event.target.value
+          // A written answer replaces a pick on single-choice questions.
+          const selected = !question.multiSelect && other.trim() ? [] : draft.selected
+          onChange({ ...draft, other, selected })
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault()
+            onEnter()
+          }
+        }}
+      />
+      {!question.multiSelect ? <Marker checked={filled} index={question.options.length} /> : null}
     </div>
   )
 }
 
 function QuestionBlock({
   question,
-  fill,
   draft,
-  onChange,
+  onPick,
+  onOther,
+  onEnter,
 }: {
   question: Question
-  // A lone visual question stretches its cards to the modal's height.
-  fill: boolean
   draft: Draft
-  onChange: (draft: Draft) => void
+  onPick: (label: string) => void
+  onOther: (draft: Draft) => void
+  onEnter: () => void
 }) {
-  function toggle(label: string) {
-    if (!question.multiSelect) {
-      const selected = draft.selected[0] === label ? [] : [label]
-      // Picking an option replaces a written answer on single-choice questions.
-      onChange({ ...draft, selected, other: selected.length ? "" : draft.other })
-      return
-    }
-    const selected = draft.selected.includes(label)
-      ? draft.selected.filter((item) => item !== label)
-      : [...draft.selected, label]
-    onChange({ ...draft, selected })
-  }
-
   return (
-    <div
-      className={cn("space-y-3 outline-none", fill && "flex h-full flex-col space-y-0 gap-3")}
-      tabIndex={-1}
-      data-question
-      onKeyDown={(event) => {
-        if (typing(event.target) || event.metaKey || event.ctrlKey || event.altKey) return
-        const option = question.options[Number(event.key) - 1]
-        if (!option) return
-        event.preventDefault()
-        toggle(option.label)
-      }}
-    >
+    <div className="space-y-2 outline-none" tabIndex={-1} data-question>
       <Media media={question} title={question.question} />
       {visual(question) ? (
-        <OptionCards question={question} draft={draft} fill={fill} onToggle={toggle} />
+        <OptionCards question={question} draft={draft} onPick={onPick} />
       ) : (
-        <OptionList question={question} draft={draft} onToggle={toggle} />
+        <OptionRows question={question} draft={draft} onPick={onPick} />
       )}
-      <Input
-        value={draft.other}
-        placeholder={question.multiSelect ? "Something else (optional)" : "Something else"}
-        className="h-9 text-sm"
-        onChange={(event) => {
-          const other = event.target.value
-          const selected = !question.multiSelect && other.trim() ? [] : draft.selected
-          onChange({ ...draft, other, selected })
-        }}
-      />
+      <OtherRow question={question} draft={draft} onChange={onOther} onEnter={onEnter} />
     </div>
   )
 }
 
-// The question opens in a modal so options get room. Closing it leaves a
-// small card in the transcript to reopen it, and the composer still answers.
+// The question sits above the composer as a compact card, not a modal. Picking
+// an option answers it and moves to the next question; the last pick sends.
 function QuestionCard({ request }: { request: QuestionRequest }) {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(true)
   const [page, setPage] = useState(0)
+  const [dir, setDir] = useState(1)
   const body = useRef<HTMLDivElement | null>(null)
+  const draftsRef = useRef(drafts)
+  const sendTimer = useRef<number | null>(null)
+
   const ready = request.questions.every((question) => complete(drafts[question.id] ?? emptyDraft()))
   const count = request.questions.length
-  const single = count === 1
   // Questions can be removed while navigating; stay on a valid page.
   const index = Math.min(page, count - 1)
   const question = request.questions[index]
-  const title = single ? "The agent has a question" : `The agent has ${count} questions`
+  const stepReady = complete(drafts[question.id] ?? emptyDraft())
 
-  // A fresh page starts at the top with the question focused, so number keys
-  // pick options right away.
+  function setDraft(id: string, draft: Draft) {
+    draftsRef.current = { ...draftsRef.current, [id]: draft }
+    setDrafts(draftsRef.current)
+  }
+
+  function go(next: number) {
+    setDir(next > index ? 1 : -1)
+    setPage(next)
+  }
+
   useEffect(() => {
-    if (body.current) body.current.scrollTop = 0
+    // A fresh question starts focused, so number keys pick options right away.
     body.current?.querySelector<HTMLElement>("[data-question]")?.focus({ preventScroll: true })
-  }, [index])
+  }, [index, open])
+
+  useEffect(() => () => {
+    if (sendTimer.current !== null) window.clearTimeout(sendTimer.current)
+  }, [])
 
   async function send(reply: QuestionReply) {
     setBusy(true)
@@ -324,129 +297,183 @@ function QuestionCard({ request }: { request: QuestionRequest }) {
     }
   }
 
-  function submit() {
-    if (!ready || busy) return
-    const answers: QuestionAnswer[] = request.questions.map((question) => {
-      const draft = drafts[question.id] ?? emptyDraft()
-      return {
-        questionId: question.id,
-        selected: draft.selected,
-        other: draft.other.trim() || undefined,
-      }
+  function submit(snapshot: Record<string, Draft> = draftsRef.current) {
+    if (busy) return
+    const answers: QuestionAnswer[] = request.questions.map((q) => {
+      const draft = snapshot[q.id] ?? emptyDraft()
+      return { questionId: q.id, selected: draft.selected, other: draft.other.trim() || undefined }
     })
     void send({ skipped: false, answers })
   }
 
+  function advance() {
+    if (index < count - 1) {
+      if (stepReady) go(index + 1)
+      return
+    }
+    if (ready) submit()
+  }
+
+  // A pick on a single-choice question selects, advances, and on the last
+  // question sends after a beat so the selected state is seen first.
+  function pick(current: Question, label: string) {
+    if (sendTimer.current !== null) {
+      window.clearTimeout(sendTimer.current)
+      sendTimer.current = null
+    }
+    const draft = draftsRef.current[current.id] ?? emptyDraft()
+    if (current.multiSelect) {
+      const selected = draft.selected.includes(label)
+        ? draft.selected.filter((item) => item !== label)
+        : [...draft.selected, label]
+      setDraft(current.id, { ...draft, selected })
+      return
+    }
+    const selected = draft.selected[0] === label ? [] : [label]
+    const next = { ...draft, selected, other: selected.length ? "" : draft.other }
+    setDraft(current.id, next)
+    if (selected.length === 0) return
+    if (index < count - 1) {
+      go(index + 1)
+      return
+    }
+    const snapshot = { ...draftsRef.current, [current.id]: next }
+    sendTimer.current = window.setTimeout(() => {
+      sendTimer.current = null
+      submit(snapshot)
+    }, 220)
+  }
+
+  function skip() {
+    if (sendTimer.current !== null) {
+      window.clearTimeout(sendTimer.current)
+      sendTimer.current = null
+    }
+    void send({ skipped: true })
+  }
+
   return (
-    <>
-      <section
-        className="flex items-center gap-3 rounded-md border border-white/15 bg-white/[0.03] px-4 py-2 text-sm"
+    <MotionConfig reducedMotion="user">
+      <motion.section
+        initial={{ opacity: 0, transform: "translateY(8px)" }}
+        animate={{ opacity: 1, transform: "translateY(0px)" }}
+        transition={{ duration: 0.2, ease: EASE_OUT }}
+        className="overflow-hidden rounded-xl border border-white/15 bg-white/[0.03]"
         aria-label="Question"
-      >
-        <MessageCircleQuestionIcon className="size-4 shrink-0 text-white/70" />
-        <span className="min-w-0 flex-1 truncate">{request.questions[0]?.question}</span>
-        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
-          Answer
-        </Button>
-      </section>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          className="flex h-[75vh] w-[75vw] max-w-none flex-col p-0"
-          onOpenAutoFocus={(event) => {
-            // Focus the first question so number keys work right away.
+        onKeyDown={(event) => {
+          if (typing(event.target)) {
+            // Enter from the free-text row advances or sends.
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault()
+              advance()
+            }
+            return
+          }
+          if (event.metaKey || event.ctrlKey) {
+            if (event.key === "Enter") {
+              event.preventDefault()
+              advance()
+            }
+            return
+          }
+          if (event.altKey) return
+          if (event.key === "ArrowLeft" && index > 0) {
             event.preventDefault()
-            body.current?.querySelector<HTMLElement>("[data-question]")?.focus({ preventScroll: true })
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && ready && (event.metaKey || event.ctrlKey || !typing(event.target))) {
-              event.preventDefault()
-              submit()
-              return
-            }
-            if (typing(event.target) || event.metaKey || event.ctrlKey || event.altKey) return
-            if (event.key === "ArrowLeft" && index > 0) {
-              event.preventDefault()
-              setPage(index - 1)
-            }
-            if (event.key === "ArrowRight" && index < count - 1) {
-              event.preventDefault()
-              setPage(index + 1)
-            }
-          }}
+            go(index - 1)
+          }
+          if (event.key === "ArrowRight" && index < count - 1) {
+            event.preventDefault()
+            go(index + 1)
+          }
+          if (event.key === "Escape") {
+            event.preventDefault()
+            setOpen(false)
+          }
+          const option = question.options[Number(event.key) - 1]
+          if (!option) return
+          event.preventDefault()
+          pick(question, option.label)
+        }}
+      >
+        <header className="flex items-center gap-2.5 px-4 py-2.5">
+          {count > 1 ? (
+            <span className="shrink-0 rounded-md bg-amber-400/20 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-amber-700 dark:text-amber-300">
+              {index + 1}/{count}
+            </span>
+          ) : null}
+          {question.header ? (
+            <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-medium text-white/70 uppercase">
+              {question.header}
+            </span>
+          ) : null}
+          <p className="min-w-0 flex-1 text-sm font-medium">{question.question}</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={open ? "Collapse" : "Expand"}
+            onClick={() => setOpen(!open)}
+          >
+            <ChevronDownIcon className={cn("size-4 transition-transform duration-200", !open && "-rotate-90")} />
+          </Button>
+          <Button type="button" variant="ghost" size="icon-xs" title="Skip — let the agent decide" disabled={busy} onClick={skip}>
+            <XIcon className="size-4" />
+          </Button>
+        </header>
+        <motion.div
+          initial={false}
+          animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
+          transition={{ duration: 0.22, ease: EASE_DRAWER }}
+          className="overflow-hidden"
         >
-          <DialogTitle className="sr-only">{title}</DialogTitle>
-          <DialogDescription className="sr-only">Close this to reply in the chat instead.</DialogDescription>
-          <header className="flex items-start justify-between gap-3 py-4 pr-10 pl-5">
-            <div className="flex min-w-0 items-baseline gap-2">
-              {question.header ? (
-                <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-medium text-white/70 uppercase">
-                  {question.header}
-                </span>
-              ) : null}
-              <p className="min-w-0 text-sm font-medium">{question.question}</p>
-            </div>
-            {!single ? (
-              <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  aria-label="Previous question"
-                  disabled={index === 0}
-                  onClick={() => setPage(index - 1)}
-                >
-                  <ChevronLeftIcon className="size-4" />
-                </Button>
-                <div className="flex items-center gap-1.5 px-1">
-                  {request.questions.map((item, itemIndex) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      aria-label={`Go to question ${itemIndex + 1}`}
-                      aria-current={itemIndex === index}
-                      className={cn(
-                        "size-1.5 rounded-full bg-white/25 transition-colors hover:bg-white/50",
-                        itemIndex === index && "bg-white",
-                      )}
-                      onClick={() => setPage(itemIndex)}
-                    />
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  aria-label="Next question"
-                  disabled={index === count - 1}
-                  onClick={() => setPage(index + 1)}
-                >
-                  <ChevronRightIcon className="size-4" />
-                </Button>
-              </div>
-            ) : null}
-          </header>
-          <div ref={body} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pb-4">
-            <QuestionBlock
-              key={question.id}
-              question={question}
-              fill={visual(question)}
-              draft={drafts[question.id] ?? emptyDraft()}
-              onChange={(draft) => setDrafts((current) => ({ ...current, [question.id]: draft }))}
-            />
+          <div ref={body} className="min-w-0 px-4 pb-2">
+            <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+              <motion.div
+                key={question.id}
+                custom={dir}
+                initial={{ opacity: 0, transform: `translateX(${dir * 16}px)` }}
+                animate={{ opacity: 1, transform: "translateX(0px)" }}
+                exit={{ opacity: 0, transform: `translateX(${dir * -16}px)` }}
+                transition={{ duration: 0.18, ease: EASE_OUT }}
+              >
+                <QuestionBlock
+                  question={question}
+                  draft={drafts[question.id] ?? emptyDraft()}
+                  onPick={(label) => pick(question, label)}
+                  onOther={(draft) => setDraft(question.id, draft)}
+                  onEnter={advance}
+                />
+              </motion.div>
+            </AnimatePresence>
           </div>
-          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-white/10 px-5 py-3">
-            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void send({ skipped: true })}>
-              Let it decide
+          <footer className="flex items-center gap-2 px-4 pb-3">
+            {index > 0 ? (
+              <Button type="button" variant="ghost" size="xs" disabled={busy} onClick={() => go(index - 1)}>
+                <ChevronLeftIcon className="size-3.5" />
+                Back
+              </Button>
+            ) : null}
+            <span className="flex-1" />
+            <Button type="button" variant="ghost" size="xs" disabled={busy} onClick={skip}>
+              Skip
             </Button>
-            <Button type="button" size="sm" disabled={busy || !ready} onClick={submit}>
-              Send
-            </Button>
+            {index < count - 1 ? (
+              <Button type="button" size="xs" disabled={busy || !stepReady} onClick={() => go(index + 1)}>
+                Next
+                <span className="flex items-center gap-0.5">
+                  <kbd className="rounded border border-white/20 px-1 text-[10px] leading-3.5 text-white/60">⌘</kbd>
+                  <kbd className="rounded border border-white/20 px-1 text-[10px] leading-3.5 text-white/60">↩</kbd>
+                </span>
+              </Button>
+            ) : (
+              <Button type="button" size="xs" disabled={busy || !ready} onClick={() => submit()}>
+                Send
+              </Button>
+            )}
           </footer>
-        </DialogContent>
-      </Dialog>
-    </>
+        </motion.div>
+      </motion.section>
+    </MotionConfig>
   )
 }
 

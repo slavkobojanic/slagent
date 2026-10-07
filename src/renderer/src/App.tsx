@@ -6,6 +6,7 @@ import type { AppMeta, DiffComment, ReplyComment, FileView, ChatMessage, ChatSum
 import { EMPTY_PERSONALISATION } from "@shared/types"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
+import { QuestionCard } from "@/components/question-card"
 import { RightPanel, type RightTab } from "@/components/right-panel"
 import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dialogs"
 import { ModelDialog } from "@/components/model-dialog"
@@ -640,7 +641,6 @@ function AgentApp() {
               cwd={cwd}
               streaming={streaming}
               planProposal={planProposal}
-              question={question}
               onApprovePlan={() => window.slagent.approvePlan()}
               onConnect={() => setSettingsOpen(true)}
               onChoose={() => void chooseFolder()}
@@ -651,6 +651,11 @@ function AgentApp() {
               onReplies={setReplyComments}
             />
           )}
+          {question ? (
+            <div className="mx-auto w-full max-w-3xl px-6 pb-3">
+              <QuestionCard key={question.id} request={question} />
+            </div>
+          ) : null}
           <Composer
             key={library.openChatId ?? "draft"}
             streaming={streaming}
