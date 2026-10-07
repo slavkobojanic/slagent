@@ -360,6 +360,9 @@ export class ClaudeRuntime {
     this.sending = true
     this.planProposal = null
     this.setNotice(null)
+    // Todo lists belong to the turn that created them; drop the previous
+    // turn's list so a finished list doesn't linger over the new ask.
+    this.todos = []
     this.emit(true)
     try {
       await this.push(request)

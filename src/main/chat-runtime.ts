@@ -629,6 +629,9 @@ export class ChatRuntime {
     // Any reply to a proposed plan is feedback, so the card goes away.
     this.clearProposal()
     this.setNotice(null)
+    // Todo lists belong to the turn that created them; drop the previous
+    // turn's list so a finished list doesn't linger over the new ask.
+    this.todos = []
     this.emit(true)
     try {
       await session.prompt(prepared.text, { images: promptImages(prepared.images) })
