@@ -11,7 +11,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { ProjectMenu, Sidebar } from "@/components/sidebar"
 import { Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
-import { errorText, formatTranscript } from "@/lib/format"
+import { errorText, formatTranscript, looksLikePath, openPath } from "@/lib/format"
 
 const emptyStatus = { configured: false, source: null, type: null } as const
 const emptyLibrary: LibraryState = {
@@ -116,10 +116,21 @@ function AgentApp() {
       const target = event.target
       if (!(target instanceof Element)) return
       const anchor = target.closest("a")
-      if (!anchor) return
+      if (!anchor) {
+        const code = target.closest("code")
+        if (!code || code.closest("pre") || !code.closest(".chat-transcript")) return
+        const text = code.textContent ?? ""
+        if (looksLikePath(text)) openPath(text)
+        return
+      }
       const href = anchor.getAttribute("href")
       if (!href) return
-      if (!href.startsWith("http://") && !href.startsWith("https://")) return
+      if (!href.startsWith("http://") && !href.startsWith("https://")) {
+        if (!looksLikePath(decodeURIComponent(href))) return
+        event.preventDefault()
+        openPath(decodeURIComponent(href))
+        return
+      }
       event.preventDefault()
       void window.slagent.openExternal(href)
     }

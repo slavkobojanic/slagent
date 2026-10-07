@@ -18,6 +18,7 @@ export const channels = {
   saveKey: "agent:save-key",
   logout: "agent:logout",
   openExternal: "agent:open-external",
+  openInEditor: "agent:open-in-editor",
   setQueueMode: "agent:set-queue-mode",
   removeQueued: "agent:remove-queued",
   clearTerminal: "agent:clear-terminal",
@@ -220,6 +221,7 @@ export type SlagentApi = {
   saveOpenRouterKey: (apiKey: string) => Promise<void>
   logoutOpenRouter: () => Promise<void>
   openExternal: (url: string) => Promise<void>
+  openInEditor: (path: string) => Promise<boolean>
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   clearTerminal: () => Promise<void>

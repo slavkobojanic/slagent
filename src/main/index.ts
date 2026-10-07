@@ -4,6 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, protocol, shell 
 import { channels } from "../shared/types"
 import { AgentHost } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
+import { openInEditor } from "./editor"
 import { parsePrompt } from "./prompt"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
@@ -147,6 +148,10 @@ function registerIpc(): void {
       throw new Error("Only web links can be opened.")
     }
     return shell.openExternal(parsed.toString())
+  })
+  ipcMain.handle(channels.openInEditor, (_event, path: unknown) => {
+    if (typeof path !== "string") return false
+    return openInEditor(requireHost().getCwd(), path)
   })
   ipcMain.handle(channels.chooseFolder, async () => {
     const current = requireHost()

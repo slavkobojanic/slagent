@@ -30,6 +30,7 @@ const api: SlagentApi = {
   saveOpenRouterKey: (apiKey) => ipcRenderer.invoke(channels.saveKey, apiKey),
   logoutOpenRouter: () => ipcRenderer.invoke(channels.logout),
   openExternal: (url) => ipcRenderer.invoke(channels.openExternal, url),
+  openInEditor: (path) => ipcRenderer.invoke(channels.openInEditor, path),
   setQueueMode: (id, mode) => ipcRenderer.invoke(channels.setQueueMode, id, mode),
   removeQueued: (id) => ipcRenderer.invoke(channels.removeQueued, id),
   clearTerminal: () => ipcRenderer.invoke(channels.clearTerminal),

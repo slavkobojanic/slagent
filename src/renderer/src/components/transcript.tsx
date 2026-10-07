@@ -21,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { openPath } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import { FileTextIcon, FolderIcon, PencilIcon, SearchIcon, TerminalIcon } from "lucide-react"
@@ -109,6 +110,39 @@ function ToolOutput({ message }: { message: ToolMessage }) {
   )
 }
 
+const PATH_TOOLS = new Set(["read", "edit", "write", "ls"])
+
+function toolPath(tool: ToolMessage): string | null {
+  if (!PATH_TOOLS.has(tool.name)) return null
+  try {
+    const args = JSON.parse(tool.args) as { path?: unknown; file_path?: unknown; offset?: unknown }
+    let path = args.path ?? args.file_path
+    if (typeof path !== "string" || !path) return null
+    if (typeof args.offset === "number" && args.offset > 0) path = `${path}:${args.offset}`
+    return path as string
+  } catch {
+    return null
+  }
+}
+
+function ToolLabel({ tool }: { tool: ToolMessage }) {
+  const path = toolPath(tool)
+  if (!path) return <>{tool.label}</>
+  return (
+    <>
+      {tool.name}{" "}
+      <button
+        type="button"
+        className="underline-offset-2 hover:text-foreground hover:underline"
+        title="Open in editor"
+        onClick={() => openPath(path)}
+      >
+        {path}
+      </button>
+    </>
+  )
+}
+
 function ToolChain({ tools }: { tools: ToolMessage[] }) {
   if (tools.length === 0) return null
   return (
@@ -122,7 +156,7 @@ function ToolChain({ tools }: { tools: ToolMessage[] }) {
             <ChainOfThoughtStep
               key={tool.id}
               icon={toolIcon(tool.name)}
-              label={tool.label}
+              label={<ToolLabel tool={tool} />}
               status={status}
               className={cn(tool.isError && "text-destructive")}
             >
