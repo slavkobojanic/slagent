@@ -2,7 +2,7 @@ import type { ChatSummary, ModelOption, ProjectSummary, SlashCommand } from "@sh
 import { orderedChats } from "@/features/library/library-utils"
 import { sortedProjects } from "@/lib/projects"
 import { modKey } from "@/lib/format"
-import { type Command, type CommandGroup, type CommandShortcut, isCommandEnabled } from "@/state/command-registry"
+import { type Command, type CommandGroup, type CommandShortcut, isCommandEnabled } from "@/state/keyboard/command-registry/command-registry"
 
 // Chats get a number hint for the first nine, matching Cmd+1 to Cmd+9.
 const CHAT_HINT_COUNT = 9
@@ -12,12 +12,10 @@ const MODEL_QUERY_MIN_LENGTH = 2
 
 export type PaletteItem = {
   id: string
-  // What the palette's search matches against.
   value: string
   label: string
   detail?: string
   shortcut?: string
-  // A greyed-out item stays visible but cannot be chosen.
   disabled?: boolean
   onSelect: () => void
 }
@@ -41,8 +39,6 @@ export type PaletteSources = {
   onSelectModel: (modelId: string) => void
 }
 
-// The palette's groups, in the order the old palette showed them. Empty groups are dropped.
-// Registered commands fill their own group. Chats, skills, projects, and models come from the library and the mirror.
 export function paletteGroups(sources: PaletteSources): PaletteGroup[] {
   const {
     platform,
@@ -79,7 +75,6 @@ export function paletteGroups(sources: PaletteSources): PaletteGroup[] {
   return groups.filter((group) => group.items.length > 0)
 }
 
-// A command is listed unless it sets inPalette to false. Disabled commands are filtered out.
 function commandItems(commands: Command[], group: CommandGroup, platform: string, onRunCommand: (id: string) => void): PaletteItem[] {
   return commands
     .filter((command) => command.group === group && command.inPalette !== false && isCommandEnabled(command))
@@ -123,7 +118,6 @@ function projectItems(projects: ProjectSummary[], onOpenProject: (project: Proje
   }))
 }
 
-// Every model, in the order the app lists them. The current model is greyed out, and so is every model while a run streams.
 function modelItems(
   models: ModelOption[],
   query: string,
@@ -144,7 +138,6 @@ function modelItems(
   }))
 }
 
-// A shortcut as a hint: modifier glyphs in the usual order, then the key. Escape reads "Esc".
 export function formatShortcut(shortcut: CommandShortcut, platform: string): string {
   const mod = shortcut.mod ? modKey(platform) : ""
   const alt = shortcut.alt ? "⌥" : ""

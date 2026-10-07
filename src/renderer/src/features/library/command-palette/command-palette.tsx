@@ -3,14 +3,12 @@ import type { PaletteGroup } from "@/features/library/command-palette/palette-it
 
 export type CommandPaletteProps = {
   open: boolean
-  // The text in the search box. The presenter owns it, so the models group can follow it.
   query: string
   groups: PaletteGroup[]
   onOpenChange: (open: boolean) => void
   onQueryChange: (value: string) => void
 }
 
-// Cmd+K. Every group is built by the owning create, so this view only lays them out.
 export function CommandPalette({ open, query, groups, onOpenChange, onQueryChange }: CommandPaletteProps) {
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange} title="Command palette" description="Run an action or jump to a chat">

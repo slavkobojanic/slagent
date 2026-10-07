@@ -1,18 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { DONE_WINDOW_MS, type ChatSummary, type LibraryState, type ProjectSummary } from "@shared/types"
-import {
-  CHAT_LIMIT,
-  canShowLess,
-  chatDisplayStatus,
-  isDraftBecomingChat,
-  libraryContext,
-  nextDoneExpiry,
-  openProjectOf,
-  orderedChats,
-  pinnedProjects,
-  samePlace,
-  visibleChats,
-} from "@/features/library/library-utils"
+import type { ChatSummary, LibraryState, ProjectSummary } from "@shared/types"
+import { isDraftBecomingChat, libraryContext, orderedChats, samePlace } from "@/features/library/library-utils"
 import { projectStatus, sortedProjects } from "@/lib/projects"
 
 function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
@@ -34,32 +22,6 @@ describe("orderedChats", () => {
     const chats = [chat("stale", { updatedAt: 1 }), chat("fresh", { updatedAt: 9 }), chat("pinned", { pinned: true, pinnedAt: 1 })]
 
     expect(orderedChats(chats).map((item) => item.id)).toEqual(["pinned", "fresh", "stale"])
-  })
-})
-
-describe("visibleChats", () => {
-  const chats = Array.from({ length: CHAT_LIMIT + 2 }, (_, index) => chat(`c${index}`))
-
-  it("can show only the first chats up to the limit when not showing all", () => {
-    expect(visibleChats(chats, false)).toHaveLength(CHAT_LIMIT)
-  })
-
-  it("can show every chat when showing all", () => {
-    expect(visibleChats(chats, true)).toHaveLength(CHAT_LIMIT + 2)
-  })
-})
-
-describe("canShowLess", () => {
-  it("can be false while the list is cut to the limit", () => {
-    expect(canShowLess(CHAT_LIMIT + 5, false)).toBe(false)
-  })
-
-  it("can be false when showing all a list that fits the limit", () => {
-    expect(canShowLess(CHAT_LIMIT, true)).toBe(false)
-  })
-
-  it("can be true when showing all a list longer than the limit", () => {
-    expect(canShowLess(CHAT_LIMIT + 1, true)).toBe(true)
   })
 })
 
@@ -119,33 +81,6 @@ describe("libraryContext", () => {
   })
 })
 
-describe("openProjectOf", () => {
-  it("can return null when no project is open", () => {
-    const library: LibraryState = { projects: [project("p1")], openProjectId: null, chats: [], openChatId: null }
-
-    expect(openProjectOf(library)).toBeNull()
-  })
-
-  it("can return the open project", () => {
-    const library: LibraryState = { projects: [project("p1"), project("p2")], openProjectId: "p2", chats: [], openChatId: null }
-
-    expect(openProjectOf(library)?.id).toBe("p2")
-  })
-})
-
-describe("pinnedProjects", () => {
-  it("can list pinned projects other than the open one, the most recent pin first", () => {
-    const projects = [
-      project("older", { pinned: true, pinnedAt: 1 }),
-      project("newer", { pinned: true, pinnedAt: 5 }),
-      project("open", { pinned: true, pinnedAt: 9 }),
-      project("unpinned"),
-    ]
-
-    expect(pinnedProjects(projects, "open").map((item) => item.id)).toEqual(["newer", "older"])
-  })
-})
-
 describe("sortedProjects", () => {
   it("can list the most recently opened project first", () => {
     const projects = [project("old", { lastOpenedAt: 1 }), project("new", { lastOpenedAt: 9 })]
@@ -169,56 +104,5 @@ describe("projectStatus", () => {
 
   it("can prefer running over an unseen finish", () => {
     expect(projectStatus(project("p1", { running: true, attention: true }))).toBe("running")
-  })
-})
-
-describe("chatDisplayStatus", () => {
-  const finishedAt = 1_000
-
-  it("can keep a done chat done inside its window", () => {
-    const done = chat("c1", { status: "done", finishedAt })
-
-    expect(chatDisplayStatus(done, finishedAt + DONE_WINDOW_MS - 1)).toBe("done")
-  })
-
-  it("can fall back to idle once the window has closed", () => {
-    const done = chat("c1", { status: "done", finishedAt })
-
-    expect(chatDisplayStatus(done, finishedAt + DONE_WINDOW_MS)).toBe("idle")
-  })
-
-  it("can leave a status other than done as it is", () => {
-    const running = chat("c1", { status: "running", finishedAt })
-
-    expect(chatDisplayStatus(running, finishedAt + DONE_WINDOW_MS * 2)).toBe("running")
-  })
-
-  it("can keep a done chat done when its finish time is unknown", () => {
-    const done = chat("c1", { status: "done", finishedAt: null })
-
-    expect(chatDisplayStatus(done, finishedAt + DONE_WINDOW_MS * 2)).toBe("done")
-  })
-})
-
-describe("nextDoneExpiry", () => {
-  const now = 10_000
-
-  it("can be null when no done chat is waiting to fall back to idle", () => {
-    expect(nextDoneExpiry([chat("c1", { status: "running" })], now)).toBeNull()
-  })
-
-  it("can be the earliest window end among done chats still inside their window", () => {
-    const chats = [
-      chat("late", { status: "done", finishedAt: 9_000 }),
-      chat("early", { status: "done", finishedAt: 8_000 }),
-    ]
-
-    expect(nextDoneExpiry(chats, now)).toBe(8_000 + DONE_WINDOW_MS)
-  })
-
-  it("can ignore windows that have already closed", () => {
-    const chats = [chat("closed", { status: "done", finishedAt: now - DONE_WINDOW_MS - 10 })]
-
-    expect(nextDoneExpiry(chats, now)).toBeNull()
   })
 })

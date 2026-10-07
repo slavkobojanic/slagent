@@ -1,13 +1,11 @@
 import { reaction } from "mobx"
 import type { LibraryState } from "@shared/types"
-import type { ChatService } from "@/ipc/chat-service/chat-service"
-import type { LibraryService } from "@/ipc/library-service/library-service"
 import { isDraftBecomingChat, libraryContext, samePlace, type LibraryContext, type Place } from "@/features/library/library-utils"
 import type { NavHistoryStore } from "@/features/library/nav-history/nav-history-store/nav-history-store"
-import type { LibraryStore } from "@/mirror/library-store"
-import type { AppEnv } from "@/state/app-deps"
-import type { CommandRegistry } from "@/state/command-registry"
-import type { ComposerPort } from "@/state/composer-port"
+import type { API } from "@/ipc/api"
+import type { LibraryStore } from "@/mirror/library-store/library-store"
+import type { ComposerPort } from "@/state/composer-port/composer-port"
+import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 
 // Walks the places visited in this window with Cmd+[ and Cmd+]. A place the main process can no longer
 // open is dropped and the walk goes on. Recording follows the library: a draft that turns into a chat
@@ -19,12 +17,11 @@ export class NavHistoryPresenter {
 
   constructor(
     private readonly store: NavHistoryStore,
-    private readonly library: Pick<LibraryService, "openChat" | "openProject">,
-    private readonly chat: Pick<ChatService, "newChat">,
-    private readonly mirror: LibraryStore,
-    private readonly composer: Pick<ComposerPort, "focus">,
-    private readonly commands: CommandRegistry,
-    private readonly env: AppEnv,
+    private readonly api: API,
+    private readonly window: Window,
+    private readonly libraryStore: LibraryStore,
+    private readonly composerPort: ComposerPort,
+    private readonly commandRegistry: CommandRegistry,
   ) {}
 
   start = () => {
@@ -32,14 +29,13 @@ export class NavHistoryPresenter {
       return
     }
     this.started = true
-    this.disposers.push(reaction(() => this.mirror.library, this.handleLibraryChange))
+    this.disposers.push(reaction(() => this.libraryStore.library, this.handleLibraryChange))
     this.disposers.push(
-      this.commands.register({
+      this.commandRegistry.register({
         id: "history.back",
         label: "Go back",
         group: "Actions",
         shortcut: { key: "[", mod: true },
-        // The old palette never listed history steps.
         inPalette: false,
         run: () => {
           void this.back()
@@ -47,7 +43,7 @@ export class NavHistoryPresenter {
       }),
     )
     this.disposers.push(
-      this.commands.register({
+      this.commandRegistry.register({
         id: "history.forward",
         label: "Go forward",
         group: "Actions",
@@ -97,7 +93,7 @@ export class NavHistoryPresenter {
 
   forward = () => this.navigate(1)
 
-  // Steps toward an older or newer place. Places that are already on screen only move the index.
+  // Places that are already on screen only move the index.
   private navigate = async (direction: -1 | 1) => {
     let index = this.store.index + direction
     while (index >= 0 && index < this.store.entries.length) {
@@ -125,20 +121,20 @@ export class NavHistoryPresenter {
 
   private open = async (place: Place) => {
     if (place.chatId !== null) {
-      await this.library.openChat(place.chatId, place.projectId ?? undefined)
+      await this.api.openChat(place.chatId, place.projectId ?? undefined)
       return
     }
-    if (place.projectId !== null && place.projectId !== this.mirror.openProjectId) {
-      await this.library.openProject(place.projectId)
+    if (place.projectId !== null && place.projectId !== this.libraryStore.openProjectId) {
+      await this.api.openProject(place.projectId)
     }
-    await this.chat.newChat()
+    await this.api.newChat()
   }
 
-  private here = (): Place => ({ projectId: this.mirror.openProjectId, chatId: this.mirror.openChatId })
+  private here = (): Place => ({ projectId: this.libraryStore.openProjectId, chatId: this.libraryStore.openChatId })
 
   private focusComposer = () => {
-    this.env.window.requestAnimationFrame(() => {
-      this.composer.focus()
+    this.window.requestAnimationFrame(() => {
+      this.composerPort.focus()
     })
   }
 }
