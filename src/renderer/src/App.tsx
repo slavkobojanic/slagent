@@ -502,7 +502,7 @@ function AgentApp() {
             <div className="flex flex-1 items-center justify-center text-sm text-white/50">Starting</div>
           ) : (
             <Transcript
-              key={transcriptChatId ?? "draft"}
+              key={`transcript-${transcriptChatId ?? "draft"}`}
               messages={messages}
               notice={notice}
               configured={configured}
