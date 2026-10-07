@@ -66,6 +66,14 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: pnpm build:mac
 
+      - name: Verify signature and notarization
+        run: |
+          app="dist/mac-arm64/slagent.app"
+          [ -d "$app" ] || app="dist/mac/slagent.app"
+          codesign --verify --deep --strict "$app"
+          codesign -dvv "$app" 2>&1 | grep -q "Authority=Developer ID Application"
+          xcrun stapler validate "$app"
+
       - name: Package
         id: package
         run: |

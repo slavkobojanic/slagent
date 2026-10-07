@@ -25,6 +25,9 @@ publish:
   provider: github
   owner: slavkobojanic
   repo: slagent
+# A release must never ship unsigned or unnotarized: fail the build instead of
+# silently publishing an app macOS will refuse to launch.
+forceCodeSigning: true
 mac:
   category: public.app-category.developer-tools
   icon: icon.icns
