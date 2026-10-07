@@ -71,7 +71,7 @@ function Sidebar({
   return (
     <aside className="flex h-full w-64 min-w-0 flex-col overflow-hidden border-r border-white/10">
       <div className="p-3">
-        <Button type="button" variant="outline" className="w-full" disabled={!library.openProjectId} onClick={onNewChat}>
+        <Button type="button" variant="outline" className="w-full" title={`New chat (${modKey()}N)`} disabled={!library.openProjectId} onClick={onNewChat}>
           New chat
         </Button>
       </div>
@@ -306,10 +306,15 @@ function RowMenu({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
+function modKey(): string {
+  if (window.slagent.platform === "darwin") return "⌘"
+  return "Ctrl+"
+}
+
 function orderedChats(chats: ChatSummary[]): ChatSummary[] {
   const pinned = chats.filter((chat) => chat.pinned).sort((left, right) => right.pinnedAt - left.pinnedAt)
   const rest = chats.filter((chat) => !chat.pinned).sort((left, right) => right.updatedAt - left.updatedAt)
   return [...pinned, ...rest]
 }
 
-export { ProjectMenu, Sidebar }
+export { modKey, orderedChats, ProjectMenu, Sidebar }

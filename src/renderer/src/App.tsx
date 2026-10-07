@@ -8,7 +8,7 @@ import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dial
 import { ModelDialog } from "@/components/model-dialog"
 import { PermissionsWizard } from "@/components/permissions-wizard"
 import { SettingsDialog } from "@/components/settings-dialog"
-import { ProjectMenu, Sidebar } from "@/components/sidebar"
+import { modKey, orderedChats, ProjectMenu, Sidebar } from "@/components/sidebar"
 import { Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
 import { errorText, formatTranscript, looksLikePath, openPath } from "@/lib/format"
@@ -53,6 +53,10 @@ function AgentApp() {
   const openChatRef = useRef<string | null>(null)
   const openProjectRef = useRef<string | null>(null)
   const permissionsLockedRef = useRef(false)
+  const libraryRef = useRef<LibraryState>(emptyLibrary)
+  const streamingRef = useRef(false)
+  libraryRef.current = library
+  streamingRef.current = streaming
 
   useEffect(() => {
     const off = window.slagent.onEvent((event) => {
@@ -105,11 +109,41 @@ function AgentApp() {
     }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey)) return
-      if (event.key !== ",") return
-      event.preventDefault()
       if (permissionsLockedRef.current) return
-      setSettingsOpen(true)
+      if (event.key === "Escape" && !event.defaultPrevented && streamingRef.current) {
+        if (document.querySelector("[role=dialog], [role=menu]")) return
+        event.preventDefault()
+        void window.slagent.abort()
+        return
+      }
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
+      const key = event.key.toLowerCase()
+      if (key === ",") {
+        event.preventDefault()
+        setSettingsOpen(true)
+        return
+      }
+      if (key === "n" && !event.shiftKey) {
+        event.preventDefault()
+        if (libraryRef.current.openProjectId) void window.slagent.newChat().then(focusComposer)
+        return
+      }
+      if (key === "b" && !event.shiftKey) {
+        event.preventDefault()
+        setSidebarOpen((open) => !open)
+        return
+      }
+      if (key === "l" && !event.shiftKey) {
+        event.preventDefault()
+        focusComposer()
+        return
+      }
+      if (/^[1-9]$/.test(event.key) && !event.shiftKey) {
+        const chat = orderedChats(libraryRef.current.chats)[Number(event.key) - 1]
+        if (!chat) return
+        event.preventDefault()
+        void window.slagent.openChat(chat.id).then(focusComposer)
+      }
     }
 
     function onClick(event: MouseEvent) {
@@ -246,6 +280,7 @@ function AgentApp() {
           size="icon"
           className="no-drag"
           aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          title={`${sidebarOpen ? "Hide" : "Show"} sidebar (${modKey()}B)`}
           aria-pressed={sidebarOpen}
           onClick={() => setSidebarOpen((open) => !open)}
         >
@@ -357,6 +392,13 @@ function AgentApp() {
     />
   </>
   )
+}
+
+function focusComposer() {
+  window.requestAnimationFrame(() => {
+    const textarea = document.querySelector<HTMLTextAreaElement>("main form textarea")
+    textarea?.focus()
+  })
 }
 
 export { App }
