@@ -10,6 +10,8 @@ typealias GetPsnFn = @convention(c) (Int32, UnsafeMutableRawPointer) -> Int32
 typealias RemoteElementFn = @convention(c) (CFData) -> AXUIElement?
 typealias WindowIDFn = @convention(c) (AXUIElement, UnsafeMutablePointer<UInt32>) -> Int32
 typealias GetPidFn = @convention(c) (UnsafeRawPointer, UnsafeMutablePointer<Int32>) -> Int32
+typealias SetAuthMessageFn = @convention(c) (UnsafeMutableRawPointer, UnsafeMutableRawPointer) -> Void
+typealias AuthFactoryFn = @convention(c) (UnsafeRawPointer, UnsafeRawPointer, UnsafeMutableRawPointer, Int32, UInt32) -> UnsafeMutableRawPointer?
 
 final class SystemSymbols: @unchecked Sendable {
   static let shared = SystemSymbols()
@@ -22,6 +24,8 @@ final class SystemSymbols: @unchecked Sendable {
   let remoteElement: RemoteElementFn?
   let windowID: WindowIDFn?
   let getPid: GetPidFn?
+  let setAuthMessage: SetAuthMessageFn?
+  let msgSend: AuthFactoryFn?
 
   private let handles: [UnsafeMutableRawPointer]
 
@@ -38,6 +42,8 @@ final class SystemSymbols: @unchecked Sendable {
     remoteElement = Self.load("_AXUIElementCreateWithRemoteToken", opened)
     windowID = Self.load("_AXUIElementGetWindow", opened)
     getPid = Self.load("GetProcessPID", opened)
+    setAuthMessage = Self.load("SLEventSetAuthenticationMessage", opened)
+    msgSend = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "objc_msgSend").map { unsafeBitCast($0, to: AuthFactoryFn.self) }
   }
 
   private static func load<T>(_ name: String, _ handles: [UnsafeMutableRawPointer]) -> T? {

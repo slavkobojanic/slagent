@@ -2,8 +2,8 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
-private let maxDepth = 14
-private let maxNodes = 500
+private let maxDepth = 40
+private let maxNodes = 1_500
 private let remoteProbeLimit: UInt64 = 2_000
 
 final class AxTree {
@@ -22,7 +22,7 @@ final class AxTree {
     enableChromium(pid)
     let window = try resolveWindow(pid: pid, windowID: windowID)
     AXUIElementSetMessagingTimeout(window, 1)
-    let body = walk(window, depth: 0)
+    let body = walk(window, depth: 0, root: true)
     let title = stringAttribute(window, kAXTitleAttribute as String) ?? "Window"
     let markdown = "# \(title)\n\(body)"
     return (markdown, indexed)
@@ -79,33 +79,42 @@ final class AxTree {
     return nil
   }
 
-  private func walk(_ element: AXUIElement, depth: Int) -> String {
+  // Unlabelled, non-actionable containers (most of a web page) are skipped and
+  // their children are lifted to the container's depth. Visible output stays
+  // limited to nodes the model can act on or read.
+  private func walk(_ element: AXUIElement, depth: Int, root: Bool = false) -> String {
     if nodes >= maxNodes || depth > maxDepth { return "" }
     nodes += 1
     let role = stringAttribute(element, kAXRoleAttribute as String) ?? "AXUnknown"
     let title = stringAttribute(element, kAXTitleAttribute as String)
       ?? stringAttribute(element, kAXDescriptionAttribute as String)
     let value = stringAttribute(element, kAXValueAttribute as String)
-    var line = String(repeating: "  ", count: depth) + "- "
-    if let index = indexIfActionable(element, role: role) {
-      indexed[index] = element
-      line += "[\(index)] "
+    let index = indexIfActionable(element, role: role)
+    let labelled = !(title ?? "").isEmpty || !(value ?? "").isEmpty
+    let frame = frame(element)
+    let hidden = frame.map { $0.width < 1 || $0.height < 1 } ?? false
+    let shown = root || index != nil || (labelled && !hidden)
+
+    var text = ""
+    if shown {
+      var line = String(repeating: "  ", count: depth) + "- "
+      if let index {
+        indexed[index] = element
+        line += "[\(index)] "
+      }
+      line += role
+      if let title, !title.isEmpty { line += " \"\(singleLine(title))\"" }
+      if let value, !value.isEmpty, value != title { line += " = \"\(singleLine(value))\"" }
+      if let frame {
+        line += " (\(Int(frame.origin.x)), \(Int(frame.origin.y)), \(Int(frame.size.width))x\(Int(frame.size.height)))"
+      }
+      text = line + "\n"
     }
-    line += role
-    if let title, !title.isEmpty { line += " \"\(singleLine(title))\"" }
-    if let value, !value.isEmpty, value != title { line += " = \"\(singleLine(value))\"" }
-    if let frame = frame(element) {
-      let x = Int(frame.origin.x)
-      let y = Int(frame.origin.y)
-      let width = Int(frame.size.width)
-      let height = Int(frame.size.height)
-      line += " (\(x), \(y), \(width)x\(height))"
-    }
-    var text = line + "\n"
     guard let children = arrayAttribute(element, kAXChildrenAttribute as String) else { return text }
+    let childDepth = shown ? depth + 1 : depth
     for child in children {
       guard let element = axElement(child) else { continue }
-      text += walk(element, depth: depth + 1)
+      text += walk(element, depth: childDepth)
     }
     return text
   }
@@ -143,6 +152,82 @@ func elementCenter(_ element: AXUIElement) -> CGPoint? {
   guard let position = pointAttribute(element, kAXPositionAttribute as String) else { return nil }
   guard let size = sizeAttribute(element, kAXSizeAttribute as String) else { return nil }
   return CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
+}
+
+func elementHasPress(_ element: AXUIElement) -> Bool {
+  actionNameSet(element).contains(kAXPressAction as String)
+}
+
+func requireEnabled(_ element: AXUIElement) throws {
+  var value: CFTypeRef?
+  let error = AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &value)
+  if error == .success, let enabled = value as? Bool, !enabled {
+    throw ComputerError("That element is disabled.")
+  }
+}
+
+func pressElement(_ element: AXUIElement) throws {
+  try requireEnabled(element)
+  let error = AXUIElementPerformAction(element, kAXPressAction as CFString)
+  if error != .success {
+    throw ComputerError("Accessibility press failed (\(error.rawValue)).")
+  }
+}
+
+func focusElement(_ element: AXUIElement) -> Bool {
+  setBool(element, kAXFocusedAttribute as String, true) == .success
+}
+
+func setElementValue(_ element: AXUIElement, _ text: String) throws {
+  try requireEnabled(element)
+  let error = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, text as CFString)
+  if error != .success {
+    throw ComputerError("Accessibility could not set the value (\(error.rawValue)). The element may not be editable.")
+  }
+}
+
+func elementValue(_ element: AXUIElement) -> String? {
+  stringAttribute(element, kAXValueAttribute as String)
+}
+
+func confirmElement(_ element: AXUIElement) -> Bool {
+  guard actionNameSet(element).contains(kAXConfirmAction as String) else { return false }
+  return AXUIElementPerformAction(element, kAXConfirmAction as CFString) == .success
+}
+
+func pressableElement(at point: CGPoint, pid: Int32) -> AXUIElement? {
+  let app = AXUIElementCreateApplication(pid)
+  AXUIElementSetMessagingTimeout(app, 0.4)
+  var found: AXUIElement?
+  let error = AXUIElementCopyElementAtPosition(app, Float(point.x), Float(point.y), &found)
+  if error != .success { return nil }
+  guard var element = found else { return nil }
+  for _ in 0..<8 {
+    if elementHasPress(element) { return element }
+    guard let parent = parentElement(element) else { return nil }
+    element = parent
+  }
+  return nil
+}
+
+private func actionNameSet(_ element: AXUIElement) -> Set<String> {
+  var actions: CFArray?
+  let error = AXUIElementCopyActionNames(element, &actions)
+  if error != .success { return [] }
+  guard let actions else { return [] }
+  var names = Set<String>()
+  for item in actions as NSArray {
+    if let name = item as? String { names.insert(name) }
+  }
+  return names
+}
+
+private func parentElement(_ element: AXUIElement) -> AXUIElement? {
+  var value: CFTypeRef?
+  let error = AXUIElementCopyAttributeValue(element, kAXParentAttribute as CFString, &value)
+  if error != .success { return nil }
+  guard let stored = value else { return nil }
+  return axElement(stored)
 }
 
 private func remoteToken(pid: Int32, elementID: UInt64) -> Data {
