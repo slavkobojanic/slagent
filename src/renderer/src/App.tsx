@@ -15,7 +15,8 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { modKey, orderedChats, ProjectMenu, Sidebar } from "@/components/sidebar"
 import { EDIT_LAST_EVENT, Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
-import { focusComposer } from "@/lib/composer"
+import { fillComposer, focusComposer } from "@/lib/composer"
+import { saveDraft } from "@/lib/drafts"
 import { useResizableWidth } from "@/lib/resize"
 import { errorText, formatTranscript, looksLikePath, openPath, VIEW_FILE_EVENT } from "@/lib/format"
 
@@ -668,21 +669,30 @@ function AgentApp() {
             onRemoveComment={(id) => setDiffComments((current) => current.filter((comment) => comment.id !== id))}
             replies={replyComments}
             onRemoveReply={(id) => setReplyComments((current) => current.filter((reply) => reply.id !== id))}
-            onPrompt={async (request) => {
-              // The prompt resolves when the run ends, so the comments are
-              // cleared as soon as they are sent and put back if sending fails.
+            onPrompt={(request) => {
+              // The prompt promise resolves when the run ends, which can take
+              // minutes, so the composer is released as soon as the main
+              // process takes the message. If the run drops it, give the
+              // composer its content back — in the box while that chat is
+              // still open, saved as its draft otherwise.
               const sent = request.comments ?? []
               const sentReplies = request.replies ?? []
               const ids = new Set([...sent, ...sentReplies].map((comment) => comment.id))
               setDiffComments((current) => current.filter((comment) => !ids.has(comment.id)))
               setReplyComments((current) => current.filter((reply) => !ids.has(reply.id)))
-              try {
-                await window.slagent.prompt(request)
-              } catch (error) {
-                setDiffComments((current) => [...sent, ...current])
-                setReplyComments((current) => [...sentReplies, ...current])
-                throw error
-              }
+              const projectId = libraryRef.current.openProjectId
+              const chatId = libraryRef.current.openChatId
+              window.slagent.prompt(request).catch((error) => {
+                const sameChat = projectId === libraryRef.current.openProjectId && chatId === libraryRef.current.openChatId
+                if (sameChat) {
+                  setDiffComments((current) => [...sent, ...current])
+                  setReplyComments((current) => [...sentReplies, ...current])
+                }
+                toast.error(errorText(error))
+                if (!request.text.trim()) return
+                if (sameChat) fillComposer(request.text)
+                else saveDraft(`${projectId ?? "none"}:${chatId ?? "new"}`, request.text)
+              })
             }}
             onAbort={() => window.slagent.abort()}
             onQueueMode={(id, mode) => window.slagent.setQueueMode(id, mode)}

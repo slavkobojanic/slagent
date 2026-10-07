@@ -224,7 +224,7 @@ function Composer({
   replies: ReplyComment[]
   onRemoveReply: (id: string) => void
   onCompact: () => Promise<void>
-  onPrompt: (request: PromptRequest) => Promise<void>
+  onPrompt: (request: PromptRequest) => void
   onAbort: () => Promise<void>
   onQueueMode: (id: string, mode: QueueMode) => Promise<void>
   onRemoveQueued: (id: string) => Promise<void>
@@ -435,25 +435,22 @@ function Composer({
     }
   }
 
-  async function onSubmit(message: PromptInputMessage) {
+  // Resolves as soon as the prompt is handed off, not when the run ends: the
+  // run can stream for minutes and the composer must be reusable right away.
+  // A dropped run is handled by the caller, which restores the text.
+  function onSubmit(message: PromptInputMessage) {
     const files = promptFiles(message)
     const text = message.text
     const kept = mentions.filter((item) => text.includes(`@${item.name}`))
     if (!text.trim() && files.length === 0 && kept.length === 0 && comments.length === 0 && replies.length === 0) return
     clearDraft(draftKey)
-    try {
-      await onPrompt({ text, mentions: kept, files, comments, replies })
-      rememberPrompt(text)
-      historyIndex.current = null
-      setHistoryQuery(null)
-      setMentions([])
-      setMention(null)
-      setSlash(null)
-    } catch (error) {
-      saveDraft(draftKey, text)
-      toast.error(errorText(error))
-      throw error
-    }
+    onPrompt({ text, mentions: kept, files, comments, replies })
+    rememberPrompt(text)
+    historyIndex.current = null
+    setHistoryQuery(null)
+    setMentions([])
+    setMention(null)
+    setSlash(null)
   }
 
   function togglePlan() {
