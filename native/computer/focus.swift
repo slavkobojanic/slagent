@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Foundation
 
 // Some apps activate themselves when they are launched, opened with a URL, or
@@ -10,6 +11,7 @@ final class FocusStealGuard: @unchecked Sendable {
 
   private struct Entry {
     let target: pid_t?
+    let bundle: String?
     let restore: pid_t
     let deadline: Date
   }
@@ -26,18 +28,24 @@ final class FocusStealGuard: @unchecked Sendable {
       queue: queue
     ) { [weak self] note in
       guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
-      self?.activated(app.processIdentifier)
+      self?.activated(app)
     }
   }
 
-  // target nil reverts any activation other than the person's own app, for
-  // launches whose pid is not known yet.
-  func begin(target: pid_t?, seconds: TimeInterval = 5) -> UUID? {
-    guard let front = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return nil }
-    if let target, front == target { return nil }
+  // A lease matches the target pid, or any process of the bundle for launches
+  // whose pid is not known yet. Other activations are the person's own.
+  func begin(target: pid_t?, bundle: String? = nil, seconds: TimeInterval = 5) -> UUID? {
+    guard let front = NSWorkspace.shared.frontmostApplication else { return nil }
+    if let target, front.processIdentifier == target { return nil }
+    if let bundle, front.bundleIdentifier == bundle { return nil }
     let id = UUID()
     lock.lock()
-    entries[id] = Entry(target: target, restore: front, deadline: Date().addingTimeInterval(seconds))
+    entries[id] = Entry(
+      target: target,
+      bundle: bundle,
+      restore: front.processIdentifier,
+      deadline: Date().addingTimeInterval(seconds)
+    )
     lock.unlock()
     return id
   }
@@ -54,17 +62,34 @@ final class FocusStealGuard: @unchecked Sendable {
     }
   }
 
-  private func activated(_ pid: pid_t) {
+  private func activated(_ app: NSRunningApplication) {
+    let pid = app.processIdentifier
     let now = Date()
     lock.lock()
     entries = entries.filter { $0.value.deadline > now }
     let match = entries.values.first { entry in
       if pid == entry.restore { return false }
-      return entry.target == nil || entry.target == pid
+      if let target = entry.target, target == pid { return true }
+      if let bundle = entry.bundle, bundle == app.bundleIdentifier { return true }
+      return false
     }
     lock.unlock()
     guard let match else { return }
-    NSRunningApplication(processIdentifier: match.restore)?.activate(options: [])
+    restoreFront(match.restore, from: app)
+  }
+}
+
+// Cooperative activation (macOS 14+) ignores activate() from a background
+// process, so the person's app is raised over Accessibility instead, or
+// activated on behalf of the app that just took focus.
+private func restoreFront(_ pid: pid_t, from thief: NSRunningApplication) {
+  let element = AXUIElementCreateApplication(pid)
+  if AXUIElementSetAttributeValue(element, kAXFrontmostAttribute as CFString, kCFBooleanTrue) == .success {
+    return
+  }
+  guard let app = NSRunningApplication(processIdentifier: pid) else { return }
+  if !app.activate(from: thief, options: []) {
+    app.activate(options: [])
   }
 }
 
@@ -83,8 +108,12 @@ func openInBackground(app name: String, url text: String?) async throws -> [Stri
   let configuration = NSWorkspace.OpenConfiguration()
   configuration.activates = false
   configuration.addsToRecentItems = false
-  let lease = FocusStealGuard.shared.begin(target: nil)
-  defer { FocusStealGuard.shared.end(lease, after: 1.5) }
+  let bundle = Bundle(url: appURL)?.bundleIdentifier
+  let launching = bundle.map { NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty } ?? true
+  // Cold launches raise their first window seconds after the call returns.
+  let linger: TimeInterval = launching ? 8 : 2
+  let lease = FocusStealGuard.shared.begin(target: nil, bundle: bundle, seconds: linger + 30)
+  defer { FocusStealGuard.shared.end(lease, after: linger) }
   let running: NSRunningApplication
   if let text {
     guard let url = URL(string: text.contains("://") ? text : "https://\(text)") else {
