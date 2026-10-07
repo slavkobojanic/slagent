@@ -17,6 +17,13 @@ importers:
       '@earendil-works/pi-mcp':
         specifier: ^1.0.4
         version: 1.0.4
+      electron-updater:
+        specifier: ^6.8.9
+        version: 6.8.9
+      unpdf:
+        specifier: ^1.8.1
+        version: 1.8.1
+    devDependencies:
       '@fontsource-variable/geist':
         specifier: ^5.2.8
         version: 5.3.0
@@ -50,6 +57,18 @@ importers:
       '@streamdown/mermaid':
         specifier: ^1.0.3
         version: 1.0.3(react@19.3.0)
+      '@tailwindcss/vite':
+        specifier: ^4.1.16
+        version: 4.3.3(vite@7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.2.2
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^5.0.4
+        version: 5.2.0(vite@7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
       ai:
         specifier: ^7.0.128
         version: 7.0.128(zod@4.6.5)
@@ -68,9 +87,15 @@ importers:
       cn:
         specifier: ^0.4.0
         version: 0.4.0
-      electron-updater:
-        specifier: ^6.8.9
-        version: 6.8.9
+      electron:
+        specifier: ^44.5.1
+        version: 44.5.1
+      electron-builder:
+        specifier: ^26.15.3
+        version: 26.15.3(electron-builder-squirrel-windows@26.15.3)
+      electron-vite:
+        specifier: ^5.0.0
+        version: 5.0.0(vite@7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
       lucide-react:
         specifier: ^0.545.0
         version: 0.545.0(react@19.3.0)
@@ -104,34 +129,6 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.7.0
-      unpdf:
-        specifier: ^1.8.1
-        version: 1.8.1
-      use-stick-to-bottom:
-        specifier: ^1.1.6
-        version: 1.1.6(react@19.3.0)
-    devDependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.1.16
-        version: 4.3.3(vite@7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
-      '@types/react':
-        specifier: ^19.2.2
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: ^19.2.2
-        version: 19.3.0(@types/react@19.3.0)
-      '@vitejs/plugin-react':
-        specifier: ^5.0.4
-        version: 5.2.0(vite@7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
-      electron:
-        specifier: ^44.5.1
-        version: 44.5.1
-      electron-builder:
-        specifier: ^26.15.3
-        version: 26.15.3(electron-builder-squirrel-windows@26.15.3)
-      electron-vite:
-        specifier: ^5.0.0
-        version: 5.0.0(vite@7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
       tailwindcss:
         specifier: ^4.1.16
         version: 4.3.3
@@ -141,6 +138,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      use-stick-to-bottom:
+        specifier: ^1.1.6
+        version: 1.1.6(react@19.3.0)
       vite:
         specifier: ^7.1.12
         version: 7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
@@ -180,25 +180,21 @@ packages:
     resolution: {integrity: sha512-6UIxxeHsQQcHheip8P+6q1kf5UQ1D7RJgso423IZeMjyBX1pMlX6LII8b59/1sBfaO1Q5YZ8JKDGr7f4+GtE0A==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@anthropic-ai/claude-agent-sdk-linux-arm64@0.3.292':
     resolution: {integrity: sha512-ziGXVP0Kjjg531fUNZh/1lkT8MQKc77qFinqvQ7N7ZbR7Kr/wVRhs3kSb2s7A1+z/3TNsPiQJManEmbw61U+Hw==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@anthropic-ai/claude-agent-sdk-linux-x64-musl@0.3.292':
     resolution: {integrity: sha512-5XA1nW1/OAUBxaJNFmttfJov9CrqYanOqlmP6yvXWx+iSEWKICNv2ghnnipYEJXUeof6JjZlarS8IHaJol1trA==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@anthropic-ai/claude-agent-sdk-linux-x64@0.3.292':
     resolution: {integrity: sha512-dnMVyLxpg8mUzEqAtxhv+5oBxdiYjCLIBHLPFM4z7cuk+Se6SwgyHPRGipp8rOociJBS8yyB7QXJh+RO41y+Kg==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@anthropic-ai/claude-agent-sdk-win32-arm64@0.3.292':
     resolution: {integrity: sha512-feA6NlAVnbGBGgnJ6VkYldofuCwW5H6wt+6sWuLDVIasn013X3sWrCSS4awseN3tyey4/0UKG/+ElNATaZaN4w==}
@@ -884,7 +880,6 @@ packages:
     engines: {node: ^22.20 || ^24.12 || >=25}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
@@ -1698,79 +1693,66 @@ packages:
     resolution: {integrity: sha512-J/6xhutJPtFyIkmHdf4olOdHHKH5kOJNumojdWn+Elv5ICEYTVOa362Vw27TxsK0BLzb1le3EDlO3UbvFK1lnQ==}
     cpu: [arm]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.64.0':
     resolution: {integrity: sha512-G4L/Nnx59d2LvDoV/P4S5lZ7oVLT6hodOHMacqjiq2LL2gts86KbkEBTYL53+fBt0odhf7XPIbIATGoYiJctxg==}
     cpu: [arm]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.64.0':
     resolution: {integrity: sha512-zF16pvJDEUksGYRbfnXne7pdklAyj2XDmJeYKgP93oq0cUyX9Y8O7lUo1R+IY1GagP/YBvCEDCe7eEcAKpw//g==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.64.0':
     resolution: {integrity: sha512-nIggWn8n+w12+R5lsV+PYYoUY8vuObxPAQqJI7WES+9v0qspYuAHoZMfYM0yLxlipasT5BY9ht5W8t5c/rSCkg==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.64.0':
     resolution: {integrity: sha512-WLOTiHPzszP0dxIMsHpFeDSOSB5I49Mj8K4+yKE3H1X/D0JRG5XZ5jrctJLMjnUc/LUzaKiwq6EHWNJ8pup8PA==}
     cpu: [loong64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-loong64-musl@4.64.0':
     resolution: {integrity: sha512-35RK9aRhh7g7Pmeu5gQ01aCvrhXzj9LoBE6xtUcEH1ns+nyTaSzxSpADmBQINu4QiTDGvmQYwo1j5hlg1rRXFw==}
     cpu: [loong64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-ppc64-gnu@4.64.0':
     resolution: {integrity: sha512-RqTfnpoTjuWfPAmqK5p2edt2AMCDJWm6oTn7sKfmyx+6tRga0ip05SJ977o6udTcIiDeF/CJMUfkaN4gtWt6Aw==}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-musl@4.64.0':
     resolution: {integrity: sha512-RQjZPigjxFvFZDijG6rjlSXxhRaTf9zLYVpGK+lVcga64oMqP1GbgVqCb46eHTTceSIgp89Ja0y5aPe3GFBYHg==}
     cpu: [ppc64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-riscv64-gnu@4.64.0':
     resolution: {integrity: sha512-tjL58mgQcTRnDRpeky+Sth1MKQeYi2Ct6r3Luq9E5aTSjnM/i/JbozqZkKqp9thM5+oDSZxo+05f9kdQedfTGA==}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.64.0':
     resolution: {integrity: sha512-ictoRyVaoZ8C67myHef+8hhCa6IplXJJ/xUCkVCxziV4zxMZh+jvhkhGsPBLqj1S72fnqD0QH5zL4lcaa4X7DQ==}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.64.0':
     resolution: {integrity: sha512-8aVvZ2hfr9RLFzBQkQNmYeHLDja8fLeQAmLt757zdKN/B+8L809KlLJKctQjS22wZotptV8G6o7fVPuAs8S1tQ==}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.64.0':
     resolution: {integrity: sha512-2dEF8GAcDKwshUfydD+GhosppNyBzhVUHkdFF3CXd3FpOkzj/RZzF5aoEtzklujklT5qFVRU2GK/cFeLaTNKVg==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.64.0':
     resolution: {integrity: sha512-3XHTvoo2hKkh0MiOfS7SkhHjMaaWF7P4F3drocZZaho/Z8w7h/jpnuBHm91BOQLfvrKHs1yR+zir4E8RI3XzTQ==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-openbsd-x64@4.64.0':
     resolution: {integrity: sha512-HKtkzodL4a3KFWDXDoO61cRynAWTR3LnAE0oGtfG9lcNFpNuVYUFOByxDgNqEvic9rvaQbAj+SFwTEWDptRaIw==}
@@ -1937,28 +1919,24 @@ packages:
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-arm64-musl@4.3.3':
     resolution: {integrity: sha512-Md44bD6veX/PC5iyF8cDVnw4HBIANZepRZZ7a8DQOvkfo5WUBwcp6iAuCUz23u+4SUkhJlD3eL7hNdW8ezd/kA==}
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-linux-x64-gnu@4.3.3':
     resolution: {integrity: sha512-tx7us1muwOKAKWao2v/GaafFeQboE6aj88vC6ziN2NCGcRm8gWUhwjzg+YdVB1e4boAtdtma4L43onunI6NS4w==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-x64-musl@4.3.3':
     resolution: {integrity: sha512-SJxX60smvHgasZoBy11dX6YRjXJFovwWBoedhbQPOBzgFWBHGB+TVPWB9BxzR7TTxU8FQZAI2AyiNCMzFm8Img==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-wasm32-wasi@4.3.3':
     resolution: {integrity: sha512-jx1+rPhY/5Ympkktd656HBWEBLxP7dH06losBLjjf5vgCODXvi9KhtftWcMIwTFIDqBr7cRnQkdLnAG+IOlGvQ==}
@@ -3400,28 +3378,24 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.32.0:
     resolution: {integrity: sha512-UpQkoenr4UJEzgVIYpI80lDFvRmPVg6oqboNHfoH4CQIfNA+HOrZ7Mo7KZP02dC6LjghPQJeBsvXhJod/wnIBg==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.32.0:
     resolution: {integrity: sha512-V7Qr52IhZmdKPVr+Vtw8o+WLsQJYCTd8loIfpDaMRWGUZfBOYEJeyJIkqGIDMZPwPx24pUMfwSxxI8phr/MbOA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.32.0:
     resolution: {integrity: sha512-bYcLp+Vb0awsiXg/80uCRezCYHNg1/l3mt0gzHnWV9XP1W5sKa5/TCdGWaR/zBM2PeF/HbsQv/j2URNOiVuxWg==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.32.0:
     resolution: {integrity: sha512-8SbC8BR40pS6baCM8sbtYDSwEVQd4JlFTOlaD3gWGHfThTcABnNDBda6eTZeqbofalIJhFx0qKzgHJmcPTnGdw==}
