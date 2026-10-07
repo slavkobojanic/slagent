@@ -5,6 +5,7 @@ import { getAgentDir, ModelRuntime as ModelRuntimeClass, type ModelRuntime } fro
 import type {
   AppMeta,
   ChatMessage,
+  ChatSearchResult,
   ChatStatus,
   ChatSummary,
   ExtensionInfo,
@@ -22,6 +23,7 @@ import type {
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import type { ComputerUse } from "./computer"
 import { draftCommands } from "./commands"
+import { searchChats } from "./search"
 import { ComputerGate } from "./computer-gate"
 import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
@@ -139,12 +141,29 @@ export class AgentHost {
     await this.run(() => this.openProjectUnlocked(projectId))
   }
 
-  async openChat(chatId: string): Promise<void> {
+  async openChat(chatId: string, projectId?: string): Promise<void> {
     await this.run(async () => {
-      if (!this.projectId) throw new Error("Choose a folder first.")
-      await this.loadChat(this.projectId, chatId)
+      const target = projectId ?? this.projectId
+      if (!target) throw new Error("Choose a folder first.")
+      if (target !== this.projectId) {
+        const project = this.library.project(target)
+        if (!project) throw new Error("That project is gone.")
+        try {
+          await assertDirectory(project.path)
+        } catch {
+          throw new Error("That folder is missing.")
+        }
+        await this.loadChat(target, chatId)
+        await this.persistPrefs()
+      } else {
+        await this.loadChat(target, chatId)
+      }
       this.publishAll()
     })
+  }
+
+  async searchChats(query: string): Promise<ChatSearchResult[]> {
+    return searchChats(this.library, query, (projectId, chatId) => this.runtimeFor(projectId, chatId)?.messages ?? null)
   }
 
   async pinProject(projectId: string, pinned: boolean): Promise<void> {

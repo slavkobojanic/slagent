@@ -112,7 +112,8 @@ function registerIpc(): void {
   ipcMain.handle(channels.abort, () => requireHost().abort())
   ipcMain.handle(channels.newChat, () => requireHost().newChat())
   ipcMain.handle(channels.openProject, (_event, projectId: string) => requireHost().openProject(projectId))
-  ipcMain.handle(channels.openChat, (_event, chatId: string) => requireHost().openChat(chatId))
+  ipcMain.handle(channels.openChat, (_event, chatId: string, projectId?: string) => requireHost().openChat(chatId, projectId))
+  ipcMain.handle(channels.searchChats, (_event, query: string) => requireHost().searchChats(String(query ?? "")))
   ipcMain.handle(channels.pinProject, (_event, projectId: string, pinned: boolean) => {
     return requireHost().pinProject(projectId, pinned)
   })

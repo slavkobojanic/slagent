@@ -5,6 +5,7 @@ export const channels = {
   newChat: "agent:new-chat",
   openProject: "agent:open-project",
   openChat: "agent:open-chat",
+  searchChats: "agent:search-chats",
   pinProject: "agent:pin-project",
   pinChat: "agent:pin-chat",
   renameChat: "agent:rename-chat",
@@ -166,6 +167,15 @@ export type ChatSummary = {
   status: ChatStatus
 }
 
+export type ChatSearchResult = {
+  projectId: string
+  projectName: string
+  chatId: string
+  title: string
+  snippet: string
+  updatedAt: number
+}
+
 export type LibraryState = {
   projects: ProjectSummary[]
   openProjectId: string | null
@@ -220,7 +230,8 @@ export type SlagentApi = {
   abort: () => Promise<void>
   newChat: () => Promise<void>
   openProject: (projectId: string) => Promise<void>
-  openChat: (chatId: string) => Promise<void>
+  openChat: (chatId: string, projectId?: string) => Promise<void>
+  searchChats: (query: string) => Promise<ChatSearchResult[]>
   pinProject: (projectId: string, pinned: boolean) => Promise<void>
   pinChat: (chatId: string, pinned: boolean) => Promise<void>
   renameChat: (chatId: string, title: string) => Promise<void>

@@ -1,6 +1,6 @@
-import { EllipsisIcon, PinIcon } from "lucide-react"
-import { useRef, useState, type ReactNode } from "react"
-import type { ChatStatus, ChatSummary, LibraryState, ProjectSummary } from "@shared/types"
+import { EllipsisIcon, PinIcon, SearchIcon, XIcon } from "lucide-react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import type { ChatSearchResult, ChatStatus, ChatSummary, LibraryState, ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ function Sidebar({
   onNewChat: () => void
   onChooseFolder: () => void
   onOpenProject: (projectId: string) => void
-  onOpenChat: (chatId: string) => void
+  onOpenChat: (chatId: string, projectId?: string) => void
   onPinProject: (projectId: string, pinned: boolean) => void
   onPinChat: (chatId: string, pinned: boolean) => void
   onRenameChat: (chatId: string, title: string) => void
@@ -46,6 +46,25 @@ function Sidebar({
     .filter((project) => project.pinned && project.id !== library.openProjectId)
     .sort((left, right) => right.pinnedAt - left.pinnedAt)
   const chats = orderedChats(library.chats)
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<ChatSearchResult[] | null>(null)
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults(null)
+      return
+    }
+    let stop = false
+    const timer = window.setTimeout(() => {
+      void window.slagent.searchChats(query).then((next) => {
+        if (!stop) setResults(next)
+      })
+    }, 150)
+    return () => {
+      stop = true
+      window.clearTimeout(timer)
+    }
+  }, [query])
 
   function startRename(chat: ChatSummary) {
     setRenamingId(chat.id)
@@ -70,14 +89,51 @@ function Sidebar({
 
   return (
     <aside className="flex h-full w-64 min-w-0 flex-col overflow-hidden border-r border-white/10">
-      <div className="p-3">
+      <div className="space-y-2 p-3">
         <Button type="button" variant="outline" className="w-full" title={`New chat (${modKey()}N)`} disabled={!library.openProjectId} onClick={onNewChat}>
           New chat
         </Button>
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-white/40" />
+          <Input
+            id="chat-search"
+            value={query}
+            placeholder="Search chats"
+            aria-label="Search chats"
+            className="h-8 pr-7 pl-8 text-sm"
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setQuery("")
+              if (event.key === "Enter" && results?.[0]) {
+                onOpenChat(results[0].chatId, results[0].projectId)
+                setQuery("")
+              }
+            }}
+          />
+          {query ? (
+            <button
+              type="button"
+              className="absolute top-1/2 right-2 -translate-y-1/2 text-white/40 hover:text-white"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
       </div>
       <ScrollArea className="min-h-0 w-full min-w-0 flex-1">
         <div className="w-full min-w-0 space-y-4 px-2 pb-4">
-          {open ? (
+          {results !== null ? (
+            <SearchResults
+              results={results}
+              openChatId={library.openChatId}
+              onOpen={(result) => {
+                onOpenChat(result.chatId, result.projectId)
+                setQuery("")
+              }}
+            />
+          ) : open ? (
             <section className="space-y-1">
               <ProjectRow
                 project={open}
@@ -311,6 +367,37 @@ function StatusDot({ status }: { status: ChatStatus }) {
   if (status === "error") className = "size-1.5 shrink-0 rounded-full bg-[#ff5c5c]"
   const label = STATUS_LABELS[status]
   return <span className={className} title={label || undefined} aria-label={label || undefined} role={label ? "img" : undefined} />
+}
+
+function SearchResults({
+  results,
+  openChatId,
+  onOpen,
+}: {
+  results: ChatSearchResult[]
+  openChatId: string | null
+  onOpen: (result: ChatSearchResult) => void
+}) {
+  if (results.length === 0) return <p className="px-2 py-1 text-sm text-white/40">No matching chats</p>
+  return (
+    <section className="space-y-1">
+      {results.map((result) => (
+        <button
+          key={`${result.projectId}:${result.chatId}`}
+          type="button"
+          className={cn(
+            "block w-full min-w-0 rounded-md px-2 py-1.5 text-left hover:bg-white/5",
+            result.chatId === openChatId && "bg-white/10",
+          )}
+          onClick={() => onOpen(result)}
+        >
+          <span className="block truncate text-sm">{result.title}</span>
+          <span className="block truncate text-xs text-white/40">{result.projectName}</span>
+          {result.snippet ? <span className="mt-0.5 line-clamp-2 block text-xs text-white/60">{result.snippet}</span> : null}
+        </button>
+      ))}
+    </section>
+  )
 }
 
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {

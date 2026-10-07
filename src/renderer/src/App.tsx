@@ -131,6 +131,12 @@ function AgentApp() {
         if (libraryRef.current.openProjectId) void window.slagent.newChat().then(focusComposer)
         return
       }
+      if (key === "f" && event.shiftKey) {
+        event.preventDefault()
+        setSidebarOpen(true)
+        window.requestAnimationFrame(() => document.getElementById("chat-search")?.focus())
+        return
+      }
       if (key === "b" && !event.shiftKey) {
         event.preventDefault()
         setSidebarOpen((open) => !open)
@@ -320,7 +326,7 @@ function AgentApp() {
           onNewChat={() => void newChat()}
           onChooseFolder={() => void chooseFolder()}
           onOpenProject={(projectId) => void runLibrary(() => window.slagent.openProject(projectId))}
-          onOpenChat={(chatId) => void runLibrary(() => window.slagent.openChat(chatId))}
+          onOpenChat={(chatId, projectId) => void runLibrary(() => window.slagent.openChat(chatId, projectId))}
           onPinProject={(projectId, pinned) => void runLibrary(() => window.slagent.pinProject(projectId, pinned))}
           onPinChat={(chatId, pinned) => void runLibrary(() => window.slagent.pinChat(chatId, pinned))}
           onRenameChat={(chatId, title) => void runLibrary(() => window.slagent.renameChat(chatId, title))}
