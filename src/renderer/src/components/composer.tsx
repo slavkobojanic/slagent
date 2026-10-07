@@ -48,7 +48,7 @@ function MessageQueue({
   onRemove: (id: string) => Promise<void>
 }) {
   return (
-    <Queue className="mb-2">
+    <Queue className="mb-2 rounded-none border-0 bg-transparent p-0 shadow-none">
       <QueueSection>
         <QueueSectionTrigger>
           <QueueSectionLabel count={items.length} label="queued" />
@@ -56,7 +56,7 @@ function MessageQueue({
         <QueueSectionContent>
           <QueueList>
             {items.map((item) => {
-              let modeLabel = "Sends when this run finishes."
+              let modeLabel = ""
               let switchLabel = "Steer"
               let nextMode: QueueMode = "steer"
               if (item.mode === "steer") {
@@ -65,7 +65,8 @@ function MessageQueue({
                 nextMode = "follow-up"
               }
               let description = modeLabel
-              if (item.detail) description = `${item.detail}. ${modeLabel}`
+              if (item.detail && modeLabel) description = `${item.detail}. ${modeLabel}`
+              else if (item.detail) description = item.detail
               let content = item.text
               if (!content) content = item.detail
               return (
@@ -97,7 +98,7 @@ function MessageQueue({
                       </QueueItemAction>
                     </QueueItemActions>
                   </div>
-                  <QueueItemDescription>{description}</QueueItemDescription>
+                  {description && <QueueItemDescription>{description}</QueueItemDescription>}
                 </QueueItem>
               )
             })}
