@@ -5,12 +5,9 @@ import type { RunStore } from "@/mirror/run-store/run-store"
 export type QueueRow = {
   id: string
   content: string
-  description: string | null
   switchLabel: string
   nextMode: QueueMode
 }
-
-const STEER_NOTE = "Sends after the current tool."
 
 export class QueueStore {
   error: string | null = null
@@ -33,21 +30,7 @@ function toRow(item: QueuedMessage): QueueRow {
   return {
     id: item.id,
     content: item.text || item.detail,
-    description: describe(item.detail, steer),
     switchLabel: steer ? "Follow-up" : "Steer",
     nextMode: steer ? "follow-up" : "steer",
   }
-}
-
-function describe(detail: string, steer: boolean): string | null {
-  if (steer && detail !== "") {
-    return `${detail}. ${STEER_NOTE}`
-  }
-  if (steer) {
-    return STEER_NOTE
-  }
-  if (detail !== "") {
-    return detail
-  }
-  return null
 }

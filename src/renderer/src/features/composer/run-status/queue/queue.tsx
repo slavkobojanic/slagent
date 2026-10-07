@@ -6,7 +6,6 @@ import {
   QueueItemAction,
   QueueItemActions,
   QueueItemContent,
-  QueueItemDescription,
   QueueItemIndicator,
   QueueList,
   QueueSection,
@@ -18,7 +17,6 @@ import {
 export type QueueRow = {
   id: string
   content: string
-  description: string | null
   switchLabel: string
   nextMode: QueueMode
 }
@@ -45,7 +43,7 @@ export function MessageQueue({ rows, error, onModeChange, onRemove }: MessageQue
             {rows.map((row) => (
               <QueueItem key={row.id}>
                 <div className="flex items-center gap-2">
-                  <QueueItemIndicator />
+                  <QueueItemIndicator className="mt-0" />
                   <QueueItemContent>{row.content}</QueueItemContent>
                   <QueueItemActions>
                     <QueueItemAction className="opacity-100" onClick={() => onModeChange(row.id, row.nextMode)}>
@@ -56,7 +54,6 @@ export function MessageQueue({ rows, error, onModeChange, onRemove }: MessageQue
                     </QueueItemAction>
                   </QueueItemActions>
                 </div>
-                {row.description !== null ? <QueueItemDescription>{row.description}</QueueItemDescription> : null}
               </QueueItem>
             ))}
           </QueueList>

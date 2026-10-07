@@ -15,13 +15,13 @@ describe("MessageQueue", () => {
     expect(markup).toBe("")
   })
 
-  it("lists each queued message with its switch action and its description", () => {
+  it("lists each queued message with its switch action", () => {
     const markup = viewMarkup(
       <MessageQueue
         {...props({
           rows: [
-            { id: "q1", content: "also fix tests", description: "Sends after the current tool.", switchLabel: "Follow-up", nextMode: "follow-up" },
-            { id: "q2", content: "next", description: null, switchLabel: "Steer", nextMode: "steer" },
+            { id: "q1", content: "also fix tests", switchLabel: "Follow-up", nextMode: "follow-up" },
+            { id: "q2", content: "next", switchLabel: "Steer", nextMode: "steer" },
           ],
         })}
       />,
@@ -30,7 +30,6 @@ describe("MessageQueue", () => {
     expect(markup).toContain("2 queued")
     expect(markup).toContain("also fix tests")
     expect(markup).toContain("Follow-up")
-    expect(markup).toContain("Sends after the current tool.")
     expect(markup).toContain('aria-label="Remove from queue"')
   })
 
@@ -38,7 +37,7 @@ describe("MessageQueue", () => {
     const markup = viewMarkup(
       <MessageQueue
         {...props({
-          rows: [{ id: "q1", content: "next", description: null, switchLabel: "Steer", nextMode: "steer" }],
+          rows: [{ id: "q1", content: "next", switchLabel: "Steer", nextMode: "steer" }],
           error: "Queue is busy",
         })}
       />,

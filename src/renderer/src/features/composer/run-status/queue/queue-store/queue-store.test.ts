@@ -3,8 +3,6 @@ import type { QueuedMessage } from "@shared/types"
 import { RunStore } from "@/mirror/run-store/run-store"
 import { QueueStore } from "@/features/composer/run-status/queue/queue-store/queue-store"
 
-const NOTE = "Sends after the current tool."
-
 function setup(queue: QueuedMessage[]) {
   const run = new RunStore()
   run.queue = queue
@@ -16,25 +14,13 @@ describe("QueueStore", () => {
     it("can offer to switch a follow-up message to steer", () => {
       const store = setup([{ id: "q1", text: "next", mode: "follow-up", detail: "" }])
 
-      expect(store.rows[0]).toEqual({ id: "q1", content: "next", description: null, switchLabel: "Steer", nextMode: "steer" })
+      expect(store.rows[0]).toEqual({ id: "q1", content: "next", switchLabel: "Steer", nextMode: "steer" })
     })
 
-    it("can offer to switch a steer message back to follow-up, with its note", () => {
+    it("can offer to switch a steer message back to follow-up", () => {
       const store = setup([{ id: "q1", text: "next", mode: "steer", detail: "" }])
 
-      expect(store.rows[0]).toEqual({ id: "q1", content: "next", description: NOTE, switchLabel: "Follow-up", nextMode: "follow-up" })
-    })
-
-    it("can join the detail and the note for a steer message", () => {
-      const store = setup([{ id: "q1", text: "next", mode: "steer", detail: "Waiting on tests" }])
-
-      expect(store.rows[0]?.description).toBe(`Waiting on tests. ${NOTE}`)
-    })
-
-    it("can show the detail as the description of a follow-up message", () => {
-      const store = setup([{ id: "q1", text: "next", mode: "follow-up", detail: "Waiting on tests" }])
-
-      expect(store.rows[0]?.description).toBe("Waiting on tests")
+      expect(store.rows[0]).toEqual({ id: "q1", content: "next", switchLabel: "Follow-up", nextMode: "follow-up" })
     })
 
     it("can use the detail as the content when the message has no text", () => {
