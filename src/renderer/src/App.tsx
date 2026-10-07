@@ -2,7 +2,7 @@ import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { CSSProperties } from "react"
-import type { AppMeta, DiffComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, QuestionRequest, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
+import type { AppMeta, DiffComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, McpServerStatus, ProjectSummary, QueuedMessage, QuestionRequest, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
 import { RightPanel, type RightTab } from "@/components/right-panel"
@@ -57,6 +57,7 @@ function AgentApp() {
   // A search result's message to scroll to once its chat has loaded.
   const [jumpTo, setJumpTo] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [mcpServers, setMcpServers] = useState<McpServerStatus[]>([])
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -260,6 +261,21 @@ function AgentApp() {
     }
   }, [])
 
+  async function refreshMcp(): Promise<McpServerStatus[]> {
+    const next = await window.slagent.mcpList()
+    setMcpServers(next)
+    return next
+  }
+
+  useEffect(() => {
+    if (!meta?.ready) return
+    void refreshMcp().catch(() => undefined)
+  }, [meta?.ready])
+
+  useEffect(() => {
+    if (settingsOpen) void refreshMcp().catch(() => undefined)
+  }, [settingsOpen])
+
   const platform = window.slagent.platform
 
   useEffect(() => {
@@ -449,10 +465,14 @@ function AgentApp() {
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="OpenRouter settings"
+            className="relative"
+            aria-label="Settings"
             onClick={() => setSettingsOpen(true)}
           >
             <Settings className="size-4" />
+            {mcpServers.some((server) => server.state === "needs-auth") ? (
+              <span className="absolute right-1 top-1 size-1.5 rounded-full bg-amber-400" />
+            ) : null}
           </Button>
         </div>
       </header>
@@ -576,6 +596,9 @@ function AgentApp() {
         onOpenChange={setSettingsOpen}
         status={meta?.openRouter ?? emptyStatus}
         authFile={`${meta?.agentDir ?? ""}/auth.json`}
+        mcpServers={mcpServers}
+        onMcpServers={setMcpServers}
+        onRefreshMcp={refreshMcp}
       />
       <ModelDialog
         open={modelOpen}
