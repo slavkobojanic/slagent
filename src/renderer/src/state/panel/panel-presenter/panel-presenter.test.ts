@@ -24,6 +24,16 @@ function setup() {
 }
 
 describe("PanelPresenter", () => {
+  describe("showPlan", () => {
+    it("can switch to the plan tab and open the panel", () => {
+      const { store, presenter } = setup()
+
+      presenter.showPlan()
+
+      expect(store.tab).toBe("plan")
+      expect(store.open).toBe(true)
+    })
+  })
   describe("openFile", () => {
     it("can set the viewed file, switch to the file tab and open the panel", async () => {
       const { files, store, presenter } = setup()

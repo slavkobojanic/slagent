@@ -35,6 +35,11 @@ export class PanelPresenter {
     this.store.setOpen(true)
   }
 
+  showPlan = () => {
+    this.store.setTab("plan")
+    this.store.setOpen(true)
+  }
+
   selectTab = (tab: RightTab) => {
     this.log.action("select-tab", { tab })
     this.store.setTab(tab)

@@ -1,48 +1,61 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { toast } from "sonner"
 import type { API } from "@/ipc/api"
-import { PlanCardPresenter } from "@/features/transcript/plan-card/plan-card-presenter/plan-card-presenter"
-import { PlanCardStore } from "@/features/transcript/plan-card/plan-card-store/plan-card-store"
-import { createMockInstance } from "@/test/create-mock-instance"
+import { describe, expect, it } from "vitest"
 import { nullLog } from "@/log/log"
-
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
+import { RunStore } from "@/mirror/run-store/run-store"
+import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { PanelStore } from "@/state/panel/panel-store/panel-store"
+import { createMockInstance } from "@/test/create-mock-instance"
+import { PlanCardStore } from "@/features/transcript/plan-card/plan-card-store/plan-card-store"
+import { PlanCardPresenter } from "./plan-card-presenter"
 
 function setup() {
-  const store = new PlanCardStore()
-  const api = createMockInstance<API>(["approvePlan"])
-  const presenter = new PlanCardPresenter(store, api, nullLog())
-  return { store, api, presenter }
+  const panelStore = new PanelStore()
+  const runStore = new RunStore()
+  const presenter = new PlanCardPresenter(
+    new PlanCardStore(),
+    runStore,
+    new PanelPresenter(panelStore, createMockInstance<API>([]), nullLog()),
+    createMockInstance<API>([]),
+    nullLog(),
+  )
+  return { panelStore, runStore, presenter }
 }
 
-afterEach(() => {
-  vi.mocked(toast.error).mockClear()
-})
-
 describe("PlanCardPresenter", () => {
-  describe("approvePlan", () => {
-    it("can approve the plan and clear the approval when it finishes", async () => {
-      const { store, api, presenter } = setup()
-      let finish: () => void = () => undefined
-      api.approvePlan.mockReturnValue(new Promise<void>((resolve) => (finish = () => resolve())))
+  describe("start", () => {
+    it("can open the plan in the right panel when a plan arrives", () => {
+      const { panelStore, runStore, presenter } = setup()
+      presenter.start()
 
-      const pending = presenter.approvePlan()
-      expect(store.approving).toBe(true)
-      finish()
-      await pending
+      runStore.planProposal = "## Goal\nFix it"
 
-      expect(api.approvePlan).toHaveBeenCalledTimes(1)
-      expect(store.approving).toBe(false)
+      expect(panelStore.tab).toBe("plan")
+      expect(panelStore.open).toBe(true)
+      presenter.stop()
     })
 
-    it("can report the error and clear the approval when it fails", async () => {
-      const { store, api, presenter } = setup()
-      api.approvePlan.mockRejectedValue(new Error("Run is still going"))
+    it("can leave the panel alone while the plan clears", () => {
+      const { panelStore, runStore, presenter } = setup()
+      presenter.start()
 
-      await presenter.approvePlan()
+      runStore.planProposal = "## Goal\nFix it"
+      runStore.planProposal = null
 
-      expect(toast.error).toHaveBeenCalledWith("Run is still going")
-      expect(store.approving).toBe(false)
+      expect(panelStore.tab).toBe("plan")
+      expect(panelStore.open).toBe(true)
+      presenter.stop()
+    })
+
+    it("can ignore a second start and a stop without listeners", () => {
+      const { panelStore, runStore, presenter } = setup()
+      presenter.start()
+      presenter.start()
+      presenter.stop()
+      presenter.stop()
+
+      runStore.planProposal = "plan"
+
+      expect(panelStore.open).toBe(false)
     })
   })
 })

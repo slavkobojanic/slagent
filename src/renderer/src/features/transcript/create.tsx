@@ -74,7 +74,7 @@ export function createTranscript({
     CommentableResponse,
     log: log.child("message-list"),
   })
-  const PlanCard = createPlanCard({ api, runStore, log: log.child("plan-card") })
+  const PlanCard = createPlanCard({ api, runStore, panelPresenter, log: log.child("plan-card") })
   const Status = createStatus({ runStore })
   const ScrollDown = createScrollDown({ runStore, transcriptStore: store, transcriptPresenter: presenter })
   const QuestionCard = createQuestionCard({ api, window, runStore, themeStore, log: log.child("question-card") })
