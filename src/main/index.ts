@@ -9,6 +9,7 @@ import { openInEditor, readFileView } from "./editor"
 import { parsePrompt } from "./prompt"
 import { parseReply } from "./extensions/ask-user"
 import { startUpdater } from "./updater"
+import { setApplicationMenu } from "./menu"
 import { registerCli } from "./cli"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
@@ -267,6 +268,7 @@ app.whenReady().then(async () => {
   await mcp.start().catch((error) => console.error("mcp:", error))
   registerIpc()
   registerCli()
+  setApplicationMenu()
   host = new AgentHost(join(app.getPath("userData"), "settings.json"), libraryRoot, broadcast, computer, notifier, () =>
     mcp?.serversForSession() ?? {},
   )
