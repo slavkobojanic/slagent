@@ -10,3 +10,4 @@ build
 resources/slagent.app/Contents/MacOS/
 resources/slagent.app/Contents/Resources/
 resources/slagent.app/Contents/_CodeSignature/
+.idea
