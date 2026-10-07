@@ -30,7 +30,6 @@ export function visibleMessage(scroller: HTMLElement): { id: string; top: number
   return null
 }
 
-// The rendered element of a message, searched within a scroller or the whole document.
 export function findMessage(root: ParentNode, messageId: string): HTMLElement | null {
   for (const element of root.querySelectorAll<HTMLElement>("[data-message-id]")) {
     if (element.dataset.messageId === messageId) {
