@@ -1,10 +1,14 @@
-# slagent
+<p align="center">
+  <img src="docs/icon.png" width="128" height="128" alt="slagent app icon">
+</p>
+
+<h1 align="center">slagent</h1>
 
 A desktop coding agent for macOS, built on [Pi](https://github.com/earendil-works/pi). Open a folder, chat with an agent that reads, edits and runs code in it, and review, commit and push the result without leaving the app.
 
 ## Install
 
-Download the latest `slagent-*-mac.zip` from [Releases](https://github.com/slavkobojanic/slagent/releases), unzip it and move `slagent.app` to Applications. Builds are signed and notarized, and the app updates itself from new releases.
+Download the latest `slagent-*-mac.zip` from [Releases](https://github.com/slavkobojanic/slagent/releases), unzip it and move `slagent.app` to `~/Applications` (the Applications folder in your home folder, not the system one). Builds are signed and notarized, and the app updates itself from new releases.
 
 slagent currently ships for Apple Silicon Macs only.
 
