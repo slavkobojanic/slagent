@@ -8,6 +8,7 @@ import { Composer } from "@/components/composer"
 import { RightPanel, type RightTab } from "@/components/right-panel"
 import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dialogs"
 import { ModelDialog } from "@/components/model-dialog"
+import { ProviderLogo } from "@/components/provider-logo"
 import { PermissionsWizard } from "@/components/permissions-wizard"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { modKey, orderedChats, ProjectMenu, Sidebar } from "@/components/sidebar"
@@ -283,7 +284,8 @@ function AgentApp() {
     }
   }, [platform])
   const ready = meta?.ready ?? false
-  const configured = meta?.openRouter.configured ?? false
+  // Claude Code chats sign in through Claude Code itself, so they don't need an OpenRouter key.
+  const configured = (meta?.openRouter.configured ?? false) || meta?.modelProvider === "claude-code"
   const cwd = meta?.cwd ?? ""
   const modelName = meta?.modelName ?? "Choose model"
 
@@ -421,6 +423,7 @@ function AgentApp() {
             disabled={!ready || streaming}
             onClick={() => setModelOpen(true)}
           >
+            <ProviderLogo provider={meta?.modelProvider ?? null} />
             <span className="truncate">{modelName}</span>
           </Button>
           <Button

@@ -45,11 +45,14 @@ export const channels = {
   event: "agent:event",
 } as const
 
+export type ModelProvider = "openrouter" | "claude-code"
+
 export type ModelOption = {
   id: string
   name: string
   contextWindow: number
   reasoning: boolean
+  provider: ModelProvider
 }
 
 export type OpenRouterStatus = {
@@ -71,6 +74,7 @@ export type AppMeta = {
   agentDir: string
   modelId: string | null
   modelName: string | null
+  modelProvider: ModelProvider | null
   models: ModelOption[]
   openRouter: OpenRouterStatus
   extensions: ExtensionInfo[]

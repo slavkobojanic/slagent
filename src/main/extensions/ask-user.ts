@@ -184,7 +184,7 @@ function text(value: unknown): string {
   return typeof value === "string" ? value.trim() : ""
 }
 
-function parseQuestions(input: Input): Question[] {
+export function parseQuestions(input: Input): Question[] {
   const questions: Question[] = []
   for (const [index, raw] of (input.questions ?? []).slice(0, 4).entries()) {
     const question = text(raw.question)
@@ -251,7 +251,7 @@ async function resolveImages(questions: Question[], resolve: (image: string) => 
   return problems
 }
 
-function answered(questions: Question[], reply: QuestionReply | null): AnsweredQuestion[] {
+export function answered(questions: Question[], reply: QuestionReply | null): AnsweredQuestion[] {
   return questions.map((question, index) => {
     // A reply typed in the composer shows as the answer to the first question.
     if (reply?.skipped && reply.message) {

@@ -23,6 +23,8 @@ export type StoredChat = {
   createdAt: number
   modelId: string | null
   sessionFile: string | null
+  // The Claude Code session a Claude Code chat resumes.
+  claudeSessionId?: string
   named: boolean
   titleCustom: boolean
   titleGenerated?: boolean

@@ -27,6 +27,7 @@ import type {
   UsageTotals,
 } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
+import { CLAUDE_MODELS, ClaudeRuntime, claudeModel, isClaudeModel } from "./claude-runtime"
 import type { ComputerUse } from "./computer"
 import { draftCommands } from "./commands"
 import { searchChats } from "./search"
@@ -48,6 +49,8 @@ const PREFERRED_MODELS = [
 
 type Emit = (event: UiEvent) => void
 
+type Runtime = ChatRuntime | ClaudeRuntime
+
 export type Notifier = {
   // Whether the window is in front, so finished runs in the open chat are seen.
   focused: () => boolean
@@ -64,7 +67,7 @@ export class AgentHost {
   private modelRuntime: ModelRuntime | null = null
   private readonly library: Library
   private readonly gate = new ComputerGate()
-  private readonly runtimes = new Map<string, ChatRuntime>()
+  private readonly runtimes = new Map<string, Runtime>()
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly extensionCache = new Map<string, ExtensionCache>()
   private prefs: Prefs = {}
@@ -234,7 +237,7 @@ export class AgentHost {
       const project = this.library.project(projectId)
       if (!project) return
       if (project.name !== typedName) throw new Error("Type the folder name to delete it.")
-      const doomed: ChatRuntime[] = []
+      const doomed: Runtime[] = []
       for (const runtime of this.runtimes.values()) {
         if (runtime.projectId === projectId) doomed.push(runtime)
       }
@@ -371,21 +374,33 @@ export class AgentHost {
   }
 
   async setModel(modelId: string): Promise<ModelChange> {
-    const runtimeModel = this.modelRuntime
-    if (!runtimeModel) throw new Error("Pi is not ready.")
-    const model = runtimeModel.getModel(PROVIDER, modelId)
-    if (!model || model.id.includes(":batch")) throw new Error("That model is not available.")
-    this.draftModelId = model.id
-    this.draftModelName = model.name
+    const claude = claudeModel(modelId)
+    let piModel: AgentModel | undefined
+    if (!claude) {
+      const runtimeModel = this.modelRuntime
+      if (!runtimeModel) throw new Error("Pi is not ready.")
+      piModel = runtimeModel.getModel(PROVIDER, modelId)
+      if (!piModel || piModel.id.includes(":batch")) throw new Error("That model is not available.")
+    }
+    const option = claude ?? piModel!
+    this.draftModelId = option.id
+    this.draftModelName = option.name
     await this.persistPrefs()
     const runtime = this.openRuntime()
+    // A chat stays on the provider it started with, so switching providers
+    // starts a new chat.
+    if (runtime && runtime instanceof ClaudeRuntime !== Boolean(claude)) {
+      await this.newChat()
+      this.publishMeta()
+      return { applied: true }
+    }
     if (!runtime) {
       this.publishMeta()
       return { applied: true }
     }
-    const applied = await runtime.setModel(model)
+    const applied = runtime instanceof ClaudeRuntime ? await runtime.setModel(option.id) : await runtime.setModel(piModel!)
     if (applied) {
-      await this.library.updateChat(runtime.projectId, runtime.chatId, { modelId: model.id })
+      await this.library.updateChat(runtime.projectId, runtime.chatId, { modelId: option.id })
       this.publishMeta()
       return { applied: true }
     }
@@ -467,9 +482,10 @@ export class AgentHost {
     this.publishAll()
   }
 
-  private async ensureRuntime(): Promise<ChatRuntime> {
+  private async ensureRuntime(): Promise<Runtime> {
     if (!this.projectId) throw new Error("Choose a folder first.")
-    if (!this.openRouter.configured) throw new Error("Add an OpenRouter API key in settings.")
+    const modelId = this.chatId ? this.library.chat(this.projectId, this.chatId)?.modelId : this.draftModelId
+    if (!isClaudeModel(modelId) && !this.openRouter.configured) throw new Error("Add an OpenRouter API key in settings.")
     if (this.chatId) {
       const existing = this.runtimeFor(this.projectId, this.chatId)
       if (existing) return existing
@@ -478,8 +494,9 @@ export class AgentHost {
       if (!loaded) throw new Error("The session is not ready.")
       return loaded
     }
-    const model = this.selectModel(null)
-    const chat = await this.library.createChat(this.projectId, model?.id ?? this.draftModelId)
+    let chatModelId = this.draftModelId
+    if (!isClaudeModel(chatModelId)) chatModelId = this.selectModel(null)?.id ?? this.draftModelId
+    const chat = await this.library.createChat(this.projectId, chatModelId)
     this.chatId = chat.id
     await this.loadChat(this.projectId, chat.id)
     const created = this.runtimeFor(this.projectId, chat.id)
@@ -501,6 +518,10 @@ export class AgentHost {
     if (chat.unread) await this.library.updateChat(projectId, chatId, { unread: false })
     const existing = this.runtimeFor(projectId, chatId)
     if (existing) return
+    if (isClaudeModel(chat.modelId)) {
+      await this.loadClaudeChat(project.path, projectId, chat)
+      return
+    }
     const runtimeModel = this.modelRuntime
     if (!runtimeModel) throw new Error("Pi is not ready.")
     const model = this.selectModel(chat.modelId)
@@ -588,6 +609,74 @@ export class AgentHost {
     }
   }
 
+  private async loadClaudeChat(cwd: string, projectId: string, chat: StoredChat): Promise<void> {
+    const chatId = chat.id
+    const messages = await this.library.readTranscript(projectId, chatId)
+    const runtime: ClaudeRuntime = new ClaudeRuntime({
+      projectId,
+      chatId,
+      cwd,
+      sessionId: chat.claudeSessionId ?? null,
+      modelId: chat.modelId ?? CLAUDE_MODELS[0]!.id,
+      named: chat.named || chat.titleCustom,
+      titleGenerated: chat.titleCustom || (chat.titleGenerated ?? chat.named),
+      onChange: (runningChanged) => {
+        this.onRuntimeChange(runtime, runningChanged)
+      },
+      onSession: (sessionId) => {
+        void this.library.updateChat(projectId, chatId, { claudeSessionId: sessionId })
+      },
+      onTitle: (title, generated) => {
+        const current = this.library.chat(projectId, chatId)
+        if (generated && current?.titleCustom) return
+        const patch: Partial<StoredChat> = { title, named: true, updatedAt: Date.now() }
+        if (generated) patch.titleGenerated = true
+        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
+      },
+      // Titles come from a small OpenRouter model, so without a key the
+      // first line of the message stays as the title.
+      generateTitle: (user, assistant) => {
+        const runtimeModel = this.modelRuntime
+        const titleModel = this.titleModel("")
+        if (!runtimeModel || !titleModel || !this.openRouter.configured) return Promise.resolve(null)
+        return generateTitle(runtimeModel, titleModel, user, assistant)
+      },
+      onModel: (modelId) => {
+        void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
+          if (this.projectId === projectId && this.chatId === chatId) this.publishMeta()
+        })
+      },
+      onUsage: (usage) => {
+        const stored = this.library.chat(projectId, chatId)
+        if (!stored) return
+        if (stored.tokens === usage.totalTokens && stored.cost === usage.cost) return
+        stored.tokens = usage.totalTokens
+        stored.cost = usage.cost
+        this.scheduleUsageSave(projectId)
+      },
+      onSettled: () => {
+        const open = this.projectId === projectId && this.chatId === chatId
+        if (!open || !this.notifier.focused()) {
+          let body = "Finished"
+          if (runtime.waiting) body = "A plan is ready for review"
+          else if (runtime.failed) body = "Stopped with an error"
+          this.notify(projectId, chatId, body)
+        }
+        if (open) return
+        void this.library.updateChat(projectId, chatId, { unread: true }).then(() => this.publishLibrary())
+      },
+      onQuestion: (request) => {
+        const open = this.projectId === projectId && this.chatId === chatId
+        if (open && this.notifier.focused()) return
+        const first = request.questions[0]?.question ?? "A question is waiting"
+        this.notify(projectId, chatId, first)
+      },
+      saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
+    })
+    runtime.load(messages)
+    this.runtimes.set(runtime.key, runtime)
+  }
+
   private async disposeChat(projectId: string, chatId: string): Promise<void> {
     const runtime = this.runtimeFor(projectId, chatId)
     if (!runtime) return
@@ -598,13 +687,13 @@ export class AgentHost {
     this.runtimes.delete(runtime.key)
   }
 
-  private onRuntimeChange(runtime: ChatRuntime, runningChanged: boolean): void {
+  private onRuntimeChange(runtime: Runtime, runningChanged: boolean): void {
     this.scheduleTranscript(runtime)
     if (runningChanged) this.publishLibrary()
     if (runtime.projectId === this.projectId && runtime.chatId === this.chatId) this.publishTranscript()
   }
 
-  private scheduleTranscript(runtime: ChatRuntime): void {
+  private scheduleTranscript(runtime: Runtime): void {
     this.clearTimer(runtime.key)
     this.timers.set(
       runtime.key,
@@ -702,16 +791,21 @@ export class AgentHost {
     return latest
   }
 
-  private openRuntime(): ChatRuntime | null {
+  private openRuntime(): Runtime | null {
     if (!this.projectId || !this.chatId) return null
     return this.runtimeFor(this.projectId, this.chatId)
   }
 
-  private runtimeFor(projectId: string, chatId: string): ChatRuntime | null {
+  private runtimeFor(projectId: string, chatId: string): Runtime | null {
     return this.runtimes.get(`${projectId}:${chatId}`) ?? null
   }
 
   private applyDraftModel(): void {
+    const claude = claudeModel(this.draftModelId)
+    if (claude) {
+      this.draftModelName = claude.name
+      return
+    }
     const model = this.selectModel(this.draftModelId)
     if (!model) return
     this.draftModelId = model.id
@@ -744,7 +838,7 @@ export class AgentHost {
 
   private catalog(): AppMeta["models"] {
     const runtime = this.modelRuntime
-    if (!runtime) return []
+    if (!runtime) return CLAUDE_MODELS
     const models = runtime.getModels(PROVIDER)
     const options: AppMeta["models"] = []
     for (const model of models) {
@@ -754,10 +848,11 @@ export class AgentHost {
         name: model.name,
         contextWindow: model.contextWindow,
         reasoning: model.reasoning,
+        provider: "openrouter",
       })
     }
     options.sort((left, right) => left.name.localeCompare(right.name))
-    return options
+    return [...CLAUDE_MODELS, ...options]
   }
 
   private async readAuth(): Promise<OpenRouterStatus> {
@@ -793,6 +888,7 @@ export class AgentHost {
       agentDir: this.agentDir,
       modelId: model.id,
       modelName: model.name,
+      modelProvider: model.id ? (isClaudeModel(model.id) ? "claude-code" : "openrouter") : null,
       models: this.models,
       openRouter: this.openRouter,
       extensions: cached?.extensions ?? [],
@@ -835,7 +931,7 @@ export class AgentHost {
     }
   }
 
-  private chatStatus(chat: StoredChat, runtime: ChatRuntime | null): ChatStatus {
+  private chatStatus(chat: StoredChat, runtime: Runtime | null): ChatStatus {
     if (runtime?.waiting) return "waiting"
     if (runtime?.running) return "running"
     if (runtime?.failed) return "error"

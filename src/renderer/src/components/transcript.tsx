@@ -564,7 +564,8 @@ function EmptyState({
       <ConversationEmptyState>
         <h1 className="text-xl font-medium tracking-tight">Connect OpenRouter</h1>
         <p className="max-w-md text-sm text-muted-foreground">
-          Add an API key, or sign in with the Pi CLI. slagent uses the same credentials.
+          Add an API key, or sign in with the Pi CLI. slagent uses the same credentials. To use your Claude
+          subscription instead, pick a Claude Code model from the model menu.
         </p>
         <button
           type="button"
