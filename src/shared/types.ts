@@ -22,6 +22,7 @@ export const channels = {
   setQueueMode: "agent:set-queue-mode",
   removeQueued: "agent:remove-queued",
   clearTerminal: "agent:clear-terminal",
+  compact: "agent:compact",
   permissions: "computer:permissions",
   requestAccessibility: "computer:request-accessibility",
   requestScreenRecording: "computer:request-screen-recording",
@@ -172,6 +173,14 @@ export type LibraryState = {
   openChatId: string | null
 }
 
+export type UsageState = {
+  contextTokens: number | null
+  contextWindow: number
+  percent: number | null
+  totalTokens: number
+  cost: number
+}
+
 export type TranscriptState = {
   messages: ChatMessage[]
   streaming: boolean
@@ -179,6 +188,7 @@ export type TranscriptState = {
   queue: QueuedMessage[]
   terminal: string
   terminalStreaming: boolean
+  usage: UsageState | null
 }
 
 export type Snapshot = TranscriptState & {
@@ -229,6 +239,7 @@ export type SlagentApi = {
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   clearTerminal: () => Promise<void>
+  compact: () => Promise<void>
   getPermissions: () => Promise<ComputerPermissions>
   requestAccessibility: () => Promise<ComputerPermissions>
   requestScreenRecording: () => Promise<ComputerPermissions>

@@ -34,6 +34,7 @@ const api: SlagentApi = {
   setQueueMode: (id, mode) => ipcRenderer.invoke(channels.setQueueMode, id, mode),
   removeQueued: (id) => ipcRenderer.invoke(channels.removeQueued, id),
   clearTerminal: () => ipcRenderer.invoke(channels.clearTerminal),
+  compact: () => ipcRenderer.invoke(channels.compact),
   getPermissions: () => ipcRenderer.invoke(channels.permissions),
   requestAccessibility: () => ipcRenderer.invoke(channels.requestAccessibility),
   requestScreenRecording: () => ipcRenderer.invoke(channels.requestScreenRecording),

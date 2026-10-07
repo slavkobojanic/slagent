@@ -30,7 +30,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
-import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand } from "@shared/types"
+import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, UsageState } from "@shared/types"
+import { UsageMeter } from "@/components/usage-meter"
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 
@@ -176,6 +177,8 @@ function Composer({
   disabled,
   placeholder,
   queue,
+  usage,
+  onCompact,
   onPrompt,
   onAbort,
   onQueueMode,
@@ -185,6 +188,8 @@ function Composer({
   disabled: boolean
   placeholder: string
   queue: QueuedMessage[]
+  usage: UsageState | null
+  onCompact: () => Promise<void>
   onPrompt: (request: PromptRequest) => Promise<void>
   onAbort: () => Promise<void>
   onQueueMode: (id: string, mode: QueueMode) => Promise<void>
@@ -469,7 +474,8 @@ function Composer({
           <PromptInputTools>
             <AttachButton />
           </PromptInputTools>
-          <PromptInputSubmit className="ml-auto" disabled={submitDisabled} status={status} onStop={() => void onStop()} />
+          <UsageMeter usage={usage} busy={streaming} onCompact={onCompact} />
+          <PromptInputSubmit disabled={submitDisabled} status={status} onStop={() => void onStop()} />
         </PromptInputFooter>
       </PromptInput>
     </div>

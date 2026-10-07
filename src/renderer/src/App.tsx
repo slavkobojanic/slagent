@@ -1,7 +1,7 @@
 import { PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot } from "@shared/types"
+import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, UsageState } from "@shared/types"
 import { BashTerminal } from "@/components/bash-terminal"
 import { Composer } from "@/components/composer"
 import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dialogs"
@@ -42,6 +42,7 @@ function AgentApp() {
   const [queue, setQueue] = useState<QueuedMessage[]>([])
   const [terminal, setTerminal] = useState("")
   const [terminalStreaming, setTerminalStreaming] = useState(false)
+  const [usage, setUsage] = useState<UsageState | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [permissions, setPermissions] = useState<ComputerPermissions | null>(null)
@@ -75,6 +76,7 @@ function AgentApp() {
         setQueue(event.queue)
         setTerminal(event.terminal)
         setTerminalStreaming(event.terminalStreaming)
+        setUsage(event.usage)
       }
       if (event.type === "meta" && event.revision >= metaRevision.current) {
         metaRevision.current = event.revision
@@ -101,6 +103,7 @@ function AgentApp() {
         setQueue(snapshot.queue)
         setTerminal(snapshot.terminal)
         setTerminalStreaming(snapshot.terminalStreaming)
+        setUsage(snapshot.usage)
       }
       if (snapshot.revision >= metaRevision.current) {
         metaRevision.current = snapshot.revision
@@ -348,6 +351,8 @@ function AgentApp() {
             disabled={composerDisabled}
             placeholder={placeholder}
             queue={queue}
+            usage={usage}
+            onCompact={() => window.slagent.compact()}
             onPrompt={(request) => window.slagent.prompt(request)}
             onAbort={() => window.slagent.abort()}
             onQueueMode={(id, mode) => window.slagent.setQueueMode(id, mode)}

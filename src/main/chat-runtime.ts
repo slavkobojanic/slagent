@@ -23,6 +23,7 @@ import type {
   ToolMessage,
   TranscriptState,
   UserAttachment,
+  UsageState,
   UserMessage,
 } from "../shared/types"
 import { sessionCommands } from "./commands"
@@ -83,6 +84,7 @@ export class ChatRuntime {
   private notice: string | null = null
   private noticeIsError = false
   private awaiting = false
+  private usageState: UsageState | null = null
   private named: boolean
   private titleGenerated: boolean
   private session: AgentSession | null = null
@@ -157,7 +159,48 @@ export class ChatRuntime {
       })),
       terminal: this.terminal,
       terminalStreaming: this.terminalStreaming,
+      usage: this.usageState,
     }
+  }
+
+  // Stats walk every session entry, so they refresh at message boundaries
+  // rather than on each streamed delta.
+  private refreshUsage(): void {
+    this.usageState = this.readUsage()
+  }
+
+  private readUsage(): UsageState | null {
+    const session = this.session
+    if (!session) return null
+    try {
+      const stats = session.getSessionStats()
+      const context = session.getContextUsage()
+      return {
+        contextTokens: context?.tokens ?? null,
+        contextWindow: context?.contextWindow ?? session.model?.contextWindow ?? 0,
+        percent: context?.percent ?? null,
+        totalTokens: stats.tokens.total,
+        cost: stats.cost,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  async compact(): Promise<void> {
+    const session = this.session
+    if (!session) throw new Error("The session is not ready.")
+    if (this.running || session.isStreaming) throw new Error("Wait for the run to finish.")
+    this.setNotice("Summarizing earlier messages")
+    this.emit(false)
+    try {
+      await session.compact()
+      this.setNotice(null)
+      this.refreshUsage()
+    } catch (error) {
+      this.setNotice(errorMessage(error), true)
+    }
+    this.emit(false)
   }
 
   async open(): Promise<string | null> {
@@ -194,6 +237,7 @@ export class ChatRuntime {
     })
 
     this.session = session
+    this.refreshUsage()
     this.rememberExtensions(extensionsResult)
     const token = {}
     this.sessionToken = token
@@ -308,6 +352,7 @@ export class ChatRuntime {
       return false
     }
     if (this.session) await this.session.setModel(model)
+    this.refreshUsage()
     this.modelId = model.id
     this.modelName = model.name
     this.options.onModel(model.id)
@@ -435,6 +480,7 @@ export class ChatRuntime {
       bubble.streaming = false
       bubble.error = event.message.errorMessage ?? null
       this.currentAssistantId = null
+      this.refreshUsage()
       this.emit(false)
       return
     }
@@ -496,6 +542,7 @@ export class ChatRuntime {
       if (pending && this.session) {
         const session = this.session
         void session.setModel(pending).then(() => {
+          this.refreshUsage()
           this.modelId = pending.id
           this.modelName = pending.name
           this.options.onModel(pending.id)
@@ -523,6 +570,7 @@ export class ChatRuntime {
 
     if (event.type === "compaction_end" || event.type === "auto_retry_end") {
       this.setNotice(null)
+      this.refreshUsage()
       this.emit(false)
     }
   }

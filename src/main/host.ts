@@ -252,6 +252,12 @@ export class AgentHost {
     this.openRuntime()?.removeQueued(id)
   }
 
+  async compact(): Promise<void> {
+    const runtime = this.openRuntime()
+    if (!runtime) return
+    await runtime.compact()
+  }
+
   clearTerminal(): void {
     this.openRuntime()?.clearTerminal()
   }
@@ -680,6 +686,7 @@ export class AgentHost {
         queue: [],
         terminal: "",
         terminalStreaming: false,
+        usage: null,
       }
     }
     return runtime.transcript()

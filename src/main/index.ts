@@ -139,6 +139,7 @@ function registerIpc(): void {
   ipcMain.handle(channels.removeQueued, (_event, id: string) => {
     requireHost().removeQueued(id)
   })
+  ipcMain.handle(channels.compact, () => requireHost().compact())
   ipcMain.handle(channels.clearTerminal, () => {
     requireHost().clearTerminal()
   })
