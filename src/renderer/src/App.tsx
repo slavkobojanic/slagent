@@ -46,6 +46,8 @@ function AgentApp() {
   const [terminalStreaming, setTerminalStreaming] = useState(false)
   const [usage, setUsage] = useState<UsageState | null>(null)
   const [todos, setTodos] = useState<TodoItem[]>([])
+  const [planMode, setPlanMode] = useState(false)
+  const [planProposal, setPlanProposal] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -82,6 +84,8 @@ function AgentApp() {
         setTerminalStreaming(event.terminalStreaming)
         setUsage(event.usage)
         setTodos(event.todos)
+        setPlanMode(event.planMode)
+        setPlanProposal(event.planProposal)
       }
       if (event.type === "meta" && event.revision >= metaRevision.current) {
         metaRevision.current = event.revision
@@ -110,6 +114,8 @@ function AgentApp() {
         setTerminalStreaming(snapshot.terminalStreaming)
         setUsage(snapshot.usage)
         setTodos(snapshot.todos)
+        setPlanMode(snapshot.planMode)
+        setPlanProposal(snapshot.planProposal)
       }
       if (snapshot.revision >= metaRevision.current) {
         metaRevision.current = snapshot.revision
@@ -247,6 +253,7 @@ function AgentApp() {
   if (!configured) placeholder = "Connect OpenRouter to start"
   if (!cwd) placeholder = "Choose a folder"
   if (!ready) placeholder = "Starting"
+  if (ready && configured && cwd && planMode) placeholder = "Describe what to plan"
   if (ready && configured && cwd && streaming) placeholder = "Queue a follow-up"
 
   async function chooseFolder() {
@@ -311,6 +318,13 @@ function AgentApp() {
       run: () => {
         window.dispatchEvent(new Event(EDIT_LAST_EVENT))
       },
+    },
+    {
+      id: "plan-mode",
+      label: planMode ? "Turn off plan mode" : "Turn on plan mode",
+      shortcut: "⇧Tab",
+      disabled: streaming || !cwd,
+      run: () => window.slagent.setPlanMode(!planMode),
     },
     { id: "model", label: "Change model", disabled: !ready || streaming, run: () => setModelOpen(true) },
     { id: "compact", label: "Summarize earlier messages", disabled: !usage || streaming, run: () => window.slagent.compact() },
@@ -394,6 +408,8 @@ function AgentApp() {
               configured={configured}
               cwd={cwd}
               streaming={streaming}
+              planProposal={planProposal}
+              onApprovePlan={() => window.slagent.approvePlan()}
               onConnect={() => setSettingsOpen(true)}
               onChoose={() => void chooseFolder()}
               onEdit={(id, text) => window.slagent.editMessage(id, text)}
@@ -407,6 +423,8 @@ function AgentApp() {
             queue={queue}
             usage={usage}
             todos={todos}
+            planMode={planMode}
+            onPlanMode={(enabled) => window.slagent.setPlanMode(enabled)}
             onCompact={() => window.slagent.compact()}
             onPrompt={(request) => window.slagent.prompt(request)}
             onAbort={() => window.slagent.abort()}

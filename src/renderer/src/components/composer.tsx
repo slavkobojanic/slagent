@@ -1,5 +1,5 @@
 import type { ChatStatus } from "ai"
-import { PaperclipIcon, XIcon } from "lucide-react"
+import { ListChecksIcon, PaperclipIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { toast } from "sonner"
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
@@ -181,6 +181,8 @@ function Composer({
   queue,
   usage,
   todos,
+  planMode,
+  onPlanMode,
   onCompact,
   onPrompt,
   onAbort,
@@ -193,6 +195,8 @@ function Composer({
   queue: QueuedMessage[]
   usage: UsageState | null
   todos: TodoItem[]
+  planMode: boolean
+  onPlanMode: (enabled: boolean) => Promise<void>
   onCompact: () => Promise<void>
   onPrompt: (request: PromptRequest) => Promise<void>
   onAbort: () => Promise<void>
@@ -336,6 +340,11 @@ function Composer({
       setHistoryQuery(null)
       return
     }
+    if (count === 0 && event.key === "Tab" && event.shiftKey) {
+      event.preventDefault()
+      togglePlan()
+      return
+    }
     if (count === 0) {
       if (historyQuery !== null) {
         if (event.key === "Enter") event.preventDefault()
@@ -397,6 +406,13 @@ function Composer({
       toast.error(errorText(error))
       throw error
     }
+  }
+
+  function togglePlan() {
+    if (streaming) return
+    void onPlanMode(!planMode).catch((error: unknown) => {
+      toast.error(errorText(error))
+    })
   }
 
   async function onStop() {
@@ -478,6 +494,19 @@ function Composer({
         <PromptInputFooter>
           <PromptInputTools>
             <AttachButton />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={planMode ? "h-7 gap-1.5 bg-white/10 px-2 text-amber-300 hover:text-amber-200" : "h-7 gap-1.5 px-2 text-white/60"}
+              aria-pressed={planMode}
+              title="Plan mode (Shift+Tab): research and propose a plan before changing anything"
+              disabled={disabled || streaming}
+              onClick={togglePlan}
+            >
+              <ListChecksIcon className="size-3.5" />
+              Plan
+            </Button>
           </PromptInputTools>
           <UsageMeter usage={usage} busy={streaming} onCompact={onCompact} />
           <PromptInputSubmit disabled={submitDisabled} status={status} onStop={() => void onStop()} />

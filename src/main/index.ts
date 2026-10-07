@@ -141,6 +141,8 @@ function registerIpc(): void {
     if (typeof text !== "string" || !text.trim()) throw new Error("Write a message first.")
     return requireHost().editMessage(id, text)
   })
+  ipcMain.handle(channels.setPlanMode, (_event, enabled: unknown) => requireHost().setPlanMode(enabled === true))
+  ipcMain.handle(channels.approvePlan, () => requireHost().approvePlan())
   ipcMain.handle(channels.removeQueued, (_event, id: string) => {
     requireHost().removeQueued(id)
   })

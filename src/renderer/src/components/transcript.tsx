@@ -307,6 +307,39 @@ function EditMessage({
   )
 }
 
+function PlanCard({ plan, onApprove }: { plan: string; onApprove: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false)
+
+  async function approve() {
+    setBusy(true)
+    try {
+      await onApprove()
+    } catch (error) {
+      toast.error(errorText(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="rounded-md border border-amber-300/40 bg-amber-300/5" aria-label="Proposed plan">
+      <header className="flex items-center gap-2 border-b border-amber-300/20 px-4 py-2 text-sm">
+        <span className="font-medium text-amber-200">Proposed plan</span>
+        <span className="text-xs text-muted-foreground">Nothing has changed yet.</span>
+      </header>
+      <div className="max-h-[50vh] overflow-y-auto px-4 py-3">
+        <MessageResponse>{plan}</MessageResponse>
+      </div>
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-amber-300/20 px-4 py-2">
+        <span className="mr-auto text-xs text-muted-foreground">Reply below to change the plan.</span>
+        <Button type="button" size="sm" disabled={busy} onClick={() => void approve()}>
+          Approve and build
+        </Button>
+      </footer>
+    </section>
+  )
+}
+
 function EmptyState({
   configured,
   cwd,
@@ -370,6 +403,8 @@ function Transcript({
   configured,
   cwd,
   streaming,
+  planProposal,
+  onApprovePlan,
   onConnect,
   onChoose,
   onEdit,
@@ -379,6 +414,8 @@ function Transcript({
   configured: boolean
   cwd: string
   streaming: boolean
+  planProposal: string | null
+  onApprovePlan: () => Promise<void>
   onConnect: () => void
   onChoose: () => void
   onEdit: (id: string, text: string) => Promise<void>
@@ -423,6 +460,7 @@ function Transcript({
           }
           return <AssistantTurn key={block.turn.id} turn={block.turn} />
         })}
+        {planProposal ? <PlanCard plan={planProposal} onApprove={onApprovePlan} /> : null}
         {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
       </ConversationContent>
       <ConversationScrollButton />

@@ -33,12 +33,14 @@ import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
 import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
 import { focusGuard } from "./extensions/focus-guard"
+import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { todoExtension } from "./extensions/todo"
 import { preparePrompt, queueDetail } from "./prompt"
 
 // Pi treats the tools list as an allowlist, so tools from slagent's own
 // extensions are named here too.
-const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls", "todo"]
+const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls", "todo", "propose_plan"]
+const APPROVED_PLAN = "The plan is approved. Carry it out now. Track the steps with the todo tool and check the result at the end."
 
 export type AgentModel = NonNullable<ReturnType<ModelRuntime["getModel"]>>
 
@@ -90,6 +92,20 @@ export class ChatRuntime {
   private awaiting = false
   private usageState: UsageState | null = null
   private todos: TodoItem[] = []
+  private planEnabled = false
+  private planProposal: string | null = null
+  private readonly plan: PlanModeControl = planMode({
+    onEnabled: (enabled) => {
+      this.planEnabled = enabled
+      if (!enabled) this.clearProposal()
+      this.emit(true)
+    },
+    onProposal: (plan) => {
+      this.planProposal = plan
+      this.awaiting = true
+      this.emit(true)
+    },
+  })
   // Transcript user messages waiting for Pi to persist them, oldest first.
   private pendingUserIds: string[] = []
   private named: boolean
@@ -168,6 +184,8 @@ export class ChatRuntime {
       terminalStreaming: this.terminalStreaming,
       usage: this.usageState,
       todos: this.todos,
+      planMode: this.planEnabled,
+      planProposal: this.planProposal,
     }
   }
 
@@ -217,6 +235,7 @@ export class ChatRuntime {
     let toolNames = CODING_TOOLS
     let customTools: ReturnType<typeof computerTools> = []
     const extensionFactories: InlineExtension[] = [
+      this.plan.extension,
       todoExtension((todos) => {
         this.todos = todos
         this.emit(false)
@@ -341,6 +360,24 @@ export class ChatRuntime {
     return sessionCommands(this.session)
   }
 
+  setPlanMode(enabled: boolean): void {
+    if (!this.session) throw new Error("The session is not ready.")
+    if (this.running) throw new Error("Wait for the run to finish.")
+    this.plan.setEnabled(enabled)
+  }
+
+  async approvePlan(): Promise<void> {
+    if (!this.planProposal) throw new Error("There is no plan to approve.")
+    this.plan.setEnabled(false)
+    this.clearProposal()
+    await this.prompt({ text: APPROVED_PLAN, mentions: [], files: [] })
+  }
+
+  private clearProposal(): void {
+    this.planProposal = null
+    this.awaiting = false
+  }
+
   removeQueued(id: string): void {
     this.queue = this.queue.filter((item) => item.id !== id)
     this.emit(false)
@@ -407,6 +444,8 @@ export class ChatRuntime {
     if (!session) throw new Error("The session is not ready.")
     const prepared = await preparePrompt(request, this.options.saveBytes)
     const message = this.pushUser(request, prepared.attachments)
+    // Any reply to a proposed plan is feedback, so the card goes away.
+    this.clearProposal()
     this.setNotice(null)
     this.emit(true)
     try {

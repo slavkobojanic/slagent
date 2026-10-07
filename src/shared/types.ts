@@ -23,6 +23,8 @@ export const channels = {
   setQueueMode: "agent:set-queue-mode",
   removeQueued: "agent:remove-queued",
   editMessage: "agent:edit-message",
+  setPlanMode: "agent:set-plan-mode",
+  approvePlan: "agent:approve-plan",
   clearTerminal: "agent:clear-terminal",
   compact: "agent:compact",
   permissions: "computer:permissions",
@@ -209,6 +211,8 @@ export type TranscriptState = {
   terminalStreaming: boolean
   usage: UsageState | null
   todos: TodoItem[]
+  planMode: boolean
+  planProposal: string | null
 }
 
 export type Snapshot = TranscriptState & {
@@ -260,6 +264,8 @@ export type SlagentApi = {
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   editMessage: (id: string, text: string) => Promise<void>
+  setPlanMode: (enabled: boolean) => Promise<void>
+  approvePlan: () => Promise<void>
   clearTerminal: () => Promise<void>
   compact: () => Promise<void>
   getPermissions: () => Promise<ComputerPermissions>

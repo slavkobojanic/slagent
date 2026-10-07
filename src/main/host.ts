@@ -60,6 +60,7 @@ export class AgentHost {
   private agentDir = getAgentDir()
   private draftModelId: string | null = null
   private draftModelName: string | null = null
+  private draftPlanMode = false
   private models: AppMeta["models"] = []
   private openRouter: OpenRouterStatus = { configured: false, source: null, type: null }
   private ready = false
@@ -273,6 +274,22 @@ export class AgentHost {
     await runtime.editMessage(id, text)
   }
 
+  async setPlanMode(enabled: boolean): Promise<void> {
+    const runtime = this.openRuntime()
+    if (!runtime) {
+      this.draftPlanMode = enabled
+      this.publishTranscript()
+      return
+    }
+    runtime.setPlanMode(enabled)
+  }
+
+  async approvePlan(): Promise<void> {
+    const runtime = this.openRuntime()
+    if (!runtime) throw new Error("Open a chat first.")
+    await runtime.approvePlan()
+  }
+
   removeQueued(id: string): void {
     this.openRuntime()?.removeQueued(id)
   }
@@ -398,6 +415,8 @@ export class AgentHost {
     await this.loadChat(this.projectId, chat.id)
     const created = this.runtimeFor(this.projectId, chat.id)
     if (!created) throw new Error("The session is not ready.")
+    if (this.draftPlanMode) created.setPlanMode(true)
+    this.draftPlanMode = false
     this.publishLibrary()
     return created
   }
@@ -713,6 +732,8 @@ export class AgentHost {
         terminalStreaming: false,
         usage: null,
         todos: [],
+        planMode: this.draftPlanMode,
+        planProposal: null,
       }
     }
     return runtime.transcript()
