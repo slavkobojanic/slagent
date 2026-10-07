@@ -4,6 +4,14 @@
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
 
+/* Tailwind must scan Streamdown's compiled output to generate the utility
+   classes it ships, including the shiki token colors. */
+@source "../../../node_modules/streamdown/dist/*.js";
+@source "../../../node_modules/@streamdown/code/dist/*.js";
+@source "../../../node_modules/@streamdown/cjk/dist/*.js";
+@source "../../../node_modules/@streamdown/math/dist/*.js";
+@source "../../../node_modules/@streamdown/mermaid/dist/*.js";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -292,6 +300,44 @@ body.resizing * {
   border-radius: 6px;
   max-width: 100%;
   height: auto;
+}
+
+/* Streamdown renders each fenced block with a language header and actions
+   pinned to the top-right. The language label is noise here, and the copy
+   button reads better floating over the code in the bottom-right. */
+[data-streamdown="code-block-header"] {
+  display: none;
+}
+
+/* Streamdown draws a border on both the block container and the scroll body,
+   which reads as a double outline. Keep only the outer one, and let the code
+   itself scroll so the frame and copy button stay put. */
+[data-streamdown="code-block-body"] {
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+[data-streamdown="code-block-body"] pre {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Keep wrapped continuations aligned with the code rather than under the
+   line-number gutter (the gutter is 1.5rem wide plus 1rem of margin). */
+[data-streamdown="code-block-body"] code > span {
+  padding-left: 2.5rem;
+  text-indent: -2.5rem;
+}
+
+[data-streamdown="code-block"] > div:has(> [data-streamdown="code-block-actions"]) {
+  top: auto;
+  right: 0.5rem;
+  bottom: 0.5rem;
 }
 
 .markdown :not(pre) > code {
