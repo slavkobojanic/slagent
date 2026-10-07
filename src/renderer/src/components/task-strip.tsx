@@ -1,4 +1,4 @@
-import { CircleStopIcon, TerminalSquareIcon } from "lucide-react"
+import { CircleStopIcon } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { TaskInfo } from "@shared/types"
@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { errorText } from "@/lib/format"
 import { cn } from "@/lib/utils"
-
-const RECENT_MS = 5 * 60 * 1000
 
 function TaskStrip({ tasks }: { tasks: TaskInfo[] }) {
   const [viewing, setViewing] = useState<TaskInfo | null>(null)
@@ -21,7 +19,9 @@ function TaskStrip({ tasks }: { tasks: TaskInfo[] }) {
     return () => window.clearInterval(timer)
   }, [anyRunning])
 
-  const visible = tasks.filter((task) => task.status === "running" || (task.endedAt !== null && now - task.endedAt < RECENT_MS))
+  // Only work still going belongs above the composer: a finished task's result
+  // already reached the transcript, so its chip is cleared the moment it ends.
+  const visible = tasks.filter((task) => task.status === "running")
   const current = viewing ? (tasks.find((task) => task.id === viewing.id) ?? viewing) : null
   if (visible.length === 0 && !current) return null
 
@@ -43,21 +43,15 @@ function TaskStrip({ tasks }: { tasks: TaskInfo[] }) {
               {task.label}
             </button>
             <span className="text-white/40">{statusLabel(task, now)}</span>
-            {task.status === "running" ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                aria-label={`Stop ${task.label}`}
-                onClick={() => void window.slagent.stopTask(task.id).catch((error: unknown) => toast.error(errorText(error)))}
-              >
-                <CircleStopIcon className="size-3.5" />
-              </Button>
-            ) : (
-              <Button type="button" variant="ghost" size="icon-xs" aria-label={`Output of ${task.label}`} onClick={() => setViewing(task)}>
-                <TerminalSquareIcon className="size-3.5" />
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label={`Stop ${task.label}`}
+              onClick={() => void window.slagent.stopTask(task.id).catch((error: unknown) => toast.error(errorText(error)))}
+            >
+              <CircleStopIcon className="size-3.5" />
+            </Button>
           </span>
         ))}
       </div>
