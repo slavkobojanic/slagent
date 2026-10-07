@@ -207,7 +207,7 @@ type ReasoningContentProps = ComponentProps<
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 const THOUGHTS_MAX_HEIGHT_PX = 100;
-const THOUGHTS_FADE_PX = 20;
+const THOUGHTS_FADE_PX = 40;
 
 export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => {
