@@ -7,8 +7,6 @@ export type ResizeHandleProps = {
   onResizeReset: () => void
 }
 
-// A drag handle on the inner edge of a pane. The layout presenter does the dragging. The
-// hairline shows on hover and for as long as a drag runs.
 export function ResizeHandle({ edge, resizing, onResizeStart, onResizeReset }: ResizeHandleProps) {
   return (
     <div

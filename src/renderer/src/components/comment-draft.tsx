@@ -23,9 +23,8 @@ function focusWhenPlaced(field: HTMLTextAreaElement | null) {
   })
 }
 
-// The comment box shared by the diff panel and assistant responses. The text lives in the field,
-// not in state, so the view takes no hooks: save reads the field when the form is submitted, and
-// an empty field is marked invalid so the save button can look disabled.
+// The text lives in the field, not in state, so the view takes no hooks. An empty field is
+// marked invalid so the save button can look disabled.
 function CommentDraft({
   initial = "",
   saveLabel = "Add comment",
@@ -60,7 +59,6 @@ function CommentDraft({
         placeholder="Comment for the next message"
         className="min-h-14 resize-none border-0 bg-transparent px-1 py-0.5 text-xs shadow-none focus-visible:ring-0 dark:bg-transparent"
         onInput={(event) => {
-          // A field of spaces is as empty as a blank one.
           event.currentTarget.setCustomValidity(event.currentTarget.value.trim() ? "" : "Write a comment")
         }}
         onKeyDown={(event) => {

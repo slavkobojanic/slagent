@@ -1,4 +1,3 @@
-// Splits a unified diff into files and numbers each line on its side.
 export type DiffLine = {
   kind: "hunk" | "add" | "del" | "context"
   text: string
@@ -8,7 +7,6 @@ export type DiffLine = {
 
 export type FileDiff = {
   path: string
-  // This file's part of the diff, as a patch Pierre can render.
   patch: string
   lines: DiffLine[]
   added: number
@@ -63,7 +61,6 @@ export function parseDiff(diff: string): FileDiff[] {
   return files
 }
 
-// The text of one line on one side, for quoting it in a comment.
 export function lineText(file: FileDiff, side: "old" | "new", line: number): string {
   for (const item of file.lines) {
     if (side === "old" && item.oldLine === line && item.kind !== "add") return item.text.slice(1)

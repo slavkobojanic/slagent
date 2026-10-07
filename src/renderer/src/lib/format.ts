@@ -7,7 +7,6 @@ export function errorText(error: unknown): string {
 
 const FILE_PATH = /^(?:~\/|\.{1,2}\/|\/)?(?:[\w@.+-]+\/)*[\w@+-][\w@.+-]*\.[A-Za-z0-9]{1,8}(?::\d+){0,2}$/
 
-// Inline code and links that look like a file path, optionally with :line.
 export function looksLikePath(text: string): boolean {
   if (text.length > 300 || /\s/.test(text)) return false
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text) && !text.startsWith("file://")) return false
@@ -15,7 +14,6 @@ export function looksLikePath(text: string): boolean {
   return FILE_PATH.test(text)
 }
 
-// The modifier shown in shortcut hints: ⌘ on macOS, Ctrl elsewhere.
 export function modKey(platform: string): string {
   if (platform === "darwin") return "⌘"
   return "Ctrl+"
