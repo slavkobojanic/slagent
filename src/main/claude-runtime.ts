@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { delimiter, join } from "node:path"
 import {
@@ -140,6 +140,8 @@ export class ClaudeRuntime {
   private todos: TodoItem[] = []
   private planEnabled = false
   private planProposal: string | null = null
+  // Claude Code writes its plan to a markdown file and calls ExitPlanMode with no plan text.
+  private planFile: string | null = null
   private question: OpenQuestion | null = null
   private named: boolean
   private titleGenerated: boolean
@@ -292,7 +294,10 @@ export class ClaudeRuntime {
   setPlanMode(enabled: boolean): void {
     if (this.running) throw new Error("Wait for the run to finish.")
     this.planEnabled = enabled
-    if (!enabled) this.planProposal = null
+    if (!enabled) {
+      this.planProposal = null
+      this.planFile = null
+    }
     void this.session?.setPermissionMode(enabled ? "plan" : "default").catch(() => undefined)
     this.emit(true)
   }
@@ -422,12 +427,22 @@ export class ClaudeRuntime {
   private canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
     if (toolName === "AskUserQuestion") return this.ask(input, options.toolUseID, options.signal)
     if (toolName === "ExitPlanMode") {
-      const plan = typeof input.plan === "string" ? input.plan.trim() : ""
-      this.planProposal = plan || "Claude proposed a plan."
+      this.planProposal = this.readPlan(input) || "Claude proposed a plan."
       this.emit(true)
       return { behavior: "deny", message: PLAN_SUBMITTED }
     }
     return { behavior: "allow", updatedInput: input }
+  }
+
+  private readPlan(input: Record<string, unknown>): string {
+    if (typeof input.plan === "string" && input.plan.trim()) return input.plan.trim()
+    const file = typeof input.planFilePath === "string" ? input.planFilePath : this.planFile
+    if (!file) return ""
+    try {
+      return readFileSync(file, "utf8").trim()
+    } catch {
+      return ""
+    }
   }
 
   private async ask(input: Record<string, unknown>, toolUseId: string, signal: AbortSignal): Promise<PermissionResult> {
@@ -559,6 +574,10 @@ export class ClaudeRuntime {
     const rawName = block.name ?? "tool"
     const name = TOOL_NAMES[rawName] ?? rawName
     if (rawName === "TodoWrite") this.todos = todoItems(block.input)
+    const filePath = (block.input as { file_path?: unknown } | undefined)?.file_path
+    if (this.planEnabled && (rawName === "Write" || rawName === "Edit") && typeof filePath === "string" && filePath.endsWith(".md")) {
+      this.planFile = filePath
+    }
     const tool: ToolMessage = {
       id: block.id,
       role: "tool",
