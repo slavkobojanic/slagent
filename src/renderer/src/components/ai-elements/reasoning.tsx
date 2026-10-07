@@ -213,7 +213,6 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => {
     const { isStreaming } = useReasoning();
     const scrollRef = useRef<HTMLDivElement>(null);
-    const [isScrollable, setIsScrollable] = useState(false);
 
     // Keep the box pinned to the newest thoughts while streaming so the
     // user can see it is active. Overflow is hidden, so this is the only
@@ -223,9 +222,6 @@ export const ReasoningContent = memo(
       if (el) {
         el.scrollTop = el.scrollHeight;
       }
-      setIsScrollable(
-        el !== null && el.scrollHeight > el.clientHeight + 1
-      );
     }, [children, isStreaming]);
 
     return (
@@ -243,12 +239,8 @@ export const ReasoningContent = memo(
           className="relative overflow-hidden"
         >
           <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
-          {isScrollable ? (
-            <>
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-5 bg-gradient-to-b from-background to-transparent" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-background to-transparent" />
-            </>
-          ) : null}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-5 bg-gradient-to-b from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-background to-transparent" />
         </div>
       </CollapsibleContent>
     );
