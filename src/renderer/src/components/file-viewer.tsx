@@ -1,10 +1,10 @@
 import { File } from "@pierre/diffs/react"
 import { ExternalLinkIcon } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { FileView } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { openInEditor } from "@/lib/format"
-import { PIERRE_CSS, PIERRE_THEME } from "@/lib/pierre"
+import { PIERRE_CSS, PIERRE_THEME, pierreHighlighterReady, preloadPierreHighlighter } from "@/lib/pierre"
 import { useResolvedTheme } from "@/lib/theme"
 
 // Pierre renders inside a shadow root, so the target line is found there once
@@ -26,6 +26,20 @@ function FileViewer({ file }: { file: FileView }) {
   const scroller = useRef<HTMLDivElement | null>(null)
   const themeType = useResolvedTheme()
   const line = file.line
+
+  // Pierre renders an empty view when its shared highlighter has not loaded
+  // yet and never repaints on its own, so force a pass once it is ready.
+  const [highlighterReady, setHighlighterReady] = useState(pierreHighlighterReady)
+  useEffect(() => {
+    if (highlighterReady) return
+    let cancelled = false
+    void preloadPierreHighlighter().then((ready) => {
+      if (!cancelled && ready) setHighlighterReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [highlighterReady])
 
   // Pierre fills the file in over a few frames and the rows above the target
   // keep growing, so the line is re-centered until it settles or the user
