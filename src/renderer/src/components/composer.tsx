@@ -1,5 +1,5 @@
 import type { ChatStatus } from "ai"
-import { ListChecksIcon, PaperclipIcon, XIcon } from "lucide-react"
+import { ListChecksIcon, MessageSquareIcon, PaperclipIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { toast } from "sonner"
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button"
 import { setTextareaValue } from "@/lib/composer"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
-import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
+import type { DiffComment, FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
 import { TaskStrip } from "@/components/task-strip"
 import { TodoPanel } from "@/components/todo-panel"
 import { UsageMeter } from "@/components/usage-meter"
@@ -186,6 +186,8 @@ function Composer({
   tasks,
   planMode,
   onPlanMode,
+  comments,
+  onRemoveComment,
   onCompact,
   onPrompt,
   onAbort,
@@ -202,6 +204,8 @@ function Composer({
   tasks: TaskInfo[]
   planMode: boolean
   onPlanMode: (enabled: boolean) => Promise<void>
+  comments: DiffComment[]
+  onRemoveComment: (id: string) => void
   onCompact: () => Promise<void>
   onPrompt: (request: PromptRequest) => Promise<void>
   onAbort: () => Promise<void>
@@ -398,9 +402,9 @@ function Composer({
     const files = promptFiles(message)
     const text = message.text
     const kept = mentions.filter((item) => text.includes(`@${item.name}`))
-    if (!text.trim() && files.length === 0 && kept.length === 0) return
+    if (!text.trim() && files.length === 0 && kept.length === 0 && comments.length === 0) return
     try {
-      await onPrompt({ text, mentions: kept, files })
+      await onPrompt({ text, mentions: kept, files, comments })
       rememberPrompt(text)
       historyIndex.current = null
       setHistoryQuery(null)
@@ -431,6 +435,29 @@ function Composer({
   return (
     <div className="relative mx-auto w-full max-w-3xl px-6 pb-3">
       <TaskStrip tasks={tasks} />
+      {comments.length > 0 ? (
+        <div className="mb-2 rounded-md border border-amber-300/30 bg-amber-300/5 px-3 py-2 text-xs">
+          <p className="mb-1.5 text-amber-200">
+            {comments.length === 1 ? "1 diff comment" : `${comments.length} diff comments`} will be sent with your next message
+          </p>
+          <ul className="max-h-32 space-y-1 overflow-y-auto">
+            {comments.map((comment) => (
+              <li key={comment.id} className="flex items-start gap-2">
+                <MessageSquareIcon className="mt-0.5 size-3 shrink-0 text-amber-300/70" />
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="font-mono text-white/50">
+                    {comment.path.split("/").pop()}:{comment.line}
+                  </span>{" "}
+                  {comment.text}
+                </span>
+                <button type="button" className="text-white/40 hover:text-white" aria-label="Remove comment" onClick={() => onRemoveComment(comment.id)}>
+                  <XIcon className="size-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <TodoPanel todos={todos} streaming={streaming} />
       {queue.length > 0 && <MessageQueue items={queue} onMode={onQueueMode} onRemove={onRemoveQueued} />}
       {historyQuery !== null && (

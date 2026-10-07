@@ -1,43 +1,32 @@
-import { ChevronRightIcon, GitBranchIcon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { ChevronRightIcon, GitBranchIcon, MessageSquarePlusIcon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react"
+import { useCallback, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { toast } from "sonner"
-import type { DiffScope, GitStatus } from "@shared/types"
+import type { DiffComment, DiffScope, GitStatus } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { errorText, openPath } from "@/lib/format"
+import { type FileDiff, parseDiff } from "@/lib/diff"
 import { cn } from "@/lib/utils"
 
-type FileDiff = {
-  path: string
-  lines: string[]
-  added: number
-  removed: number
-}
-
-function parseDiff(diff: string): FileDiff[] {
-  const files: FileDiff[] = []
-  let current: FileDiff | null = null
-  for (const line of diff.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      const match = / b\/(.+)$/.exec(line)
-      current = { path: match?.[1] ?? line.slice(11), lines: [], added: 0, removed: 0 }
-      files.push(current)
-      continue
-    }
-    if (!current) continue
-    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
-      if (line.startsWith("+++ b/")) current.path = line.slice(6).replace(/\t$/, "")
-      continue
-    }
-    if (/^(index |new file mode|deleted file mode|similarity index|rename from|rename to|old mode|new mode)/.test(line)) continue
-    if (line.startsWith("+")) current.added += 1
-    if (line.startsWith("-")) current.removed += 1
-    current.lines.push(line)
-  }
-  return files
-}
-
-function DiffPanel({ streaming, onClose }: { streaming: boolean; onClose: () => void }) {
+function DiffPanel({
+  streaming,
+  width,
+  comments,
+  onAddComment,
+  onRemoveComment,
+  onResizeStart,
+  onResetWidth,
+  onClose,
+}: {
+  streaming: boolean
+  width: number
+  comments: DiffComment[]
+  onAddComment: (comment: DiffComment) => void
+  onRemoveComment: (id: string) => void
+  onResizeStart: (event: ReactPointerEvent<HTMLDivElement>) => void
+  onResetWidth: () => void
+  onClose: () => void
+}) {
   const [scope, setScope] = useState<DiffScope>("uncommitted")
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [files, setFiles] = useState<FileDiff[]>([])
@@ -82,7 +71,16 @@ function DiffPanel({ streaming, onClose }: { streaming: boolean; onClose: () => 
   if (status && status.ahead > 0) pushLabel = `Push ${status.ahead}`
 
   return (
-    <aside className="flex h-full w-[min(44vw,560px)] min-w-80 flex-col border-l border-white/10" aria-label="Changes">
+    <aside className="relative flex h-full shrink-0 flex-col border-l border-white/10" style={{ width }} aria-label="Changes">
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize changes panel"
+        title="Drag to resize, double-click to reset"
+        className="resize-handle -left-[5px]"
+        onPointerDown={onResizeStart}
+        onDoubleClick={onResetWidth}
+      />
       <header className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 px-3">
         <GitBranchIcon className="size-4 text-white/50" />
         <span className="truncate text-sm">{status?.branch ?? (repo ? "Detached" : "Changes")}</span>
@@ -114,7 +112,15 @@ function DiffPanel({ streaming, onClose }: { streaming: boolean; onClose: () => 
             {scope === "turn" ? "No changes since the last message with a checkpoint." : repo ? "No uncommitted changes." : "This folder is not a git repository."}
           </p>
         ) : (
-          files.map((file) => <FileSection key={file.path} file={file} />)
+          files.map((file) => (
+            <FileSection
+              key={file.path}
+              file={file}
+              comments={comments.filter((comment) => comment.path === file.path)}
+              onAdd={onAddComment}
+              onRemove={onRemoveComment}
+            />
+          ))
         )}
       </div>
       {repo ? (
@@ -208,8 +214,19 @@ function DiffPanel({ streaming, onClose }: { streaming: boolean; onClose: () => 
   )
 }
 
-function FileSection({ file }: { file: FileDiff }) {
+function FileSection({
+  file,
+  comments,
+  onAdd,
+  onRemove,
+}: {
+  file: FileDiff
+  comments: DiffComment[]
+  onAdd: (comment: DiffComment) => void
+  onRemove: (id: string) => void
+}) {
   const [open, setOpen] = useState(file.lines.length < 400)
+  const [drafting, setDrafting] = useState<string | null>(null)
   return (
     <section className="border-b border-white/10">
       <div className="sticky top-0 z-10 flex items-center gap-2 bg-black px-3 py-1.5 text-xs">
@@ -217,6 +234,7 @@ function FileSection({ file }: { file: FileDiff }) {
           <ChevronRightIcon className={cn("size-3.5 shrink-0 text-white/50 transition-transform", open && "rotate-90")} />
           <span className="truncate font-mono">{file.path}</span>
         </button>
+        {comments.length > 0 ? <span className="text-amber-300 tabular-nums">{comments.length} 💬</span> : null}
         <span className="text-emerald-400 tabular-nums">+{file.added}</span>
         <span className="text-[#ff5c5c] tabular-nums">-{file.removed}</span>
         <button type="button" className="text-white/50 hover:text-white" onClick={() => openPath(file.path)}>
@@ -224,21 +242,104 @@ function FileSection({ file }: { file: FileDiff }) {
         </button>
       </div>
       {open ? (
-        <pre className="overflow-x-auto pb-2 font-mono text-[11px] leading-[1.45]">
+        <div className="overflow-x-auto pb-2 font-mono text-[11px] leading-[1.45]">
           {file.lines.map((line, index) => {
-            let className = "px-3 text-white/70"
-            if (line.startsWith("+")) className = "bg-emerald-500/10 px-3 text-emerald-300"
-            if (line.startsWith("-")) className = "bg-red-500/10 px-3 text-red-300"
-            if (line.startsWith("@@")) className = "px-3 pt-1 text-sky-300/80"
+            if (line.kind === "hunk") {
+              return (
+                <div key={index} className="px-3 pt-1 whitespace-pre text-sky-300/80">
+                  {line.text}
+                </div>
+              )
+            }
+            const side: DiffComment["side"] = line.kind === "del" ? "old" : "new"
+            const number = side === "old" ? line.oldLine : line.newLine
+            const key = `${side}:${number}`
+            const lineComments = comments.filter((comment) => comment.side === side && comment.line === number)
+            let tone = "text-white/70"
+            if (line.kind === "add") tone = "bg-emerald-500/10 text-emerald-300"
+            if (line.kind === "del") tone = "bg-red-500/10 text-red-300"
             return (
-              <div key={index} className={className}>
-                {line || " "}
+              <div key={index}>
+                <div className={cn("group/line flex min-w-max", tone)}>
+                  <span className="w-10 shrink-0 pr-2 text-right text-white/25 tabular-nums select-none">{number ?? ""}</span>
+                  <button
+                    type="button"
+                    className="w-4 shrink-0 text-white/0 group-hover/line:text-white/60 hover:!text-amber-300 focus-visible:text-amber-300"
+                    aria-label={`Comment on line ${number}`}
+                    onClick={() => setDrafting(key)}
+                  >
+                    <MessageSquarePlusIcon className="size-3" />
+                  </button>
+                  <span className="pr-3 whitespace-pre">{line.text || " "}</span>
+                </div>
+                {lineComments.map((comment) => (
+                  <div key={comment.id} className="mx-3 my-1 flex items-start gap-2 rounded-md border border-amber-300/30 bg-amber-300/5 px-2 py-1.5 font-sans text-xs whitespace-pre-wrap text-white/90">
+                    <span className="min-w-0 flex-1">{comment.text}</span>
+                    <button type="button" className="text-white/40 hover:text-white" aria-label="Delete comment" onClick={() => onRemove(comment.id)}>
+                      <XIcon className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {drafting === key && number !== null ? (
+                  <CommentDraft
+                    onCancel={() => setDrafting(null)}
+                    onSave={(text) => {
+                      onAdd({
+                        id: crypto.randomUUID(),
+                        path: file.path,
+                        line: number,
+                        side,
+                        code: line.text.slice(1),
+                        text,
+                      })
+                      setDrafting(null)
+                    }}
+                  />
+                ) : null}
               </div>
             )
           })}
-        </pre>
+        </div>
       ) : null}
     </section>
+  )
+}
+
+function CommentDraft({ onSave, onCancel }: { onSave: (text: string) => void; onCancel: () => void }) {
+  const [text, setText] = useState("")
+  function save() {
+    if (text.trim()) onSave(text.trim())
+  }
+  return (
+    <div className="mx-3 my-1 space-y-1.5 font-sans">
+      <Textarea
+        value={text}
+        autoFocus
+        aria-label="Comment"
+        placeholder="Comment for the next message"
+        className="min-h-14 text-xs"
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault()
+            event.stopPropagation()
+            onCancel()
+          }
+          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault()
+            save()
+          }
+        }}
+      />
+      <div className="flex justify-end gap-1.5">
+        <Button type="button" variant="ghost" size="xs" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" size="xs" disabled={!text.trim()} onClick={save}>
+          Add comment
+        </Button>
+      </div>
+    </div>
   )
 }
 

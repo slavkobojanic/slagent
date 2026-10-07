@@ -87,7 +87,7 @@
 
 .sidebar-slot {
   display: grid;
-  grid-template-columns: 16rem;
+  grid-template-columns: var(--sidebar-width, 16rem);
   min-width: 0;
   overflow: hidden;
   transition: grid-template-columns 250ms var(--ease-drawer);
@@ -100,7 +100,7 @@
 }
 
 .sidebar-slot > aside {
-  width: 16rem;
+  width: var(--sidebar-width, 16rem);
   min-width: 0;
   transform: translateX(0);
   opacity: 1;
@@ -123,6 +123,46 @@
     transform: none;
     transition: opacity 200ms var(--ease-out);
   }
+}
+
+.sidebar-slot[data-resizing],
+.sidebar-slot[data-resizing] > aside {
+  transition: none;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 30;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: transparent;
+  transition: background-color 150ms var(--ease-out);
+}
+
+.resize-handle:hover::after,
+.resize-handle:active::after {
+  background: rgb(255 255 255 / 0.35);
+}
+
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.resizing * {
+  cursor: col-resize !important;
 }
 
 .drag {

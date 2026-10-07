@@ -88,7 +88,7 @@ function Sidebar({
   }
 
   return (
-    <aside className="flex h-full w-64 min-w-0 flex-col overflow-hidden border-r border-white/10">
+    <aside className="flex h-full min-w-0 flex-col overflow-hidden border-r border-white/10">
       <div className="space-y-2 p-3">
         <Button type="button" variant="outline" className="w-full" title={`New chat (${modKey()}N)`} disabled={!library.openProjectId} onClick={onNewChat}>
           New chat

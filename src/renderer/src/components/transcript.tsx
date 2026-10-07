@@ -330,6 +330,19 @@ function UserTurn({
         </div>
       ) : null}
       {message.text ? <MessageContent className="whitespace-pre-wrap">{message.text}</MessageContent> : null}
+      {message.comments?.length ? (
+        <div className="ml-auto w-full max-w-[80%] space-y-1">
+          {message.comments.map((comment) => (
+            <div key={comment.id} className="rounded-md border border-amber-300/30 bg-amber-300/5 px-2.5 py-1.5 text-xs">
+              <button type="button" className="font-mono text-white/50 hover:text-white hover:underline" onClick={() => openPath(`${comment.path}:${comment.line}`)}>
+                {comment.path}:{comment.line}
+              </button>
+              {comment.code.trim() ? <p className="truncate font-mono text-white/40">{comment.code.trim()}</p> : null}
+              <p className="mt-0.5 whitespace-pre-wrap">{comment.text}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {editable ? (
         <MessageActions className="justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
           <MessageAction tooltip="Edit and resend" onClick={() => onEditing(true)}>

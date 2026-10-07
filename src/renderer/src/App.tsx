@@ -1,7 +1,8 @@
 import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
+import type { CSSProperties } from "react"
+import type { AppMeta, DiffComment, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
 import { DiffPanel } from "@/components/diff-panel"
@@ -13,6 +14,7 @@ import { modKey, orderedChats, ProjectMenu, Sidebar } from "@/components/sidebar
 import { EDIT_LAST_EVENT, Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
 import { focusComposer } from "@/lib/composer"
+import { useResizableWidth } from "@/lib/resize"
 import { errorText, formatTranscript, looksLikePath, openPath } from "@/lib/format"
 
 const emptyStatus = { configured: false, source: null, type: null } as const
@@ -51,6 +53,9 @@ function AgentApp() {
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [diffOpen, setDiffOpen] = useState(false)
+  const [diffComments, setDiffComments] = useState<DiffComment[]>([])
+  const sidebarSize = useResizableWidth("slagent:sidebar-width", 256, 200, () => Math.min(480, window.innerWidth * 0.4), 1)
+  const diffSize = useResizableWidth("slagent:changes-width", 560, 320, () => window.innerWidth - 520, -1)
   const [permissions, setPermissions] = useState<ComputerPermissions | null>(null)
   const [deleteChat, setDeleteChat] = useState<ChatSummary | null>(null)
   const [removeProject, setRemoveProject] = useState<ProjectSummary | null>(null)
@@ -395,7 +400,13 @@ function AgentApp() {
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <div className="sidebar-slot" data-closed={sidebarOpen ? undefined : true} inert={sidebarOpen ? undefined : true}>
+        <div
+          className="sidebar-slot"
+          data-closed={sidebarOpen ? undefined : true}
+          data-resizing={sidebarSize.resizing ? true : undefined}
+          inert={sidebarOpen ? undefined : true}
+          style={{ "--sidebar-width": `${sidebarSize.width}px` } as CSSProperties}
+        >
         <Sidebar
           library={library}
           onNewChat={() => void newChat()}
@@ -410,6 +421,19 @@ function AgentApp() {
           onRemoveProject={setRemoveProject}
         />
         </div>
+        {sidebarOpen ? (
+          <div className="relative w-0 shrink-0">
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize sidebar"
+              title="Drag to resize, double-click to reset"
+              className="resize-handle -left-[5px]"
+              onPointerDown={sidebarSize.onPointerDown}
+              onDoubleClick={sidebarSize.onDoubleClick}
+            />
+          </div>
+        ) : null}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           {meta?.error ? (
             <p className="border-b border-white/10 px-6 py-2 text-sm text-[#ff5c5c]">{meta.error}</p>
@@ -443,13 +467,39 @@ function AgentApp() {
             planMode={planMode}
             onPlanMode={(enabled) => window.slagent.setPlanMode(enabled)}
             onCompact={() => window.slagent.compact()}
-            onPrompt={(request) => window.slagent.prompt(request)}
+            comments={diffComments}
+            onRemoveComment={(id) => setDiffComments((current) => current.filter((comment) => comment.id !== id))}
+            onPrompt={async (request) => {
+              // The prompt resolves when the run ends, so the comments are
+              // cleared as soon as they are sent and put back if sending fails.
+              const sent = request.comments ?? []
+              const ids = new Set(sent.map((comment) => comment.id))
+              setDiffComments((current) => current.filter((comment) => !ids.has(comment.id)))
+              try {
+                await window.slagent.prompt(request)
+              } catch (error) {
+                setDiffComments((current) => [...sent, ...current])
+                throw error
+              }
+            }}
             onAbort={() => window.slagent.abort()}
             onQueueMode={(id, mode) => window.slagent.setQueueMode(id, mode)}
             onRemoveQueued={(id) => window.slagent.removeQueued(id)}
           />
         </main>
-        {diffOpen && cwd ? <DiffPanel key={cwd} streaming={streaming} onClose={() => setDiffOpen(false)} /> : null}
+        {diffOpen && cwd ? (
+          <DiffPanel
+            key={cwd}
+            streaming={streaming}
+            width={diffSize.width}
+            comments={diffComments}
+            onAddComment={(comment) => setDiffComments((current) => [...current, comment])}
+            onRemoveComment={(id) => setDiffComments((current) => current.filter((comment) => comment.id !== id))}
+            onResizeStart={diffSize.onPointerDown}
+            onResetWidth={diffSize.onDoubleClick}
+            onClose={() => setDiffOpen(false)}
+          />
+        ) : null}
       </div>
       <SettingsDialog
         open={settingsOpen}

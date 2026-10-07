@@ -93,6 +93,7 @@ export type UserMessage = {
   attachments: UserAttachment[]
   entryId?: string
   checkpoint?: boolean
+  comments?: DiffComment[]
 }
 
 export type AssistantMessage = {
@@ -139,10 +140,20 @@ export type PromptMention = {
   name: string
 }
 
+export type DiffComment = {
+  id: string
+  path: string
+  line: number
+  side: "old" | "new"
+  code: string
+  text: string
+}
+
 export type PromptRequest = {
   text: string
   mentions: PromptMention[]
   files: PromptFile[]
+  comments?: DiffComment[]
 }
 
 export type FileMatch = {

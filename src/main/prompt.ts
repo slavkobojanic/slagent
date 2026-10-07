@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import type { ImageContent } from "@earendil-works/pi-ai"
-import type { PromptFile, PromptMention, PromptRequest, UserAttachment } from "../shared/types"
+import type { DiffComment, PromptFile, PromptMention, PromptRequest, UserAttachment } from "../shared/types"
 import { attachmentKind, mimeForName, pdfText, readBytes } from "./files"
 
 export type PreparedPrompt = {
@@ -25,10 +25,11 @@ export function parsePrompt(input: unknown): PromptRequest {
   const text = typeof record.text === "string" ? record.text : ""
   const mentions = parseMentions(record.mentions)
   const files = parseFiles(record.files)
-  if (!text.trim() && mentions.length === 0 && files.length === 0) {
+  const comments = parseComments(record.comments)
+  if (!text.trim() && mentions.length === 0 && files.length === 0 && comments.length === 0) {
     throw new Error("Write a message first.")
   }
-  return { text, mentions, files }
+  return { text, mentions, files, comments }
 }
 
 export async function preparePrompt(
@@ -80,7 +81,7 @@ export async function preparePrompt(
   }
 
   return {
-    text: withCommand(request.text.trim(), references),
+    text: withCommand(withComments(request.text.trim(), request.comments ?? []), references),
     images,
     attachments,
   }
@@ -89,6 +90,9 @@ export async function preparePrompt(
 export function queueDetail(request: PromptRequest): string {
   const names = request.mentions.map((mention) => mention.name)
   for (const file of request.files) names.push(file.name)
+  const comments = request.comments?.length ?? 0
+  if (comments === 1) names.push("1 diff comment")
+  if (comments > 1) names.push(`${comments} diff comments`)
   return names.join(", ")
 }
 
@@ -104,6 +108,23 @@ function pushReference(
   seen.add(path)
   references.push({ path })
   attachments.push({ id: randomUUID(), name, kind, path })
+}
+
+// Comments left on lines of the diff panel, quoted so the agent knows which
+// line each one is about.
+function withComments(text: string, comments: DiffComment[]): string {
+  if (comments.length === 0) return text
+  const lines = ["Comments on the diff:"]
+  for (const comment of comments) {
+    let where = `${comment.path}:${comment.line}`
+    if (comment.side === "old") where = `${where} (removed line)`
+    lines.push(`- ${where}`)
+    const code = comment.code.trim()
+    if (code) lines.push(`  > ${code.slice(0, 300)}`)
+    lines.push(`  ${comment.text.trim().replace(/\n/g, "\n  ")}`)
+  }
+  if (!text) return lines.join("\n")
+  return `${text}\n\n${lines.join("\n")}`
 }
 
 // Pi only expands /skill:name, prompt templates and extension commands when the
@@ -142,6 +163,27 @@ async function bytesOf(file: PromptFile): Promise<Buffer> {
   if (file.path) return readBytes(file.path)
   if (!file.dataBase64) throw new Error("That attachment is empty.")
   return Buffer.from(file.dataBase64, "base64")
+}
+
+function parseComments(value: unknown): DiffComment[] {
+  if (!Array.isArray(value)) return []
+  const comments: DiffComment[] = []
+  for (const item of value.slice(0, 50)) {
+    if (typeof item !== "object" || item === null) continue
+    const record = item as Record<string, unknown>
+    if (typeof record.path !== "string" || typeof record.text !== "string" || !record.text.trim()) continue
+    const line = Number(record.line)
+    if (!Number.isFinite(line)) continue
+    comments.push({
+      id: typeof record.id === "string" ? record.id : randomUUID(),
+      path: record.path,
+      line,
+      side: record.side === "old" ? "old" : "new",
+      code: typeof record.code === "string" ? record.code.slice(0, 500) : "",
+      text: record.text.slice(0, 4000),
+    })
+  }
+  return comments
 }
 
 function parseMentions(value: unknown): PromptMention[] {

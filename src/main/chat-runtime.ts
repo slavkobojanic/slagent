@@ -588,6 +588,7 @@ export class ChatRuntime {
       role: "user",
       text: request.text.trim(),
       attachments,
+      comments: request.comments?.length ? request.comments : undefined,
     }
     this.messages.push(message)
     this.pendingUserIds.push(message.id)
