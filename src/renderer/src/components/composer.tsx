@@ -29,7 +29,7 @@ import {
 } from "@/components/ai-elements/queue"
 import { Button } from "@/components/ui/button"
 import { errorText } from "@/lib/format"
-import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage } from "@shared/types"
+import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand } from "@shared/types"
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 
@@ -193,7 +193,23 @@ function Composer({
   const [mentions, setMentions] = useState<PromptMention[]>([])
   const [mention, setMention] = useState<{ query: string; start: number } | null>(null)
   const [matches, setMatches] = useState<FileMatch[]>([])
+  const [slash, setSlash] = useState<string | null>(null)
+  const [commands, setCommands] = useState<SlashCommand[]>([])
   const [active, setActive] = useState(0)
+  const slashOpen = slash !== null
+
+  useEffect(() => {
+    if (!slashOpen) return
+    let stop = false
+    void window.slagent.listCommands().then((next) => {
+      if (!stop) setCommands(next)
+    })
+    return () => {
+      stop = true
+    }
+  }, [slashOpen])
+
+  const commandMatches = slash === null ? [] : filterCommands(commands, slash)
 
   useEffect(() => {
     if (!mention) {
@@ -220,7 +236,20 @@ function Composer({
 
   function syncMention(value: string, cursor: number) {
     setMention(mentionAt(value, cursor))
+    setSlash(slashAt(value, cursor))
     setActive(0)
+  }
+
+  function chooseCommand(command: SlashCommand) {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    const value = textarea.value
+    const cursor = textarea.selectionStart
+    const token = `${command.insert} `
+    const next = `${token}${value.slice(cursor).trimStart()}`
+    setTextareaValue(textarea, next)
+    textarea.setSelectionRange(token.length, token.length)
+    setSlash(null)
   }
 
   function chooseMention(match: FileMatch) {
@@ -230,7 +259,7 @@ function Composer({
     const cursor = textarea.selectionStart
     const token = `@${match.name} `
     const next = `${value.slice(0, mention.start)}${token}${value.slice(cursor)}`
-    textarea.value = next
+    setTextareaValue(textarea, next)
     const caret = mention.start + token.length
     textarea.setSelectionRange(caret, caret)
     setMention(null)
@@ -241,10 +270,13 @@ function Composer({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (!mention || matches.length === 0) return
+    let count = 0
+    if (mention) count = matches.length
+    else if (slash !== null) count = commandMatches.length
+    if (count === 0) return
     if (event.key === "ArrowDown") {
       event.preventDefault()
-      setActive((index) => Math.min(index + 1, matches.length - 1))
+      setActive((index) => Math.min(index + 1, count - 1))
       return
     }
     if (event.key === "ArrowUp") {
@@ -255,13 +287,18 @@ function Composer({
     if (event.key === "Escape") {
       event.preventDefault()
       setMention(null)
+      setSlash(null)
       return
     }
-    if (event.key === "Enter" && !event.shiftKey) {
-      const match = matches[active]
-      if (!match) return
+    if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
       event.preventDefault()
-      chooseMention(match)
+      if (mention) {
+        const match = matches[active]
+        if (match) chooseMention(match)
+        return
+      }
+      const command = commandMatches[active]
+      if (command) chooseCommand(command)
     }
   }
 
@@ -274,6 +311,7 @@ function Composer({
       await onPrompt({ text, mentions: kept, files })
       setMentions([])
       setMention(null)
+      setSlash(null)
     } catch (error) {
       toast.error(errorText(error))
       throw error
@@ -292,22 +330,26 @@ function Composer({
     <div className="relative mx-auto w-full max-w-3xl px-6 pb-3">
       {queue.length > 0 && <MessageQueue items={queue} onMode={onQueueMode} onRemove={onRemoveQueued} />}
       {mention && matches.length > 0 && (
-        <div className="absolute right-6 bottom-full left-6 z-20 mb-2 overflow-hidden rounded-md border border-white/15 bg-black">
-          <div className="max-h-56 overflow-y-auto">
-            {matches.map((match, index) => {
-              let className = "block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-white/10"
-              if (index === 0) className += " rounded-t-md"
-              if (index === matches.length - 1) className += " rounded-b-md"
-              if (index === active) className += " bg-white text-black"
-              return (
-                <button key={match.path} type="button" className={className} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseMention(match)}>
-                  <span>@{match.name}</span>
-                  <span className="ml-2 text-xs opacity-60">{match.path}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <Suggestions
+          active={active}
+          items={matches.map((match) => ({
+            key: match.path,
+            label: `@${match.name}`,
+            detail: match.path,
+            choose: () => chooseMention(match),
+          }))}
+        />
+      )}
+      {!mention && slash !== null && commandMatches.length > 0 && (
+        <Suggestions
+          active={active}
+          items={commandMatches.map((command) => ({
+            key: command.insert,
+            label: command.insert,
+            detail: command.description || kindLabel(command.kind),
+            choose: () => chooseCommand(command),
+          }))}
+        />
       )}
       <PromptInput
         multiple
@@ -341,6 +383,61 @@ function Composer({
       </PromptInput>
     </div>
   )
+}
+
+type Suggestion = {
+  key: string
+  label: string
+  detail: string
+  choose: () => void
+}
+
+function Suggestions({ items, active }: { items: Suggestion[]; active: number }) {
+  return (
+    <div className="absolute right-6 bottom-full left-6 z-20 mb-2 overflow-hidden rounded-md border border-white/15 bg-black">
+      <div className="max-h-56 overflow-y-auto">
+        {items.map((item, index) => {
+          let className = "block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-white/10"
+          if (index === 0) className += " rounded-t-md"
+          if (index === items.length - 1) className += " rounded-b-md"
+          if (index === active) className += " bg-white text-black"
+          return (
+            <button key={item.key} type="button" className={className} onMouseDown={(event) => event.preventDefault()} onClick={item.choose}>
+              <span>{item.label}</span>
+              <span className="ml-2 text-xs opacity-60">{item.detail}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function kindLabel(kind: SlashCommand["kind"]): string {
+  if (kind === "skill") return "Skill"
+  if (kind === "prompt") return "Prompt template"
+  return "Command"
+}
+
+function filterCommands(commands: SlashCommand[], query: string): SlashCommand[] {
+  const needle = query.toLowerCase()
+  const starts: SlashCommand[] = []
+  const contains: SlashCommand[] = []
+  for (const command of commands) {
+    const name = command.insert.slice(1).toLowerCase()
+    if (name.startsWith(needle) || command.name.toLowerCase().startsWith(needle)) starts.push(command)
+    else if (name.includes(needle)) contains.push(command)
+  }
+  return [...starts, ...contains].slice(0, 50)
+}
+
+// The prompt input keeps its own state, so programmatic edits go through the
+// native setter and an input event to stay in sync with React.
+function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set
+  if (setter) setter.call(textarea, value)
+  else textarea.value = value
+  textarea.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
 function promptFiles(message: PromptInputMessage): PromptFile[] {
@@ -377,6 +474,13 @@ function mentionAt(value: string, cursor: number): { query: string; start: numbe
   const query = before.slice(at + 1)
   if (query.includes(" ") || query.includes("\n")) return null
   return { query, start: at }
+}
+
+function slashAt(value: string, cursor: number): string | null {
+  const before = value.slice(0, cursor)
+  const match = /^\/(\S*)$/.exec(before)
+  if (!match) return null
+  return match[1] ?? ""
 }
 
 export { Composer }

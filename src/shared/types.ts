@@ -12,6 +12,7 @@ export const channels = {
   readTranscript: "agent:read-transcript",
   removeProject: "agent:remove-project",
   searchFiles: "agent:search-files",
+  listCommands: "agent:list-commands",
   chooseFolder: "agent:choose-folder",
   setModel: "agent:set-model",
   saveKey: "agent:save-key",
@@ -131,6 +132,15 @@ export type FileMatch = {
   name: string
 }
 
+export type SlashCommandKind = "skill" | "prompt" | "command"
+
+export type SlashCommand = {
+  name: string
+  insert: string
+  description: string
+  kind: SlashCommandKind
+}
+
 export type ProjectSummary = {
   id: string
   path: string
@@ -203,6 +213,7 @@ export type SlagentApi = {
   readTranscript: (chatId: string) => Promise<ChatMessage[]>
   removeProject: (projectId: string, typedName: string) => Promise<void>
   searchFiles: (query: string) => Promise<FileMatch[]>
+  listCommands: () => Promise<SlashCommand[]>
   pathForFile: (file: File) => string
   chooseFolder: () => Promise<void>
   setModel: (modelId: string) => Promise<ModelChange>

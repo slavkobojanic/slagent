@@ -17,6 +17,7 @@ const api: SlagentApi = {
   readTranscript: (chatId) => ipcRenderer.invoke(channels.readTranscript, chatId),
   removeProject: (projectId, typedName) => ipcRenderer.invoke(channels.removeProject, projectId, typedName),
   searchFiles: (query) => ipcRenderer.invoke(channels.searchFiles, query),
+  listCommands: () => ipcRenderer.invoke(channels.listCommands),
   pathForFile: (file) => {
     try {
       return webUtils.getPathForFile(file)

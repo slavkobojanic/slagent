@@ -127,6 +127,7 @@ function registerIpc(): void {
     return requireHost().removeProject(projectId, typedName)
   })
   ipcMain.handle(channels.searchFiles, (_event, query: string) => requireHost().searchFiles(query))
+  ipcMain.handle(channels.listCommands, () => requireHost().listCommands())
   ipcMain.handle(channels.setModel, (_event, modelId: string) => requireHost().setModel(modelId))
   ipcMain.handle(channels.saveKey, (_event, apiKey: string) => requireHost().saveOpenRouterKey(apiKey))
   ipcMain.handle(channels.logout, () => requireHost().logoutOpenRouter())

@@ -13,12 +13,14 @@ import type {
   ProjectSummary,
   PromptRequest,
   QueueMode,
+  SlashCommand,
   Snapshot,
   TranscriptState,
   UiEvent,
 } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import type { ComputerUse } from "./computer"
+import { draftCommands } from "./commands"
 import { ComputerGate } from "./computer-gate"
 import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
@@ -229,6 +231,13 @@ export class AgentHost {
     const project = this.library.project(this.projectId)
     if (!project) return []
     return searchProjectFiles(project.path, query)
+  }
+
+  async listCommands(): Promise<SlashCommand[]> {
+    const runtime = this.openRuntime()
+    if (runtime) return runtime.commands()
+    if (!this.cwd) return []
+    return draftCommands(this.cwd)
   }
 
   async setQueueMode(id: string, mode: QueueMode): Promise<void> {

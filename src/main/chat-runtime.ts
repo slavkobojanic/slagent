@@ -19,11 +19,13 @@ import type {
   ExtensionInfo,
   QueueMode,
   PromptRequest,
+  SlashCommand,
   ToolMessage,
   TranscriptState,
   UserAttachment,
   UserMessage,
 } from "../shared/types"
+import { sessionCommands } from "./commands"
 import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
@@ -255,6 +257,11 @@ export class ChatRuntime {
     this.queue.splice(index, 1)
     this.emit(false)
     await this.prompt(item.request)
+  }
+
+  commands(): SlashCommand[] {
+    if (!this.session) return []
+    return sessionCommands(this.session)
   }
 
   removeQueued(id: string): void {

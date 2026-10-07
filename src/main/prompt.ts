@@ -80,7 +80,7 @@ export async function preparePrompt(
   }
 
   return {
-    text: compose(request.text.trim(), references),
+    text: withCommand(request.text.trim(), references),
     images,
     attachments,
   }
@@ -104,6 +104,17 @@ function pushReference(
   seen.add(path)
   references.push({ path })
   attachments.push({ id: randomUUID(), name, kind, path })
+}
+
+// Pi only expands /skill:name, prompt templates and extension commands when the
+// prompt starts with them, so file references go after the command.
+function withCommand(text: string, references: Reference[]): string {
+  const match = /^\/[^\s/][^\s]*/.exec(text)
+  if (!match) return compose(text, references)
+  const command = match[0]
+  const rest = text.slice(command.length).trim()
+  if (!rest && references.length === 0) return command
+  return `${command} ${compose(rest, references)}`
 }
 
 function compose(text: string, references: Reference[]): string {
