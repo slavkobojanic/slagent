@@ -130,6 +130,9 @@ export type ChatRuntimeOptions = {
   onUsage: (usage: UsageState) => void
   onTaskFinished: (task: TaskInfo) => void
   onQuestion: (request: QuestionRequest) => void
+  // Keeps a proposed plan across restarts, so a crash shows it again.
+  planProposal?: string | null
+  onPlanProposal: (plan: string | null) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
 }
 
@@ -165,7 +168,7 @@ export class ChatRuntime {
   private tasks: BackgroundTasks
   private taskList: TaskInfo[] = []
   private planEnabled = false
-  private planProposal: string | null = null
+  private planProposal: string | null
   private readonly plan: PlanModeControl = planMode({
     onEnabled: (enabled) => {
       this.planEnabled = enabled
@@ -175,6 +178,7 @@ export class ChatRuntime {
     onProposal: (plan) => {
       this.planProposal = plan
       this.awaiting = true
+      this.options.onPlanProposal(plan)
       this.emit(true)
     },
     readOnlyAgents: () => {
@@ -212,6 +216,8 @@ export class ChatRuntime {
     this.modelName = options.model.name
     this.named = options.named
     this.titleGenerated = options.titleGenerated
+    this.planProposal = options.planProposal ?? null
+    this.awaiting = this.planProposal !== null
     this.checkpoints = new CheckpointStore(options.cwd, options.checkpointDir)
     this.tasks = backgroundTasks(options.cwd, (tasks, finished) => {
       this.taskList = tasks
@@ -574,8 +580,10 @@ export class ChatRuntime {
   }
 
   private clearProposal(): void {
+    if (this.planProposal === null && !this.awaiting) return
     this.planProposal = null
     this.awaiting = false
+    this.options.onPlanProposal(null)
   }
 
   removeQueued(id: string): void {

@@ -30,6 +30,8 @@ export type StoredChat = {
   titleCustom: boolean
   titleGenerated?: boolean
   unread?: boolean
+  // A proposed plan waiting for review, kept so a crash or restart shows it again.
+  planProposal?: string
   // When the last run finished without an error or a pending question.
   finishedAt?: number
   tokens?: number
@@ -193,6 +195,16 @@ export class Library {
     if (!chat) return
     Object.assign(chat, patch)
     await this.writeProject(projectId)
+  }
+
+  // Bumps the chat in memory so the sidebar can order it by the latest
+  // message. The caller persists it with saveProject alongside the
+  // transcript write instead of touching the project file per message.
+  touchChat(projectId: string, chatId: string, at: number): boolean {
+    const chat = this.chat(projectId, chatId)
+    if (!chat || at <= chat.updatedAt) return false
+    chat.updatedAt = at
+    return true
   }
 
   async saveProject(projectId: string): Promise<void> {

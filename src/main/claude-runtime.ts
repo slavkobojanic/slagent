@@ -124,6 +124,9 @@ export type ClaudeRuntimeOptions = {
   onSettled: () => void
   onUsage: (usage: UsageState) => void
   onQuestion: (request: QuestionRequest) => void
+  // Keeps a proposed plan across restarts, so a crash shows it again.
+  planProposal?: string | null
+  onPlanProposal: (plan: string | null) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
   // Global personalisation, re-read on every run so edits apply from the next message.
   personalisation: () => Personalisation
@@ -144,7 +147,7 @@ export class ClaudeRuntime {
   private usageState: UsageState | null = null
   private todos: TodoItem[] = []
   private planEnabled = false
-  private planProposal: string | null = null
+  private planProposal: string | null
   // Claude Code writes its plan to a markdown file and calls ExitPlanMode with no plan text.
   private planFile: string | null = null
   private question: OpenQuestion | null = null
@@ -171,6 +174,7 @@ export class ClaudeRuntime {
     this.options = options
     this.projectId = options.projectId
     this.chatId = options.chatId
+    this.planProposal = options.planProposal ?? null
     this.modelId = options.modelId
     this.modelName = claudeModel(options.modelId)?.name ?? options.modelId
     this.named = options.named
@@ -302,7 +306,7 @@ export class ClaudeRuntime {
     if (this.running) throw new Error("Wait for the run to finish.")
     this.planEnabled = enabled
     if (!enabled) {
-      this.planProposal = null
+      this.setProposal(null)
       this.planFile = null
     }
     void this.session?.setPermissionMode(enabled ? "plan" : "default").catch(() => undefined)
@@ -356,9 +360,15 @@ export class ClaudeRuntime {
     this.input = null
   }
 
+  private setProposal(plan: string | null): void {
+    if (plan === this.planProposal) return
+    this.planProposal = plan
+    this.options.onPlanProposal(plan)
+  }
+
   private async send(request: PromptRequest): Promise<void> {
     this.sending = true
-    this.planProposal = null
+    this.setProposal(null)
     this.setNotice(null)
     // Todo lists belong to the turn that created them; drop the previous
     // turn's list so a finished list doesn't linger over the new ask.
@@ -450,7 +460,7 @@ export class ClaudeRuntime {
   private canUseTool: CanUseTool = async (toolName, input, options): Promise<PermissionResult> => {
     if (toolName === "AskUserQuestion") return this.ask(input, options.toolUseID, options.signal)
     if (toolName === "ExitPlanMode") {
-      this.planProposal = this.readPlan(input) || "Claude proposed a plan."
+      this.setProposal(this.readPlan(input) || "Claude proposed a plan.")
       this.emit(true)
       return { behavior: "deny", message: PLAN_SUBMITTED }
     }

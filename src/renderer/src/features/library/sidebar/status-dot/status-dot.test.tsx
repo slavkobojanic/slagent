@@ -25,6 +25,13 @@ describe("StatusDot", () => {
     const html = viewMarkup(<StatusDot status="error" />)
 
     expect(html).toContain('aria-label="Stopped with an error"')
-    expect(html).toContain("bg-destructive")
+    expect(html).toContain("bg-destructive/50")
+  })
+
+  it("can show a finished chat as done in gray", () => {
+    const html = viewMarkup(<StatusDot status="done" />)
+
+    expect(html).toContain('aria-label="Finished"')
+    expect(html).toContain("bg-foreground/15")
   })
 })

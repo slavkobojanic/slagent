@@ -81,6 +81,11 @@ export class AgentHost {
   private readonly gate = new ComputerGate()
   private readonly runtimes = new Map<string, Runtime>()
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>()
+  // Message counts per runtime, so each new message can bump the chat's
+  // updatedAt for the sidebar ordering.
+  private readonly messageCounts = new Map<string, number>()
+  // Projects whose chats moved and still need the project file rewritten.
+  private readonly dirtyProjects = new Set<string>()
   private readonly extensionCache = new Map<string, ExtensionCache>()
   private prefs: Prefs = {}
   private personalisation: Personalisation = { ...EMPTY_PERSONALISATION }
@@ -283,9 +288,11 @@ export class AgentHost {
       for (const runtime of doomed) {
         await runtime.abort()
         this.clearTimer(runtime.key)
+        this.messageCounts.delete(runtime.key)
         runtime.dispose()
         this.runtimes.delete(runtime.key)
       }
+      this.dirtyProjects.delete(projectId)
       await this.library.removeProject(projectId)
       this.extensionCache.delete(projectId)
       if (this.projectId !== projectId) {
@@ -516,12 +523,17 @@ export class AgentHost {
     for (const runtime of this.runtimes.values()) {
       writes.push(this.library.writeTranscript(runtime.projectId, runtime.chatId, runtime.messages))
     }
+    for (const projectId of this.dirtyProjects) {
+      writes.push(this.library.saveProject(projectId))
+    }
+    this.dirtyProjects.clear()
     await Promise.all(writes)
   }
 
   close(): void {
     for (const runtime of this.runtimes.values()) runtime.dispose()
     this.runtimes.clear()
+    this.messageCounts.clear()
   }
 
   private async openProjectUnlocked(projectId: string): Promise<void> {
@@ -663,6 +675,8 @@ export class AgentHost {
         const first = request.questions[0]?.question ?? "A question is waiting"
         this.notify(projectId, chatId, first)
       },
+      planProposal: chat.planProposal ?? null,
+      onPlanProposal: (plan) => this.savePlanProposal(projectId, chatId, plan),
       saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
     })
     runtime.load(messages)
@@ -744,10 +758,17 @@ export class AgentHost {
         const first = request.questions[0]?.question ?? "A question is waiting"
         this.notify(projectId, chatId, first)
       },
+      planProposal: chat.planProposal ?? null,
+      onPlanProposal: (plan) => this.savePlanProposal(projectId, chatId, plan),
       saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
     })
     runtime.load(messages)
     this.runtimes.set(runtime.key, runtime)
+  }
+
+  // A plan survives a crash or restart, so the review card shows again on reopen.
+  private savePlanProposal(projectId: string, chatId: string, plan: string | null): void {
+    void this.library.updateChat(projectId, chatId, { planProposal: plan ?? undefined }).catch(() => undefined)
   }
 
   private async disposeChat(projectId: string, chatId: string): Promise<void> {
@@ -756,14 +777,33 @@ export class AgentHost {
     await runtime.abort()
     runtime.dispose()
     this.clearTimer(runtime.key)
+    this.messageCounts.delete(runtime.key)
     await this.library.writeTranscript(projectId, chatId, runtime.messages)
+    if (this.dirtyProjects.has(projectId)) {
+      this.dirtyProjects.delete(projectId)
+      await this.library.saveProject(projectId)
+    }
     this.runtimes.delete(runtime.key)
   }
 
   private onRuntimeChange(runtime: Runtime, runningChanged: boolean): void {
+    if (this.touchOnNewMessages(runtime)) this.publishLibrary()
     this.scheduleTranscript(runtime)
     if (runningChanged) this.publishLibrary()
     if (runtime.projectId === this.projectId && runtime.chatId === this.chatId) this.publishTranscript()
+  }
+
+  // The sidebar orders chats by updatedAt, so every message the runtime
+  // appends moves that chat up. The first change after a runtime opens is
+  // only the loaded transcript, so it just sets the baseline.
+  private touchOnNewMessages(runtime: Runtime): boolean {
+    const count = runtime.messages.length
+    const baseline = this.messageCounts.get(runtime.key)
+    this.messageCounts.set(runtime.key, count)
+    if (baseline === undefined || count <= baseline) return false
+    if (!this.library.touchChat(runtime.projectId, runtime.chatId, Date.now())) return false
+    this.dirtyProjects.add(runtime.projectId)
+    return true
   }
 
   private scheduleTranscript(runtime: Runtime): void {
@@ -772,7 +812,13 @@ export class AgentHost {
       runtime.key,
       setTimeout(() => {
         this.timers.delete(runtime.key)
-        void this.library.writeTranscript(runtime.projectId, runtime.chatId, runtime.messages)
+        void this.library
+          .writeTranscript(runtime.projectId, runtime.chatId, runtime.messages)
+          .then(() => {
+            if (!this.dirtyProjects.has(runtime.projectId)) return
+            this.dirtyProjects.delete(runtime.projectId)
+            return this.library.saveProject(runtime.projectId)
+          })
       }, 200),
     )
   }
