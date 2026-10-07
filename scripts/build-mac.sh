@@ -6,7 +6,7 @@ sh "$root/scripts/build-computer.sh"
 mkdir -p "$root/build"
 cp "$root/resources/slagent.app/Contents/Resources/icon.icns" "$root/build/icon.icns"
 pnpm exec electron-vite build
-CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --mac dir
+CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --mac dir --publish never
 app="$root/dist/mac-arm64/slagent.app"
 if [ ! -d "$app" ]; then
   app="$root/dist/mac/slagent.app"
@@ -33,6 +33,12 @@ done
 sign --identifier com.slagent.computer "$app/Contents/Resources/slagent.app"
 sign --identifier com.slagent.app "$app"
 codesign --verify --deep --strict "$app"
+
+# CI builds stop here; the release workflow packages the signed bundle itself.
+if [ -n "${SLAGENT_NO_INSTALL:-}" ]; then
+  echo "$app"
+  exit 0
+fi
 
 installed="$HOME/Applications/slagent.app"
 legacy="/Applications/slagent.app"
