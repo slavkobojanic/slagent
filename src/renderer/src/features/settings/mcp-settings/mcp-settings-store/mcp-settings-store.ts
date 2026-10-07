@@ -1,9 +1,8 @@
 import { makeAutoObservable } from "mobx"
 
-// Request state for the MCP section. The server list itself lives in the shared McpStore.
+// The server list lives in the shared McpStore so the header badge reads the same list.
 export class McpSettingsStore {
   refreshing = false
-  // The server whose sign-in, sign-out or enable change is running.
   busyName: string | null = null
   error: string | null = null
 

@@ -1,11 +1,10 @@
 import { observer } from "mobx-react-lite"
-import type { AppDeps } from "@/state/app-deps"
+import type { ThemePresenter } from "@/state/theme/theme-presenter/theme-presenter"
+import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { ThemePicker } from "./theme-picker"
 
-// Reads the preference from the shared theme store and writes it through the shared presenter.
-// The picker has no state of its own, so it has no store or presenter.
-export function createThemePicker({ shared: { theme, themePresenter } }: Pick<AppDeps, "shared">) {
+export function createThemePicker({ themeStore, themePresenter }: { themeStore: ThemeStore; themePresenter: ThemePresenter }) {
   return observer(function ThemePickerHost() {
-    return <ThemePicker value={theme.preference} onChange={themePresenter.setPreference} />
+    return <ThemePicker value={themeStore.preference} onChange={themePresenter.setPreference} />
   })
 }

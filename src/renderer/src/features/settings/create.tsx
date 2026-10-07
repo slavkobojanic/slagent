@@ -1,47 +1,62 @@
 import { observer } from "mobx-react-lite"
-import type { AppDeps } from "@/state/app-deps"
-import type { SettingsSlots } from "@/state/slots"
+import type { ComponentType } from "react"
+import type { API } from "@/ipc/api"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import type { McpStore } from "@/state/mcp/mcp-store/mcp-store"
+import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
+import type { ThemePresenter } from "@/state/theme/theme-presenter/theme-presenter"
+import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { createCliSettings } from "./cli-settings/create"
 import { createMcpSettings } from "./mcp-settings/create"
 import { createOpenRouterKey } from "./openrouter-key/create"
 import { createPersonalisationSettings } from "./personalisation-settings/create"
-import { SettingsDialog } from "./settings-dialog"
+import { Settings } from "./settings"
 import { SettingsPresenter } from "./settings-presenter/settings-presenter"
 import { SettingsStore } from "./settings-store/settings-store"
 import { createThemePicker } from "./theme-picker/create"
 
-// Owning create: called once at boot. It builds the dialog's section store and presenter, then
-// each section. A section owns its own store and presenter, and reads the section store to
-// know when it is shown.
-export function createSettings(deps: AppDeps): SettingsSlots {
-  const { shared } = deps
-  const tabs = new SettingsStore()
-  const presenter = new SettingsPresenter(tabs, shared.overlay, shared.commands)
-  const sectionDeps = { ...deps, tabs }
+export function createSettings({
+  api,
+  metaStore,
+  overlayStore,
+  themeStore,
+  themePresenter,
+  mcpStore,
+  commandRegistry,
+}: {
+  api: API
+  metaStore: MetaStore
+  overlayStore: OverlayStore
+  themeStore: ThemeStore
+  themePresenter: ThemePresenter
+  mcpStore: McpStore
+  commandRegistry: CommandRegistry
+}): ComponentType {
+  const settingsStore = new SettingsStore()
+  const presenter = new SettingsPresenter(settingsStore, overlayStore, commandRegistry)
 
-  const ThemePicker = createThemePicker(deps)
-  const OpenRouterKey = createOpenRouterKey(sectionDeps)
-  const PersonalisationSettings = createPersonalisationSettings(sectionDeps)
-  const McpSettings = createMcpSettings(sectionDeps)
-  const CliSettings = createCliSettings(sectionDeps)
+  const ThemePicker = createThemePicker({ themeStore, themePresenter })
+  const OpenRouterKey = createOpenRouterKey({ api, metaStore, overlayStore, settingsStore })
+  const PersonalisationSettings = createPersonalisationSettings({ api, metaStore, overlayStore, settingsStore })
+  const McpSettings = createMcpSettings({ api, metaStore, overlayStore, mcpStore })
+  const CliSettings = createCliSettings({ api, overlayStore, settingsStore })
 
   presenter.start()
 
-  return {
-    SettingsDialog: observer(function SettingsDialogHost() {
-      return (
-        <SettingsDialog
-          open={shared.overlay.settingsOpen}
-          tab={tabs.tab}
-          onTabChange={presenter.handleTabChange}
-          onOpenChange={presenter.handleOpenChange}
-          ThemePicker={ThemePicker}
-          OpenRouterKey={OpenRouterKey}
-          PersonalisationSettings={PersonalisationSettings}
-          McpSettings={McpSettings}
-          CliSettings={CliSettings}
-        />
-      )
-    }),
-  }
+  return observer(function SettingsHost() {
+    return (
+      <Settings
+        open={overlayStore.settingsOpen}
+        tab={settingsStore.tab}
+        onTabChange={presenter.handleTabChange}
+        onOpenChange={presenter.handleOpenChange}
+        ThemePicker={ThemePicker}
+        OpenRouterKey={OpenRouterKey}
+        PersonalisationSettings={PersonalisationSettings}
+        McpSettings={McpSettings}
+        CliSettings={CliSettings}
+      />
+    )
+  })
 }

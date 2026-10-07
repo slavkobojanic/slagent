@@ -1,25 +1,18 @@
-import type { ReactNode } from "react"
+import type { ComponentType } from "react"
 import type { Personalisation, PersonalisationBranch, PersonalisationBrevity, PersonalisationCommit, PersonalisationCommitStrategy, PersonalisationExplanation, PersonalisationTone } from "@shared/types"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-
-// The Select cannot hold null, so "Default" stands for it: the agent keeps its own behaviour.
-const DEFAULT = "default"
+import { ChoiceSelect } from "./choice-select/choice-select"
+import { choice, tri, triValue } from "./choice-select/choice-value"
+import { Field } from "./field/field"
 
 export type PersonalisationSettingsProps = {
   draft: Personalisation
-  dirty: boolean
-  saving: boolean
-  canSave: boolean
-  error: string | null
   onPatch: (next: Partial<Personalisation>) => void
-  onSave: () => void
+  SaveBar: ComponentType
 }
 
-export function PersonalisationSettings({ draft, dirty, saving, canSave, error, onPatch, onSave }: PersonalisationSettingsProps) {
+export function PersonalisationSettings({ draft, onPatch, SaveBar }: PersonalisationSettingsProps) {
   return (
     <div className="space-y-4">
       <section className="space-y-4 border-t border-white/10 pt-4">
@@ -143,82 +136,8 @@ export function PersonalisationSettings({ draft, dirty, saving, canSave, error, 
             onChange={(event) => onPatch({ notes: event.target.value })}
           />
         </Field>
-        {error !== null ? (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
-        <div className="flex items-center gap-2">
-          <Button type="button" disabled={!canSave} onClick={onSave}>
-            {saving ? "Saving" : "Save"}
-          </Button>
-          {dirty ? <span className="text-xs text-white/40">Unsaved changes</span> : null}
-        </div>
+        <SaveBar />
       </section>
     </div>
   )
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  )
-}
-
-function ChoiceSelect({
-  value,
-  onValueChange,
-  options,
-}: {
-  value: string | null
-  onValueChange: (value: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <Select value={value ?? DEFAULT} onValueChange={onValueChange}>
-      <SelectTrigger className="w-full">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={DEFAULT}>Default</SelectItem>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
-// Maps a select value to a saved setting. Default becomes null.
-function choice<T extends string>(value: string): T | null {
-  if (value === DEFAULT) {
-    return null
-  }
-  return value as T
-}
-
-// Maps a yes or no select value to a boolean setting. Default becomes null.
-function triValue(value: string): boolean | null {
-  if (value === "yes") {
-    return true
-  }
-  if (value === "no") {
-    return false
-  }
-  return null
-}
-
-function tri(value: boolean | null): string | null {
-  if (value === true) {
-    return "yes"
-  }
-  if (value === false) {
-    return "no"
-  }
-  return null
 }

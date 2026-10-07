@@ -1,27 +1,36 @@
 import { observer } from "mobx-react-lite"
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
-import type { AppDeps } from "@/state/app-deps"
+import type { API } from "@/ipc/api"
+import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { CliSettings } from "./cli-settings"
 import { CliSettingsPresenter } from "./cli-settings-presenter/cli-settings-presenter"
 import { CliSettingsStore } from "./cli-settings-store/cli-settings-store"
+import { createInstallCommand } from "./install-command/create"
+import { createUninstallCommand } from "./uninstall-command/create"
 
-export function createCliSettings({ services, shared, tabs }: AppDeps & { tabs: SettingsStore }) {
-  const store = new CliSettingsStore()
-  const presenter = new CliSettingsPresenter(store, services.cli, shared.overlay, tabs)
-  presenter.start()
+export function createCliSettings({
+  api,
+  overlayStore,
+  settingsStore,
+}: {
+  api: API
+  overlayStore: OverlayStore
+  settingsStore: SettingsStore
+}) {
+  const cliSettingsStore = new CliSettingsStore()
+  const cliSettingsPresenter = new CliSettingsPresenter(cliSettingsStore, api, overlayStore, settingsStore)
+  cliSettingsPresenter.start()
+
+  const InstallCommand = createInstallCommand({ cliSettingsStore, cliSettingsPresenter })
+  const UninstallCommand = createUninstallCommand({ cliSettingsStore, cliSettingsPresenter })
 
   return observer(function CliSettingsHost() {
     return (
       <CliSettings
-        status={store.status}
-        ownsCommand={store.ownsCommand}
-        canInstall={store.canInstall}
-        canUninstall={store.canUninstall}
-        installing={store.installing}
-        uninstalling={store.uninstalling}
-        error={store.error}
-        onInstall={presenter.handleInstall}
-        onUninstall={presenter.handleUninstall}
+        status={cliSettingsStore.status}
+        error={cliSettingsStore.error}
+        InstallCommand={InstallCommand}
+        UninstallCommand={UninstallCommand}
       />
     )
   })

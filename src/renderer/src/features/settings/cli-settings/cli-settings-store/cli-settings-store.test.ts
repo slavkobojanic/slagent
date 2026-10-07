@@ -83,6 +83,52 @@ describe("CliSettingsStore", () => {
     })
   })
 
+  describe("showInstall", () => {
+    it("can be true before the status loads", () => {
+      expect(new CliSettingsStore().showInstall).toBe(true)
+    })
+
+    it("can be true for a missing or outdated command", () => {
+      expect(withStatus("missing").showInstall).toBe(true)
+      expect(withStatus("outdated").showInstall).toBe(true)
+    })
+
+    it("can be false for an installed command or an unsupported platform", () => {
+      expect(withStatus("installed").showInstall).toBe(false)
+      expect(withStatus("unsupported").showInstall).toBe(false)
+    })
+  })
+
+  describe("installLabel", () => {
+    it("can offer to install a missing command", () => {
+      expect(withStatus("missing").installLabel).toBe("Install command")
+    })
+
+    it("can offer to update an outdated command", () => {
+      expect(withStatus("outdated").installLabel).toBe("Update command")
+    })
+
+    it("can say the command is installing while an install runs", () => {
+      const store = withStatus("outdated")
+      store.setBusy("install")
+
+      expect(store.installLabel).toBe("Installing")
+    })
+  })
+
+  describe("uninstallLabel", () => {
+    it("can offer to uninstall when nothing runs", () => {
+      expect(withStatus("installed").uninstallLabel).toBe("Uninstall")
+    })
+
+    it("can say the command is being removed while an uninstall runs", () => {
+      const store = withStatus("installed")
+      store.setBusy("uninstall")
+
+      expect(store.uninstallLabel).toBe("Removing")
+    })
+  })
+
   describe("reset", () => {
     it("can clear the status and the error", () => {
       const store = withStatus("installed")

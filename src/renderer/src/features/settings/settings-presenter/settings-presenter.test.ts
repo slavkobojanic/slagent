@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { SettingsPresenter } from "@/features/settings/settings-presenter/settings-presenter"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
-import { CommandRegistry } from "@/state/command-registry"
-import { OverlayStore } from "@/state/overlay-store"
+import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 
 function setup() {
   const store = new SettingsStore()

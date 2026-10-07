@@ -1,68 +1,51 @@
 import { observer } from "mobx-react-lite"
+import type { ComponentType } from "react"
 import { toast } from "sonner"
-import { ModelDialog } from "@/features/models/model-dialog/model-dialog"
-import { ModelDialogPresenter } from "@/features/models/model-dialog/model-dialog-presenter/model-dialog-presenter"
-import { ModelDialogStore } from "@/features/models/model-dialog/model-dialog-store/model-dialog-store"
-import { PermissionsWizard } from "@/features/models/permissions-wizard/permissions-wizard"
-import { PermissionsWizardPresenter } from "@/features/models/permissions-wizard/permissions-wizard-presenter/permissions-wizard-presenter"
-import { PermissionsWizardStore } from "@/features/models/permissions-wizard/permissions-wizard-store/permissions-wizard-store"
-import type { AppDeps } from "@/state/app-deps"
-import { PermissionsPresenter } from "@/state/permissions-presenter"
-import type { ModelsSlots } from "@/state/slots"
+import type { API } from "@/ipc/api"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { RunStore } from "@/mirror/run-store/run-store"
+import type { ComposerPort } from "@/state/composer-port/composer-port"
+import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
+import { createModelList } from "./model-list/create"
+import { Models } from "./models"
+import { ModelsPresenter } from "./models-presenter/models-presenter"
+import { ModelsStore } from "./models-store/models-store"
 
-// Owning create: called once at boot. It builds the model dialog and the permissions wizard,
-// then starts what runs for the life of the app: the "Change model" command and the permissions
-// read that unlocks the window.
-export function createModels({ services, env, mirror, shared }: AppDeps): ModelsSlots {
-  const dialogStore = new ModelDialogStore(mirror.meta, mirror.run)
-  const dialog = new ModelDialogPresenter(
-    dialogStore,
-    shared.overlay,
-    services.settings,
-    shared.composer,
-    shared.commands,
-    (message) => toast.message(message),
+export function createModels({
+  api,
+  metaStore,
+  runStore,
+  overlayStore,
+  commandRegistry,
+  composerPort,
+}: {
+  api: API
+  metaStore: MetaStore
+  runStore: RunStore
+  overlayStore: OverlayStore
+  commandRegistry: CommandRegistry
+  composerPort: ComposerPort
+}): ComponentType {
+  const modelsStore = new ModelsStore(metaStore, runStore)
+  const modelsPresenter = new ModelsPresenter(modelsStore, api, overlayStore, composerPort, commandRegistry, (message) =>
+    toast.message(message),
   )
+  modelsPresenter.start()
 
-  const wizardStore = new PermissionsWizardStore(shared.permissions, services.app.systemVersion)
-  const wizard = new PermissionsWizardPresenter(wizardStore, shared.permissions, services.permissions)
-  const permissions = new PermissionsPresenter(shared.permissions, services.permissions, services.app.platform, env)
+  const ModelList = createModelList({ modelsStore, modelsPresenter })
 
-  dialog.start()
-  permissions.start()
-
-  const ModelDialogHost = observer(function ModelDialogHost() {
+  return observer(function ModelsHost() {
     return (
-      <ModelDialog
-        open={shared.overlay.modelOpen}
-        query={dialogStore.query}
-        canSelect={dialogStore.canSelect}
-        sections={dialogStore.groups.sections}
-        overflowNotice={dialogStore.groups.overflowNotice}
-        error={dialogStore.error}
-        onOpenChange={dialog.handleOpenChange}
-        onQueryChange={dialog.handleQueryChange}
-        onSelect={dialog.handleSelect}
+      <Models
+        open={overlayStore.modelOpen}
+        query={modelsStore.query}
+        overflowNotice={modelsStore.groups.overflowNotice}
+        error={modelsStore.error}
+        onOpenChange={modelsPresenter.handleOpenChange}
+        onQueryChange={modelsPresenter.handleQueryChange}
+        ModelList={ModelList}
       />
     )
   })
-
-  const PermissionsWizardHost = observer(function PermissionsWizardHost() {
-    return (
-      <PermissionsWizard
-        open={wizardStore.open}
-        step={wizardStore.step}
-        accessibilityPane={wizardStore.accessibilityPane}
-        screenPane={wizardStore.screenPane}
-        error={wizardStore.error}
-        canAllowAccessibility={wizardStore.canAllowAccessibility}
-        canAllowScreenRecording={wizardStore.canAllowScreenRecording}
-        onOpenSettings={wizard.handleOpenSettings}
-        onAllowAccessibility={wizard.handleAllowAccessibility}
-        onAllowScreenRecording={wizard.handleAllowScreenRecording}
-      />
-    )
-  })
-
-  return { ModelDialog: ModelDialogHost, PermissionsWizard: PermissionsWizardHost }
 }

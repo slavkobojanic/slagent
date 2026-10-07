@@ -1,6 +1,6 @@
 import { makeAutoObservable } from "mobx"
 
-// The OpenRouter key form. The configured state is not kept here: the mirror reports it.
+// The configured state is not kept here: the mirror reports it.
 export class OpenRouterKeyStore {
   apiKey = ""
   visible = false
@@ -40,13 +40,11 @@ export class OpenRouterKeyStore {
     this.error = message
   }
 
-  // After a save succeeds the key leaves the form, so it is not kept around.
   clear() {
     this.apiKey = ""
     this.error = null
   }
 
-  // Each visit starts from an empty form. The legacy form was unmounted when its section closed.
   reset() {
     this.apiKey = ""
     this.visible = false

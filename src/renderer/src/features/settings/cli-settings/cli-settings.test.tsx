@@ -5,70 +5,65 @@ import { CliSettings, type CliSettingsProps } from "@/features/settings/cli-sett
 
 const path = "/usr/local/bin/slagent"
 
+function InstallSlot() {
+  return <p>Install slot</p>
+}
+
+function UninstallSlot() {
+  return <p>Uninstall slot</p>
+}
+
 function props(overrides: Partial<CliSettingsProps> = {}): CliSettingsProps {
   return {
     status: null,
-    ownsCommand: false,
-    canInstall: false,
-    canUninstall: false,
-    installing: false,
-    uninstalling: false,
     error: null,
-    onInstall: () => undefined,
-    onUninstall: () => undefined,
+    InstallCommand: InstallSlot,
+    UninstallCommand: UninstallSlot,
     ...overrides,
   }
 }
 
-function button(name: string): HTMLButtonElement | null {
-  return screen.queryByRole("button", { name }) as HTMLButtonElement | null
-}
-
 describe("CliSettings", () => {
-  it("can show the install button disabled before the status loads", () => {
+  it("can show the actions without the install path before the status loads", () => {
     render(<CliSettings {...props()} />)
 
-    expect(button("Install command")?.disabled).toBe(true)
+    expect(screen.getByText("Install slot")).not.toBeNull()
     expect(screen.queryByText(/Installs to/)).toBeNull()
   })
 
-  it("can offer to install the command when it is missing", () => {
+  it("can show a missing command with the install path", () => {
     const status: CliStatus = { path, state: "missing" }
 
-    render(<CliSettings {...props({ status, canInstall: true })} />)
+    render(<CliSettings {...props({ status })} />)
 
     expect(screen.getByText("Not installed")).not.toBeNull()
-    expect(button("Install command")?.disabled).toBe(false)
-    expect(button("Uninstall")).toBeNull()
+    expect(screen.getByText(path)).not.toBeNull()
   })
 
-  it("can show the command as installed with only the uninstall action", () => {
+  it("can show the command as installed", () => {
     const status: CliStatus = { path, state: "installed" }
 
-    render(<CliSettings {...props({ status, ownsCommand: true, canUninstall: true })} />)
+    render(<CliSettings {...props({ status })} />)
 
     expect(screen.getByText("Installed")).not.toBeNull()
-    expect(button("Install command")).toBeNull()
-    expect(button("Uninstall")?.disabled).toBe(false)
+    expect(screen.getByText("Uninstall slot")).not.toBeNull()
   })
 
-  it("can offer an update for an outdated command", () => {
+  it("can show that an update is available for an outdated command", () => {
     const status: CliStatus = { path, state: "outdated" }
 
-    render(<CliSettings {...props({ status, ownsCommand: true, canInstall: true, canUninstall: true })} />)
+    render(<CliSettings {...props({ status })} />)
 
     expect(screen.getByText("Update available")).not.toBeNull()
-    expect(button("Update command")).not.toBeNull()
   })
 
-  it("can explain the path in use and disable install when another program owns it", () => {
+  it("can explain the path in use when another program owns it", () => {
     const status: CliStatus = { path, state: "conflict" }
 
-    render(<CliSettings {...props({ status, canInstall: false })} />)
+    render(<CliSettings {...props({ status })} />)
 
     expect(screen.getByText("Path in use")).not.toBeNull()
     expect(screen.getByText(/Another program already has a file at/)).not.toBeNull()
-    expect(button("Install command")?.disabled).toBe(true)
   })
 
   it("can show macOS only and no actions on an unsupported platform", () => {
@@ -77,22 +72,14 @@ describe("CliSettings", () => {
     render(<CliSettings {...props({ status })} />)
 
     expect(screen.getByText("macOS only")).not.toBeNull()
-    expect(button("Install command")).toBeNull()
-    expect(button("Uninstall")).toBeNull()
-  })
-
-  it("can show that the command is being installed with install disabled", () => {
-    const status: CliStatus = { path, state: "missing" }
-
-    render(<CliSettings {...props({ status, installing: true })} />)
-
-    expect(button("Installing")?.disabled).toBe(true)
+    expect(screen.queryByText("Install slot")).toBeNull()
+    expect(screen.queryByText("Uninstall slot")).toBeNull()
   })
 
   it("can show the error from a failed action as an alert", () => {
     const status: CliStatus = { path, state: "missing" }
 
-    render(<CliSettings {...props({ status, canInstall: true, error: "Password required" })} />)
+    render(<CliSettings {...props({ status, error: "Password required" })} />)
 
     expect(screen.getByRole("alert").textContent).toBe("Password required")
   })
