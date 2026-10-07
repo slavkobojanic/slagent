@@ -117,6 +117,7 @@ export class AgentHost {
       this.draftModelId = this.prefs.modelId ?? null
       await this.library.load()
       void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
+      await importShellEnv("OPENROUTER_API_KEY")
       this.modelRuntime = await ModelRuntimeClass.create({ refreshOnCreate: false })
       this.models = this.catalog()
       this.openRouter = await this.readAuth()
