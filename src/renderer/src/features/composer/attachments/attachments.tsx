@@ -14,7 +14,7 @@ export function Attachments({ items, onRemove }: AttachmentsProps) {
     return null
   }
   return (
-    <PromptInputHeader>
+    <PromptInputHeader className="mt-1">
       {items.map((item) => {
         if (item.imageUrl !== null) {
           return <ImageChip key={item.id} name={item.name} url={item.imageUrl} onRemove={() => onRemove(item.id)} />

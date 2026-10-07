@@ -41,7 +41,7 @@ function CommentDraft({
   return (
     <form
       noValidate
-      className={cn("group/draft mx-3 my-1.5 space-y-1.5 rounded-md border border-border bg-secondary p-2 font-sans shadow-md", className)}
+      className={cn("group/draft mx-3 my-1.5 space-y-1.5 rounded-2xl border-0 bg-input/40 p-2 font-sans shadow-none dark:bg-input/30", className)}
       onSubmit={(event) => {
         event.preventDefault()
         const text = String(new FormData(event.currentTarget).get("comment") ?? "").trim()

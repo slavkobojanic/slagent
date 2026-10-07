@@ -6,7 +6,7 @@ import type { Log } from "@/log/log"
 const UNTIMED = ["platform", "systemVersion", "pathForFile", "onEvent", "onUpdateReady"]
 
 // Methods close over the bridge instead of holding it in a private field, so a test mock satisfies the type.
-// Store values are MobX proxies, which the preload bridge cannot clone, so object arguments go through toJS.
+// Store values are MobX proxies, which the preload bridge cannot clone, so object arguments go through plain.
 // Every round trip is a span on the ipc log.
 export class API implements SlagentApi {
   readonly platform: string
@@ -74,12 +74,12 @@ export class API implements SlagentApi {
     this.platform = bridge.platform
     this.systemVersion = bridge.systemVersion
     this.getSnapshot = () => bridge.getSnapshot()
-    this.prompt = (request) => bridge.prompt(toJS(request))
+    this.prompt = (request) => bridge.prompt(plain(request))
     this.abort = () => bridge.abort()
     this.newChat = () => bridge.newChat()
     this.openProject = (projectId) => bridge.openProject(projectId)
     this.openChat = (chatId, projectId, messageId) => bridge.openChat(chatId, projectId, messageId)
-    this.pageTranscript = (page) => bridge.pageTranscript(toJS(page))
+    this.pageTranscript = (page) => bridge.pageTranscript(plain(page))
     this.searchChats = (query) => bridge.searchChats(query)
     this.pinProject = (projectId, pinned) => bridge.pinProject(projectId, pinned)
     this.pinChat = (chatId, pinned) => bridge.pinChat(chatId, pinned)
@@ -102,7 +102,7 @@ export class API implements SlagentApi {
     this.editMessage = (id, text) => bridge.editMessage(id, text)
     this.setPlanMode = (enabled) => bridge.setPlanMode(enabled)
     this.approvePlan = () => bridge.approvePlan()
-    this.answerQuestion = (id, reply) => bridge.answerQuestion(id, toJS(reply))
+    this.answerQuestion = (id, reply) => bridge.answerQuestion(id, plain(reply))
     this.rewind = (id, mode) => bridge.rewind(id, mode)
     this.undoRewind = (commit) => bridge.undoRewind(commit)
     this.taskOutput = (id) => bridge.taskOutput(id)
@@ -129,7 +129,7 @@ export class API implements SlagentApi {
     this.cliStatus = () => bridge.cliStatus()
     this.installCli = () => bridge.installCli()
     this.uninstallCli = () => bridge.uninstallCli()
-    this.setPersonalisation = (value) => bridge.setPersonalisation(toJS(value))
+    this.setPersonalisation = (value) => bridge.setPersonalisation(plain(value))
   }
 
   static fromWindow(window: Window, log: Log): API | null {
@@ -138,6 +138,18 @@ export class API implements SlagentApi {
     }
     return new API(window.slagent, log)
   }
+}
+
+// toJS returns a plain object as it is, even when its fields hold proxies, so the walk goes through plain objects and arrays too.
+function plain<T>(value: T): T {
+  const unwrapped = toJS(value)
+  if (Array.isArray(unwrapped)) {
+    return unwrapped.map(plain) as T
+  }
+  if (unwrapped !== null && typeof unwrapped === "object" && Object.getPrototypeOf(unwrapped) === Object.prototype) {
+    return Object.fromEntries(Object.entries(unwrapped).map(([key, field]) => [key, plain(field)])) as T
+  }
+  return unwrapped
 }
 
 function timed(bridge: SlagentApi, log: Log): SlagentApi {

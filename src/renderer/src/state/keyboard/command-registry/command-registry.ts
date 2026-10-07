@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx"
+import { action, makeAutoObservable } from "mobx"
 
 export type CommandGroup = "Actions" | "Chats" | "Projects" | "Commands"
 
@@ -57,9 +57,9 @@ export class CommandRegistry {
 
   register(command: Command): () => void {
     this.items = [...this.items, command]
-    return () => {
+    return action(() => {
       this.items = this.items.filter((item) => item.id !== command.id)
-    }
+    })
   }
 
   run(id: string) {

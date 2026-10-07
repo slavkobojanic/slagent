@@ -34,6 +34,21 @@ describe("API", () => {
       expect(isObservable(sent)).toBe(false)
       expect(sent).toEqual({ text: "hi", mentions: [], chatMentions: [], files: [], comments: [], replies: [] })
     })
+
+    it("can pass plain data to the bridge when a plain request holds store arrays", async () => {
+      const prompt = vi.fn().mockResolvedValue(undefined)
+      const api = new API(bridgeWith({ prompt }), nullLog())
+      const comments = observable([{ id: "d1", path: "a.ts", line: 1, side: "new" as const, code: "x", text: "rename" }])
+      const request: PromptRequest = { text: "hi", mentions: [], chatMentions: [], files: [], comments, replies: observable([]) }
+
+      await api.prompt(request)
+
+      const sent = prompt.mock.calls[0][0]
+      expect(isObservable(sent.comments)).toBe(false)
+      expect(isObservable(sent.comments[0])).toBe(false)
+      expect(isObservable(sent.replies)).toBe(false)
+      expect(() => structuredClone(sent)).not.toThrow()
+    })
   })
 
   describe("openChat", () => {
