@@ -1,58 +1,70 @@
-import { CheckIcon, ChevronDownIcon, CircleIcon, LoaderCircleIcon } from "lucide-react"
-import { useState } from "react"
+import { CheckIcon, ChevronDownIcon, LoaderCircleIcon } from "lucide-react"
 import type { TodoItem } from "@shared/types"
+import {
+  Queue,
+  QueueItem,
+  QueueItemContent,
+  QueueItemIndicator,
+  QueueList,
+  QueueSection,
+  QueueSectionContent,
+  QueueSectionTrigger,
+} from "@/components/ai-elements/queue"
 import { cn } from "@/lib/utils"
 
 function TodoPanel({ todos, streaming }: { todos: TodoItem[]; streaming: boolean }) {
-  const [open, setOpen] = useState(true)
   const done = todos.filter((todo) => todo.status === "completed").length
   if (todos.length === 0) return null
   if (done === todos.length && !streaming) return null
   const current = todos.find((todo) => todo.status === "in_progress")
 
   return (
-    <div className="mb-2 rounded-md border border-white/15 bg-black text-sm">
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 px-3 py-2 text-left"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className="text-xs text-white/50 tabular-nums">
-          {done}/{todos.length}
-        </span>
-        <span className="min-w-0 flex-1 truncate">{current?.text ?? "Tasks"}</span>
-        <ChevronDownIcon className={cn("size-4 text-white/50 transition-transform", !open && "-rotate-90")} />
-      </button>
-      {open ? (
-        <ul className="max-h-48 space-y-1 overflow-y-auto border-t border-white/10 px-3 py-2">
-          {todos.map((todo, index) => (
-            <li key={`${index}:${todo.text}`} className="flex items-start gap-2">
-              <TodoIcon todo={todo} active={streaming} />
-              <span className={cn("min-w-0 flex-1", todo.status === "completed" && "text-white/40 line-through")}>
-                {todo.text}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
+    <Queue className="mb-2 rounded-none border-0 bg-transparent p-0 shadow-none">
+      <QueueSection>
+        <QueueSectionTrigger>
+          <span className="flex min-w-0 items-center gap-2">
+            <ChevronDownIcon className="size-4 shrink-0 transition-transform group-data-[state=closed]:-rotate-90" />
+            <span className="tabular-nums">
+              {done}/{todos.length}
+            </span>
+            <span className="min-w-0 truncate">{current?.text ?? "Tasks"}</span>
+          </span>
+        </QueueSectionTrigger>
+        <QueueSectionContent>
+          <QueueList>
+            {todos.map((todo, index) => {
+              const completed = todo.status === "completed"
+              return (
+                <QueueItem key={`${index}:${todo.text}`}>
+                  <div className="flex items-center gap-2">
+                    <TodoIcon todo={todo} active={streaming} />
+                    <QueueItemContent completed={completed}>{todo.text}</QueueItemContent>
+                  </div>
+                </QueueItem>
+              )
+            })}
+          </QueueList>
+        </QueueSectionContent>
+      </QueueSection>
+    </Queue>
   )
 }
 
 function TodoIcon({ todo, active }: { todo: TodoItem; active: boolean }) {
-  if (todo.status === "completed") return <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-white/40" aria-label="Done" />
+  if (todo.status === "completed") {
+    return <CheckIcon className="size-2.5 shrink-0 text-muted-foreground/50" aria-label="Done" />
+  }
   if (todo.status === "in_progress") {
     // Spin only while a run is live. A stale list (the model ended its turn
     // without re-sending it) must not look like it is still working.
     return (
       <LoaderCircleIcon
-        className={cn("mt-0.5 size-3.5 shrink-0", active && "animate-spin")}
+        className={cn("size-2.5 shrink-0 text-muted-foreground", active && "animate-spin")}
         aria-label={active ? "In progress" : "Not confirmed done"}
       />
     )
   }
-  return <CircleIcon className="mt-0.5 size-3.5 shrink-0 text-white/40" aria-label="To do" />
+  return <QueueItemIndicator className="mt-0 shrink-0" aria-label="To do" />
 }
 
 export { TodoPanel }
