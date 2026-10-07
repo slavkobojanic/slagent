@@ -202,14 +202,14 @@ export class Log {
   }
 }
 
-// Dev builds read the namespaces from localStorage.debug and expose window.__log to change them live.
+// Dev builds log every namespace unless localStorage.debug says otherwise, and expose window.__log to change it live.
 export function createLog({ window, dev }: { window: Window; dev: boolean }): Log {
   const storage = dev ? readStorage(window) : null
   const log = Log.create({
     sink: window.console,
     clock: window.performance,
     verbose: dev,
-    spec: dev ? (read(storage) ?? "") : "",
+    spec: dev ? (read(storage) ?? "*") : "",
   })
   if (dev) {
     window.__log = log.controls(storage)
@@ -270,11 +270,8 @@ function read(storage: Storage | null): string | null {
 }
 
 function persist(storage: Storage | null, spec: string) {
+  // An empty spec is stored rather than removed, so disable() survives a reload instead of falling back to "*".
   try {
-    if (spec === "") {
-      storage?.removeItem(STORAGE_KEY)
-      return
-    }
     storage?.setItem(STORAGE_KEY, spec)
   } catch {
     // Storage can be unavailable; the live setting still applies.

@@ -118,7 +118,7 @@ Comments record a non-obvious *why* (an ordering constraint, an Electron or brow
   - `log.debug` / `log.info` for other notable events. `log.warn` when a caught error is put on a store. `warn` and `error` always print, in production too.
 - **Payloads** are full values. The logger snapshots observables with `toJS` at write time, so pass store values directly.
 - **Namespaces.** A line is filed under `<scope>`, `<scope>:action`, `<scope>:reaction` or `<scope>:time`. Navigation (open project and chat, right panel, overlays) is logged once, by `state/nav-log`, under `nav`. Do not log "navigated" in features.
-- **Turning it on (dev only).** Nothing below `warn` prints until a namespace is enabled. In DevTools, `__log.enable("nav,*:action")` (it persists to `localStorage.debug`), `__log.disable()`, or `__log.spec()`. Globs use `*`, a leading `-` excludes (`"*,-mirror"`). Production builds drop `debug` and `info`.
+- **Filtering (dev only).** Every namespace prints by default (`"*"`). In DevTools, narrow it with `__log.enable("nav,*:action")` (it persists to `localStorage.debug`), silence it with `__log.disable()` (also persisted), or read it with `__log.spec()`. Clearing `localStorage.debug` goes back to `"*"`. Globs use `*`, a leading `-` excludes (`"*,-mirror"`). Production builds drop `debug` and `info`.
 - **Tests** pass `nullLog()`. Assert on logging only when the log line *is* the behaviour (a timing): build a real `Log.create({ sink, clock, verbose: true, spec })` with fakes.
 
 ## Mirror (main-process state)

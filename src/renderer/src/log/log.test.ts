@@ -173,7 +173,7 @@ describe("Log", () => {
       expect(sink.debug).toHaveBeenCalledOnce()
       expect(storage.getItem("debug")).toBe("nav")
       log.controls(storage).disable()
-      expect(storage.getItem("debug")).toBeNull()
+      expect(storage.getItem("debug")).toBe("")
     })
   })
 })
@@ -189,6 +189,18 @@ describe("createLog", () => {
     expect(debug).toHaveBeenCalledOnce()
     expect(window.__log?.spec()).toBe("nav")
     window.__log?.disable()
+    debug.mockRestore()
+    delete window.__log
+  })
+
+  it("can enable every namespace when in dev and nothing is stored", () => {
+    window.localStorage.removeItem("debug")
+    const debug = vi.spyOn(console, "debug").mockImplementation(() => {})
+
+    createLog({ window, dev: true }).child("composer").action("send")
+
+    expect(debug).toHaveBeenCalledOnce()
+    expect(window.__log?.spec()).toBe("*")
     debug.mockRestore()
     delete window.__log
   })
