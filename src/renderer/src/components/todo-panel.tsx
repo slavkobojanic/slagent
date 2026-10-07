@@ -28,7 +28,7 @@ function TodoPanel({ todos, streaming }: { todos: TodoItem[]; streaming: boolean
         <ul className="max-h-48 space-y-1 overflow-y-auto border-t border-white/10 px-3 py-2">
           {todos.map((todo, index) => (
             <li key={`${index}:${todo.text}`} className="flex items-start gap-2">
-              <TodoIcon todo={todo} />
+              <TodoIcon todo={todo} active={streaming} />
               <span className={cn("min-w-0 flex-1", todo.status === "completed" && "text-white/40 line-through")}>
                 {todo.text}
               </span>
@@ -40,10 +40,17 @@ function TodoPanel({ todos, streaming }: { todos: TodoItem[]; streaming: boolean
   )
 }
 
-function TodoIcon({ todo }: { todo: TodoItem }) {
+function TodoIcon({ todo, active }: { todo: TodoItem; active: boolean }) {
   if (todo.status === "completed") return <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-white/40" aria-label="Done" />
   if (todo.status === "in_progress") {
-    return <LoaderCircleIcon className="mt-0.5 size-3.5 shrink-0 animate-spin" aria-label="In progress" />
+    // Spin only while a run is live. A stale list (the model ended its turn
+    // without re-sending it) must not look like it is still working.
+    return (
+      <LoaderCircleIcon
+        className={cn("mt-0.5 size-3.5 shrink-0", active && "animate-spin")}
+        aria-label={active ? "In progress" : "Not confirmed done"}
+      />
+    )
   }
   return <CircleIcon className="mt-0.5 size-3.5 shrink-0 text-white/40" aria-label="To do" />
 }

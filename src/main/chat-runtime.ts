@@ -81,7 +81,8 @@ const IMAGE_TYPES: Record<string, string> = {
   ".avif": "image/avif",
 }
 const IMAGE_LIMIT = 20 * 1024 * 1024
-const APPROVED_PLAN = "The plan is approved. Carry it out now. Track the steps with the todo tool and check the result at the end."
+const APPROVED_PLAN =
+  "The plan is approved. Carry it out now. Track the steps with the todo tool: mark each item completed as soon as its work is done and mark the next one in_progress. Keep the list current through the end of every turn, and check the result at the end."
 
 export type AgentModel = NonNullable<ReturnType<ModelRuntime["getModel"]>>
 

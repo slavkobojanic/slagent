@@ -48,6 +48,7 @@ export function todoExtension(onChange: (todos: TodoItem[]) => void): ExtensionF
       promptGuidelines: [
         "Use todo for work with three or more steps. Skip it for quick questions and one-step edits.",
         "Mark one item in_progress before starting it and completed as soon as it is done, then send the list again.",
+        "Before ending your turn, send the list again with finished items marked completed. Never leave an item in_progress once its work is done.",
       ],
       parameters: params,
       async execute(_id, input) {
@@ -62,8 +63,11 @@ export function todoExtension(onChange: (todos: TodoItem[]) => void): ExtensionF
         onChange(todos)
         const done = todos.filter((todo) => todo.status === "completed").length
         const lines = todos.map((todo) => `[${mark(todo.status)}] ${todo.text}`)
+        // The tool result is the one channel that reaches the model on every
+        // update — use it to push back against stale lists.
+        const reminder = done < todos.length ? "\nKeep this list current: re-send it as items complete, and mark finished items completed before you end your turn." : ""
         return {
-          content: [{ type: "text", text: `${done}/${todos.length} done\n${lines.join("\n")}` }],
+          content: [{ type: "text", text: `${done}/${todos.length} done\n${lines.join("\n")}${reminder}` }],
           details: { todos } satisfies Details,
         }
       },

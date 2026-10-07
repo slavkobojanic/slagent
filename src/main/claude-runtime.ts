@@ -55,7 +55,8 @@ export function claudeModel(id: string | null | undefined): ModelOption | undefi
 }
 
 const OUTPUT_LIMIT = 12_000
-const APPROVED_PLAN = "The plan is approved. Carry it out now. Track the steps with the todo list and check the result at the end."
+const APPROVED_PLAN =
+  "The plan is approved. Carry it out now. Track the steps with the todo list: mark each item completed as soon as its work is done and mark the next one in_progress. Keep the list current through the end of every turn, and check the result at the end."
 const PLAN_SUBMITTED = "The plan was shown to the user for review. End your turn now and wait for their reply."
 
 // Claude Code's tool names, mapped to the names the transcript already draws.
