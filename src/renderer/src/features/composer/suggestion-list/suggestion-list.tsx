@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
 export type SuggestionRow = { key: string; label: string; detail: string }
@@ -16,6 +17,21 @@ export type SuggestionListProps = {
 }
 
 export function SuggestionList({ menu, active, onHover, onChoose }: SuggestionListProps) {
+  // Arrow keys move the selection without a pointer, so keep the active row inside the list.
+  const listRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const list = listRef.current
+    const row = list?.children[active] as HTMLElement | undefined
+    if (list === null || list === undefined || row === undefined) {
+      return
+    }
+    const top = row.offsetTop
+    if (top < list.scrollTop) {
+      list.scrollTop = top
+    } else if (top + row.offsetHeight > list.scrollTop + list.clientHeight) {
+      list.scrollTop = top + row.offsetHeight - list.clientHeight
+    }
+  }, [active, menu])
   if (menu === null) {
     return null
   }
@@ -23,7 +39,7 @@ export function SuggestionList({ menu, active, onHover, onChoose }: SuggestionLi
     <div className="absolute right-6 bottom-full left-6 z-20 mb-2 overflow-hidden rounded-md border border-white/15 bg-black">
       {menu.title ? <p className="truncate border-b border-white/10 px-3 py-1.5 text-xs text-white/50">{menu.title}</p> : null}
       {menu.items.length === 0 && menu.empty ? <p className="px-3 py-1.5 text-sm text-white/50">{menu.empty}</p> : null}
-      <div className="max-h-56 overflow-y-auto">
+      <div ref={listRef} className="max-h-56 overflow-y-auto">
         {menu.items.map((item, index) => (
           <button
             key={item.key}
