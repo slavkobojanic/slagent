@@ -238,6 +238,14 @@ function Composer({
   const slashOpen = slash !== null
   const historyMatches = historyQuery === null ? [] : searchHistory(historyQuery)
 
+  // The composer remounts for every chat, so this runs for each new chat and
+  // each chat switch: the prompt box gets focus immediately, without callers
+  // having to race the remount. A dialog or menu keeps the focus.
+  useEffect(() => {
+    if (document.querySelector("[role=dialog], [role=menu]")) return
+    textareaRef.current?.focus()
+  }, [])
+
   useEffect(() => {
     if (!slashOpen) return
     let stop = false
@@ -526,6 +534,7 @@ function Composer({
         <ComposerAttachments />
         <PromptInputBody>
           <PromptInputTextarea
+            ref={textareaRef}
             placeholder={placeholder}
             disabled={disabled}
             onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {

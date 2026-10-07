@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import type {
   AnsweredQuestion,
@@ -12,9 +12,10 @@ import { HtmlFrame, hasMedia, Media } from "@/components/question-media"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { errorText } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { CheckIcon, MessageCircleQuestionIcon } from "lucide-react"
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, MessageCircleQuestionIcon } from "lucide-react"
 
 type Draft = {
   selected: string[]
@@ -44,14 +45,72 @@ function Marker({ checked, index }: { checked: boolean; index: number }) {
   )
 }
 
+function RecommendedBadge() {
+  return (
+    <span className="rounded bg-emerald-400/15 px-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">Recommended</span>
+  )
+}
+
+// Truncated text that only offers a popover when it actually truncated, and
+// then shows the full line. Measured at hover time so it stays correct as
+// widths change.
+function TruncatedTip({ tip, children }: { tip: ReactNode; children: ReactNode }) {
+  const ref = useRef<HTMLSpanElement | null>(null)
+  const [open, setOpen] = useState(false)
+  return (
+    <Tooltip
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          setOpen(false)
+          return
+        }
+        const el = ref.current
+        setOpen(!!el && el.scrollWidth > el.clientWidth + 1)
+      }}
+    >
+      <TooltipTrigger asChild>
+        <span ref={ref} className="min-w-0 flex-1 truncate">
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="start" className="max-w-sm">
+        {tip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+// Card text: label and description share one line, so every row is the same
+// height; the popover carries the full text when the line truncates.
+function OptionLine({ option }: { option: QuestionOption }) {
+  return (
+    <TruncatedTip
+      tip={
+        <span className="grid gap-0.5 text-start">
+          <span className="font-medium">{option.label}</span>
+          {option.description ? <span className="text-white/70">{option.description}</span> : null}
+        </span>
+      }
+    >
+      <span className="font-medium">{option.label}</span>
+      {option.recommended ? <RecommendedBadge /> : null}
+      {option.description ? (
+        <span className="text-muted-foreground">
+          <span className="text-white/30"> — </span>
+          {option.description}
+        </span>
+      ) : null}
+    </TruncatedTip>
+  )
+}
+
 function OptionText({ option }: { option: QuestionOption }) {
   return (
     <span className="min-w-0 flex-1">
       <span className="flex flex-wrap items-center gap-1.5">
         <span className="font-medium">{option.label}</span>
-        {option.recommended ? (
-          <span className="rounded bg-emerald-400/15 px-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">Recommended</span>
-        ) : null}
+        {option.recommended ? <RecommendedBadge /> : null}
       </span>
       {option.description ? <span className="mt-0.5 block text-xs text-muted-foreground">{option.description}</span> : null}
     </span>
@@ -146,7 +205,7 @@ function OptionList({
               role={question.multiSelect ? "checkbox" : "radio"}
               aria-checked={checked}
               className={cn(
-                "flex w-full items-start gap-2.5 rounded-md border border-white/10 px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.04]",
+                "flex h-9 w-full items-center gap-2.5 rounded-md border border-white/10 px-3 text-left text-sm transition-colors hover:bg-white/[0.04]",
                 checked && "border-white bg-white/[0.06] hover:bg-white/[0.06]",
               )}
               onClick={() => onToggle(option.label)}
@@ -156,7 +215,7 @@ function OptionList({
               onBlur={() => setFocused(null)}
             >
               <Marker checked={checked} index={index} />
-              <OptionText option={option} />
+              <OptionLine option={option} />
             </button>
           )
         })}
@@ -176,15 +235,11 @@ function OptionList({
 
 function QuestionBlock({
   question,
-  number,
-  numbered,
   fill,
   draft,
   onChange,
 }: {
   question: Question
-  number: number
-  numbered: boolean
   // A lone visual question stretches its cards to the modal's height.
   fill: boolean
   draft: Draft
@@ -216,17 +271,6 @@ function QuestionBlock({
         toggle(option.label)
       }}
     >
-      <div className="flex items-baseline gap-2">
-        {question.header ? (
-          <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-medium text-white/70 uppercase">
-            {question.header}
-          </span>
-        ) : null}
-        <p className="pr-8 text-sm font-medium">
-          {numbered ? <span className="mr-1.5 text-muted-foreground">{number}.</span> : null}
-          {question.question}
-        </p>
-      </div>
       <Media media={question} title={question.question} />
       {visual(question) ? (
         <OptionCards question={question} draft={draft} fill={fill} onToggle={toggle} />
@@ -236,7 +280,7 @@ function QuestionBlock({
       <Input
         value={draft.other}
         placeholder={question.multiSelect ? "Something else (optional)" : "Something else"}
-        className="h-8 text-sm"
+        className="h-9 text-sm"
         onChange={(event) => {
           const other = event.target.value
           const selected = !question.multiSelect && other.trim() ? [] : draft.selected
@@ -253,10 +297,22 @@ function QuestionCard({ request }: { request: QuestionRequest }) {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(true)
+  const [page, setPage] = useState(0)
   const body = useRef<HTMLDivElement | null>(null)
   const ready = request.questions.every((question) => complete(drafts[question.id] ?? emptyDraft()))
-  const single = request.questions.length === 1
-  const title = single ? "The agent has a question" : `The agent has ${request.questions.length} questions`
+  const count = request.questions.length
+  const single = count === 1
+  // Questions can be removed while navigating; stay on a valid page.
+  const index = Math.min(page, count - 1)
+  const question = request.questions[index]
+  const title = single ? "The agent has a question" : `The agent has ${count} questions`
+
+  // A fresh page starts at the top with the question focused, so number keys
+  // pick options right away.
+  useEffect(() => {
+    if (body.current) body.current.scrollTop = 0
+    body.current?.querySelector<HTMLElement>("[data-question]")?.focus({ preventScroll: true })
+  }, [index])
 
   async function send(reply: QuestionReply) {
     setBusy(true)
@@ -302,27 +358,83 @@ function QuestionCard({ request }: { request: QuestionRequest }) {
             body.current?.querySelector<HTMLElement>("[data-question]")?.focus({ preventScroll: true })
           }}
           onKeyDown={(event) => {
-            if (event.key !== "Enter" || !ready) return
-            if (event.metaKey || event.ctrlKey || !typing(event.target)) {
+            if (event.key === "Enter" && ready && (event.metaKey || event.ctrlKey || !typing(event.target))) {
               event.preventDefault()
               submit()
+              return
+            }
+            if (typing(event.target) || event.metaKey || event.ctrlKey || event.altKey) return
+            if (event.key === "ArrowLeft" && index > 0) {
+              event.preventDefault()
+              setPage(index - 1)
+            }
+            if (event.key === "ArrowRight" && index < count - 1) {
+              event.preventDefault()
+              setPage(index + 1)
             }
           }}
         >
           <DialogTitle className="sr-only">{title}</DialogTitle>
           <DialogDescription className="sr-only">Close this to reply in the chat instead.</DialogDescription>
-          <div ref={body} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-4">
-            {request.questions.map((question, index) => (
-              <QuestionBlock
-                key={question.id}
-                question={question}
-                number={index + 1}
-                numbered={!single}
-                fill={single && visual(question)}
-                draft={drafts[question.id] ?? emptyDraft()}
-                onChange={(draft) => setDrafts((current) => ({ ...current, [question.id]: draft }))}
-              />
-            ))}
+          <header className="flex items-start justify-between gap-3 py-4 pr-10 pl-5">
+            <div className="flex min-w-0 items-baseline gap-2">
+              {question.header ? (
+                <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-medium text-white/70 uppercase">
+                  {question.header}
+                </span>
+              ) : null}
+              <p className="min-w-0 text-sm font-medium">{question.question}</p>
+            </div>
+            {!single ? (
+              <div className="flex shrink-0 items-center gap-1 pt-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Previous question"
+                  disabled={index === 0}
+                  onClick={() => setPage(index - 1)}
+                >
+                  <ChevronLeftIcon className="size-4" />
+                </Button>
+                <div className="flex items-center gap-1.5 px-1">
+                  {request.questions.map((item, itemIndex) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-label={`Go to question ${itemIndex + 1}`}
+                      aria-current={itemIndex === index}
+                      className={cn(
+                        "size-1.5 rounded-full bg-white/25 transition-colors hover:bg-white/50",
+                        itemIndex === index && "bg-white",
+                      )}
+                      onClick={() => setPage(itemIndex)}
+                    />
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Next question"
+                  disabled={index === count - 1}
+                  onClick={() => setPage(index + 1)}
+                >
+                  <ChevronRightIcon className="size-4" />
+                </Button>
+              </div>
+            ) : null}
+          </header>
+          <div ref={body} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pb-4">
+            <QuestionBlock
+              key={question.id}
+              question={question}
+              fill={visual(question)}
+              draft={drafts[question.id] ?? emptyDraft()}
+              onChange={(draft) => setDrafts((current) => ({ ...current, [question.id]: draft }))}
+            />
           </div>
           <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-white/10 px-5 py-3">
             <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => void send({ skipped: true })}>

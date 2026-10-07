@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import type { ModelOption, ModelProvider } from "@shared/types"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { focusComposer } from "@/lib/composer"
 import { ProviderLogo } from "@/components/provider-logo"
 import { errorText, formatContext } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -66,6 +67,9 @@ function ModelDialog({
       const change = await window.slagent.setModel(id)
       if (!change.applied) toast.message("This chat keeps its model until the run finishes.")
       onOpenChange(false)
+      // Switching providers starts a new chat in the main process, whose
+      // remount focus was skipped while this dialog was open.
+      focusComposer()
     } catch (error) {
       toast.error(errorText(error))
     } finally {
