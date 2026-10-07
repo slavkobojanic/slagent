@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning"
 import { Shimmer } from "@/components/ai-elements/shimmer"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Collapsible,
   CollapsibleContent,
@@ -141,6 +142,26 @@ function BashOutput({ message }: { message: ToolMessage }) {
           <div className="mt-1 text-white/30">Running…</div>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+// True while a run is going but nothing on screen shows it: right after
+// sending, and between a finished tool and the model's next reply.
+function awaitingModel(messages: ChatMessage[], streaming: boolean): boolean {
+  if (!streaming) return false
+  const last = messages[messages.length - 1]
+  if (!last) return true
+  if (last.role === "user") return true
+  if (last.role === "tool") return !last.running
+  return !last.streaming
+}
+
+function PendingReply({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
+      <Spinner className="size-3.5" />
+      <Shimmer>{label}</Shimmer>
     </div>
   )
 }
@@ -548,6 +569,7 @@ function Transcript({
   onEdit: (id: string, text: string) => Promise<void>
 }) {
   const blocks = groupMessages(messages)
+  const pending = awaitingModel(messages, streaming) && !planProposal
   const [editingId, setEditingId] = useState<string | null>(null)
   const latest = useRef(messages)
   latest.current = messages
@@ -588,7 +610,8 @@ function Transcript({
           return <AssistantTurn key={block.turn.id} turn={block.turn} />
         })}
         {planProposal ? <PlanCard plan={planProposal} onApprove={onApprovePlan} /> : null}
-        {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
+        {pending ? <PendingReply label={notice ?? "Thinking"} /> : null}
+        {notice && !pending ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>

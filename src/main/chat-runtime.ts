@@ -209,7 +209,9 @@ export class ChatRuntime {
   transcript(): TranscriptState {
     return {
       messages: this.messages,
-      streaming: this.streaming,
+      // Includes the time before Pi starts the run, while the prompt is prepared
+      // and the checkpoint taken, so the UI shows activity right away.
+      streaming: this.running,
       notice: this.notice,
       queue: this.queue.map((item) => ({
         id: item.id,
