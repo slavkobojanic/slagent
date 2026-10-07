@@ -32,7 +32,7 @@ import { setTextareaValue } from "@/lib/composer"
 import { clearDraft, readDraft, saveDraft } from "@/lib/drafts"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
-import type { DiffComment, FileMatch, ReplyComment, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
+import type { ChatMention, ChatSearchResult, DiffComment, FileMatch, ReplyComment, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
 import { TaskStrip } from "@/components/task-strip"
 import { TodoPanel } from "@/components/todo-panel"
 import { UsageMeter } from "@/components/usage-meter"
@@ -233,6 +233,9 @@ function Composer({
   const [mentions, setMentions] = useState<PromptMention[]>([])
   const [mention, setMention] = useState<{ query: string; start: number } | null>(null)
   const [matches, setMatches] = useState<FileMatch[]>([])
+  const [chatMention, setChatMention] = useState<{ query: string; start: number } | null>(null)
+  const [chatMatches, setChatMatches] = useState<ChatSearchResult[]>([])
+  const [chatMentions, setChatMentions] = useState<ChatMention[]>([])
   const [slash, setSlash] = useState<string | null>(null)
   const [commands, setCommands] = useState<SlashCommand[]>([])
   const [active, setActive] = useState(0)
@@ -292,6 +295,23 @@ function Composer({
     }
   }, [mention])
 
+  useEffect(() => {
+    if (!chatMention) {
+      setChatMatches([])
+      return
+    }
+    let stop = false
+    const timer = window.setTimeout(() => {
+      void window.slagent.searchChats(chatMention.query).then((next) => {
+        if (!stop) setChatMatches(next)
+      })
+    }, 80)
+    return () => {
+      stop = true
+      window.clearTimeout(timer)
+    }
+  }, [chatMention])
+
   let status: ChatStatus = "ready"
   if (streaming) status = "streaming"
 
@@ -300,6 +320,7 @@ function Composer({
 
   function syncMention(value: string, cursor: number) {
     setMention(mentionAt(value, cursor))
+    setChatMention(chatMentionAt(value, cursor))
     setSlash(slashAt(value, cursor))
     setActive(0)
   }
@@ -330,6 +351,23 @@ function Composer({
     setMentions((current) => {
       if (current.some((item) => item.path === match.path)) return current
       return [...current, { path: match.path, name: match.name }]
+    })
+  }
+
+  function chooseChatMention(match: ChatSearchResult) {
+    const textarea = textareaRef.current
+    if (!textarea || !chatMention) return
+    const value = textarea.value
+    const cursor = textarea.selectionStart
+    const token = `$${match.title} `
+    const next = `${value.slice(0, chatMention.start)}${token}${value.slice(cursor)}`
+    setTextareaValue(textarea, next)
+    const caret = chatMention.start + token.length
+    textarea.setSelectionRange(caret, caret)
+    setChatMention(null)
+    setChatMentions((current) => {
+      if (current.some((item) => item.chatId === match.chatId)) return current
+      return [...current, { projectId: match.projectId, chatId: match.chatId, title: match.title, updatedAt: match.updatedAt }]
     })
   }
 
@@ -380,6 +418,7 @@ function Composer({
     let count = 0
     if (historyQuery !== null) count = historyMatches.length
     else if (mention) count = matches.length
+    else if (chatMention) count = chatMatches.length
     else if (slash !== null) count = commandMatches.length
     if (historyQuery !== null && event.key === "Escape") {
       event.preventDefault()
@@ -414,6 +453,7 @@ function Composer({
     if (event.key === "Escape") {
       event.preventDefault()
       setMention(null)
+      setChatMention(null)
       setSlash(null)
       setHistoryQuery(null)
       return
@@ -430,6 +470,11 @@ function Composer({
         if (match) chooseMention(match)
         return
       }
+      if (chatMention) {
+        const match = chatMatches[active]
+        if (match) chooseChatMention(match)
+        return
+      }
       const command = commandMatches[active]
       if (command) chooseCommand(command)
     }
@@ -442,14 +487,17 @@ function Composer({
     const files = promptFiles(message)
     const text = message.text
     const kept = mentions.filter((item) => text.includes(`@${item.name}`))
-    if (!text.trim() && files.length === 0 && kept.length === 0 && comments.length === 0 && replies.length === 0) return
+    const keptChats = chatMentions.filter((item) => text.includes(`$${item.title}`))
+    if (!text.trim() && files.length === 0 && kept.length === 0 && keptChats.length === 0 && comments.length === 0 && replies.length === 0) return
     clearDraft(draftKey)
-    onPrompt({ text, mentions: kept, files, comments, replies })
+    onPrompt({ text, mentions: kept, chatMentions: keptChats, files, comments, replies })
     rememberPrompt(text)
     historyIndex.current = null
     setHistoryQuery(null)
     setMentions([])
     setMention(null)
+    setChatMentions([])
+    setChatMention(null)
     setSlash(null)
   }
 
@@ -531,7 +579,19 @@ function Composer({
           }))}
         />
       )}
-      {historyQuery === null && !mention && slash !== null && commandMatches.length > 0 && (
+      {historyQuery === null && !mention && chatMention && chatMatches.length > 0 && (
+        <Suggestions
+          active={active}
+          onActive={setActive}
+          items={chatMatches.map((match) => ({
+            key: match.chatId,
+            label: `$${match.title}`,
+            detail: match.projectName,
+            choose: () => chooseChatMention(match),
+          }))}
+        />
+      )}
+      {historyQuery === null && !mention && !chatMention && slash !== null && commandMatches.length > 0 && (
         <Suggestions
           active={active}
           onActive={setActive}
@@ -703,6 +763,20 @@ function mentionAt(value: string, cursor: number): { query: string; start: numbe
   const query = before.slice(at + 1)
   if (query.includes(" ") || query.includes("\n")) return null
   return { query, start: at }
+}
+
+// Like mentionAt but for $-mentions of past chats. Yields to @ so typing "@a$b"
+// stays a file mention.
+function chatMentionAt(value: string, cursor: number): { query: string; start: number } | null {
+  const before = value.slice(0, cursor)
+  const dollar = before.lastIndexOf("$")
+  if (dollar < 0) return null
+  if (before.lastIndexOf("@") > dollar) return null
+  const previous = before[dollar - 1]
+  if (previous && !/\s/.test(previous)) return null
+  const query = before.slice(dollar + 1)
+  if (query.includes(" ") || query.includes("\n")) return null
+  return { query, start: dollar }
 }
 
 function slashAt(value: string, cursor: number): string | null {

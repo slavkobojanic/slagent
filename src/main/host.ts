@@ -584,6 +584,7 @@ export class AgentHost {
       gate: this.gate,
       modelRuntime: runtimeModel,
       mcpServers: this.getMcpServers(),
+      library: this.library,
       personalisation: () => this.personalisation,
       onChange: (runningChanged) => {
         this.onRuntimeChange(runtime, runningChanged)

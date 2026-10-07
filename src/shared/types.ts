@@ -236,9 +236,18 @@ export type ReplyComment = {
   text: string
 }
 
+export type ChatMention = {
+  projectId: string
+  chatId: string
+  title: string
+  updatedAt: number
+}
+
 export type PromptRequest = {
   text: string
   mentions: PromptMention[]
+  // $-mentioned past chats, whose transcripts are attached at send time.
+  chatMentions?: ChatMention[]
   files: PromptFile[]
   comments?: DiffComment[]
   replies?: ReplyComment[]

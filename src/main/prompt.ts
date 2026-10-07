@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto"
 import type { ImageContent } from "@earendil-works/pi-ai"
-import type { DiffComment, PromptFile, PromptMention, PromptRequest, ReplyComment, UserAttachment } from "../shared/types"
+import type { ChatMention, ChatMessage, DiffComment, PromptFile, PromptMention, PromptRequest, ReplyComment, UserAttachment } from "../shared/types"
 import { attachmentKind, mimeForName, pdfText, readBytes } from "./files"
+import { renderTranscript, shortDate } from "./transcript-text"
 
 export type PreparedPrompt = {
   text: string
@@ -19,23 +20,31 @@ type Reference = {
   body?: string
 }
 
+type ChatBlock = {
+  title: string
+  updatedAt: number
+  body: string
+}
+
 export function parsePrompt(input: unknown): PromptRequest {
   if (typeof input !== "object" || input === null) throw new Error("Missing message.")
   const record = input as Record<string, unknown>
   const text = typeof record.text === "string" ? record.text : ""
   const mentions = parseMentions(record.mentions)
+  const chatMentions = parseChatMentions(record.chatMentions)
   const files = parseFiles(record.files)
   const comments = parseComments(record.comments)
   const replies = parseReplies(record.replies)
-  if (!text.trim() && mentions.length === 0 && files.length === 0 && comments.length === 0 && replies.length === 0) {
+  if (!text.trim() && mentions.length === 0 && chatMentions.length === 0 && files.length === 0 && comments.length === 0 && replies.length === 0) {
     throw new Error("Write a message first.")
   }
-  return { text, mentions, files, comments, replies }
+  return { text, mentions, chatMentions, files, comments, replies }
 }
 
 export async function preparePrompt(
   request: PromptRequest,
   save: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>,
+  loadChat?: (mention: ChatMention) => Promise<ChatMessage[]>,
 ): Promise<PreparedPrompt> {
   const attachments: UserAttachment[] = []
   const images: ImageContent[] = []
@@ -81,8 +90,22 @@ export async function preparePrompt(
     pushReference(seen, references, attachments, saved.path, file.name, kind)
   }
 
+  const chatBlocks: ChatBlock[] = []
+  const seenChats = new Set<string>()
+  for (const mention of request.chatMentions ?? []) {
+    if (!loadChat || seenChats.has(mention.chatId)) continue
+    seenChats.add(mention.chatId)
+    let body = ""
+    try {
+      body = renderTranscript(await loadChat(mention)).text
+    } catch {
+      continue
+    }
+    chatBlocks.push({ title: mention.title, updatedAt: mention.updatedAt, body })
+  }
+
   return {
-    text: withCommand(withReplies(withComments(request.text.trim(), request.comments ?? []), request.replies ?? []), references),
+    text: withCommand(withReplies(withComments(request.text.trim(), request.comments ?? []), request.replies ?? []), references, chatBlocks),
     images,
     attachments,
   }
@@ -90,6 +113,7 @@ export async function preparePrompt(
 
 export function queueDetail(request: PromptRequest): string {
   const names = request.mentions.map((mention) => mention.name)
+  for (const chat of request.chatMentions ?? []) names.push(`$${chat.title}`)
   for (const file of request.files) names.push(file.name)
   const comments = request.comments?.length ?? 0
   if (comments === 1) names.push("1 diff comment")
@@ -152,27 +176,36 @@ function withReplies(text: string, replies: ReplyComment[]): string {
 
 // Pi only expands /skill:name, prompt templates and extension commands when the
 // prompt starts with them, so file references go after the command.
-function withCommand(text: string, references: Reference[]): string {
+function withCommand(text: string, references: Reference[], chats: ChatBlock[]): string {
   const match = /^\/[^\s/][^\s]*/.exec(text)
-  if (!match) return compose(text, references)
+  if (!match) return compose(text, references, chats)
   const command = match[0]
   const rest = text.slice(command.length).trim()
   if (!rest && references.length === 0) return command
-  return `${command} ${compose(rest, references)}`
+  return `${command} ${compose(rest, references, chats)}`
 }
 
-function compose(text: string, references: Reference[]): string {
-  if (references.length === 0) {
+function compose(text: string, references: Reference[], chats: ChatBlock[]): string {
+  if (references.length === 0 && chats.length === 0) {
     if (text) return text
     return "See the attached images."
   }
-  const lines = ["Referenced files:"]
-  for (const reference of references) lines.push(`- ${reference.path}`)
-  for (const reference of references) {
-    if (!reference.body) continue
+  const lines: string[] = []
+  if (references.length > 0) {
+    lines.push("Referenced files:")
+    for (const reference of references) lines.push(`- ${reference.path}`)
+    for (const reference of references) {
+      if (!reference.body) continue
+      lines.push("")
+      lines.push(`--- ${reference.path} ---`)
+      lines.push(reference.body)
+      lines.push("--- end ---")
+    }
+  }
+  for (const chat of chats) {
     lines.push("")
-    lines.push(`--- ${reference.path} ---`)
-    lines.push(reference.body)
+    lines.push(`--- Referenced chat “${chat.title}” (${shortDate(chat.updatedAt)}) ---`)
+    lines.push(chat.body)
     lines.push("--- end ---")
   }
   if (text) {
@@ -186,6 +219,24 @@ async function bytesOf(file: PromptFile): Promise<Buffer> {
   if (file.path) return readBytes(file.path)
   if (!file.dataBase64) throw new Error("That attachment is empty.")
   return Buffer.from(file.dataBase64, "base64")
+}
+
+function parseChatMentions(value: unknown): ChatMention[] {
+  if (!Array.isArray(value)) return []
+  const mentions: ChatMention[] = []
+  for (const item of value.slice(0, 10)) {
+    if (typeof item !== "object" || item === null) continue
+    const record = item as Record<string, unknown>
+    if (typeof record.chatId !== "string" || typeof record.projectId !== "string" || typeof record.title !== "string") continue
+    const updatedAt = Number(record.updatedAt)
+    mentions.push({
+      projectId: record.projectId,
+      chatId: record.chatId,
+      title: record.title.slice(0, 80),
+      updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
+    })
+  }
+  return mentions
 }
 
 function parseComments(value: unknown): DiffComment[] {

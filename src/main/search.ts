@@ -7,10 +7,27 @@ const CONTEXT = 60
 // Case-insensitive search over chat titles and the user and assistant text of
 // every chat in every project. A chat matches when its title or one of its
 // messages contains every term. Newest chats come first, each showing its
-// best-matching message.
+// best-matching message. An empty query lists the most recent chats, which is
+// what the composer's $ picker shows before the user types.
 export function searchChats(library: Library, query: string): ChatSearchResult[] {
   const terms = [...new Set(query.toLowerCase().split(/\s+/).filter(Boolean))]
-  if (terms.length === 0) return []
+  if (terms.length === 0) {
+    const recent: ChatSearchResult[] = []
+    for (const project of library.projects()) {
+      for (const chat of library.projectChats(project.id)) {
+        recent.push({
+          projectId: project.id,
+          projectName: project.name,
+          chatId: chat.id,
+          title: chat.title,
+          updatedAt: chat.updatedAt,
+          snippet: "",
+          messageId: null,
+        })
+      }
+    }
+    return recent.sort((left, right) => right.updatedAt - left.updatedAt).slice(0, LIMIT)
+  }
   const hits = new Map(library.searchMessages(terms).map((hit) => [hit.chatId, hit]))
   const focus = terms.reduce((longest, term) => (term.length > longest.length ? term : longest))
 

@@ -20,6 +20,7 @@ import type { ImageContent } from "@earendil-works/pi-ai"
 import type {
   AssistantMessage,
   ChatMessage,
+  ChatMention,
   ExtensionInfo,
   Personalisation,
   QueueMode,
@@ -51,7 +52,9 @@ import { ASK_USER, askUser, type AskUserDetails } from "./extensions/ask-user"
 import { personalisationExtension } from "./extensions/personalisation"
 import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { todoExtension } from "./extensions/todo"
+import { chatHistoryExtension } from "./extensions/chat-history"
 import { preparePrompt, queueDetail } from "./prompt"
+import type { Library } from "./library"
 
 // Pi treats the tools list as an allowlist, so tools from slagent's own
 // extensions are named here too.
@@ -64,6 +67,8 @@ const CODING_TOOLS = [
   "find",
   "ls",
   "todo",
+  "search_chats",
+  "read_chat",
   "propose_plan",
   "ask_user",
   "bash_background",
@@ -112,6 +117,8 @@ export type ChatRuntimeOptions = {
   modelRuntime: ModelRuntime
   // Servers slagent manages, registered with Pi's MCP extension for this session.
   mcpServers?: Record<string, McpServerConfig>
+  // Past-chat search and reads, shared with the renderer.
+  library: Library
   // Global personalisation, re-read on every run so edits apply from the next message.
   personalisation: () => Personalisation
   onChange: (runningChanged: boolean) => void
@@ -352,6 +359,12 @@ export class ChatRuntime {
           this.emit(false)
         }),
       },
+      {
+        name: "slagent-chat-history",
+        hidden: true,
+        replaceable: true,
+        factory: chatHistoryExtension({ library: this.options.library, currentProjectId: () => this.projectId }),
+      },
       { name: "slagent-mcp-servers", hidden: true, factory: mcpServersExtension(this.options.mcpServers ?? {}) },
       { name: "slagent-mcp", hidden: true, factory: createMcpExtension() },
     ]
@@ -460,7 +473,7 @@ export class ChatRuntime {
     if (!session) throw new Error("The session is not ready.")
     if (session.isStreaming || this.streaming) {
       this.queue.splice(index, 1)
-      const prepared = await preparePrompt(item.request, this.options.saveBytes)
+      const prepared = await preparePrompt(item.request, this.options.saveBytes, this.readChat)
       this.pushUser(item.request, prepared.attachments)
       this.emit(false)
       await session.steer(prepared.text, promptImages(prepared.images))
@@ -621,10 +634,15 @@ export class ChatRuntime {
     this.emit(false)
   }
 
+  // Transcripts for $chat mentions, attached at send time.
+  private readChat = async (mention: ChatMention): Promise<ChatMessage[]> => {
+    return this.options.library.readTranscript(mention.projectId, mention.chatId)
+  }
+
   private async send(request: PromptRequest): Promise<void> {
     const session = this.session
     if (!session) throw new Error("The session is not ready.")
-    const prepared = await preparePrompt(request, this.options.saveBytes)
+    const prepared = await preparePrompt(request, this.options.saveBytes, this.readChat)
     const message = this.pushUser(request, prepared.attachments)
     // Any reply to a proposed plan is feedback, so the card goes away.
     this.clearProposal()
