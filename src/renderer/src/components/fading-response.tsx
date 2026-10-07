@@ -28,7 +28,7 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
-function FadingResponse({ text }: { text: string }) {
+function FadingResponse({ text, streaming }: { text: string; streaming: boolean }) {
   const blocks = parseMarkdownIntoBlocks(text)
   const blocksRef = useRef(blocks)
   blocksRef.current = blocks
@@ -79,7 +79,12 @@ function FadingResponse({ text }: { text: string }) {
         if (isCodeBlock(block)) blockClass = "reveal-block"
         return (
           <div key={index} className={blockClass}>
-            <MessageResponse animated={wordFade} className="h-auto" isAnimating mode="streaming">
+            <MessageResponse
+              animated={wordFade}
+              className="h-auto"
+              isAnimating={streaming}
+              mode={streaming ? "streaming" : "static"}
+            >
               {block}
             </MessageResponse>
           </div>

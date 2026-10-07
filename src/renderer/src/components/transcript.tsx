@@ -290,7 +290,7 @@ function AssistantTurn({ turn }: { turn: Turn }) {
 function AssistantText({ text, streaming }: { text: string; streaming: boolean }) {
   const animate = useRef(streaming)
   if (streaming) animate.current = true
-  if (animate.current) return <FadingResponse text={text} />
+  if (animate.current) return <FadingResponse text={text} streaming={streaming} />
   return <MessageResponse>{text}</MessageResponse>
 }
 
