@@ -14,7 +14,6 @@ import type { ReviewStore } from "@/state/review/review-store/review-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { createCommentableResponse } from "./commentable-response/create"
 import { createMessageList } from "./message-list/create"
-import { createPlanCard } from "./plan-card/create"
 import { createQuestionCard } from "./question-card/create"
 import { createScrollDown } from "./scroll-down/create"
 import { createStatus } from "./status/create"
@@ -74,7 +73,6 @@ export function createTranscript({
     CommentableResponse,
     log: log.child("message-list"),
   })
-  const PlanCard = createPlanCard({ api, runStore, panelPresenter, log: log.child("plan-card") })
   const Status = createStatus({ runStore })
   const ScrollDown = createScrollDown({ runStore, transcriptStore: store, transcriptPresenter: presenter })
   const QuestionCard = createQuestionCard({ api, window, runStore, themeStore, log: log.child("question-card") })
@@ -88,7 +86,6 @@ export function createTranscript({
         attachScroll={presenter.attachScroll}
         onSettle={presenter.handleSettle}
         MessageList={MessageList}
-        PlanCard={PlanCard}
         Status={Status}
         ScrollDown={ScrollDown}
         QuestionCard={QuestionCard}

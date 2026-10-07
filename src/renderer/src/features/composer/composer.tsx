@@ -11,7 +11,7 @@ export type ComposerProps = {
 
 export function Composer({ RunStatus, PendingComments, PromptHistory, Suggestions, FileInput, PromptForm }: ComposerProps) {
   return (
-    <div className="relative mx-auto w-full max-w-3xl px-6 pb-3">
+    <div className="relative mx-auto w-full max-w-3xl px-6 pb-3 bg-transparent">
       <RunStatus />
       <PendingComments />
       <PromptHistory />

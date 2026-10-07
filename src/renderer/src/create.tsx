@@ -8,6 +8,7 @@ import { createComposer } from "@/features/composer/create"
 import { createLibrary } from "@/features/library/create"
 import { createModels } from "@/features/models/create"
 import { createPermissionsWizard } from "@/features/permissions-wizard/create"
+import { createPlanOverlay } from "@/features/transcript/plan-overlay/create"
 import { createSettings } from "@/features/settings/create"
 import { createShell } from "@/features/shell/create"
 import { createTranscript } from "@/features/transcript/create"
@@ -152,6 +153,7 @@ export function createApp(): ComponentType {
     composerPort,
   })
   const PermissionsWizard = createPermissionsWizard({ log: log.child("permissions-wizard"), api, window, permissionsStore })
+  const PlanOverlay = createPlanOverlay({ api, runStore, panelPresenter, composerPort, log: log.child("plan-overlay") })
   const Shell = createShell({
     Library,
     Settings,
@@ -159,6 +161,7 @@ export function createApp(): ComponentType {
     Transcript,
     Composer,
     Changes,
+    PlanOverlay,
     log: log.child("shell"),
     api,
     libraryStore,

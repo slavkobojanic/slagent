@@ -28,6 +28,7 @@ export function createShell({
   Transcript,
   Composer,
   Changes,
+  PlanOverlay,
   api,
   libraryStore,
   metaStore,
@@ -48,6 +49,7 @@ export function createShell({
   Transcript: ComponentType
   Composer: ComponentType
   Changes: ComponentType
+  PlanOverlay: ComponentType
   api: API
   libraryStore: LibraryStore
   metaStore: MetaStore
@@ -83,7 +85,7 @@ export function createShell({
     log: log.child("shell-header"),
   })
   const SidebarFrame = createSidebarFrame({ Library, layoutStore })
-  const MainColumn = createMainColumn({ Transcript, Composer, metaStore, projectMenuStore, updateButtonStore })
+  const MainColumn = createMainColumn({ Transcript, Composer, PlanOverlay, metaStore, projectMenuStore, updateButtonStore })
   const PanelFrame = createPanelFrame({ Changes, metaStore, layoutStore, panelStore })
 
   return observer(function ShellHost() {

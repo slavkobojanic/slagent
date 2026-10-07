@@ -7,14 +7,13 @@ export type TranscriptProps = {
   attachScroll: Ref<StickToBottomContext>
   onSettle: () => void
   MessageList: ComponentType
-  PlanCard: ComponentType
   Status: ComponentType
   ScrollDown: ComponentType
   QuestionCard: ComponentType
 }
 
 // The question card is a sibling of the conversation, so it stays put while the list scrolls.
-export function Transcript({ streaming, attachScroll, onSettle, MessageList, PlanCard, Status, ScrollDown, QuestionCard }: TranscriptProps) {
+export function Transcript({ streaming, attachScroll, onSettle, MessageList, Status, ScrollDown, QuestionCard }: TranscriptProps) {
   // Content settling after a chat opens (markdown, highlighting) snaps to the bottom;
   // only streamed output scrolls smoothly.
   return (
@@ -22,7 +21,6 @@ export function Transcript({ streaming, attachScroll, onSettle, MessageList, Pla
       <Conversation className="chat-transcript min-h-0" resize={streaming ? "smooth" : "instant"} contextRef={attachScroll}>
         <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-6 py-8">
           <MessageList />
-          <PlanCard />
           <Status />
         </ConversationContent>
         <ScrollDown />

@@ -1,6 +1,9 @@
 .sidebar-slot {
   display: grid;
   grid-template-columns: var(--sidebar-width, 16rem);
+  /* minmax(0, 1fr), not an auto row: a content-taller row would grow past the
+     slot and the aside's h-full would resolve against it, killing inner scroll. */
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   overflow: hidden;
   transition: grid-template-columns 250ms var(--ease-drawer);
@@ -43,6 +46,8 @@
 .panel-slot {
   display: grid;
   grid-template-columns: var(--panel-width, 35rem);
+  /* Same as the sidebar slot: keep the row at the slot height so the aside can scroll. */
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   overflow: hidden;
   transition: grid-template-columns 250ms var(--ease-drawer);
