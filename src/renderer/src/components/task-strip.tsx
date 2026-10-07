@@ -95,7 +95,7 @@ function TaskOutputDialog({ task, onClose }: { task: TaskInfo | null; onClose: (
           <pre className="font-mono text-xs whitespace-pre-wrap">{output || "No output yet."}</pre>
           <div ref={bottom} />
         </div>
-        {task ? <p className="text-xs text-muted-foreground">{statusLabel(task, Date.now())}</p> : null}
+        {task ? <p className="mt-2 text-xs text-muted-foreground">{statusLabel(task, Date.now())}</p> : null}
       </DialogContent>
     </Dialog>
   )
