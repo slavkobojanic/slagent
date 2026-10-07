@@ -5,8 +5,12 @@ import {
   type AgentSession,
   type AgentSessionEvent,
   createAgentSession,
+  DefaultResourceLoader,
+  getAgentDir,
+  type InlineExtension,
   type ModelRuntime,
   SessionManager,
+  SettingsManager,
 } from "@earendil-works/pi-coding-agent"
 import type { ImageContent } from "@earendil-works/pi-ai"
 import type {
@@ -24,6 +28,7 @@ import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
 import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
+import { focusGuard } from "./focus-guard"
 import { preparePrompt, queueDetail } from "./prompt"
 
 const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"]
@@ -138,10 +143,22 @@ export class ChatRuntime {
     const sessionManager = this.sessionManager()
     let toolNames = CODING_TOOLS
     let customTools: ReturnType<typeof computerTools> = []
+    const extensionFactories: InlineExtension[] = []
     if (process.platform === "darwin") {
       toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]
       customTools = computerTools(this.options.computer, this.options.gate)
+      extensionFactories.push(focusGuard)
     }
+
+    const agentDir = getAgentDir()
+    const settingsManager = SettingsManager.create(this.options.cwd, agentDir)
+    const resourceLoader = new DefaultResourceLoader({
+      cwd: this.options.cwd,
+      agentDir,
+      settingsManager,
+      extensionFactories,
+    })
+    await resourceLoader.reload()
 
     const { session, extensionsResult } = await createAgentSession({
       cwd: this.options.cwd,
@@ -150,6 +167,8 @@ export class ChatRuntime {
       tools: toolNames,
       customTools,
       sessionManager,
+      settingsManager,
+      resourceLoader,
     })
 
     this.session = session
