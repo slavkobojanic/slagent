@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { errorText, openPath } from "@/lib/format"
 import { type FileDiff, lineText, parseDiff } from "@/lib/diff"
 import { PIERRE_CSS, PIERRE_THEME } from "@/lib/pierre"
+import { useResolvedTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 function DiffPanel({
@@ -226,10 +227,11 @@ function FileSection({
   }))
   if (draft) annotations.push({ side: toPierreSide(draft.side), lineNumber: draft.line, metadata: { comment: null } })
 
+  const themeType = useResolvedTheme()
   const options = useMemo(
     () => ({
       theme: PIERRE_THEME,
-      themeType: "dark" as const,
+      themeType,
       diffStyle: "unified" as const,
       overflow: "scroll" as const,
       unsafeCSS: PIERRE_CSS,
@@ -240,7 +242,7 @@ function FileSection({
         setDraft({ side, line: range.start })
       },
     }),
-    [],
+    [themeType],
   )
 
   return (
@@ -277,7 +279,7 @@ function FileSection({
             )
           }
           return (
-            <div className="mx-3 my-1.5 flex items-start gap-2 rounded-md border border-white/10 bg-[#141414] px-3 py-2 font-sans text-xs whitespace-pre-wrap text-white shadow-md">
+            <div className="mx-3 my-1.5 flex items-start gap-2 rounded-md border border-white/10 bg-secondary px-3 py-2 font-sans text-xs whitespace-pre-wrap text-white shadow-md">
               <span className="min-w-0 flex-1">{comment.text}</span>
               <button type="button" className="text-white/40 hover:text-white" aria-label="Delete comment" onClick={() => onRemove(comment.id)}>
                 <XIcon className="size-3.5" />
@@ -306,7 +308,7 @@ function CommentDraft({ onSave, onCancel }: { onSave: (text: string) => void; on
     if (text.trim()) onSave(text.trim())
   }
   return (
-    <div className="mx-3 my-1.5 space-y-1.5 rounded-md border border-white/10 bg-[#141414] p-2 font-sans shadow-md">
+    <div className="mx-3 my-1.5 space-y-1.5 rounded-md border border-white/10 bg-secondary p-2 font-sans shadow-md">
       <Textarea
         ref={input}
         value={text}

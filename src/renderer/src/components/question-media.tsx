@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import type { QuestionMedia } from "@shared/types"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { type ResolvedTheme, useResolvedTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 const MIN_HEIGHT = 48
@@ -17,17 +18,21 @@ const SIZE_SCRIPT = `<script>
 })()
 </script>`
 
-const BASE_STYLE = `<style>
-:root { color-scheme: dark; }
-html, body { margin: 0; background: transparent; color: rgba(255, 255, 255, 0.9); font: 13px/1.5 system-ui, sans-serif; }
+function baseStyle(theme: ResolvedTheme): string {
+  let color = "rgba(255, 255, 255, 0.9)"
+  if (theme === "light") color = "rgba(0, 0, 0, 0.9)"
+  return `<style>
+:root { color-scheme: ${theme}; }
+html, body { margin: 0; background: transparent; color: ${color}; font: 13px/1.5 system-ui, sans-serif; }
 </style>`
+}
 
-function frameDocument(html: string): string {
+function frameDocument(html: string, theme: ResolvedTheme): string {
   if (/<html[\s>]/i.test(html)) {
     if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, `${SIZE_SCRIPT}</body>`)
     return `${html}${SIZE_SCRIPT}`
   }
-  return `<!doctype html><html><head><meta charset="utf-8">${BASE_STYLE}</head><body>${html}${SIZE_SCRIPT}</body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8">${baseStyle(theme)}</head><body>${html}${SIZE_SCRIPT}</body></html>`
 }
 
 // Scripts run, but in an opaque origin: the snippet can't reach the app,
@@ -35,7 +40,8 @@ function frameDocument(html: string): string {
 function HtmlFrame({ html, title }: { html: string; title: string }) {
   const frame = useRef<HTMLIFrameElement | null>(null)
   const [height, setHeight] = useState(160)
-  const srcDoc = useMemo(() => frameDocument(html), [html])
+  const theme = useResolvedTheme()
+  const srcDoc = useMemo(() => frameDocument(html, theme), [html, theme])
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {

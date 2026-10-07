@@ -59,6 +59,8 @@ export type OpenRouterStatus = {
   configured: boolean
   source: string | null
   type: "api_key" | "oauth" | null
+  // OPENROUTER_API_KEY is set in the app's or the user's shell environment.
+  envKey: boolean
 }
 
 export type ExtensionInfo = {

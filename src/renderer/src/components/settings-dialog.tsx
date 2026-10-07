@@ -1,29 +1,33 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import type { ExtensionInfo, OpenRouterStatus } from "@shared/types"
+import type { OpenRouterStatus } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { errorText, openRouterLabel } from "@/lib/format"
+import { setThemePreference, type ThemePreference, useThemePreference } from "@/lib/theme"
+import { cn } from "@/lib/utils"
 
 const KEYS_URL = "https://openrouter.ai/keys"
+const THEMES: { value: ThemePreference; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+]
 
 function SettingsDialog({
   open,
   onOpenChange,
   status,
   authFile,
-  extensions,
-  extensionErrors,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   status: OpenRouterStatus
   authFile: string
-  extensions: ExtensionInfo[]
-  extensionErrors: string[]
 }) {
+  const theme = useThemePreference()
   const [apiKey, setApiKey] = useState("")
   const [visible, setVisible] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -71,14 +75,40 @@ function SettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>OpenRouter</DialogTitle>
-          <DialogDescription>
-            slagent runs on Pi and uses Pi&apos;s OpenRouter credentials.
-          </DialogDescription>
+          <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>Appearance and model credentials.</DialogDescription>
         </DialogHeader>
+        <section className="space-y-2">
+          <h2 className="text-sm font-medium">Theme</h2>
+          <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-md border border-white/15 p-0.5">
+            {THEMES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={theme === option.value}
+                className={cn(
+                  "rounded px-3 py-1 text-sm text-white/60 transition-colors hover:text-white",
+                  theme === option.value && "bg-white/10 text-white",
+                )}
+                onClick={() => setThemePreference(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </section>
+        <h2 className="mt-6 border-t border-white/10 pt-4 text-sm font-medium">OpenRouter</h2>
+        <p className="text-sm text-white/60">slagent runs on Pi and uses Pi&apos;s OpenRouter credentials.</p>
         <p className="text-sm">
           Status: <span className="text-white/70">{openRouterLabel(status)}</span>
         </p>
+        {status.envKey ? (
+          <p className="mt-2 text-sm text-white/60">
+            Found <span className="font-mono text-white/80">OPENROUTER_API_KEY</span> in your environment. You don&apos;t
+            need to save a key here.
+          </p>
+        ) : null}
         {status.type === "oauth" ? (
           <p className="mt-2 text-sm text-white/60">
             Saving a key replaces the OpenRouter sign-in stored for Pi.
@@ -129,23 +159,6 @@ function SettingsDialog({
             ) : null}
           </div>
         </form>
-        <section className="mt-6 space-y-2 border-t border-white/10 pt-4">
-          <h2 className="text-sm font-medium">Extensions</h2>
-          {extensions.length === 0 ? <p className="text-sm text-white/50">None loaded</p> : null}
-          <ul className="space-y-1">
-            {extensions.map((extension) => (
-              <li key={extension.id} className="truncate text-sm" title={extension.id}>
-                {extension.name}
-                <span className="ml-2 text-xs text-white/40">{extension.scope}</span>
-              </li>
-            ))}
-          </ul>
-          {extensionErrors.map((item) => (
-            <p key={item} className="text-xs text-[#ff5c5c]">
-              {item}
-            </p>
-          ))}
-        </section>
       </DialogContent>
     </Dialog>
   )

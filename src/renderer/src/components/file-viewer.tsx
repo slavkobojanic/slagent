@@ -5,6 +5,7 @@ import type { FileView } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { openInEditor } from "@/lib/format"
 import { PIERRE_CSS, PIERRE_THEME } from "@/lib/pierre"
+import { useResolvedTheme } from "@/lib/theme"
 
 // Pierre renders inside a shadow root, so the target line is found there once
 // the highlighted file is in the DOM.
@@ -23,6 +24,7 @@ function scrollToLine(container: HTMLElement, line: number): boolean {
 
 function FileViewer({ file }: { file: FileView }) {
   const scroller = useRef<HTMLDivElement | null>(null)
+  const themeType = useResolvedTheme()
   const line = file.line
 
   // Pierre fills the file in over a few frames and the rows above the target
@@ -79,7 +81,7 @@ function FileViewer({ file }: { file: FileView }) {
             <File
               file={{ name: file.path, contents: file.contents, cacheKey: `${file.absolutePath}:${file.size}` }}
               selectedLines={line ? { start: line, end: line } : null}
-              options={{ theme: PIERRE_THEME, themeType: "dark", disableFileHeader: true, overflow: "scroll", unsafeCSS: PIERRE_CSS }}
+              options={{ theme: PIERRE_THEME, themeType, disableFileHeader: true, overflow: "scroll", unsafeCSS: PIERRE_CSS }}
             />
           </>
         )}

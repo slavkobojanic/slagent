@@ -18,7 +18,7 @@ import { focusComposer } from "@/lib/composer"
 import { useResizableWidth } from "@/lib/resize"
 import { errorText, formatTranscript, looksLikePath, openPath, VIEW_FILE_EVENT } from "@/lib/format"
 
-const emptyStatus = { configured: false, source: null, type: null } as const
+const emptyStatus = { configured: false, source: null, type: null, envKey: false } as const
 const emptyLibrary: LibraryState = {
   projects: [],
   openProjectId: null,
@@ -570,8 +570,6 @@ function AgentApp() {
         onOpenChange={setSettingsOpen}
         status={meta?.openRouter ?? emptyStatus}
         authFile={`${meta?.agentDir ?? ""}/auth.json`}
-        extensions={meta?.extensions ?? []}
-        extensionErrors={meta?.extensionErrors ?? []}
       />
       <ModelDialog
         open={modelOpen}

@@ -38,6 +38,7 @@ import { assertDirectory, Library, type StoredChat } from "./library"
 import { readPrefs, writePrefs, type Prefs } from "./prefs"
 import { generateCommitMessage, generateTitle, TITLE_MODELS } from "./titles"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
+import { importShellEnv } from "./shell-env"
 
 const PROVIDER = "openrouter"
 const PREFERRED_MODELS = [
@@ -79,7 +80,7 @@ export class AgentHost {
   private draftModelName: string | null = null
   private draftPlanMode = false
   private models: AppMeta["models"] = []
-  private openRouter: OpenRouterStatus = { configured: false, source: null, type: null }
+  private openRouter: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
   private ready = false
   private startupError: string | null = null
   private revision = 0
@@ -856,14 +857,16 @@ export class AgentHost {
   }
 
   private async readAuth(): Promise<OpenRouterStatus> {
+    const envKey = Boolean(process.env.OPENROUTER_API_KEY)
     const runtime = this.modelRuntime
-    if (!runtime) return { configured: false, source: null, type: null }
+    if (!runtime) return { configured: false, source: null, type: null, envKey }
     const check = await runtime.checkAuth(PROVIDER, { signal: AbortSignal.timeout(15_000) })
-    if (!check) return { configured: false, source: null, type: null }
+    if (!check) return { configured: false, source: null, type: null, envKey }
     return {
       configured: true,
       source: check.source ?? null,
       type: check.type,
+      envKey,
     }
   }
 
