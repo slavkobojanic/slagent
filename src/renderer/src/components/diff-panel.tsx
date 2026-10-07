@@ -234,7 +234,7 @@ function FileSection({
           <ChevronRightIcon className={cn("size-3.5 shrink-0 text-white/50 transition-transform", open && "rotate-90")} />
           <span className="truncate font-mono">{file.path}</span>
         </button>
-        {comments.length > 0 ? <span className="text-amber-300 tabular-nums">{comments.length} 💬</span> : null}
+        {comments.length > 0 ? <span className="text-white/60 tabular-nums">{comments.length} 💬</span> : null}
         <span className="text-emerald-400 tabular-nums">+{file.added}</span>
         <span className="text-[#ff5c5c] tabular-nums">-{file.removed}</span>
         <button type="button" className="text-white/50 hover:text-white" onClick={() => openPath(file.path)}>
@@ -264,7 +264,7 @@ function FileSection({
                   <span className="w-10 shrink-0 pr-2 text-right text-white/25 tabular-nums select-none">{number ?? ""}</span>
                   <button
                     type="button"
-                    className="w-4 shrink-0 text-white/0 group-hover/line:text-white/60 hover:!text-amber-300 focus-visible:text-amber-300"
+                    className="w-4 shrink-0 text-white/0 group-hover/line:text-white/60 hover:!text-white focus-visible:text-white"
                     aria-label={`Comment on line ${number}`}
                     onClick={() => setDrafting(key)}
                   >
@@ -273,7 +273,7 @@ function FileSection({
                   <span className="pr-3 whitespace-pre">{line.text || " "}</span>
                 </div>
                 {lineComments.map((comment) => (
-                  <div key={comment.id} className="mx-3 my-1 flex items-start gap-2 rounded-md border border-amber-300/30 bg-amber-300/5 px-2 py-1.5 font-sans text-xs whitespace-pre-wrap text-white/90">
+                  <div key={comment.id} className="mx-3 my-1 flex items-start gap-2 rounded-md bg-white/[0.06] px-3 py-2 font-sans text-xs whitespace-pre-wrap text-white/90">
                     <span className="min-w-0 flex-1">{comment.text}</span>
                     <button type="button" className="text-white/40 hover:text-white" aria-label="Delete comment" onClick={() => onRemove(comment.id)}>
                       <XIcon className="size-3.5" />
