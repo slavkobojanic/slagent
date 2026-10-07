@@ -9,6 +9,7 @@ import { openInEditor, readFileView } from "./editor"
 import { parsePrompt } from "./prompt"
 import { parseReply } from "./extensions/ask-user"
 import { startUpdater } from "./updater"
+import { registerCli } from "./cli"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
@@ -16,6 +17,17 @@ let host: AgentHost | null = null
 let computer: ComputerUse | null = null
 let mcp: McpManager | null = null
 let quitting = false
+let started: Promise<void> | null = null
+// Folders from the slagent command, Finder and the Dock icon arrive as open-file
+// events. The one that launches the app fires before ready, so it waits here.
+const pendingFolders: string[] = []
+
+app.on("open-file", (event, path) => {
+  event.preventDefault()
+  if (started) void openFolderFromSystem(path)
+  else pendingFolders.push(path)
+})
+
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -218,6 +230,18 @@ function registerIpc(): void {
   })
 }
 
+async function openFolderFromSystem(folder: string): Promise<void> {
+  await started
+  let win = BrowserWindow.getAllWindows()[0]
+  if (!win) win = createWindow()
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+  await requireHost()
+    .openFolder(folder)
+    .catch((error) => console.error("open folder:", error))
+}
+
 function requireName(name: unknown): string {
   if (typeof name !== "string" || !name) throw new Error("Unknown MCP server.")
   return name
@@ -236,11 +260,13 @@ app.whenReady().then(async () => {
   })
   await mcp.start().catch((error) => console.error("mcp:", error))
   registerIpc()
+  registerCli()
   host = new AgentHost(join(app.getPath("userData"), "settings.json"), libraryRoot, broadcast, computer, notifier, () =>
     mcp?.serversForSession() ?? {},
   )
   createWindow()
-  void host.start()
+  started = host.start()
+  for (const folder of pendingFolders.splice(0)) void openFolderFromSystem(folder)
   startUpdater({
     prepareQuit: async () => {
       quitting = true

@@ -43,4 +43,12 @@ mac:
   extendInfo:
     NSAccessibilityUsageDescription: slagent uses Accessibility to read and control the apps you ask it to use.
     NSScreenCaptureUsageDescription: slagent captures one window so it can see the app it is using.
+    # Lets the slagent command, Finder's Open With and the Dock icon hand folders to
+    # the app. Alternate keeps Finder as the default for opening folders.
+    CFBundleDocumentTypes:
+      - CFBundleTypeName: Folder
+        CFBundleTypeRole: Viewer
+        LSHandlerRank: Alternate
+        LSItemContentTypes:
+          - public.folder
 npmRebuild: false

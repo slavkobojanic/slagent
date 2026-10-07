@@ -46,6 +46,9 @@ export const channels = {
   mcpSignIn: "mcp:sign-in",
   mcpSignOut: "mcp:sign-out",
   mcpSetEnabled: "mcp:set-enabled",
+  cliStatus: "cli:status",
+  cliInstall: "cli:install",
+  cliUninstall: "cli:uninstall",
   event: "agent:event",
 } as const
 
@@ -65,6 +68,13 @@ export type OpenRouterStatus = {
   type: "api_key" | "oauth" | null
   // OPENROUTER_API_KEY is set in the app's or the user's shell environment.
   envKey: boolean
+}
+
+// The `slagent` shell command. "outdated" is ours but from an older build;
+// "conflict" is some other program's file at the same path.
+export type CliStatus = {
+  path: string
+  state: "installed" | "outdated" | "missing" | "conflict" | "unsupported"
 }
 
 export type ExtensionInfo = {
@@ -451,4 +461,7 @@ export type SlagentApi = {
   mcpSignOut: (name: string) => Promise<McpServerStatus[]>
   mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
   onEvent: (listener: (event: UiEvent) => void) => () => void
+  cliStatus: () => Promise<CliStatus>
+  installCli: () => Promise<CliStatus>
+  uninstallCli: () => Promise<CliStatus>
 }

@@ -67,6 +67,9 @@ const api: SlagentApi = {
       ipcRenderer.off(channels.event, wrapped)
     }
   },
+  cliStatus: () => ipcRenderer.invoke(channels.cliStatus),
+  installCli: () => ipcRenderer.invoke(channels.cliInstall),
+  uninstallCli: () => ipcRenderer.invoke(channels.cliUninstall),
 }
 
 contextBridge.exposeInMainWorld("slagent", api)

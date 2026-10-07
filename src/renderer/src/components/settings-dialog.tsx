@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from "react"
-import { Eye, EyeOff, LogIn, LogOut, Loader2, Plug, Power, RefreshCw, Settings2, X } from "lucide-react"
+import { useEffect, useState, type ReactNode } from "react"
+import { Eye, EyeOff, LogIn, LogOut, Loader2, Plug, Power, RefreshCw, Settings2, SquareTerminal, X } from "lucide-react"
 import { toast } from "sonner"
-import type { McpServerState, McpServerStatus, OpenRouterStatus } from "@shared/types"
+import type { CliStatus, McpServerState, McpServerStatus, OpenRouterStatus } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -18,11 +18,12 @@ const THEMES: { value: ThemePreference; label: string }[] = [
   { value: "dark", label: "Dark" },
 ]
 
-type SettingsTab = "general" | "mcp"
+type SettingsTab = "general" | "mcp" | "cli"
 
 const TABS: { value: SettingsTab; label: string; icon: typeof Plug }[] = [
   { value: "general", label: "General", icon: Settings2 },
   { value: "mcp", label: "MCP", icon: Plug },
+  { value: "cli", label: "CLI", icon: SquareTerminal },
 ]
 
 function SettingsDialog({
@@ -48,7 +49,7 @@ function SettingsDialog({
       <DialogContent className="flex h-1/2 w-1/2 flex-col p-0">
         <DialogHeader className="px-5 pt-5">
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>Appearance, model credentials, and MCP servers.</DialogDescription>
+          <DialogDescription>Appearance, model credentials, MCP servers, and the slagent command.</DialogDescription>
         </DialogHeader>
         <div className="flex min-h-0 flex-1 border-t border-white/10">
           <nav aria-label="Settings sections" className="w-40 shrink-0 space-y-1 border-r border-white/10 p-2">
@@ -72,11 +73,11 @@ function SettingsDialog({
             })}
           </nav>
           <div className="min-w-0 flex-1 overflow-y-auto p-5">
-            {tab === "general" ? (
-              <GeneralSettings status={status} authFile={authFile} />
-            ) : (
+            {tab === "general" ? <GeneralSettings status={status} authFile={authFile} /> : null}
+            {tab === "mcp" ? (
               <McpSettings servers={mcpServers} onServers={onMcpServers} onRefresh={onRefreshMcp} />
-            )}
+            ) : null}
+            {tab === "cli" ? <CliSettings /> : null}
           </div>
         </div>
       </DialogContent>
@@ -315,6 +316,106 @@ function McpSettings({
         slagent shares Pi&apos;s MCP sign-ins and also loads servers from Pi&apos;s own{" "}
         <span className="font-mono text-white/45">mcp.json</span>.
       </p>
+    </div>
+  )
+}
+
+const CLI_STATE_LABELS: Record<CliStatus["state"], { label: string; dot: string }> = {
+  installed: { label: "Installed", dot: "bg-emerald-400" },
+  outdated: { label: "Update available", dot: "bg-amber-400" },
+  missing: { label: "Not installed", dot: "bg-white/30" },
+  conflict: { label: "Path in use", dot: "bg-red-400" },
+  unsupported: { label: "macOS only", dot: "bg-white/30" },
+}
+
+function CliSettings() {
+  const [status, setStatus] = useState<CliStatus | null>(null)
+  const [busy, setBusy] = useState<"install" | "uninstall" | null>(null)
+
+  useEffect(() => {
+    window.slagent
+      .cliStatus()
+      .then(setStatus)
+      .catch((error) => toast.error(errorText(error)))
+  }, [])
+
+  async function run(action: "install" | "uninstall") {
+    setBusy(action)
+    try {
+      const next = action === "install" ? await window.slagent.installCli() : await window.slagent.uninstallCli()
+      setStatus(next)
+      toast.success(action === "install" ? "slagent command installed" : "slagent command removed")
+    } catch (error) {
+      toast.error(errorText(error))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const state = status?.state
+  const ours = state === "installed" || state === "outdated"
+  let installLabel = "Install command"
+  if (state === "outdated") installLabel = "Update command"
+  if (busy === "install") installLabel = "Installing"
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-medium">Command line</h2>
+        {state ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-white/70">
+            <span className={cn("size-1.5 rounded-full", CLI_STATE_LABELS[state].dot)} />
+            {CLI_STATE_LABELS[state].label}
+          </span>
+        ) : null}
+      </div>
+      <p className="text-sm text-white/60">
+        Open slagent from a terminal. Pass a folder to open it as a project, or nothing to just bring up the app.
+      </p>
+      <div className="space-y-1 rounded-md border border-white/10 bg-white/5 px-3 py-2.5 font-mono text-xs text-white/80">
+        <div>
+          slagent .<span className="text-white/35">{"  "}# open this folder</span>
+        </div>
+        <div>
+          slagent ~/code/app<span className="text-white/35">{"  "}# open another folder</span>
+        </div>
+        <div>
+          slagent<span className="text-white/35">{"  "}# open the app</span>
+        </div>
+      </div>
+      {state === "conflict" ? (
+        <p className="text-xs text-red-300/80">
+          Another program already has a file at <span className="font-mono">{status?.path}</span>. Remove it to install
+          slagent&apos;s command there.
+        </p>
+      ) : null}
+      {state !== "unsupported" ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {state !== "installed" ? (
+            <Button type="button" disabled={!state || state === "conflict" || busy !== null} onClick={() => void run("install")}>
+              {busy === "install" ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {installLabel}
+            </Button>
+          ) : null}
+          {ours ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="ml-auto text-white/50 hover:text-red-400"
+              disabled={busy !== null}
+              onClick={() => void run("uninstall")}
+            >
+              {busy === "uninstall" ? "Removing" : "Uninstall"}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      {status ? (
+        <p className="text-xs text-white/35">
+          Installs to <span className="font-mono text-white/45">{status.path}</span>, which is already on your PATH. macOS
+          asks for your password to write there.
+        </p>
+      ) : null}
     </div>
   )
 }
