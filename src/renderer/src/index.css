@@ -93,8 +93,10 @@
   transition: grid-template-columns 250ms var(--ease-drawer);
 }
 
+/* A fixed length, not 0fr: a 0fr track still keeps the 16rem aside's
+   min-content width, so the chat would never get the space back. */
 .sidebar-slot[data-closed] {
-  grid-template-columns: 0fr;
+  grid-template-columns: 0rem;
 }
 
 .sidebar-slot > aside {
