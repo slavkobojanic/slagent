@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { EMPTY_PERSONALISATION, type AppMeta, type ChatMention, type ChatSearchResult, type DiffComment, type FileMatch, type ReplyComment, type SlashCommand } from "@shared/types"
-import { type ComposerAttachment, ComposerStore } from "@/features/composer/composer-store/composer-store"
-import { PromptHistoryStore } from "@/features/composer/prompt-history-store/prompt-history-store"
-import { LibraryStore } from "@/mirror/library-store"
-import { MetaStore } from "@/mirror/meta-store"
-import { RunStore, type RunTranscript } from "@/mirror/run-store"
-import { ReviewStore } from "@/state/review-store"
+import { EMPTY_PERSONALISATION, type AppMeta } from "@shared/types"
+import { ComposerStore } from "@/features/composer/composer-store/composer-store"
+import { LibraryStore } from "@/mirror/library-store/library-store"
+import { MetaStore } from "@/mirror/meta-store/meta-store"
+import { RunStore, type RunTranscript } from "@/mirror/run-store/run-store"
 
 function metaWith(overrides: Partial<AppMeta>): AppMeta {
   return {
@@ -56,19 +54,10 @@ function transcriptWith(overrides: Partial<RunTranscript> = {}): RunTranscript {
 function setup(meta: AppMeta = openMeta) {
   const mirror = { library: new LibraryStore(), meta: new MetaStore(), run: new RunStore() }
   mirror.meta.setMeta(meta)
-  const review = new ReviewStore()
-  const history = new PromptHistoryStore()
-  const store = new ComposerStore({ mirror, review, history })
-  return { mirror, review, history, store }
+  const store = new ComposerStore(mirror.library, mirror.meta, mirror.run)
+  return { mirror, store }
 }
 
-const file: FileMatch = { path: "src/a.ts", name: "a.ts" }
-const chat: ChatSearchResult = { projectId: "p1", projectName: "Work", chatId: "c1", title: "Plan", snippet: "", messageId: null, updatedAt: 1 }
-const command: SlashCommand = { name: "review", insert: "/review", description: "Review the diff", kind: "skill" }
-
-function attachment(overrides: Partial<ComposerAttachment> = {}): ComposerAttachment {
-  return { id: "a1", name: "notes.txt", mimeType: "text/plain", url: "blob:notes", path: "", file: new File(["hi"], "notes.txt"), ...overrides }
-}
 
 describe("ComposerStore", () => {
   describe("disabled", () => {
@@ -193,199 +182,54 @@ describe("ComposerStore", () => {
     })
   })
 
-  describe("menu", () => {
-    it("can be null while nothing is typed", () => {
-      expect(setup().store.menu).toBeNull()
+  describe("draft", () => {
+    it("can return an empty string for a chat with no draft", () => {
+      expect(setup().store.draft("p:c")).toBe("")
     })
 
-    it("can show history search with its query in the title and a note when nothing matches", () => {
-      const { history, store } = setup()
-      history.replace(["a"])
-      store.setHistoryQuery("zzz")
-
-      expect(store.menu).toEqual({ kind: "history", title: "History search: zzz", empty: "No matching prompts", items: [] })
-    })
-
-    it("can list history matches with their line breaks flattened", () => {
-      const { history, store } = setup()
-      history.replace(["fix\n  the bug"])
-      store.setHistoryQuery("")
-
-      expect(store.menu?.items).toEqual([{ key: "0:fix\n  the bug", label: "fix the bug", detail: "" }])
-    })
-
-    it("can show @file matches labelled with the name and detailed with the path", () => {
+    it("can return the text written for the chat", () => {
       const { store } = setup()
-      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: null, slash: null })
-      store.setFileMatches([file])
+      store.writeDraft("p:c", "hello")
 
-      expect(store.menu).toEqual({ kind: "file", title: null, empty: null, items: [{ key: "src/a.ts", label: "@a.ts", detail: "src/a.ts" }] })
-    })
-
-    it("can hide the file menu while it has no matches", () => {
-      const { store } = setup()
-      store.setTriggers({ mention: { query: "zz", start: 0 }, chatMention: null, slash: null })
-
-      expect(store.menu).toBeNull()
-    })
-
-    it("can show $chat matches labelled with the title and detailed with the project", () => {
-      const { store } = setup()
-      store.setTriggers({ mention: null, chatMention: { query: "pl", start: 0 }, slash: null })
-      store.setChatMatches([chat])
-
-      expect(store.menu).toEqual({ kind: "chat", title: null, empty: null, items: [{ key: "c1", label: "$Plan", detail: "Work" }] })
-    })
-
-    it("can show slash commands with their description, or their kind when there is none", () => {
-      const { store } = setup()
-      store.setTriggers({ mention: null, chatMention: null, slash: "re" })
-      store.setCommands([command, { name: "ship", insert: "/ship", description: "", kind: "prompt" }])
-
-      expect(store.menu?.items).toEqual([{ key: "/review", label: "/review", detail: "Review the diff" }])
-    })
-
-    it("can label a command without a description by its kind", () => {
-      const { store } = setup()
-      store.setTriggers({ mention: null, chatMention: null, slash: "sh" })
-      store.setCommands([{ name: "ship", insert: "/ship", description: "", kind: "prompt" }])
-
-      expect(store.menu?.items).toEqual([{ key: "/ship", label: "/ship", detail: "Prompt template" }])
-    })
-
-    it("can prefer history search over the other menus", () => {
-      const { history, store } = setup()
-      history.replace(["one"])
-      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: null, slash: null })
-      store.setFileMatches([file])
-      store.setHistoryQuery("")
-
-      expect(store.menu?.kind).toBe("history")
+      expect(store.draft("p:c")).toBe("hello")
     })
   })
 
-  describe("commandMatches", () => {
-    it("can be empty when no slash command is open", () => {
-      const { store } = setup()
-      store.setCommands([command])
+  describe("writeDraft", () => {
+    it("can save a draft and report the change", () => {
+      expect(setup().store.writeDraft("p:c", "hello")).toBe(true)
+    })
 
-      expect(store.commandMatches).toEqual([])
+    it("can remove a draft when its text is blank, and report the change", () => {
+      const { store } = setup()
+      store.writeDraft("p:c", "hello")
+
+      expect(store.writeDraft("p:c", "   ")).toBe(true)
+      expect(store.draft("p:c")).toBe("")
+    })
+
+    it("can report no change when a blank write has no draft to remove", () => {
+      expect(setup().store.writeDraft("p:c", "")).toBe(false)
+    })
+
+    it("can drop the oldest drafts once there are more than 100", () => {
+      const { store } = setup()
+      for (let index = 0; index <= 100; index += 1) {
+        store.writeDraft(`k${index}`, `t${index}`)
+      }
+
+      expect(store.draft("k0")).toBe("")
+      expect(store.draft("k1")).toBe("t1")
+      expect(store.draft("k100")).toBe("t100")
     })
   })
 
-  describe("pending review comments", () => {
-    it("can label pending comments the way the summary reads them", () => {
-      const { review, store } = setup()
-      review.setReplyComments([{ id: "r1", messageId: "m1", block: "", quote: "a  b\n c", text: "why" } satisfies ReplyComment])
-      review.setDiffComments([{ id: "d1", path: "src/app/main.ts", line: 12, side: "new", code: "", text: "rename" } satisfies DiffComment])
-
-      expect(store.pendingLabel).toBe("1 reply comment and 1 diff comment")
-      expect(store.pendingReplies).toEqual([{ id: "r1", quote: "a b c", text: "why" }])
-      expect(store.pendingDiffs).toEqual([{ id: "d1", location: "main.ts:12", text: "rename" }])
-    })
-
-    it("can count every pending comment for the send check", () => {
-      const { review, store } = setup()
-      review.setDiffComments([{ id: "d1", path: "a.ts", line: 1, side: "new", code: "", text: "x" } satisfies DiffComment])
-
-      expect(store.pendingCount).toBe(1)
-    })
-  })
-
-  describe("attachmentChips", () => {
-    it("can show a thumbnail for an image and no thumbnail for other files", () => {
+  describe("replaceDrafts", () => {
+    it("can swap in the drafts that were loaded", () => {
       const { store } = setup()
-      store.setAttachments([
-        attachment({ id: "img", name: "shot.png", mimeType: "image/png", url: "blob:shot" }),
-        attachment({ id: "doc", name: "spec.pdf", mimeType: "application/pdf", url: "blob:spec" }),
-      ])
+      store.replaceDrafts({ "p:c": "loaded" })
 
-      expect(store.attachmentChips).toEqual([
-        { id: "img", name: "shot.png", imageUrl: "blob:shot" },
-        { id: "doc", name: "spec.pdf", imageUrl: null },
-      ])
-    })
-  })
-
-  describe("setTriggers", () => {
-    it("can move the menus to the caret and start them at the first row", () => {
-      const { store } = setup()
-      store.setActive(3)
-      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: null, slash: null })
-
-      expect(store.active).toBe(0)
-      expect(store.mention).toEqual({ query: "a", start: 0 })
-    })
-  })
-
-  describe("toggleHistorySearch", () => {
-    it("can open the search with the current text as its query", () => {
-      const { store } = setup()
-      store.toggleHistorySearch("draft")
-
-      expect(store.historyQuery).toBe("draft")
-    })
-
-    it("can close the search when it is already open", () => {
-      const { store } = setup()
-      store.toggleHistorySearch("draft")
-      store.toggleHistorySearch("draft")
-
-      expect(store.historyQuery).toBeNull()
-    })
-  })
-
-  describe("dismissTriggers", () => {
-    it("can close every menu and the history search at once", () => {
-      const { store } = setup()
-      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: { query: "b", start: 2 }, slash: "c" })
-      store.setHistoryQuery("q")
-      store.dismissTriggers()
-
-      expect([store.mention, store.chatMention, store.slash, store.historyQuery]).toEqual([null, null, null, null])
-    })
-  })
-
-  describe("addMention", () => {
-    it("can add a file mention once per path", () => {
-      const { store } = setup()
-      store.addMention({ path: "src/a.ts", name: "a.ts" })
-      store.addMention({ path: "src/a.ts", name: "a.ts" })
-
-      expect(store.mentions).toEqual([{ path: "src/a.ts", name: "a.ts" }])
-    })
-  })
-
-  describe("addChatMention", () => {
-    it("can add a chat mention once per chat", () => {
-      const { store } = setup()
-      const mention: ChatMention = { projectId: "p1", chatId: "c1", title: "Plan", updatedAt: 1 }
-      store.addChatMention(mention)
-      store.addChatMention(mention)
-
-      expect(store.chatMentions).toEqual([mention])
-    })
-  })
-
-  describe("resetAfterSend", () => {
-    it("can clear the mentions, the menus, and the history position", () => {
-      const { store } = setup()
-      store.addMention({ path: "src/a.ts", name: "a.ts" })
-      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: null, slash: null })
-      store.setHistoryIndex(2)
-      store.resetAfterSend()
-
-      expect([store.mentions, store.mention, store.historyIndex]).toEqual([[], null, null])
-    })
-  })
-
-  describe("resetForChat", () => {
-    it("can clear the history draft along with the menus", () => {
-      const { store } = setup()
-      store.setHistoryDraft("unsent")
-      store.resetForChat()
-
-      expect(store.historyDraft).toBe("")
+      expect(store.draft("p:c")).toBe("loaded")
     })
   })
 })
