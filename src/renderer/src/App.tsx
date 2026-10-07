@@ -42,6 +42,9 @@ function AgentApp() {
   const [meta, setMeta] = useState<AppMeta | null>(null)
   const [library, setLibrary] = useState<LibraryState>(emptyLibrary)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  // The chat the shown messages belong to; keys the transcript so opening a
+  // chat mounts it fresh and lands at the bottom instead of animating there.
+  const [transcriptChatId, setTranscriptChatId] = useState<string | null>(null)
   const [streaming, setStreaming] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [queue, setQueue] = useState<QueuedMessage[]>([])
@@ -108,6 +111,7 @@ function AgentApp() {
         transcriptRevision.current = event.revision
         if (event.chatId !== openChatRef.current || event.projectId !== openProjectRef.current) return
         setMessages(event.messages)
+        setTranscriptChatId(event.chatId)
         setStreaming(event.streaming)
         setNotice(event.notice)
         setQueue(event.queue)
@@ -138,6 +142,7 @@ function AgentApp() {
       if (snapshot.revision >= transcriptRevision.current) {
         transcriptRevision.current = snapshot.revision
         setMessages(snapshot.messages)
+        setTranscriptChatId(snapshot.library.openChatId)
         setStreaming(snapshot.streaming)
         setNotice(snapshot.notice)
         setQueue(snapshot.queue)
@@ -497,6 +502,7 @@ function AgentApp() {
             <div className="flex flex-1 items-center justify-center text-sm text-white/50">Starting</div>
           ) : (
             <Transcript
+              key={transcriptChatId ?? "draft"}
               messages={messages}
               notice={notice}
               configured={configured}
