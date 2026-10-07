@@ -168,7 +168,10 @@ export function createGenie(node: HTMLElement, getTarget: () => Element | null) 
       return
     }
     // An interrupted run keeps its strips; they're already the right content.
-    if (!run) run = build(node, getTarget())
+    // Cancel the previous call's loop first — two loops painting the same
+    // strips double-expose the warp.
+    if (run) cancelAnimationFrame(run.frame)
+    else run = build(node, getTarget())
     node.style.opacity = "0"
     const from = p
     const duration = (to === 0 ? OPEN_MS : CLOSE_MS) * Math.abs(to - from)
@@ -198,5 +201,7 @@ export function createGenie(node: HTMLElement, getTarget: () => Element | null) 
     close() {
       animate(1)
     },
+    /** Drops the strips and any in-flight animation. For unmount. */
+    stop,
   }
 }

@@ -18,8 +18,6 @@ export function createQuestionHeader({
     }
     return (
       <QuestionHeader
-        index={questionCardStore.index}
-        count={questionCardStore.count}
         header={question.header}
         question={question.question}
         open={questionCardStore.open}

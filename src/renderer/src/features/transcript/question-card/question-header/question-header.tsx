@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export type QuestionHeaderProps = {
-  index: number
-  count: number
   header: string | undefined
   question: string
   open: boolean
@@ -13,14 +11,9 @@ export type QuestionHeaderProps = {
   onSkip: () => void
 }
 
-export function QuestionHeader({ index, count, header, question, open, busy, onToggleOpen, onSkip }: QuestionHeaderProps) {
+export function QuestionHeader({ header, question, open, busy, onToggleOpen, onSkip }: QuestionHeaderProps) {
   return (
     <header className="flex items-center gap-2.5 px-4 py-2.5">
-      {count > 1 ? (
-        <span className="shrink-0 rounded-md bg-warning/20 px-1.5 py-0.5 text-xs font-medium tabular-nums text-warning">
-          {index + 1}/{count}
-        </span>
-      ) : null}
       {header ? (
         <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-xs font-medium text-white/70 uppercase">{header}</span>
       ) : null}

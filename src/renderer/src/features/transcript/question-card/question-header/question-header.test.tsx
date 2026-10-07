@@ -6,8 +6,6 @@ const nothing = () => {}
 
 function props(overrides: Partial<QuestionHeaderProps> = {}): QuestionHeaderProps {
   return {
-    index: 0,
-    count: 1,
     header: undefined,
     question: "Which library?",
     open: true,
@@ -26,10 +24,11 @@ describe("QuestionHeader", () => {
     expect(markup).not.toContain("1/1")
   })
 
-  it("can show its position when the request has several questions", () => {
-    const markup = viewMarkup(<QuestionHeader {...props({ index: 1, count: 2 })} />)
+  it("leaves the position to the footer", () => {
+    const markup = viewMarkup(<QuestionHeader {...props({ header: "Stack" })} />)
 
-    expect(markup).toContain("2/2")
+    expect(markup).toContain("Stack")
+    expect(markup).not.toContain("1/3")
   })
 
   it("can show the question's header", () => {

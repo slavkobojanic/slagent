@@ -14,6 +14,8 @@ export function createQuestionFooter({
   return observer(function QuestionFooterHost() {
     return (
       <QuestionFooter
+        index={questionCardStore.index}
+        count={questionCardStore.count}
         hasPrevious={questionCardStore.hasPrevious}
         hasNext={questionCardStore.hasNext}
         busy={questionCardStore.busy}

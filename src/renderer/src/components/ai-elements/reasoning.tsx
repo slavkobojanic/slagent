@@ -263,13 +263,19 @@ export const ReasoningContent = memo(
         )}
         {...props}
       >
-        <div
-          ref={scrollRef}
-          style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX, minHeight: THOUGHTS_MIN_HEIGHT_PX }}
-          className="relative overflow-hidden scroll-smooth motion-reduce:scroll-auto"
-        >
-          <div ref={contentRef}>
-            <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+        {/* The fades live on this wrapper, not inside the scroller: absolute
+            children of a scroll container scroll with the content, so the
+            gradients would drift across the text instead of pinning to the
+            visible edges. */}
+        <div className="relative">
+          <div
+            ref={scrollRef}
+            style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX, minHeight: THOUGHTS_MIN_HEIGHT_PX }}
+            className="overflow-hidden scroll-smooth motion-reduce:scroll-auto"
+          >
+            <div ref={contentRef}>
+              <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+            </div>
           </div>
           {isScrollable ? (
             <>

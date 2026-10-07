@@ -6,6 +6,8 @@ const nothing = () => {}
 
 function props(overrides: Partial<QuestionFooterProps> = {}): QuestionFooterProps {
   return {
+    index: 0,
+    count: 1,
     hasPrevious: false,
     hasNext: false,
     busy: false,
@@ -46,5 +48,17 @@ describe("QuestionFooter", () => {
 
     expect(markup).toMatch(/disabled=""[^>]*>Send</)
     expect(markup).toMatch(/disabled=""[^>]*>Skip</)
+  })
+
+  it("can show its position left of Skip when the request has several questions", () => {
+    const markup = viewMarkup(<QuestionFooter {...props({ index: 1, count: 3 })} />)
+
+    expect(markup).toContain("2 / 3")
+  })
+
+  it("can hide the position for a single question", () => {
+    const markup = viewMarkup(<QuestionFooter {...props({ index: 0, count: 1 })} />)
+
+    expect(markup).not.toContain("1 / 1")
   })
 })

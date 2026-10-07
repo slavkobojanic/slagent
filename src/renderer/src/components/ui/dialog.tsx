@@ -33,7 +33,12 @@ function DialogContent({
         else genie.open()
       })
       observer.observe(node, { attributes: true, attributeFilter: ["data-state"] })
-      return () => observer.disconnect()
+      // StrictMode mounts twice in dev; without stopping, the first genie's
+      // strip layer stays up and double-exposes the warp.
+      return () => {
+        observer.disconnect()
+        genie.stop()
+      }
     },
     [genieTo],
   )

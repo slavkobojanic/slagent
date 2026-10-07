@@ -31,7 +31,7 @@ export function QuestionCard({ question, direction, open, error, onKey, Header, 
           initial={{ opacity: 0, transform: "translateY(8px)" }}
           animate={{ opacity: 1, transform: "translateY(0px)" }}
           transition={{ duration: 0.2, ease: EASE_OUT }}
-          className="overflow-hidden rounded-xl border border-white/15 bg-white/3"
+          className="overflow-hidden rounded-xl bg-white/3"
           aria-label="Question"
           onKeyDown={(event) => {
             // The card's keys act only while focus is inside it, so they stay on the card rather than
