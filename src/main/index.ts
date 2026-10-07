@@ -69,9 +69,11 @@ function requireMcp(): McpManager {
 }
 
 function loadAppIcon() {
-  const packaged = nativeImage.createFromPath(join(process.resourcesPath, "icon.png"))
+  // Must be the rounded artwork: app.dock.setIcon() replaces the bundle icns at
+  // runtime, so feeding it the raw square artwork undoes the baked mask.
+  const packaged = nativeImage.createFromPath(join(process.resourcesPath, "icon-rounded.png"))
   if (!packaged.isEmpty()) return packaged
-  return nativeImage.createFromPath(join(app.getAppPath(), "resources", "icon.png"))
+  return nativeImage.createFromPath(join(app.getAppPath(), "resources", "icon-rounded.png"))
 }
 
 function createWindow(): BrowserWindow {
