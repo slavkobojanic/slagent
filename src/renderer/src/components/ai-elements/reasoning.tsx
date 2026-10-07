@@ -243,7 +243,7 @@ export const ReasoningContent = memo(
           className={cn(
             "overflow-hidden",
             isScrollable &&
-              `[mask-image:linear-gradient(to_bottom,transparent,black_${THOUGHTS_FADE_PX}px,black_calc(100%-${THOUGHTS_FADE_PX}px),transparent)]`
+              `[mask-image:linear-gradient(to_bottom,transparent,black_${THOUGHTS_FADE_PX}px,black_calc(100%_-_${THOUGHTS_FADE_PX}px),transparent)]`
           )}
         >
           <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
