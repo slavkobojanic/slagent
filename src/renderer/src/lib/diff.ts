@@ -8,6 +8,8 @@ export type DiffLine = {
 
 export type FileDiff = {
   path: string
+  // This file's part of the diff, as a patch Pierre can render.
+  patch: string
   lines: DiffLine[]
   added: number
   removed: number
@@ -21,11 +23,12 @@ export function parseDiff(diff: string): FileDiff[] {
   for (const line of diff.split("\n")) {
     if (line.startsWith("diff --git ")) {
       const match = / b\/(.+)$/.exec(line)
-      current = { path: match?.[1] ?? line.slice(11), lines: [], added: 0, removed: 0 }
+      current = { path: match?.[1] ?? line.slice(11), patch: "", lines: [], added: 0, removed: 0 }
       files.push(current)
-      continue
     }
     if (!current) continue
+    current.patch += `${line}\n`
+    if (line.startsWith("diff --git ")) continue
     if (line.startsWith("+++ ") || line.startsWith("--- ")) {
       if (line.startsWith("+++ b/")) current.path = line.slice(6).replace(/\t$/, "")
       continue
@@ -58,4 +61,13 @@ export function parseDiff(diff: string): FileDiff[] {
     newLine += 1
   }
   return files
+}
+
+// The text of one line on one side, for quoting it in a comment.
+export function lineText(file: FileDiff, side: "old" | "new", line: number): string {
+  for (const item of file.lines) {
+    if (side === "old" && item.oldLine === line && item.kind !== "add") return item.text.slice(1)
+    if (side === "new" && item.newLine === line && item.kind !== "del") return item.text.slice(1)
+  }
+  return ""
 }

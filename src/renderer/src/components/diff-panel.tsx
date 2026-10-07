@@ -1,11 +1,14 @@
-import { ChevronRightIcon, GitBranchIcon, MessageSquarePlusIcon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import type { DiffLineAnnotation, SelectedLineRange } from "@pierre/diffs/react"
+import { PatchDiff } from "@pierre/diffs/react"
+import { GitBranchIcon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { DiffComment, DiffScope, GitStatus } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { errorText, openPath } from "@/lib/format"
-import { type FileDiff, parseDiff } from "@/lib/diff"
+import { type FileDiff, lineText, parseDiff } from "@/lib/diff"
+import { PIERRE_CSS, PIERRE_THEME } from "@/lib/pierre"
 import { cn } from "@/lib/utils"
 
 function DiffPanel({
@@ -194,6 +197,16 @@ function DiffPanel({
   )
 }
 
+type Draft = { side: DiffComment["side"]; line: number }
+type Note = { comment: DiffComment | null }
+
+function toPierreSide(side: DiffComment["side"]): "deletions" | "additions" {
+  if (side === "old") return "deletions"
+  return "additions"
+}
+
+// One file of the diff, rendered by Pierre. Hovering a line shows a + in the
+// gutter that opens a comment box under that line.
 function FileSection({
   file,
   comments,
@@ -205,96 +218,98 @@ function FileSection({
   onAdd: (comment: DiffComment) => void
   onRemove: (id: string) => void
 }) {
-  const [open, setOpen] = useState(file.lines.length < 400)
-  const [drafting, setDrafting] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const annotations: DiffLineAnnotation<Note>[] = comments.map((comment) => ({
+    side: toPierreSide(comment.side),
+    lineNumber: comment.line,
+    metadata: { comment },
+  }))
+  if (draft) annotations.push({ side: toPierreSide(draft.side), lineNumber: draft.line, metadata: { comment: null } })
+
+  const options = useMemo(
+    () => ({
+      theme: PIERRE_THEME,
+      themeType: "dark" as const,
+      diffStyle: "unified" as const,
+      overflow: "scroll" as const,
+      unsafeCSS: PIERRE_CSS,
+      enableGutterUtility: true,
+      onGutterUtilityClick: (range: SelectedLineRange) => {
+        let side: DiffComment["side"] = "new"
+        if (range.side === "deletions") side = "old"
+        setDraft({ side, line: range.start })
+      },
+    }),
+    [],
+  )
+
   return (
     <section className="border-b border-white/10">
-      <div className="sticky top-0 z-10 flex items-center gap-2 bg-black px-3 py-1.5 text-xs">
-        <button type="button" className="flex min-w-0 flex-1 items-center gap-1.5 text-left" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-          <ChevronRightIcon className={cn("size-3.5 shrink-0 text-white/50 transition-transform", open && "rotate-90")} />
-          <span className="truncate font-mono">{file.path}</span>
-        </button>
-        {comments.length > 0 ? <span className="text-white/60 tabular-nums">{comments.length} 💬</span> : null}
-        <span className="text-emerald-400 tabular-nums">+{file.added}</span>
-        <span className="text-[#ff5c5c] tabular-nums">-{file.removed}</span>
-        <button type="button" className="text-white/50 hover:text-white" onClick={() => openPath(file.path)}>
-          View
-        </button>
-      </div>
-      {open ? (
-        <div className="overflow-x-auto pb-2 font-mono text-[11px] leading-[1.45]">
-          {file.lines.map((line, index) => {
-            if (line.kind === "hunk") {
-              return (
-                <div key={index} className="px-3 pt-1 whitespace-pre text-sky-300/80">
-                  {line.text}
-                </div>
-              )
-            }
-            const side: DiffComment["side"] = line.kind === "del" ? "old" : "new"
-            const number = side === "old" ? line.oldLine : line.newLine
-            const key = `${side}:${number}`
-            const lineComments = comments.filter((comment) => comment.side === side && comment.line === number)
-            let tone = "text-white/70"
-            if (line.kind === "add") tone = "bg-emerald-500/10 text-emerald-300"
-            if (line.kind === "del") tone = "bg-red-500/10 text-red-300"
+      <PatchDiff<Note>
+        patch={file.patch}
+        options={options}
+        lineAnnotations={annotations}
+        renderHeaderMetadata={() => (
+          <button type="button" className="text-xs text-white/50 hover:text-white" onClick={() => openPath(file.path)}>
+            View file
+          </button>
+        )}
+        renderAnnotation={(annotation) => {
+          const comment = annotation.metadata?.comment
+          if (!comment) {
+            const current = draft
+            if (!current) return null
             return (
-              <div key={index}>
-                <div className={cn("group/line flex min-w-max", tone)}>
-                  <span className="w-10 shrink-0 pr-2 text-right text-white/25 tabular-nums select-none">{number ?? ""}</span>
-                  <button
-                    type="button"
-                    className="w-4 shrink-0 text-white/0 group-hover/line:text-white/60 hover:!text-white focus-visible:text-white"
-                    aria-label={`Comment on line ${number}`}
-                    onClick={() => setDrafting(key)}
-                  >
-                    <MessageSquarePlusIcon className="size-3" />
-                  </button>
-                  <span className="pr-3 whitespace-pre">{line.text || " "}</span>
-                </div>
-                {lineComments.map((comment) => (
-                  <div key={comment.id} className="mx-3 my-1 flex items-start gap-2 rounded-md bg-white/[0.06] px-3 py-2 font-sans text-xs whitespace-pre-wrap text-white/90">
-                    <span className="min-w-0 flex-1">{comment.text}</span>
-                    <button type="button" className="text-white/40 hover:text-white" aria-label="Delete comment" onClick={() => onRemove(comment.id)}>
-                      <XIcon className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
-                {drafting === key && number !== null ? (
-                  <CommentDraft
-                    onCancel={() => setDrafting(null)}
-                    onSave={(text) => {
-                      onAdd({
-                        id: crypto.randomUUID(),
-                        path: file.path,
-                        line: number,
-                        side,
-                        code: line.text.slice(1),
-                        text,
-                      })
-                      setDrafting(null)
-                    }}
-                  />
-                ) : null}
-              </div>
+              <CommentDraft
+                onCancel={() => setDraft(null)}
+                onSave={(text) => {
+                  onAdd({
+                    id: crypto.randomUUID(),
+                    path: file.path,
+                    line: current.line,
+                    side: current.side,
+                    code: lineText(file, current.side, current.line),
+                    text,
+                  })
+                  setDraft(null)
+                }}
+              />
             )
-          })}
-        </div>
-      ) : null}
+          }
+          return (
+            <div className="mx-3 my-1.5 flex items-start gap-2 rounded-md bg-white/[0.06] px-3 py-2 font-sans text-xs whitespace-pre-wrap text-white/90">
+              <span className="min-w-0 flex-1">{comment.text}</span>
+              <button type="button" className="text-white/40 hover:text-white" aria-label="Delete comment" onClick={() => onRemove(comment.id)}>
+                <XIcon className="size-3.5" />
+              </button>
+            </div>
+          )
+        }}
+      />
     </section>
   )
 }
 
 function CommentDraft({ onSave, onCancel }: { onSave: (text: string) => void; onCancel: () => void }) {
   const [text, setText] = useState("")
+  const input = useRef<HTMLTextAreaElement | null>(null)
+
+  // Pierre slots the annotation in after React mounts it, which drops
+  // autoFocus, so focus is set once it is in place.
+  useEffect(() => {
+    let frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => input.current?.focus())
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
   function save() {
     if (text.trim()) onSave(text.trim())
   }
   return (
-    <div className="mx-3 my-1 space-y-1.5 font-sans">
+    <div className="mx-3 my-1.5 space-y-1.5 font-sans">
       <Textarea
+        ref={input}
         value={text}
-        autoFocus
         aria-label="Comment"
         placeholder="Comment for the next message"
         className="min-h-14 text-xs"

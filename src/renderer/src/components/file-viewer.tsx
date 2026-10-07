@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import type { FileView } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { openInEditor } from "@/lib/format"
+import { PIERRE_CSS, PIERRE_THEME } from "@/lib/pierre"
 
 // Pierre renders inside a shadow root, so the target line is found there once
 // the highlighted file is in the DOM.
@@ -24,17 +25,34 @@ function FileViewer({ file }: { file: FileView }) {
   const scroller = useRef<HTMLDivElement | null>(null)
   const line = file.line
 
+  // Pierre fills the file in over a few frames and the rows above the target
+  // keep growing, so the line is re-centered until it settles or the user
+  // scrolls themselves.
   useEffect(() => {
     const container = scroller.current
     if (!container) return
     container.scrollTop = 0
     if (!line) return
-    let tries = 0
+    const target = line
+    let stopped = false
+    function stop() {
+      stopped = true
+    }
+    container.addEventListener("wheel", stop, { passive: true })
+    container.addEventListener("pointerdown", stop)
+    container.addEventListener("keydown", stop)
+    let ticks = 0
     const timer = window.setInterval(() => {
-      tries += 1
-      if (scrollToLine(container, line) || tries > 40) window.clearInterval(timer)
+      ticks += 1
+      if (!stopped) scrollToLine(container as HTMLElement, target)
+      if (stopped || ticks >= 30) window.clearInterval(timer)
     }, 50)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearInterval(timer)
+      container.removeEventListener("wheel", stop)
+      container.removeEventListener("pointerdown", stop)
+      container.removeEventListener("keydown", stop)
+    }
   }, [file.absolutePath, line, file.contents])
 
   return (
@@ -61,7 +79,7 @@ function FileViewer({ file }: { file: FileView }) {
             <File
               file={{ name: file.path, contents: file.contents, cacheKey: `${file.absolutePath}:${file.size}` }}
               selectedLines={line ? { start: line, end: line } : null}
-              options={{ theme: { dark: "github-dark-default", light: "github-light-default" }, themeType: "dark", disableFileHeader: true, overflow: "scroll" }}
+              options={{ theme: PIERRE_THEME, themeType: "dark", disableFileHeader: true, overflow: "scroll", unsafeCSS: PIERRE_CSS }}
             />
           </>
         )}
