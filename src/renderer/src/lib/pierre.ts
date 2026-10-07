@@ -1,5 +1,5 @@
 // Shared look for Pierre's file and diff views.
-import { getSharedHighlighter, isHighlighterLoaded } from "@pierre/diffs"
+import { getSharedHighlighter } from "@pierre/diffs"
 
 export const PIERRE_THEME = { dark: "github-dark-default", light: "github-light-default" } as const
 
@@ -10,17 +10,10 @@ export const PIERRE_CSS = `
 `
 
 // Pierre's File view paints nothing until its shared Shiki highlighter has
-// loaded, and its async repaint does not fire on its own, so the highlighter
-// is warmed up here and FileViewer repaints once it is ready.
-let preload: Promise<boolean> | null = null
-
+// loaded. Pierre keeps one highlighter, so asking again returns that same
+// highlighter: main warms it up at boot and the file viewer waits on this call.
 export function preloadPierreHighlighter(): Promise<boolean> {
-  preload ??= getSharedHighlighter({ themes: [PIERRE_THEME.dark, PIERRE_THEME.light], langs: [] })
+  return getSharedHighlighter({ themes: [PIERRE_THEME.dark, PIERRE_THEME.light], langs: [] })
     .then(() => true)
     .catch(() => false)
-  return preload
-}
-
-export function pierreHighlighterReady(): boolean {
-  return isHighlighterLoaded()
 }
