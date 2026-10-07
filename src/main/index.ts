@@ -151,6 +151,12 @@ function registerIpc(): void {
     if (typeof commit !== "string" || !/^[0-9a-f]{7,64}$/.test(commit)) throw new Error("Unknown checkpoint.")
     return requireHost().undoRewind(commit)
   })
+  ipcMain.handle(channels.gitStatus, () => requireHost().gitStatus())
+  ipcMain.handle(channels.gitDiff, (_event, scope: unknown) => requireHost().gitDiff(scope === "turn" ? "turn" : "uncommitted"))
+  ipcMain.handle(channels.gitCommit, (_event, message: unknown) => requireHost().gitCommit(String(message ?? "")))
+  ipcMain.handle(channels.gitPush, () => requireHost().gitPush())
+  ipcMain.handle(channels.gitPullRequest, () => requireHost().gitPullRequest())
+  ipcMain.handle(channels.gitCommitMessage, () => requireHost().gitCommitMessage())
   ipcMain.handle(channels.removeQueued, (_event, id: string) => {
     requireHost().removeQueued(id)
   })

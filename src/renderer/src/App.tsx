@@ -1,10 +1,11 @@
-import { PanelLeft, Settings } from "lucide-react"
+import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TodoItem, UsageState } from "@shared/types"
 import { BashTerminal } from "@/components/bash-terminal"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
+import { DiffPanel } from "@/components/diff-panel"
 import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dialogs"
 import { ModelDialog } from "@/components/model-dialog"
 import { PermissionsWizard } from "@/components/permissions-wizard"
@@ -51,6 +52,7 @@ function AgentApp() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [diffOpen, setDiffOpen] = useState(false)
   const [permissions, setPermissions] = useState<ComputerPermissions | null>(null)
   const [deleteChat, setDeleteChat] = useState<ChatSummary | null>(null)
   const [removeProject, setRemoveProject] = useState<ProjectSummary | null>(null)
@@ -152,6 +154,11 @@ function AgentApp() {
         event.preventDefault()
         setSidebarOpen(true)
         window.requestAnimationFrame(() => document.getElementById("chat-search")?.focus())
+        return
+      }
+      if (key === "d" && event.shiftKey) {
+        event.preventDefault()
+        setDiffOpen((open) => !open)
         return
       }
       if (key === "e" && event.shiftKey) {
@@ -326,6 +333,7 @@ function AgentApp() {
       disabled: streaming || !cwd,
       run: () => window.slagent.setPlanMode(!planMode),
     },
+    { id: "changes", label: diffOpen ? "Hide changes" : "Show changes and commit", shortcut: `${mod}⇧D`, disabled: !cwd, run: () => setDiffOpen((open) => !open) },
     { id: "model", label: "Change model", disabled: !ready || streaming, run: () => setModelOpen(true) },
     { id: "compact", label: "Summarize earlier messages", disabled: !usage || streaming, run: () => window.slagent.compact() },
     { id: "folder", label: "Open folder", run: () => chooseFolder() },
@@ -367,6 +375,18 @@ function AgentApp() {
             onClick={() => setModelOpen(true)}
           >
             <span className="truncate">{modelName}</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={diffOpen ? "Hide changes" : "Show changes"}
+            aria-pressed={diffOpen}
+            title={`Changes (${modKey()}⇧D)`}
+            disabled={!cwd}
+            onClick={() => setDiffOpen((open) => !open)}
+          >
+            <GitCompareIcon className="size-4" />
           </Button>
           <Button
             type="button"
@@ -440,6 +460,7 @@ function AgentApp() {
             }}
           />
         </main>
+        {diffOpen && cwd ? <DiffPanel key={cwd} streaming={streaming} onClose={() => setDiffOpen(false)} /> : null}
       </div>
       <SettingsDialog
         open={settingsOpen}

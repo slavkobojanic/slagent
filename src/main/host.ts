@@ -6,6 +6,8 @@ import type {
   AppMeta,
   ChatMessage,
   ChatSearchResult,
+  DiffScope,
+  GitStatus,
   ChatStatus,
   ChatSummary,
   ExtensionInfo,
@@ -32,7 +34,8 @@ import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
 import { readPrefs, writePrefs, type Prefs } from "./prefs"
-import { generateTitle, TITLE_MODELS } from "./titles"
+import { generateCommitMessage, generateTitle, TITLE_MODELS } from "./titles"
+import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 
 const PROVIDER = "openrouter"
 const PREFERRED_MODELS = [
@@ -303,6 +306,43 @@ export class AgentHost {
     const runtime = this.openRuntime()
     if (!runtime) throw new Error("Open a chat first.")
     await runtime.undoRewind(commit)
+  }
+
+  gitStatus(): Promise<GitStatus> {
+    return gitStatus(this.requireCwd())
+  }
+
+  async gitDiff(scope: DiffScope): Promise<string> {
+    if (scope === "turn") return (await this.openRuntime()?.turnDiff()) ?? ""
+    return gitDiff(this.requireCwd())
+  }
+
+  async gitCommit(message: string): Promise<string> {
+    const text = message.trim()
+    if (!text) throw new Error("Write a commit message.")
+    return gitCommit(this.requireCwd(), text)
+  }
+
+  gitPush(): Promise<void> {
+    return gitPush(this.requireCwd())
+  }
+
+  gitPullRequest(): Promise<string> {
+    return createPullRequest(this.requireCwd())
+  }
+
+  async gitCommitMessage(): Promise<string> {
+    const diff = await gitDiff(this.requireCwd())
+    if (!diff.trim()) throw new Error("There are no changes to commit.")
+    const runtime = this.modelRuntime
+    const model = this.titleModel(this.openRuntime()?.modelId ?? this.draftModelId ?? "")
+    if (!runtime || !model) throw new Error("No model is available.")
+    return generateCommitMessage(runtime, model, diff)
+  }
+
+  private requireCwd(): string {
+    if (!this.cwd) throw new Error("Choose a folder first.")
+    return this.cwd
   }
 
   removeQueued(id: string): void {

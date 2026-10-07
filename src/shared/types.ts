@@ -26,6 +26,12 @@ export const channels = {
   setPlanMode: "agent:set-plan-mode",
   approvePlan: "agent:approve-plan",
   rewind: "agent:rewind",
+  gitStatus: "git:status",
+  gitDiff: "git:diff",
+  gitCommit: "git:commit",
+  gitPush: "git:push",
+  gitPullRequest: "git:pull-request",
+  gitCommitMessage: "git:commit-message",
   undoRewind: "agent:undo-rewind",
   clearTerminal: "agent:clear-terminal",
   compact: "agent:compact",
@@ -252,6 +258,23 @@ export type RewindResult = {
   undo: string | null
 }
 
+export type GitFile = {
+  path: string
+  status: "added" | "modified" | "deleted" | "renamed" | "conflict"
+  staged: boolean
+}
+
+export type GitStatus = {
+  repo: boolean
+  branch: string | null
+  upstream: string | null
+  ahead: number
+  behind: number
+  files: GitFile[]
+}
+
+export type DiffScope = "uncommitted" | "turn"
+
 export type ModelChange = {
   applied: boolean
 }
@@ -288,6 +311,12 @@ export type SlagentApi = {
   approvePlan: () => Promise<void>
   rewind: (id: string, mode: RewindMode) => Promise<RewindResult>
   undoRewind: (commit: string) => Promise<void>
+  gitStatus: () => Promise<GitStatus>
+  gitDiff: (scope: DiffScope) => Promise<string>
+  gitCommit: (message: string) => Promise<string>
+  gitPush: () => Promise<void>
+  gitPullRequest: () => Promise<string>
+  gitCommitMessage: () => Promise<string>
   clearTerminal: () => Promise<void>
   compact: () => Promise<void>
   getPermissions: () => Promise<ComputerPermissions>

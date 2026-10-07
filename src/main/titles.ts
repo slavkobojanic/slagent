@@ -35,6 +35,29 @@ export async function generateTitle(runtime: ModelRuntime, model: Model, user: s
   return cleanTitle(text)
 }
 
+const COMMIT_SYSTEM = [
+  "Write a git commit message for this diff.",
+  "First line: a conventional commit subject under 72 characters, like feat: add search.",
+  "Then a blank line and one or two short sentences on why, if the diff shows it.",
+  "Reply with the message only. No code fences.",
+].join(" ")
+
+export async function generateCommitMessage(runtime: ModelRuntime, model: Model, diff: string): Promise<string> {
+  const reply = await runtime.completeSimple(
+    model,
+    {
+      systemPrompt: COMMIT_SYSTEM,
+      messages: [{ role: "user", content: diff.slice(0, 40_000), timestamp: Date.now() }],
+    },
+    { maxTokens: 600, signal: AbortSignal.timeout(30_000) },
+  )
+  let text = ""
+  for (const part of reply.content) {
+    if (part.type === "text") text += part.text
+  }
+  return text.replace(/^```[a-z]*\n?|```$/g, "").trim()
+}
+
 export function cleanTitle(text: string): string | null {
   let title = text.split("\n").map((line) => line.trim()).find(Boolean) ?? ""
   title = title.replace(/^(title|chat title)\s*:\s*/i, "")

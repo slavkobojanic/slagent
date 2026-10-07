@@ -76,6 +76,15 @@ export class CheckpointStore {
     })
   }
 
+  // Everything that changed in the folder since the snapshot, as a unified diff.
+  diff(commit: string): Promise<string> {
+    return this.serial(async () => {
+      if (!(await this.init())) return ""
+      const now = await this.commit("diff")
+      return this.git(["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", commit, now])
+    })
+  }
+
   private async commit(label: string): Promise<string> {
     await this.git(["add", "-A", "--ignore-errors", "."], 60_000).catch(() => undefined)
     const tree = (await this.git(["write-tree"])).trim()

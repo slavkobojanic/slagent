@@ -402,6 +402,19 @@ export class ChatRuntime {
     return { text: message.text, undo }
   }
 
+  // Changes since the checkpoint before the latest user message that has one.
+  async turnDiff(): Promise<string> {
+    const session = this.session
+    if (!session) return ""
+    for (let index = this.messages.length - 1; index >= 0; index -= 1) {
+      const message = this.messages[index]
+      if (message?.role !== "user" || !message.entryId || !message.checkpoint) continue
+      const commit = checkpointBefore(session.sessionManager, message.entryId)
+      if (commit) return this.checkpoints.diff(commit)
+    }
+    return ""
+  }
+
   async undoRewind(commit: string): Promise<void> {
     if (this.running) throw new Error("Stop the run first.")
     await this.checkpoints.restore(commit)
