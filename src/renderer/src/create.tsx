@@ -3,21 +3,35 @@ import { observer } from "mobx-react-lite"
 import { Toaster } from "sonner"
 import { BridgeMissing } from "@/components/bridge-missing"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { createAgent } from "@/features/agent/create"
 import { createChanges } from "@/features/changes/create"
 import { createComposer } from "@/features/composer/create"
 import { createLibrary } from "@/features/library/create"
 import { createModels } from "@/features/models/create"
-import { createReview } from "@/features/review/create"
-import { createRunStatus } from "@/features/run-status/create"
+import { createPermissionsWizard } from "@/features/permissions-wizard/create"
 import { createSettings } from "@/features/settings/create"
 import { createShell } from "@/features/shell/create"
 import { createTranscript } from "@/features/transcript/create"
-import { getInstallContext } from "@/ipc/install-context"
-import { installServices } from "@/ipc/services"
-import { createMirror } from "@/mirror/create-mirror"
-import type { AppDeps } from "@/state/app-deps"
-import { createSharedState } from "@/state/create-shared-state"
+import { API } from "@/ipc/api"
+import { LibraryStore } from "@/mirror/library-store/library-store"
+import { MetaStore } from "@/mirror/meta-store/meta-store"
+import { MirrorPresenter } from "@/mirror/mirror-presenter/mirror-presenter"
+import { RunStore } from "@/mirror/run-store/run-store"
+import { ComposerPort } from "@/state/composer-port/composer-port"
+import { JumpPort } from "@/state/jump-port/jump-port"
+import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import { KeyboardPresenter } from "@/state/keyboard/keyboard-presenter/keyboard-presenter"
+import { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
+import { LayoutStore } from "@/state/layout/layout-store/layout-store"
+import { LinkPresenter } from "@/state/link/link-presenter/link-presenter"
+import { McpStore } from "@/state/mcp/mcp-store/mcp-store"
+import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
+import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { PanelStore } from "@/state/panel/panel-store/panel-store"
+import { PermissionsStore } from "@/state/permissions/permissions-store/permissions-store"
+import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewStore } from "@/state/review/review-store/review-store"
+import { ThemePresenter } from "@/state/theme/theme-presenter/theme-presenter"
+import { ThemeStore } from "@/state/theme/theme-store/theme-store"
 
 const TOAST_OPTIONS = {
   style: {
@@ -27,46 +41,141 @@ const TOAST_OPTIONS = {
   },
 }
 
-// The root owning create. main.tsx calls it once at boot. It installs the services, builds
-// the mirror and shared state, creates every slice in the wiring order, starts the listeners,
-// and returns the host. Nothing here runs during render.
 export function createApp(): ComponentType {
-  try {
-    getInstallContext()
-  } catch {
+  const api = API.fromWindow(window)
+  if (api === null) {
     return BridgeMissing
   }
 
-  const services = installServices()
-  const mirror = createMirror(services)
-  const shared = createSharedState(services, window)
-  const deps: AppDeps = { services, env: { window }, mirror, shared }
+  const libraryStore = new LibraryStore()
+  const metaStore = new MetaStore()
+  const runStore = new RunStore()
+  const mirrorPresenter = new MirrorPresenter(api, libraryStore, metaStore, runStore)
 
-  // The order matters: each line may use the slots returned above it.
-  const review = createReview(deps)
-  const agent = createAgent(deps)
-  const runStatus = createRunStatus(deps)
-  const composer = createComposer({ ...deps, review, runStatus })
-  const transcript = createTranscript({ ...deps, review, question: agent.Question })
-  const changes = createChanges({ ...deps, review })
-  const library = createLibrary(deps)
-  const settings = createSettings(deps)
-  const models = createModels(deps)
-  const Shell = createShell({ ...deps, slots: { ...library, ...settings, ...models, ...transcript, ...composer, ...changes } })
+  const layoutStore = new LayoutStore()
+  const layoutPresenter = new LayoutPresenter(layoutStore, window)
+  const overlayStore = new OverlayStore()
+  const panelStore = new PanelStore()
+  const panelPresenter = new PanelPresenter(panelStore, api)
+  const themeStore = new ThemeStore()
+  const themePresenter = new ThemePresenter(themeStore, window)
+  const permissionsStore = new PermissionsStore(api.platform)
+  const reviewStore = new ReviewStore()
+  const reviewPresenter = new ReviewPresenter(reviewStore)
+  const mcpStore = new McpStore()
+  const commandRegistry = new CommandRegistry()
+  const keyboardPresenter = new KeyboardPresenter(commandRegistry, window, permissionsStore)
+  const linkPresenter = new LinkPresenter(window, panelPresenter, api)
+  const composerPort = new ComposerPort()
+  const jumpPort = new JumpPort()
 
-  mirror.start()
-  shared.layoutPresenter.start()
-  shared.keyboard.start()
-  shared.links.start()
-  shared.themePresenter.start()
+  const Transcript = createTranscript({
+    api,
+    window,
+    metaStore,
+    runStore,
+    reviewStore,
+    reviewPresenter,
+    themeStore,
+    overlayStore,
+    panelPresenter,
+    commandRegistry,
+    composerPort,
+    jumpPort,
+  })
+  const Composer = createComposer({
+    api,
+    window,
+    libraryStore,
+    metaStore,
+    runStore,
+    reviewStore,
+    reviewPresenter,
+    commandRegistry,
+    composerPort,
+  })
+  const Changes = createChanges({
+    api,
+    window,
+    metaStore,
+    runStore,
+    panelStore,
+    panelPresenter,
+    layoutStore,
+    layoutPresenter,
+    reviewStore,
+    reviewPresenter,
+    themeStore,
+    commandRegistry,
+  })
+  const Library = createLibrary({
+    api,
+    window,
+    libraryStore,
+    metaStore,
+    runStore,
+    layoutStore,
+    layoutPresenter,
+    overlayStore,
+    panelPresenter,
+    reviewPresenter,
+    commandRegistry,
+    composerPort,
+    jumpPort,
+  })
+  const Settings = createSettings({
+    api,
+    metaStore,
+    overlayStore,
+    themeStore,
+    themePresenter,
+    mcpStore,
+    commandRegistry,
+  })
+  const Models = createModels({
+    api,
+    metaStore,
+    runStore,
+    overlayStore,
+    commandRegistry,
+    composerPort,
+  })
+  const PermissionsWizard = createPermissionsWizard({ api, window, permissionsStore })
+  const Shell = createShell({
+    Library,
+    Settings,
+    Models,
+    Transcript,
+    Composer,
+    Changes,
+    api,
+    libraryStore,
+    metaStore,
+    runStore,
+    layoutStore,
+    layoutPresenter,
+    panelStore,
+    panelPresenter,
+    overlayStore,
+    permissionsStore,
+    mcpStore,
+    commandRegistry,
+  })
+
+  mirrorPresenter.start()
+  layoutPresenter.start()
+  keyboardPresenter.start()
+  linkPresenter.start()
+  themePresenter.start()
 
   return observer(function AppHost() {
     return (
       <>
         <TooltipProvider>
           <Shell />
+          <PermissionsWizard />
         </TooltipProvider>
-        <Toaster theme={shared.theme.resolved} toastOptions={TOAST_OPTIONS} />
+        <Toaster theme={themeStore.resolved} toastOptions={TOAST_OPTIONS} />
       </>
     )
   })
