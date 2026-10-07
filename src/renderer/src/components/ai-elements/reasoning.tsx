@@ -207,12 +207,7 @@ type ReasoningContentProps = ComponentProps<
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 const THOUGHTS_MAX_HEIGHT_PX = 100;
-// Fade height (40px) for the top/bottom edges. Tailwind scans source text
-// statically, so the arbitrary property must be written out literally —
-// interpolating the fade size would break the token and the utility would
-// never be generated.
-const THOUGHTS_MASK_CLASS =
-  "[mask-image:linear-gradient(to_bottom,transparent,black_40px,black_calc(100%_-_40px),transparent)]";
+// Fade height (40px) for the top/bottom edges.
 
 export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => {
@@ -245,12 +240,15 @@ export const ReasoningContent = memo(
         <div
           ref={scrollRef}
           style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX }}
-          className={cn(
-            "overflow-hidden",
-            isScrollable && THOUGHTS_MASK_CLASS
-          )}
+          className="relative overflow-hidden"
         >
           <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+          {isScrollable ? (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background to-transparent" />
+            </>
+          ) : null}
         </div>
       </CollapsibleContent>
     );
