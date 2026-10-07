@@ -3,12 +3,10 @@ import { Button } from "@/components/ui/button"
 
 export type PlanCardProps = {
   plan: string
-  // Whether an approval is in flight. Approve is disabled then.
   approving: boolean
   onApprove: () => void
 }
 
-// A plan the agent proposed and waits on. Nothing has changed until it is approved.
 export function PlanCard({ plan, approving, onApprove }: PlanCardProps) {
   return (
     <section className="rounded-md border border-warning/40 bg-warning/10" aria-label="Proposed plan">
