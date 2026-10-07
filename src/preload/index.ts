@@ -38,6 +38,7 @@ const api: SlagentApi = {
   editMessage: (id, text) => ipcRenderer.invoke(channels.editMessage, id, text),
   setPlanMode: (enabled) => ipcRenderer.invoke(channels.setPlanMode, enabled),
   approvePlan: () => ipcRenderer.invoke(channels.approvePlan),
+  answerQuestion: (id, reply) => ipcRenderer.invoke(channels.answerQuestion, id, reply),
   rewind: (id, mode) => ipcRenderer.invoke(channels.rewind, id, mode),
   undoRewind: (commit) => ipcRenderer.invoke(channels.undoRewind, commit),
   taskOutput: (id) => ipcRenderer.invoke(channels.taskOutput, id),

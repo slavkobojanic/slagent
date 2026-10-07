@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
-import { mkdir } from "node:fs/promises"
-import { basename, dirname } from "node:path"
+import { mkdir, readFile, stat } from "node:fs/promises"
+import { homedir } from "node:os"
+import { basename, dirname, extname, join, resolve } from "node:path"
 import {
   type AgentSession,
   type AgentSessionEvent,
@@ -19,6 +20,8 @@ import type {
   ExtensionInfo,
   QueueMode,
   PromptRequest,
+  QuestionReply,
+  QuestionRequest,
   TaskInfo,
   RewindMode,
   RewindResult,
@@ -40,6 +43,7 @@ import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
 import { type BackgroundTasks, backgroundTasks } from "./extensions/background-tasks"
 import { focusGuard } from "./extensions/focus-guard"
 import { discoverAgents, subagentExtension } from "./extensions/subagents"
+import { ASK_USER, askUser, type AskUserDetails } from "./extensions/ask-user"
 import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { todoExtension } from "./extensions/todo"
 import { preparePrompt, queueDetail } from "./prompt"
@@ -56,11 +60,22 @@ const CODING_TOOLS = [
   "ls",
   "todo",
   "propose_plan",
+  "ask_user",
   "bash_background",
   "task_output",
   "task_stop",
   "subagent",
 ]
+const IMAGE_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".avif": "image/avif",
+}
+const IMAGE_LIMIT = 20 * 1024 * 1024
 const APPROVED_PLAN = "The plan is approved. Carry it out now. Track the steps with the todo tool and check the result at the end."
 
 export type AgentModel = NonNullable<ReturnType<ModelRuntime["getModel"]>>
@@ -97,6 +112,7 @@ export type ChatRuntimeOptions = {
   onSettled: () => void
   onUsage: (usage: UsageState) => void
   onTaskFinished: (task: TaskInfo) => void
+  onQuestion: (request: QuestionRequest) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
 }
 
@@ -136,6 +152,14 @@ export class ChatRuntime {
         .map((agent) => agent.name)
       return new Set(names)
     },
+  })
+  private readonly questions = askUser({
+    resolveImage: (image) => this.resolveImage(image),
+    onAsk: (request) => {
+      this.emit(true)
+      this.options.onQuestion(request)
+    },
+    onDone: () => this.emit(true),
   })
   // Transcript user messages waiting for Pi to persist them, oldest first.
   private pendingUserIds: string[] = []
@@ -187,7 +211,7 @@ export class ChatRuntime {
 
   // Set by features that pause a run for the user, such as plan approval.
   get waiting(): boolean {
-    return this.awaiting
+    return this.awaiting || this.questions.pending() !== null
   }
 
   get failed(): boolean {
@@ -223,6 +247,7 @@ export class ChatRuntime {
       todos: this.todos,
       planMode: this.planEnabled,
       planProposal: this.planProposal,
+      question: this.questions.pending(),
       tasks: this.taskList,
     }
   }
@@ -292,6 +317,7 @@ export class ChatRuntime {
         }),
       },
       { name: "slagent-plan-mode", factory: this.plan.extension, hidden: true, replaceable: true },
+      { name: "slagent-ask-user", factory: this.questions.extension, hidden: true, replaceable: true },
       {
         name: "slagent-todo",
         hidden: true,
@@ -372,6 +398,13 @@ export class ChatRuntime {
 
   async prompt(request: PromptRequest): Promise<void> {
     if (!this.session) throw new Error("The session is not ready.")
+    // A message sent while a question is open answers it in the user's own
+    // words, so the run carries on instead of the message waiting in the queue.
+    const question = this.questions.pending()
+    if (question && request.text.trim() && request.files.length === 0) {
+      this.answerQuestion(question.id, { skipped: true, message: request.text.trim() })
+      return
+    }
     if (this.streaming || this.sending || this.session.isStreaming) {
       this.enqueue(request, "follow-up")
       return
@@ -481,6 +514,25 @@ export class ChatRuntime {
     await this.prompt({ text: APPROVED_PLAN, mentions: [], files: [] })
   }
 
+  // Remote and data URLs load as they are. Project files are copied into the
+  // chat's attachments, which the renderer can load and which outlive the file.
+  private async resolveImage(image: string): Promise<string> {
+    if (/^https?:\/\//i.test(image) || /^data:image\//i.test(image)) return image
+    let path = image.replace(/^file:\/\//i, "")
+    if (path.startsWith("~/")) path = join(homedir(), path.slice(2))
+    path = resolve(this.options.cwd, path)
+    const mimeType = IMAGE_TYPES[extname(path).toLowerCase()]
+    if (!mimeType) throw new Error("not an image file")
+    const info = await stat(path)
+    if (info.size > IMAGE_LIMIT) throw new Error("larger than 20 MB")
+    const saved = await this.options.saveBytes(basename(path), mimeType, await readFile(path))
+    return saved.url
+  }
+
+  answerQuestion(id: string, reply: QuestionReply): void {
+    if (!this.questions.answer(id, reply)) throw new Error("That question was already answered.")
+  }
+
   private clearProposal(): void {
     this.planProposal = null
     this.awaiting = false
@@ -492,6 +544,7 @@ export class ChatRuntime {
   }
 
   async abort(): Promise<void> {
+    this.questions.cancel()
     if (!this.session) return
     await this.session.abort()
   }
@@ -511,6 +564,7 @@ export class ChatRuntime {
   }
 
   dispose(): void {
+    this.questions.cancel()
     this.tasks.stopAll()
     this.disposed = true
     this.sessionToken = null
@@ -728,6 +782,10 @@ export class ChatRuntime {
       tool.output = toolResultText(event.result)
       tool.running = false
       tool.isError = event.isError
+      if (event.toolName === ASK_USER) {
+        const details = (event.result as { details?: AskUserDetails } | undefined)?.details
+        if (details && Array.isArray(details.answers)) tool.answers = details.answers
+      }
       const images = toolResultImages(event.result)
       if (images.length > 0) void this.attachImages(tool, images)
       this.emit(false)

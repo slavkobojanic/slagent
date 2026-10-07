@@ -1,7 +1,8 @@
 import Ansi from "ansi-to-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import type { AssistantMessage, ChatMessage, ToolMessage, UserMessage } from "@shared/types"
+import type { AssistantMessage, ChatMessage, QuestionRequest, ToolMessage, UserMessage } from "@shared/types"
+import { AnsweredQuestions, QuestionCard } from "@/components/question-card"
 import { FadingResponse } from "@/components/fading-response"
 import {
   ChainOfThought,
@@ -30,7 +31,7 @@ import {
 import { errorText, openPath } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
-import { BotIcon, FileTextIcon, FolderIcon, ListChecksIcon, PencilIcon, RotateCcwIcon, SearchIcon, ServerIcon, TerminalIcon } from "lucide-react"
+import { BotIcon, FileTextIcon, MessageCircleQuestionIcon, FolderIcon, ListChecksIcon, PencilIcon, RotateCcwIcon, SearchIcon, ServerIcon, TerminalIcon } from "lucide-react"
 import type { RewindMode } from "@shared/types"
 import {
   DropdownMenu,
@@ -85,6 +86,7 @@ function toolIcon(name: string): LucideIcon {
   if (name === "ls") return FolderIcon
   if (name === "edit" || name === "write") return PencilIcon
   if (name === "subagent") return BotIcon
+  if (name === "ask_user") return MessageCircleQuestionIcon
   if (name === "todo" || name === "propose_plan") return ListChecksIcon
   if (name === "bash_background" || name === "task_output" || name === "task_stop") return ServerIcon
   return FileTextIcon
@@ -169,6 +171,7 @@ function PendingReply({ label }: { label: string }) {
 
 function ToolOutput({ message }: { message: ToolMessage }) {
   if (message.name === "bash") return <BashOutput message={message} />
+  if (message.name === "ask_user" && message.answers?.length) return <AnsweredQuestions answers={message.answers} />
   const images = message.images ?? []
   if (!message.output && images.length === 0) return null
   return (
@@ -218,6 +221,10 @@ function toolPath(tool: ToolMessage): string | null {
 
 function ToolLabel({ tool }: { tool: ToolMessage }) {
   if (tool.name === "bash") return <>{tool.running ? "Running command" : tool.isError ? "Command failed" : "Ran command"}</>
+  if (tool.name === "ask_user") {
+    if (tool.running) return <>Waiting for your answer</>
+    return <>{tool.isError ? "Question cancelled" : tool.answers?.length === 1 ? "Asked a question" : "Asked questions"}</>
+  }
   const path = toolPath(tool)
   if (!path) return <>{tool.label}</>
   return (
@@ -589,6 +596,7 @@ function Transcript({
   cwd,
   streaming,
   planProposal,
+  question,
   onApprovePlan,
   onConnect,
   onChoose,
@@ -600,6 +608,7 @@ function Transcript({
   cwd: string
   streaming: boolean
   planProposal: string | null
+  question: QuestionRequest | null
   onApprovePlan: () => Promise<void>
   onConnect: () => void
   onChoose: () => void
@@ -649,6 +658,7 @@ function Transcript({
           return <AssistantTurn key={block.turn.id} turn={block.turn} />
         })}
         {planProposal ? <PlanCard plan={planProposal} onApprove={onApprovePlan} /> : null}
+        {question ? <QuestionCard key={question.id} request={question} /> : null}
         {pending ? <PendingReply label={notice ?? "Thinking"} /> : null}
         {notice && !pending ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
       </ConversationContent>

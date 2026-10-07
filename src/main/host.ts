@@ -16,6 +16,7 @@ import type {
   OpenRouterStatus,
   ProjectSummary,
   PromptRequest,
+  QuestionReply,
   QueueMode,
   RewindMode,
   RewindResult,
@@ -304,6 +305,12 @@ export class AgentHost {
     await runtime.approvePlan()
   }
 
+  answerQuestion(id: string, reply: QuestionReply): void {
+    const runtime = this.openRuntime()
+    if (!runtime) throw new Error("Open a chat first.")
+    runtime.answerQuestion(id, reply)
+  }
+
   async rewind(id: string, mode: RewindMode): Promise<RewindResult> {
     const runtime = this.openRuntime()
     if (!runtime) throw new Error("Open a chat first.")
@@ -559,6 +566,12 @@ export class AgentHost {
         let body = `${task.label} finished`
         if (task.status === "failed") body = `${task.label} exited with code ${task.exitCode ?? "unknown"}`
         this.notify(projectId, chatId, body)
+      },
+      onQuestion: (request) => {
+        const open = this.projectId === projectId && this.chatId === chatId
+        if (open && this.notifier.focused()) return
+        const first = request.questions[0]?.question ?? "A question is waiting"
+        this.notify(projectId, chatId, first)
       },
       saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
     })
@@ -859,6 +872,7 @@ export class AgentHost {
         todos: [],
         planMode: this.draftPlanMode,
         planProposal: null,
+        question: null,
         tasks: [],
       }
     }

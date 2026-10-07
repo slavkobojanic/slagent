@@ -6,6 +6,7 @@ import { AgentHost, type Notifier } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
 import { openInEditor, readFileView } from "./editor"
 import { parsePrompt } from "./prompt"
+import { parseReply } from "./extensions/ask-user"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
@@ -143,6 +144,10 @@ function registerIpc(): void {
   })
   ipcMain.handle(channels.setPlanMode, (_event, enabled: unknown) => requireHost().setPlanMode(enabled === true))
   ipcMain.handle(channels.approvePlan, () => requireHost().approvePlan())
+  ipcMain.handle(channels.answerQuestion, (_event, id: unknown, reply: unknown) => {
+    if (typeof id !== "string") throw new Error("Unknown question.")
+    return requireHost().answerQuestion(id, parseReply(reply))
+  })
   ipcMain.handle(channels.rewind, (_event, id: string, mode: unknown) => {
     if (mode !== "both" && mode !== "chat" && mode !== "code") throw new Error("Unknown rewind.")
     return requireHost().rewind(id, mode)

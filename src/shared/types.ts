@@ -26,6 +26,7 @@ export const channels = {
   editMessage: "agent:edit-message",
   setPlanMode: "agent:set-plan-mode",
   approvePlan: "agent:approve-plan",
+  answerQuestion: "agent:answer-question",
   rewind: "agent:rewind",
   taskOutput: "agent:task-output",
   stopTask: "agent:stop-task",
@@ -116,6 +117,7 @@ export type ToolMessage = {
   images: string[]
   running: boolean
   isError: boolean
+  answers?: AnsweredQuestion[]
 }
 
 export type ChatMessage = UserMessage | AssistantMessage | ToolMessage
@@ -220,7 +222,58 @@ export type TaskInfo = {
   endedAt: number | null
 }
 
-export type TodoStatus = "pending" | "in_progress" | "completed"
+// What a question or option can show besides text. Images are URLs the
+// renderer can load: remote, data URIs, or project files copied into the
+// chat's attachments. HTML renders in a sandboxed frame.
+export type QuestionMedia = {
+  preview?: string
+  image?: string
+  html?: string
+}
+
+export type QuestionOption = QuestionMedia & {
+  label: string
+  description?: string
+  recommended?: boolean
+}
+
+export type Question = QuestionMedia & {
+  id: string
+  question: string
+  header?: string
+  multiSelect: boolean
+  options: QuestionOption[]
+}
+
+// An ask_user call waiting on the user. The id is the tool call id.
+export type QuestionRequest = {
+  id: string
+  questions: Question[]
+}
+
+export type QuestionAnswer = {
+  questionId: string
+  selected: string[]
+  other?: string
+  note?: string
+}
+
+export type QuestionReply =
+  | { skipped: false; answers: QuestionAnswer[] }
+  | { skipped: true; message?: string }
+
+export type AnsweredQuestion = {
+  question: string
+  header?: string
+  selected: string[]
+  // Images of the picked options, so the answer can show what was chosen.
+  images?: string[]
+  other?: string
+  note?: string
+  skipped: boolean
+}
+
+export type TodoStatus ="pending" | "in_progress" | "completed"
 
 export type TodoItem = {
   text: string
@@ -253,6 +306,7 @@ export type TranscriptState = {
   todos: TodoItem[]
   planMode: boolean
   planProposal: string | null
+  question: QuestionRequest | null
   tasks: TaskInfo[]
 }
 
@@ -342,6 +396,7 @@ export type SlagentApi = {
   editMessage: (id: string, text: string) => Promise<void>
   setPlanMode: (enabled: boolean) => Promise<void>
   approvePlan: () => Promise<void>
+  answerQuestion: (id: string, reply: QuestionReply) => Promise<void>
   rewind: (id: string, mode: RewindMode) => Promise<RewindResult>
   undoRewind: (commit: string) => Promise<void>
   taskOutput: (id: string) => Promise<string>

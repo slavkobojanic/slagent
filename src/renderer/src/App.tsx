@@ -2,7 +2,7 @@ import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { CSSProperties } from "react"
-import type { AppMeta, DiffComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
+import type { AppMeta, DiffComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, QuestionRequest, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
 import { RightPanel, type RightTab } from "@/components/right-panel"
@@ -49,6 +49,7 @@ function AgentApp() {
   const [planMode, setPlanMode] = useState(false)
   const [tasks, setTasks] = useState<TaskInfo[]>([])
   const [planProposal, setPlanProposal] = useState<string | null>(null)
+  const [question, setQuestion] = useState<QuestionRequest | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -112,6 +113,7 @@ function AgentApp() {
         setPlanMode(event.planMode)
         setTasks(event.tasks)
         setPlanProposal(event.planProposal)
+        setQuestion(event.question)
       }
       if (event.type === "meta" && event.revision >= metaRevision.current) {
         metaRevision.current = event.revision
@@ -141,6 +143,7 @@ function AgentApp() {
         setPlanMode(snapshot.planMode)
         setTasks(snapshot.tasks)
         setPlanProposal(snapshot.planProposal)
+        setQuestion(snapshot.question)
       }
       if (snapshot.revision >= metaRevision.current) {
         metaRevision.current = snapshot.revision
@@ -294,6 +297,7 @@ function AgentApp() {
   if (!ready) placeholder = "Starting"
   if (ready && configured && cwd && planMode) placeholder = "Describe what to plan"
   if (ready && configured && cwd && streaming) placeholder = "Queue a follow-up"
+  if (ready && configured && cwd && question) placeholder = "Answer in your own words"
 
   async function chooseFolder() {
     try {
@@ -491,6 +495,7 @@ function AgentApp() {
               cwd={cwd}
               streaming={streaming}
               planProposal={planProposal}
+              question={question}
               onApprovePlan={() => window.slagent.approvePlan()}
               onConnect={() => setSettingsOpen(true)}
               onChoose={() => void chooseFolder()}
