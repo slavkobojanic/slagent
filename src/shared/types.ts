@@ -26,6 +26,8 @@ export const channels = {
   setPlanMode: "agent:set-plan-mode",
   approvePlan: "agent:approve-plan",
   rewind: "agent:rewind",
+  taskOutput: "agent:task-output",
+  stopTask: "agent:stop-task",
   gitStatus: "git:status",
   gitDiff: "git:diff",
   gitCommit: "git:commit",
@@ -197,6 +199,16 @@ export type LibraryState = {
   openChatId: string | null
 }
 
+export type TaskInfo = {
+  id: string
+  label: string
+  command: string
+  status: "running" | "done" | "failed" | "stopped"
+  exitCode: number | null
+  startedAt: number
+  endedAt: number | null
+}
+
 export type TodoStatus = "pending" | "in_progress" | "completed"
 
 export type TodoItem = {
@@ -232,6 +244,7 @@ export type TranscriptState = {
   todos: TodoItem[]
   planMode: boolean
   planProposal: string | null
+  tasks: TaskInfo[]
 }
 
 export type Snapshot = TranscriptState & {
@@ -311,6 +324,8 @@ export type SlagentApi = {
   approvePlan: () => Promise<void>
   rewind: (id: string, mode: RewindMode) => Promise<RewindResult>
   undoRewind: (commit: string) => Promise<void>
+  taskOutput: (id: string) => Promise<string>
+  stopTask: (id: string) => Promise<void>
   gitStatus: () => Promise<GitStatus>
   gitDiff: (scope: DiffScope) => Promise<string>
   gitCommit: (message: string) => Promise<string>

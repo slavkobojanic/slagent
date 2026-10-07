@@ -1,7 +1,7 @@
 import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TodoItem, UsageState } from "@shared/types"
+import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
 import { BashTerminal } from "@/components/bash-terminal"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
@@ -48,6 +48,7 @@ function AgentApp() {
   const [usage, setUsage] = useState<UsageState | null>(null)
   const [todos, setTodos] = useState<TodoItem[]>([])
   const [planMode, setPlanMode] = useState(false)
+  const [tasks, setTasks] = useState<TaskInfo[]>([])
   const [planProposal, setPlanProposal] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
@@ -87,6 +88,7 @@ function AgentApp() {
         setUsage(event.usage)
         setTodos(event.todos)
         setPlanMode(event.planMode)
+        setTasks(event.tasks)
         setPlanProposal(event.planProposal)
       }
       if (event.type === "meta" && event.revision >= metaRevision.current) {
@@ -117,6 +119,7 @@ function AgentApp() {
         setUsage(snapshot.usage)
         setTodos(snapshot.todos)
         setPlanMode(snapshot.planMode)
+        setTasks(snapshot.tasks)
         setPlanProposal(snapshot.planProposal)
       }
       if (snapshot.revision >= metaRevision.current) {
@@ -444,6 +447,7 @@ function AgentApp() {
             usage={usage}
             usageTotals={meta?.usageTotals ?? null}
             todos={todos}
+            tasks={tasks}
             planMode={planMode}
             onPlanMode={(enabled) => window.slagent.setPlanMode(enabled)}
             onCompact={() => window.slagent.compact()}

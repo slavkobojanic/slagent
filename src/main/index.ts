@@ -1,8 +1,8 @@
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, protocol, shell } from "electron"
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, protocol, shell } from "electron"
 import { channels } from "../shared/types"
-import { AgentHost } from "./host"
+import { AgentHost, type Notifier } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
 import { openInEditor } from "./editor"
 import { parsePrompt } from "./prompt"
@@ -151,6 +151,8 @@ function registerIpc(): void {
     if (typeof commit !== "string" || !/^[0-9a-f]{7,64}$/.test(commit)) throw new Error("Unknown checkpoint.")
     return requireHost().undoRewind(commit)
   })
+  ipcMain.handle(channels.taskOutput, (_event, id: string) => requireHost().taskOutput(String(id)))
+  ipcMain.handle(channels.stopTask, (_event, id: string) => requireHost().stopTask(String(id)))
   ipcMain.handle(channels.gitStatus, () => requireHost().gitStatus())
   ipcMain.handle(channels.gitDiff, (_event, scope: unknown) => requireHost().gitDiff(scope === "turn" ? "turn" : "uncommitted"))
   ipcMain.handle(channels.gitCommit, (_event, message: unknown) => requireHost().gitCommit(String(message ?? "")))
@@ -204,7 +206,7 @@ app.whenReady().then(() => {
   protocol.handle("slagent", (request) => serveAttachment(libraryRoot, request))
   computer = new ComputerUse(computerExecutable(app.getAppPath(), process.resourcesPath))
   registerIpc()
-  host = new AgentHost(join(app.getPath("userData"), "settings.json"), libraryRoot, broadcast, computer)
+  host = new AgentHost(join(app.getPath("userData"), "settings.json"), libraryRoot, broadcast, computer, notifier)
   createWindow()
   void host.start()
 
@@ -228,6 +230,27 @@ app.on("before-quit", (event) => {
     app.quit()
   })
 })
+
+const notifier: Notifier = {
+  focused: () => BrowserWindow.getAllWindows().some((win) => win.isFocused()),
+  notify: ({ title, body, projectId, chatId }) => {
+    if (!Notification.isSupported()) return
+    const note = new Notification({ title, body, silent: false })
+    note.on("click", () => {
+      let win = BrowserWindow.getAllWindows()[0]
+      if (!win) win = createWindow()
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+      void host?.openChat(chatId, projectId).catch(() => undefined)
+    })
+    note.show()
+  },
+  badge: (count) => {
+    if (process.platform !== "darwin") return
+    app.setBadgeCount(count)
+  },
+}
 
 function serveAttachment(libraryRoot: string, request: Request): Promise<Response> {
   const url = new URL(request.url)

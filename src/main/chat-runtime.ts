@@ -19,6 +19,7 @@ import type {
   ExtensionInfo,
   QueueMode,
   PromptRequest,
+  TaskInfo,
   RewindMode,
   RewindResult,
   TodoItem,
@@ -36,6 +37,7 @@ import type { ComputerUse } from "./computer"
 import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
 import { CheckpointStore } from "./checkpoints"
 import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
+import { type BackgroundTasks, backgroundTasks } from "./extensions/background-tasks"
 import { focusGuard } from "./extensions/focus-guard"
 import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { todoExtension } from "./extensions/todo"
@@ -43,7 +45,20 @@ import { preparePrompt, queueDetail } from "./prompt"
 
 // Pi treats the tools list as an allowlist, so tools from slagent's own
 // extensions are named here too.
-const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls", "todo", "propose_plan"]
+const CODING_TOOLS = [
+  "read",
+  "bash",
+  "edit",
+  "write",
+  "grep",
+  "find",
+  "ls",
+  "todo",
+  "propose_plan",
+  "bash_background",
+  "task_output",
+  "task_stop",
+]
 const APPROVED_PLAN = "The plan is approved. Carry it out now. Track the steps with the todo tool and check the result at the end."
 
 export type AgentModel = NonNullable<ReturnType<ModelRuntime["getModel"]>>
@@ -79,6 +94,7 @@ export type ChatRuntimeOptions = {
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
+  onTaskFinished: (task: TaskInfo) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
 }
 
@@ -99,6 +115,8 @@ export class ChatRuntime {
   private usageState: UsageState | null = null
   private todos: TodoItem[] = []
   private checkpoints: CheckpointStore
+  private tasks: BackgroundTasks
+  private taskList: TaskInfo[] = []
   private planEnabled = false
   private planProposal: string | null = null
   private readonly plan: PlanModeControl = planMode({
@@ -136,6 +154,23 @@ export class ChatRuntime {
     this.named = options.named
     this.titleGenerated = options.titleGenerated
     this.checkpoints = new CheckpointStore(options.cwd, options.checkpointDir)
+    this.tasks = backgroundTasks(options.cwd, (tasks, finished) => {
+      this.taskList = tasks
+      this.emit(false)
+      if (finished && finished.status !== "stopped") this.options.onTaskFinished(finished)
+    })
+  }
+
+  taskOutput(id: string): string {
+    return this.tasks.output(id)
+  }
+
+  stopTask(id: string): void {
+    this.tasks.stop(id)
+  }
+
+  get runningTasks(): number {
+    return this.taskList.filter((task) => task.status === "running").length
   }
 
   get key(): string {
@@ -194,6 +229,7 @@ export class ChatRuntime {
       todos: this.todos,
       planMode: this.planEnabled,
       planProposal: this.planProposal,
+      tasks: this.taskList,
     }
   }
 
@@ -248,6 +284,7 @@ export class ChatRuntime {
     let customTools: ReturnType<typeof computerTools> = []
     const extensionFactories: InlineExtension[] = [
       checkpointExtension(this.checkpoints),
+      this.tasks.extension,
       this.plan.extension,
       todoExtension((todos) => {
         this.todos = todos
@@ -471,6 +508,7 @@ export class ChatRuntime {
   }
 
   dispose(): void {
+    this.tasks.stopAll()
     this.disposed = true
     this.sessionToken = null
     this.unsubscribe?.()

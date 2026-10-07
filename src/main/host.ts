@@ -47,6 +47,13 @@ const PREFERRED_MODELS = [
 
 type Emit = (event: UiEvent) => void
 
+export type Notifier = {
+  // Whether the window is in front, so finished runs in the open chat are seen.
+  focused: () => boolean
+  notify: (note: { title: string; body: string; projectId: string; chatId: string }) => void
+  badge: (count: number) => void
+}
+
 type ExtensionCache = {
   extensions: ExtensionInfo[]
   errors: string[]
@@ -79,6 +86,7 @@ export class AgentHost {
     libraryRoot: string,
     private readonly emit: Emit,
     private readonly computer: ComputerUse,
+    private readonly notifier: Notifier,
   ) {
     this.library = new Library(libraryRoot)
   }
@@ -541,8 +549,20 @@ export class AgentHost {
         this.scheduleUsageSave(projectId)
       },
       onSettled: () => {
-        if (this.projectId === projectId && this.chatId === chatId) return
+        const open = this.projectId === projectId && this.chatId === chatId
+        if (!open || !this.notifier.focused()) {
+          let body = "Finished"
+          if (runtime.waiting) body = "A plan is ready for review"
+          else if (runtime.failed) body = "Stopped with an error"
+          this.notify(projectId, chatId, body)
+        }
+        if (open) return
         void this.library.updateChat(projectId, chatId, { unread: true }).then(() => this.publishLibrary())
+      },
+      onTaskFinished: (task) => {
+        let body = `${task.label} finished`
+        if (task.status === "failed") body = `${task.label} exited with code ${task.exitCode ?? "unknown"}`
+        this.notify(projectId, chatId, body)
       },
       saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
     })
@@ -598,6 +618,22 @@ export class AgentHost {
         void this.library.saveProject(projectId).then(() => this.publishMeta())
       }, 1000),
     )
+  }
+
+  private notify(projectId: string, chatId: string, body: string): void {
+    const chat = this.library.chat(projectId, chatId)
+    const project = this.library.project(projectId)
+    let title = chat?.title ?? "slagent"
+    if (project) title = `${title} · ${project.name}`
+    this.notifier.notify({ title, body, projectId, chatId })
+  }
+
+  async taskOutput(id: string): Promise<string> {
+    return this.openRuntime()?.taskOutput(id) ?? ""
+  }
+
+  async stopTask(id: string): Promise<void> {
+    this.openRuntime()?.stopTask(id)
   }
 
   private usageTotals(): UsageTotals {
@@ -829,6 +865,7 @@ export class AgentHost {
         todos: [],
         planMode: this.draftPlanMode,
         planProposal: null,
+        tasks: [],
       }
     }
     return runtime.transcript()
@@ -846,6 +883,11 @@ export class AgentHost {
   }
 
   private publishLibrary(): void {
+    let unread = 0
+    for (const project of this.library.projects()) {
+      for (const chat of this.library.projectChats(project.id)) if (chat.unread) unread += 1
+    }
+    this.notifier.badge(unread)
     this.revision += 1
     this.emit({ type: "library", revision: this.revision, library: this.libraryState() })
   }

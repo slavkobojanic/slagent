@@ -31,7 +31,8 @@ import { Button } from "@/components/ui/button"
 import { setTextareaValue } from "@/lib/composer"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
-import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TodoItem, UsageState, UsageTotals } from "@shared/types"
+import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
+import { TaskStrip } from "@/components/task-strip"
 import { TodoPanel } from "@/components/todo-panel"
 import { UsageMeter } from "@/components/usage-meter"
 
@@ -182,6 +183,7 @@ function Composer({
   usage,
   usageTotals,
   todos,
+  tasks,
   planMode,
   onPlanMode,
   onCompact,
@@ -197,6 +199,7 @@ function Composer({
   usage: UsageState | null
   usageTotals: UsageTotals | null
   todos: TodoItem[]
+  tasks: TaskInfo[]
   planMode: boolean
   onPlanMode: (enabled: boolean) => Promise<void>
   onCompact: () => Promise<void>
@@ -427,6 +430,7 @@ function Composer({
 
   return (
     <div className="relative mx-auto w-full max-w-3xl px-6 pb-3">
+      <TaskStrip tasks={tasks} />
       <TodoPanel todos={todos} streaming={streaming} />
       {queue.length > 0 && <MessageQueue items={queue} onMode={onQueueMode} onRemove={onRemoveQueued} />}
       {historyQuery !== null && (
