@@ -81,7 +81,8 @@ jobs:
           yml="dist/latest-mac.yml"
           [ -f "$zip" ] || { echo "No mac zip produced"; exit 1; }
           [ -f "$yml" ] || { echo "No latest-mac.yml produced"; exit 1; }
-          shasum -a 256 "$zip" > "$zip.sha256"
+          # Hash the bare filename so it can be verified from the download directory.
+          (cd "$(dirname "$zip")" && shasum -a 256 "$(basename "$zip")") > "$zip.sha256"
           echo "zip=$zip" >> "$GITHUB_OUTPUT"
           echo "yml=$yml" >> "$GITHUB_OUTPUT"
 
