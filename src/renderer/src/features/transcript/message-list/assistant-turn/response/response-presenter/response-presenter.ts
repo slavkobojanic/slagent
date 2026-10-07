@@ -1,5 +1,5 @@
-import { reaction } from "mobx"
 import type { ChatMessage } from "@shared/types"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { ResponseStore } from "@/features/transcript/message-list/assistant-turn/response/response-store/response-store"
 import { blockStart } from "@/features/transcript/message-list/assistant-turn/response/reveal-timing"
@@ -23,13 +23,14 @@ export class ResponsePresenter {
     private readonly runStore: RunStore,
     private readonly parse: (text: string) => string[],
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
     if (this.disposers.length > 0) {
       return
     }
-    this.disposers.push(reaction(() => this.runStore.messages, this.sync))
+    this.disposers.push(this.log.reaction("messages", () => this.runStore.messages, this.sync))
   }
 
   stop = () => {

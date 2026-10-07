@@ -65,6 +65,7 @@ function areaOf(file) {
     top,
     name,
     vendored,
+    isTest: /\.test\.tsx?$/.test(name),
     rendererSrc: at < 0 ? null : abs.slice(0, at + MARKER.length - 1),
     isCreate: top === "features" && name === "create.tsx",
     isStore: name.endsWith("-store.ts"),
@@ -89,6 +90,7 @@ function check(node, file, area, report) {
     report(node, "no-custom-hooks", `${node.name.text} is a hook; move its state to a store and its effects to a presenter`)
   } else if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
     checkBridge(node, area, report)
+    checkConsole(node, area, report)
   } else if (isLiteral(node)) {
     checkClass(node, area, report)
   }
@@ -214,6 +216,18 @@ function checkBridge(node, area, report) {
     : ts.isStringLiteral(node.argumentExpression) ? node.argumentExpression.text : ""
   if (key === "slagent" && isWindow(node.expression)) {
     report(node, "window-slagent-only-in-ipc", "window.slagent is read only in ipc/; use the services")
+  }
+}
+
+function checkConsole(node, area, report) {
+  if (area.top === "log" || area.vendored || area.isTest || !ts.isPropertyAccessExpression(node)) {
+    return
+  }
+  const target = node.expression
+  const direct = ts.isIdentifier(target) && target.text === "console"
+  const viaWindow = ts.isPropertyAccessExpression(target) && target.name.text === "console" && isWindow(target.expression)
+  if (direct || viaWindow) {
+    report(node, "no-console", `console.${node.name.text}() bypasses the logger; take a log: Log and use it`)
   }
 }
 

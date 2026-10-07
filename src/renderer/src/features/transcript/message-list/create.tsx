@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import { groupMessages } from "@/features/transcript/transcript-blocks"
@@ -23,6 +24,7 @@ export function createMessageList({
   commandRegistry,
   composerPort,
   CommentableResponse,
+  log,
 }: {
   api: API
   window: Window
@@ -33,10 +35,11 @@ export function createMessageList({
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
   CommentableResponse: ComponentType<{ messageId: string; children: ReactNode }>
+  log: Log
 }): ComponentType {
-  const EmptyState = createEmptyState({ api, metaStore, overlayStore })
-  const UserTurn = createUserTurn({ api, runStore, panelPresenter, commandRegistry, composerPort })
-  const AssistantTurn = createAssistantTurn({ window, runStore, panelPresenter, CommentableResponse })
+  const EmptyState = createEmptyState({ api, metaStore, overlayStore, log: log.child("empty-state") })
+  const UserTurn = createUserTurn({ api, runStore, panelPresenter, commandRegistry, composerPort, log: log.child("user-turn") })
+  const AssistantTurn = createAssistantTurn({ window, runStore, panelPresenter, CommentableResponse, log: log.child("assistant-turn") })
 
   return observer(function MessageListHost() {
     return <MessageList blocks={groupMessages(runStore.messages)} EmptyState={EmptyState} UserTurn={UserTurn} AssistantTurn={AssistantTurn} />

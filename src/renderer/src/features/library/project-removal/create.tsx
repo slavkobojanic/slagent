@@ -2,11 +2,12 @@ import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import { ProjectRemoval } from "./project-removal"
 import { ProjectRemovalPresenter } from "./project-removal-presenter/project-removal-presenter"
 
-export function createProjectRemoval({ api, projectRemovalStore }: { api: API; projectRemovalStore: ProjectRemovalStore }): ComponentType {
-  const presenter = new ProjectRemovalPresenter(projectRemovalStore, api)
+export function createProjectRemoval({ api, projectRemovalStore, log }: { api: API; projectRemovalStore: ProjectRemovalStore; log: Log }): ComponentType {
+  const presenter = new ProjectRemovalPresenter(projectRemovalStore, api, log)
 
   return observer(function ProjectRemovalHost() {
     return (

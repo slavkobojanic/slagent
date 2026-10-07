@@ -1,4 +1,5 @@
 import type { ChangesStore } from "@/features/changes/changes-store/changes-store"
+import type { Log } from "@/log/log"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import type { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
@@ -13,6 +14,7 @@ export class ChangesPresenter {
     private readonly panelPresenter: PanelPresenter,
     private readonly layoutPresenter: LayoutPresenter,
     private readonly commandRegistry: CommandRegistry,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -37,22 +39,27 @@ export class ChangesPresenter {
   // Reads the raw tab, as the legacy header toggle did, not the tab on screen.
   handleToggle = () => {
     if (this.panelStore.open && this.panelStore.tab === "changes") {
+      this.log.action("toggle-changes", { open: false })
       this.panelPresenter.setOpen(false)
       return
     }
+    this.log.action("toggle-changes", { open: true })
     this.panelPresenter.selectTab("changes")
     this.panelPresenter.setOpen(true)
   }
 
   handleTab = (tab: RightTab) => {
+    this.log.action("select-tab", { tab })
     this.panelPresenter.selectTab(tab)
   }
 
   handleClose = () => {
+    this.log.action("close-panel")
     this.panelPresenter.setOpen(false)
   }
 
   handleCloseFile = () => {
+    this.log.action("close-file", { path: this.panelStore.viewedFile?.path })
     this.panelStore.setViewedFile(null)
     this.panelPresenter.selectTab("changes")
   }
@@ -62,6 +69,7 @@ export class ChangesPresenter {
   }
 
   handleResizeReset = () => {
+    this.log.action("reset-width")
     this.layoutPresenter.handleResizeReset("diff")
   }
 }

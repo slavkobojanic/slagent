@@ -1,3 +1,4 @@
+import type { Log } from "@/log/log"
 import type { ThemePreference, ThemeStore } from "@/state/theme/theme-store/theme-store"
 
 const STORAGE_KEY = "slagent-theme"
@@ -9,9 +10,11 @@ export class ThemePresenter {
   constructor(
     private readonly store: ThemeStore,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   setPreference = (value: ThemePreference) => {
+    this.log.action("set-preference", { value })
     try {
       this.window.localStorage.setItem(STORAGE_KEY, value)
     } catch {
@@ -51,6 +54,7 @@ export class ThemePresenter {
   }
 
   private handleSystemChange = (event: MediaQueryListEvent) => {
+    this.log.debug("system-change", { dark: event.matches })
     this.store.setSystemDark(event.matches)
     this.apply()
   }

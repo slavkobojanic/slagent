@@ -6,6 +6,7 @@ import { ChatRenameStore } from "@/features/library/sidebar/open-project/chat-li
 import { ChatRowMenuPresenter } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-presenter/chat-row-menu-presenter"
 import { ChatRowMenuStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-store/chat-row-menu-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
@@ -32,7 +33,7 @@ describe("ChatRowMenuPresenter", () => {
     api.pinChat.mockResolvedValue(undefined)
     rename = new ChatRenameStore()
     deletion = new ChatDeletionStore()
-    presenter = new ChatRowMenuPresenter(store, api, window, rename, deletion)
+    presenter = new ChatRowMenuPresenter(store, api, window, rename, deletion, nullLog())
   })
 
   afterEach(() => {

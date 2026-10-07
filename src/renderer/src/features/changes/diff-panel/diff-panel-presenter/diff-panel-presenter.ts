@@ -1,10 +1,10 @@
-import { reaction } from "mobx"
 import { toast } from "sonner"
 import type { DiffComment, DiffScope } from "@shared/types"
 import type { ChangesStore } from "@/features/changes/changes-store/changes-store"
 import type { DiffDraft } from "@/features/changes/diff-panel/diff-draft"
 import type { DiffBusy, DiffPanelStore } from "@/features/changes/diff-panel/diff-panel-store/diff-panel-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import { lineText, parseDiff, type FileDiff } from "@/lib/diff"
 import { errorText } from "@/lib/format"
 import type { RunStore } from "@/mirror/run-store/run-store"
@@ -23,6 +23,7 @@ export class DiffPanelPresenter {
     private readonly panelPresenter: PanelPresenter,
     private readonly reviewPresenter: ReviewPresenter,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -32,7 +33,8 @@ export class DiffPanelPresenter {
     this.started = true
     this.disposers = [
       // A run that ends refreshes the diff, but only while the diff is on screen.
-      reaction(
+      this.log.reaction(
+        "streaming",
         () => this.runStore.streaming,
         (streaming, wasStreaming) => {
           if (wasStreaming && !streaming && this.changesStore.changesShown) {
@@ -41,7 +43,8 @@ export class DiffPanelPresenter {
         },
       ),
       // The diff loads when it comes on screen. While a run is going, the run's end loads it instead.
-      reaction(
+      this.log.reaction(
+        "changes-shown",
         () => this.changesStore.changesShown,
         (shown) => {
           if (shown && !this.runStore.streaming) {
@@ -62,12 +65,20 @@ export class DiffPanelPresenter {
 
   handleRefresh = async () => {
     this.store.setLoading(true)
+    const scope = this.store.scope
     try {
-      const [status, diff] = await Promise.all([this.api.gitStatus(), this.api.gitDiff(this.store.scope)])
-      this.store.setStatus(status)
-      this.store.setFiles(parseDiff(diff))
-      this.dropDraftWithoutFile()
+      await this.log.span(
+        "load-diff",
+        async () => {
+          const [status, diff] = await Promise.all([this.api.gitStatus(), this.api.gitDiff(scope)])
+          this.store.setStatus(status)
+          this.store.setFiles(parseDiff(diff))
+          this.dropDraftWithoutFile()
+        },
+        { scope },
+      )
     } catch (error) {
+      this.log.warn("load-diff-failed", { scope, error })
       toast.error(errorText(error))
     } finally {
       this.store.setLoading(false)
@@ -78,6 +89,7 @@ export class DiffPanelPresenter {
     if (scope === this.store.scope) {
       return
     }
+    this.log.action("select-scope", { scope })
     this.store.setScope(scope)
     if (!this.changesStore.changesShown || this.runStore.streaming) {
       return
@@ -90,6 +102,7 @@ export class DiffPanelPresenter {
   }
 
   handleCommit = () => {
+    this.log.action("commit", { message: this.store.message })
     void this.act("commit", async () => {
       const sha = await this.api.gitCommit(this.store.message)
       this.store.setMessage("")
@@ -105,12 +118,14 @@ export class DiffPanelPresenter {
   }
 
   handleWriteMessage = () => {
+    this.log.action("write-message")
     void this.act("message", async () => {
       this.store.setMessage(await this.api.gitCommitMessage())
     })
   }
 
   handlePush = () => {
+    this.log.action("push")
     void this.act("push", async () => {
       await this.api.gitPush()
       toast.success("Pushed")
@@ -118,6 +133,7 @@ export class DiffPanelPresenter {
   }
 
   handleOpenPr = () => {
+    this.log.action("open-pr")
     void this.act("pr", async () => {
       const url = await this.api.gitPullRequest()
       toast.success("Pull request ready", {
@@ -127,10 +143,12 @@ export class DiffPanelPresenter {
   }
 
   handleStartDraft = (path: string, side: DiffComment["side"], line: number) => {
+    this.log.action("start-draft", { path, side, line })
     this.store.setDraft({ path, side, line })
   }
 
   handleDraftCancel = () => {
+    this.log.action("cancel-draft")
     this.store.setDraft(null)
   }
 
@@ -139,6 +157,7 @@ export class DiffPanelPresenter {
     if (draft === null) {
       return
     }
+    this.log.action("save-draft", { ...draft, text })
     const file = this.store.files.find((item) => item.path === draft.path)
     this.reviewPresenter.addDiffComment({
       id: this.window.crypto.randomUUID(),
@@ -152,10 +171,12 @@ export class DiffPanelPresenter {
   }
 
   handleRemoveComment = (id: string) => {
+    this.log.action("remove-comment", { id })
     this.reviewPresenter.removeDiffComment(id)
   }
 
   handleViewFile = (path: string) => {
+    this.log.action("view-file", { path })
     void this.panelPresenter.openFile(path)
   }
 
@@ -164,6 +185,7 @@ export class DiffPanelPresenter {
     try {
       await task()
     } catch (error) {
+      this.log.warn(`${name}-failed`, { error })
       toast.error(errorText(error))
     } finally {
       this.store.setBusy(null)

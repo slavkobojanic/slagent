@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -32,6 +33,7 @@ export function createChanges({
   reviewPresenter,
   themeStore,
   commandRegistry,
+  log,
 }: {
   api: API
   window: Window
@@ -45,14 +47,15 @@ export function createChanges({
   reviewPresenter: ReviewPresenter
   themeStore: ThemeStore
   commandRegistry: CommandRegistry
+  log: Log
 }): ComponentType {
   const changesStore = new ChangesStore(panelStore, runStore, metaStore)
-  const changesPresenter = new ChangesPresenter(changesStore, panelStore, panelPresenter, layoutPresenter, commandRegistry)
+  const changesPresenter = new ChangesPresenter(changesStore, panelStore, panelPresenter, layoutPresenter, commandRegistry, log)
   changesPresenter.start()
 
   const ChangesTabs = createChangesTabs({ changesStore, changesPresenter })
-  const DiffPanel = createDiffPanel({ api, window, runStore, panelPresenter, reviewStore, reviewPresenter, themeStore, changesStore })
-  const FileViewer = createFileViewer({ api, window, panelStore, themeStore })
+  const DiffPanel = createDiffPanel({ api, window, runStore, panelPresenter, reviewStore, reviewPresenter, themeStore, changesStore, log: log.child("diff-panel") })
+  const FileViewer = createFileViewer({ api, window, panelStore, themeStore, log: log.child("file-viewer") })
   const PlanDocument = createPlanDocument({ changesStore })
 
   return observer(function ChangesHost() {

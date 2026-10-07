@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { toast } from "sonner"
-import { EMPTY_PERSONALISATION, type AppMeta, type ChatSearchResult, type DiffComment, type FileMatch, type SlashCommand } from "@shared/types"
+import { EMPTY_PERSONALISATION, type AppMeta, type ChatMessage, type ChatSearchResult, type DiffComment, type FileMatch, type SlashCommand } from "@shared/types"
 import type { API } from "@/ipc/api"
+import { Log, nullLog, type Clock, type Sink } from "@/log/log"
 import { AttachmentsPresenter } from "@/features/composer/attachments/attachments-presenter/attachments-presenter"
 import { AttachmentsStore } from "@/features/composer/attachments/attachments-store/attachments-store"
 import { ComposerStore } from "@/features/composer/composer-store/composer-store"
@@ -100,15 +101,15 @@ async function flush() {
   }
 }
 
-function harness(meta: AppMeta = openMeta) {
+function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
   const mirror = { library: new LibraryStore(), meta: new MetaStore(), run: new RunStore() }
   mirror.meta.setMeta(meta)
   mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c1" })
   const review = new ReviewStore()
-  const reviewPresenter = new ReviewPresenter(review)
+  const reviewPresenter = new ReviewPresenter(review, nullLog())
   const store = new ComposerStore(mirror.library, mirror.meta, mirror.run)
   const api = createMockInstance<API>(["prompt", "abort", "setPlanMode", "pathForFile"])
-  const attachments = new AttachmentsPresenter(new AttachmentsStore(), api, window)
+  const attachments = new AttachmentsPresenter(new AttachmentsStore(), api, window, nullLog())
   vi.spyOn(attachments, "removeLast")
   vi.spyOn(attachments, "clear")
   vi.spyOn(attachments, "stop")
@@ -119,9 +120,28 @@ function harness(meta: AppMeta = openMeta) {
   const port = new ComposerPort()
   const history = new PromptHistoryStore()
   const suggestions = new SuggestionsStore()
-  const suggestionsPresenter = new SuggestionsPresenter(suggestions, history, api, window)
-  const presenter = new ComposerPresenter(store, new PromptHistoryPresenter(history, window), suggestionsPresenter, attachments, reviewPresenter, api, commands, port, window)
+  const suggestionsPresenter = new SuggestionsPresenter(suggestions, history, api, window, nullLog())
+  const presenter = new ComposerPresenter(store, new PromptHistoryPresenter(history, window, nullLog()), suggestionsPresenter, attachments, reviewPresenter, api, commands, port, window, log)
   return { mirror, review, reviewPresenter, store, history, suggestions, suggestionsPresenter, attachments, api, commands, port, presenter }
+}
+
+// A real logger that prints only timings, on a clock the test moves by hand.
+function timingLog() {
+  const sink = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } satisfies Sink
+  let now = 0
+  const clock = { now: () => now, measure: vi.fn() } satisfies Clock
+  const log = Log.create({ sink, clock, verbose: true, spec: "*:time" }).child("composer")
+  const advance = (ms: number) => {
+    now += ms
+  }
+  const timings = () => sink.debug.mock.calls.map((call) => ({ line: String(call[0]), data: call.at(-1) }))
+  return { log, advance, timings }
+}
+
+const asked: ChatMessage = { id: "u1", role: "user", text: "hi", attachments: [] }
+
+function reply(text: string, id = "a1"): ChatMessage {
+  return { id, role: "assistant", text, thinking: "", streaming: true, error: null }
 }
 
 // Mounts a textarea in the page, as the view does, and returns it.
@@ -494,6 +514,98 @@ describe("ComposerPresenter", () => {
       await flush()
 
       expect(store.text).toBe("")
+    })
+  })
+
+  describe("first-token timing", () => {
+    it("can time a send to the first reply output in the sent chat", async () => {
+      const { log, advance, timings } = timingLog()
+      const { mirror, store, presenter } = harness(openMeta, log)
+      presenter.start()
+      store.setText("hi")
+
+      presenter.handleSubmit({ preventDefault: vi.fn() })
+      await flush()
+      advance(30)
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, reply("")], streaming: true }))
+      advance(10)
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, reply("Hel")], streaming: true }))
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, reply("Hello")], streaming: true }))
+
+      expect(timings()).toEqual([{ line: expect.stringContaining("composer:time %cfirst-token 40ms"), data: { chatId: "c1", replyId: "a1" } }])
+    })
+
+    it("can wait through output from another chat", async () => {
+      const { log, timings } = timingLog()
+      const { mirror, store, presenter } = harness(openMeta, log)
+      presenter.start()
+      store.setText("hi")
+
+      presenter.handleSubmit({ preventDefault: vi.fn() })
+      await flush()
+      mirror.run.setTranscript(transcriptWith({ chatId: "c2", messages: [reply("elsewhere", "a9")] }))
+
+      expect(timings()).toEqual([])
+    })
+
+    it("can end the earlier timer as superseded when a new send comes before its first token", async () => {
+      const { log, timings } = timingLog()
+      const { mirror, store, presenter } = harness(openMeta, log)
+      presenter.start()
+      store.setText("one")
+      presenter.handleSubmit({ preventDefault: vi.fn() })
+      await flush()
+
+      store.setText("two")
+      presenter.handleSubmit({ preventDefault: vi.fn() })
+      await flush()
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, reply("Hello")], streaming: true }))
+
+      expect(timings().map((timing) => timing.data)).toEqual([
+        { chatId: "c1", superseded: true },
+        { chatId: "c1", replyId: "a1" },
+      ])
+    })
+
+    it("can end the timer as failed when the send is refused", async () => {
+      const { log, timings } = timingLog()
+      const { store, api, presenter } = harness(openMeta, log)
+      api.prompt.mockRejectedValue(new Error("boom"))
+      presenter.start()
+      store.setText("hi")
+
+      presenter.handleSubmit({ preventDefault: vi.fn() })
+      await flush()
+
+      expect(timings().map((timing) => timing.data)).toEqual([{ chatId: "c1", failed: true }])
+    })
+
+    it("can skip timing a prompt sent while a run streams", async () => {
+      const { log, timings } = timingLog()
+      const { mirror, store, presenter } = harness(openMeta, log)
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, reply("Hel")], streaming: true }))
+      presenter.start()
+      store.setText("and then")
+
+      presenter.handleSubmit({ preventDefault: vi.fn() })
+      await flush()
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, reply("Hello"), { id: "t1", role: "tool", name: "read", label: "read", args: "", output: "", images: [], running: true, isError: false }], streaming: true }))
+
+      expect(timings()).toEqual([])
+    })
+
+    it("can stop waiting when the presenter stops", async () => {
+      const { log, timings } = timingLog()
+      const { mirror, store, presenter } = harness(openMeta, log)
+      presenter.start()
+      store.setText("hi")
+      presenter.handleSubmit({ preventDefault: vi.fn() })
+      await flush()
+
+      presenter.stop()
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, reply("Hello")], streaming: true }))
+
+      expect(timings()).toEqual([])
     })
   })
 

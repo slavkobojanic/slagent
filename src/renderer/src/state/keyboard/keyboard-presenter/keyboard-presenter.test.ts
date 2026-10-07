@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { CommandRegistry, type Command } from "@/state/keyboard/command-registry/command-registry"
 import { KeyboardPresenter } from "@/state/keyboard/keyboard-presenter/keyboard-presenter"
 import { PermissionsStore } from "@/state/permissions/permissions-store/permissions-store"
+import { nullLog } from "@/log/log"
 
 function command(id: string, overrides: Partial<Command> = {}): Command {
   return { id, label: id, group: "Actions", run: vi.fn(), ...overrides }
@@ -20,7 +21,7 @@ describe("KeyboardPresenter", () => {
     registry = new CommandRegistry()
     permissions = new PermissionsStore("darwin")
     permissions.setPermissions({ accessibility: true, screenRecording: true, error: null })
-    presenter = new KeyboardPresenter(registry, window, permissions)
+    presenter = new KeyboardPresenter(registry, window, permissions, nullLog())
   })
 
   afterEach(() => {

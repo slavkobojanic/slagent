@@ -3,6 +3,7 @@ import { EMPTY_PERSONALISATION, type AppMeta, type McpServerStatus } from "@shar
 import { McpSettingsPresenter } from "@/features/settings/mcp-settings/mcp-settings-presenter/mcp-settings-presenter"
 import { McpSettingsStore } from "@/features/settings/mcp-settings/mcp-settings-store/mcp-settings-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { McpStore } from "@/state/mcp/mcp-store/mcp-store"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
@@ -46,7 +47,7 @@ function setup() {
   const servers = new McpStore()
   const overlay = new OverlayStore()
   const meta = new MetaStore()
-  const presenter = new McpSettingsPresenter(store, api, servers, overlay, meta)
+  const presenter = new McpSettingsPresenter(store, api, servers, overlay, meta, nullLog())
   return { api, store, servers, overlay, meta, presenter }
 }
 

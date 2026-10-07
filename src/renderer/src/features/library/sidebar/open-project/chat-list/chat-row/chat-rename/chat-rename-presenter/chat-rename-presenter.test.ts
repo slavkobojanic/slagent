@@ -3,6 +3,7 @@ import type { ChatSummary } from "@shared/types"
 import { ChatRenamePresenter } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-rename/chat-rename-presenter/chat-rename-presenter"
 import { ChatRenameStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-rename/chat-rename-store/chat-rename-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
@@ -20,7 +21,7 @@ describe("ChatRenamePresenter", () => {
     store = new ChatRenameStore()
     api = createMockInstance<API>(["renameChat"])
     api.renameChat.mockResolvedValue(undefined)
-    presenter = new ChatRenamePresenter(store, api)
+    presenter = new ChatRenamePresenter(store, api, nullLog())
   })
 
   describe("handleSave", () => {

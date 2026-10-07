@@ -8,6 +8,7 @@ import { RunStore } from "@/mirror/run-store/run-store"
 import { ComposerPort } from "@/state/composer-port/composer-port"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import { createMockInstance } from "@/test/create-mock-instance"
+import { nullLog } from "@/log/log"
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
@@ -53,7 +54,7 @@ function setup() {
   const composer = new ComposerPort()
   vi.spyOn(composer, "fill")
   const commands = new CommandRegistry()
-  const presenter = new UserTurnPresenter(store, run, api, composer, commands)
+  const presenter = new UserTurnPresenter(store, run, api, composer, commands, nullLog())
   return { run, store, api, composer, commands, presenter }
 }
 

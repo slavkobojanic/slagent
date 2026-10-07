@@ -1,5 +1,5 @@
-import { reaction } from "mobx"
 import type { ReplyComment } from "@shared/types"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
 import type { ReviewStore } from "@/state/review/review-store/review-store"
@@ -40,6 +40,7 @@ export class CommentableResponsePresenter {
     private readonly reviewPresenter: ReviewPresenter,
     private readonly runStore: RunStore,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -48,7 +49,7 @@ export class CommentableResponsePresenter {
     }
     this.started = true
     this.window.document.addEventListener("selectionchange", this.handleSelectionChange)
-    this.disposers.push(reaction(() => this.runStore.transcriptChatId, this.reset))
+    this.disposers.push(this.log.reaction("transcript-chat-id", () => this.runStore.transcriptChatId, this.reset))
   }
 
   stop = () => {
@@ -136,10 +137,12 @@ export class CommentableResponsePresenter {
   }
 
   handleCardOpenChange = (unit: CommentUnit, open: boolean) => {
+    this.log.action("card-open", { key: unit.key, open })
     this.store.setCardOpen(unit.key, open)
   }
 
   handleGutter = (unit: CommentUnit) => {
+    this.log.action("comment-block", { messageId: unit.messageId, key: unit.key })
     this.store.setDraft(unit.key, { quote: unit.block })
   }
 
@@ -148,17 +151,20 @@ export class CommentableResponsePresenter {
     if (pending === null) {
       return
     }
+    this.log.action("comment-selection", { messageId: unit.messageId, key: unit.key, quote: pending.quote })
     this.store.setDraft(unit.key, { quote: pending.quote, at: pending.at })
     this.store.setPending(unit.key, null)
     this.window.getSelection()?.removeAllRanges()
   }
 
   handleEdit = (unit: CommentUnit, comment: ReplyComment) => {
+    this.log.action("edit-comment", { commentId: comment.id })
     this.closeCard(unit.key)
     this.store.setDraft(unit.key, { id: comment.id, quote: comment.quote, at: comment.at })
   }
 
   handleDelete = (unit: CommentUnit, id: string) => {
+    this.log.action("delete-comment", { commentId: id })
     this.closeCard(unit.key)
     this.reviewPresenter.removeReplyComment(id)
   }
@@ -168,6 +174,7 @@ export class CommentableResponsePresenter {
     if (draft === null) {
       return
     }
+    this.log.action("save-comment", { messageId: unit.messageId, commentId: draft.id, text })
     if (draft.id) {
       this.reviewPresenter.editReplyComment(draft.id, text)
     } else {
@@ -187,6 +194,7 @@ export class CommentableResponsePresenter {
   }
 
   handleCancel = (unit: CommentUnit) => {
+    this.log.action("cancel-comment", { key: unit.key })
     this.store.setDraft(unit.key, null)
   }
 

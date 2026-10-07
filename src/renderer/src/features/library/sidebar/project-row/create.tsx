@@ -3,6 +3,7 @@ import type { ChatStatus, ProjectSummary } from "@shared/types"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import type { API } from "@/ipc/api"
 import { modKey } from "@/lib/format"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -25,6 +26,7 @@ export function createProjectRow({
   composerPort,
   commandRegistry,
   projectRemovalStore,
+  log,
 }: {
   api: API
   window: Window
@@ -32,8 +34,9 @@ export function createProjectRow({
   composerPort: ComposerPort
   commandRegistry: CommandRegistry
   projectRemovalStore: ProjectRemovalStore
+  log: Log
 }): ComponentType<ProjectRowHostProps> {
-  const presenter = new ProjectRowPresenter(api, window, libraryStore, composerPort, commandRegistry, projectRemovalStore)
+  const presenter = new ProjectRowPresenter(api, window, libraryStore, composerPort, commandRegistry, projectRemovalStore, log)
   presenter.start()
   const mod = modKey(api.platform)
 

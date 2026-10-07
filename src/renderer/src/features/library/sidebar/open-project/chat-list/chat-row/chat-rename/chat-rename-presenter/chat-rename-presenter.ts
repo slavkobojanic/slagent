@@ -2,11 +2,13 @@ import type { ChatSummary } from "@shared/types"
 import type { ChatRenameStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-rename/chat-rename-store/chat-rename-store"
 import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 
 export class ChatRenamePresenter {
   constructor(
     private readonly store: ChatRenameStore,
     private readonly api: API,
+    private readonly log: Log,
   ) {}
 
   handleDraftChange = (value: string) => {
@@ -24,10 +26,12 @@ export class ChatRenamePresenter {
     if (title === "") {
       return
     }
+    this.log.action("rename-chat", { chatId: chat.id, title })
     void toastFailure(() => this.api.renameChat(chat.id, title))
   }
 
   handleCancel = () => {
+    this.log.action("cancel-rename")
     this.store.endRename()
   }
 }

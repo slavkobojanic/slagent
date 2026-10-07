@@ -5,7 +5,14 @@ import { NavHistoryStore } from "@/features/library/nav-history/nav-history-stor
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { ComposerPort } from "@/state/composer-port/composer-port"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
+import { RunStore } from "@/mirror/run-store/run-store"
+import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { PanelStore } from "@/state/panel/panel-store/panel-store"
+import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewStore } from "@/state/review/review-store/review-store"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 function chat(id: string): ChatSummary {
@@ -35,7 +42,15 @@ describe("NavHistoryPresenter", () => {
     composer = new ComposerPort()
     vi.spyOn(composer, "focus")
     registry = new CommandRegistry()
-    presenter = new NavHistoryPresenter(store, api, window, mirror, composer, registry)
+    const chatSwitch = new ChatSwitchPresenter(
+      new LibraryStore(),
+      new RunStore(),
+      api,
+      new PanelPresenter(new PanelStore(), api, nullLog()),
+      new ReviewPresenter(new ReviewStore(), nullLog()),
+      nullLog(),
+    )
+    presenter = new NavHistoryPresenter(store, api, window, mirror, composer, registry, chatSwitch, nullLog())
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(0)
       return 0

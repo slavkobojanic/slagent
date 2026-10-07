@@ -2,6 +2,7 @@ import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { UserMessage } from "@shared/types"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -17,15 +18,17 @@ export function createUserTurn({
   panelPresenter,
   commandRegistry,
   composerPort,
+  log,
 }: {
   api: API
   runStore: RunStore
   panelPresenter: PanelPresenter
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
+  log: Log
 }): ComponentType<{ message: UserMessage }> {
   const store = new UserTurnStore()
-  const presenter = new UserTurnPresenter(store, runStore, api, composerPort, commandRegistry)
+  const presenter = new UserTurnPresenter(store, runStore, api, composerPort, commandRegistry, log)
   presenter.start()
 
   const EditRow = createEditRow({ userTurnStore: store, userTurnPresenter: presenter })

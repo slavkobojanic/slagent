@@ -2,7 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ChatSearchResult } from "@shared/types"
 import { ChatSearchPresenter } from "@/features/library/sidebar/chat-search/chat-search-presenter/chat-search-presenter"
 import { ChatSearchStore } from "@/features/library/sidebar/chat-search/chat-search-store/chat-search-store"
+import { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
+import { LibraryStore } from "@/mirror/library-store/library-store"
+import { RunStore } from "@/mirror/run-store/run-store"
+import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { PanelStore } from "@/state/panel/panel-store/panel-store"
+import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewStore } from "@/state/review/review-store/review-store"
 import { JumpPort } from "@/state/jump-port/jump-port"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
@@ -35,14 +43,22 @@ describe("ChatSearchPresenter", () => {
     api.searchChats.mockResolvedValue([])
     jump = new JumpPort()
     vi.spyOn(jump, "request")
-    layout = new LayoutPresenter(new LayoutStore(), window)
+    layout = new LayoutPresenter(new LayoutStore(), window, nullLog())
     vi.spyOn(layout, "setSidebarOpen")
     registry = new CommandRegistry()
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(0)
       return 0
     })
-    presenter = new ChatSearchPresenter(store, api, window, jump, layout, registry)
+    const chatSwitch = new ChatSwitchPresenter(
+      new LibraryStore(),
+      new RunStore(),
+      api,
+      new PanelPresenter(new PanelStore(), api, nullLog()),
+      new ReviewPresenter(new ReviewStore(), nullLog()),
+      nullLog(),
+    )
+    presenter = new ChatSearchPresenter(store, api, window, jump, layout, registry, chatSwitch, nullLog())
   })
 
   afterEach(() => {

@@ -1,6 +1,7 @@
 import { toast } from "sonner"
 import type { PromptFile } from "@shared/types"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { AttachmentsStore, ComposerAttachment } from "@/features/composer/attachments/attachments-store/attachments-store"
 import { base64FromDataUrl } from "@/features/composer/attachments/data-url"
 
@@ -22,6 +23,7 @@ export class AttachmentsPresenter {
     private readonly store: AttachmentsStore,
     private readonly api: API,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   attachFileInput = (element: HTMLInputElement | null) => {
@@ -29,13 +31,16 @@ export class AttachmentsPresenter {
   }
 
   openFileDialog = () => {
+    this.log.action("open-file-dialog")
     this.fileInput?.click()
   }
 
   handleFileChange = (event: FileInputChange) => {
     const input = event.currentTarget
     if (input.files !== null) {
-      this.add([...input.files])
+      const picked = [...input.files]
+      this.log.action("pick-files", { names: picked.map((file) => file.name) })
+      this.add(picked)
     }
     // Reset the input so the same file can be picked again after it was removed.
     input.value = ""
@@ -55,6 +60,7 @@ export class AttachmentsPresenter {
     if (dropped.length === 0) {
       return
     }
+    this.log.action("drop-files", { names: dropped.map((file) => file.name) })
     this.add(dropped)
   }
 
@@ -77,10 +83,12 @@ export class AttachmentsPresenter {
       return
     }
     event.preventDefault()
+    this.log.action("paste-files", { names: pasted.map((file) => file.name) })
     this.add(pasted)
   }
 
   remove = (id: string) => {
+    this.log.action("remove-attachment", { id })
     for (const item of this.store.items) {
       if (item.id === id) {
         this.window.URL.revokeObjectURL(item.url)

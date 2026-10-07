@@ -4,12 +4,14 @@ import { makeFile, makeStatus, makeTranscript, SAMPLE_DIFF } from "@/features/ch
 import { ChangesStore } from "@/features/changes/changes-store/changes-store"
 import { DiffPanelStore } from "@/features/changes/diff-panel/diff-panel-store/diff-panel-store"
 import type { API } from "@/ipc/api"
+import { Log, nullLog, type Sink } from "@/log/log"
 import { parseDiff } from "@/lib/diff"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { RunStore } from "@/mirror/run-store/run-store"
 import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
-import type { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewStore } from "@/state/review/review-store/review-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 import { DiffPanelPresenter } from "./diff-panel-presenter"
 
@@ -17,17 +19,19 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
 
-function setup() {
+function setup(log: Log = nullLog()) {
   const panel = new PanelStore()
   const run = new RunStore()
   const changesStore = new ChangesStore(panel, run, new MetaStore())
   const store = new DiffPanelStore()
   const api = createMockInstance<API>(["gitStatus", "gitDiff", "gitCommit", "gitPush", "gitPullRequest", "gitCommitMessage", "openExternal"])
-  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]))
+  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), nullLog())
   vi.spyOn(panelPresenter, "openFile").mockResolvedValue(undefined)
-  const review = createMockInstance<ReviewPresenter>(["addDiffComment", "removeDiffComment"])
+  const review = new ReviewPresenter(new ReviewStore(), nullLog())
+  vi.spyOn(review, "addDiffComment")
+  vi.spyOn(review, "removeDiffComment")
   const newId = vi.spyOn(window.crypto, "randomUUID").mockReturnValue("comment-1-0000-0000-0000-000000000000")
-  const presenter = new DiffPanelPresenter(store, changesStore, run, api, panelPresenter, review, window)
+  const presenter = new DiffPanelPresenter(store, changesStore, run, api, panelPresenter, review, window, log)
   api.gitStatus.mockResolvedValue(makeStatus())
   api.gitDiff.mockResolvedValue(SAMPLE_DIFF)
   return { panel, run, store, api, panelPresenter, review, newId, presenter }
@@ -141,6 +145,23 @@ describe("DiffPanelPresenter", () => {
       expect(api.gitDiff).toHaveBeenCalledWith("turn")
       expect(store.status?.branch).toBe("main")
       expect(store.files.map((file) => file.path)).toEqual(["src/app.ts"])
+    })
+
+    it("can time the load from the git calls until the diff is stored", async () => {
+      const sink = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } satisfies Sink
+      let now = 0
+      const log = Log.create({ sink, clock: { now: () => now, measure: vi.fn() }, verbose: true, spec: "*:time" }).child("changes")
+      const { store, api, presenter } = setup(log)
+      store.setScope("turn")
+      api.gitDiff.mockImplementation(async () => {
+        now += 25
+        return SAMPLE_DIFF
+      })
+
+      await presenter.handleRefresh()
+
+      expect(String(sink.debug.mock.calls[0][0])).toContain("time %cload-diff 25ms")
+      expect(sink.debug.mock.calls[0].at(-1)).toEqual({ scope: "turn", ok: true })
     })
 
     it("can report a failed git call and keep the last status and diff", async () => {

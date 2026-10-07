@@ -12,6 +12,7 @@ import { createSettings } from "@/features/settings/create"
 import { createShell } from "@/features/shell/create"
 import { createTranscript } from "@/features/transcript/create"
 import { API } from "@/ipc/api"
+import { createLog } from "@/log/log"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { MirrorPresenter } from "@/mirror/mirror-presenter/mirror-presenter"
@@ -24,6 +25,7 @@ import { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presente
 import { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import { LinkPresenter } from "@/state/link/link-presenter/link-presenter"
 import { McpStore } from "@/state/mcp/mcp-store/mcp-store"
+import { NavLogPresenter } from "@/state/nav-log/nav-log-presenter/nav-log-presenter"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
@@ -42,34 +44,38 @@ const TOAST_OPTIONS = {
 }
 
 export function createApp(): ComponentType {
-  const api = API.fromWindow(window)
+  const log = createLog({ window, dev: import.meta.env.DEV })
+  const api = API.fromWindow(window, log.child("ipc"))
   if (api === null) {
+    log.error("bridge-missing")
     return BridgeMissing
   }
 
   const libraryStore = new LibraryStore()
   const metaStore = new MetaStore()
   const runStore = new RunStore()
-  const mirrorPresenter = new MirrorPresenter(api, libraryStore, metaStore, runStore)
+  const mirrorPresenter = new MirrorPresenter(api, libraryStore, metaStore, runStore, log.child("mirror"))
 
   const layoutStore = new LayoutStore()
-  const layoutPresenter = new LayoutPresenter(layoutStore, window)
+  const layoutPresenter = new LayoutPresenter(layoutStore, window, log.child("layout"))
   const overlayStore = new OverlayStore()
   const panelStore = new PanelStore()
-  const panelPresenter = new PanelPresenter(panelStore, api)
+  const panelPresenter = new PanelPresenter(panelStore, api, log.child("panel"))
   const themeStore = new ThemeStore()
-  const themePresenter = new ThemePresenter(themeStore, window)
+  const themePresenter = new ThemePresenter(themeStore, window, log.child("theme"))
   const permissionsStore = new PermissionsStore(api.platform)
   const reviewStore = new ReviewStore()
-  const reviewPresenter = new ReviewPresenter(reviewStore)
+  const reviewPresenter = new ReviewPresenter(reviewStore, log.child("review"))
   const mcpStore = new McpStore()
   const commandRegistry = new CommandRegistry()
-  const keyboardPresenter = new KeyboardPresenter(commandRegistry, window, permissionsStore)
-  const linkPresenter = new LinkPresenter(window, panelPresenter, api)
+  const keyboardPresenter = new KeyboardPresenter(commandRegistry, window, permissionsStore, log.child("keyboard"))
+  const linkPresenter = new LinkPresenter(window, panelPresenter, api, log.child("link"))
   const composerPort = new ComposerPort()
   const jumpPort = new JumpPort()
+  const navLogPresenter = new NavLogPresenter(libraryStore, panelStore, overlayStore, log.child("nav"))
 
   const Transcript = createTranscript({
+    log: log.child("transcript"),
     api,
     window,
     metaStore,
@@ -84,6 +90,7 @@ export function createApp(): ComponentType {
     jumpPort,
   })
   const Composer = createComposer({
+    log: log.child("composer"),
     api,
     window,
     libraryStore,
@@ -95,6 +102,7 @@ export function createApp(): ComponentType {
     composerPort,
   })
   const Changes = createChanges({
+    log: log.child("changes"),
     api,
     window,
     metaStore,
@@ -109,6 +117,7 @@ export function createApp(): ComponentType {
     commandRegistry,
   })
   const Library = createLibrary({
+    log: log.child("library"),
     api,
     window,
     libraryStore,
@@ -124,6 +133,7 @@ export function createApp(): ComponentType {
     jumpPort,
   })
   const Settings = createSettings({
+    log: log.child("settings"),
     api,
     metaStore,
     overlayStore,
@@ -133,6 +143,7 @@ export function createApp(): ComponentType {
     commandRegistry,
   })
   const Models = createModels({
+    log: log.child("models"),
     api,
     metaStore,
     runStore,
@@ -140,7 +151,7 @@ export function createApp(): ComponentType {
     commandRegistry,
     composerPort,
   })
-  const PermissionsWizard = createPermissionsWizard({ api, window, permissionsStore })
+  const PermissionsWizard = createPermissionsWizard({ log: log.child("permissions-wizard"), api, window, permissionsStore })
   const Shell = createShell({
     Library,
     Settings,
@@ -148,6 +159,7 @@ export function createApp(): ComponentType {
     Transcript,
     Composer,
     Changes,
+    log: log.child("shell"),
     api,
     libraryStore,
     metaStore,
@@ -162,6 +174,7 @@ export function createApp(): ComponentType {
     commandRegistry,
   })
 
+  navLogPresenter.start()
   mirrorPresenter.start()
   layoutPresenter.start()
   keyboardPresenter.start()

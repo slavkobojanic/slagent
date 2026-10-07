@@ -2,6 +2,7 @@ import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { ChangesStore } from "@/features/changes/changes-store/changes-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import type { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
@@ -22,6 +23,7 @@ export function createDiffPanel({
   reviewPresenter,
   themeStore,
   changesStore,
+  log,
 }: {
   api: API
   window: Window
@@ -31,9 +33,10 @@ export function createDiffPanel({
   reviewPresenter: ReviewPresenter
   themeStore: ThemeStore
   changesStore: ChangesStore
+  log: Log
 }): ComponentType {
   const diffPanelStore = new DiffPanelStore()
-  const diffPanelPresenter = new DiffPanelPresenter(diffPanelStore, changesStore, runStore, api, panelPresenter, reviewPresenter, window)
+  const diffPanelPresenter = new DiffPanelPresenter(diffPanelStore, changesStore, runStore, api, panelPresenter, reviewPresenter, window, log)
   diffPanelPresenter.start()
 
   const DiffFiles = createDiffFiles({ diffPanelStore, diffPanelPresenter, reviewStore, themeStore })

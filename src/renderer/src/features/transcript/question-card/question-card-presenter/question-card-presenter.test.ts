@@ -5,6 +5,7 @@ import { QuestionCardPresenter } from "@/features/transcript/question-card/quest
 import { QuestionCardStore } from "@/features/transcript/question-card/question-card-store/question-card-store"
 import { RunStore, type RunTranscript } from "@/mirror/run-store/run-store"
 import { createMockInstance } from "@/test/create-mock-instance"
+import { nullLog } from "@/log/log"
 
 const single: Question = {
   id: "a",
@@ -60,7 +61,7 @@ describe("QuestionCardPresenter", () => {
     const run = new RunStore()
     run.setTranscript(transcript(request))
     const store = new QuestionCardStore()
-    const presenter = new QuestionCardPresenter(store, run, api, window)
+    const presenter = new QuestionCardPresenter(store, run, api, window, nullLog())
     presenters.push(presenter)
     return { api, run, store, presenter }
   }

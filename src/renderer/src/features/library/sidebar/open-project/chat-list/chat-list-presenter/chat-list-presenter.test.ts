@@ -2,7 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ChatSummary, LibraryState } from "@shared/types"
 import { ChatListPresenter } from "@/features/library/sidebar/open-project/chat-list/chat-list-presenter/chat-list-presenter"
 import { ChatListStore } from "@/features/library/sidebar/open-project/chat-list/chat-list-store/chat-list-store"
+import { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
+import { RunStore } from "@/mirror/run-store/run-store"
+import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { PanelStore } from "@/state/panel/panel-store/panel-store"
+import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewStore } from "@/state/review/review-store/review-store"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { ComposerPort } from "@/state/composer-port/composer-port"
 import { CommandRegistry, type Command } from "@/state/keyboard/command-registry/command-registry"
@@ -69,7 +76,15 @@ describe("ChatListPresenter", () => {
       callback(0)
       return 0
     })
-    presenter = new ChatListPresenter(store, libraryStore, api, window, composer, registry)
+    const chatSwitch = new ChatSwitchPresenter(
+      new LibraryStore(),
+      new RunStore(),
+      api,
+      new PanelPresenter(new PanelStore(), api, nullLog()),
+      new ReviewPresenter(new ReviewStore(), nullLog()),
+      nullLog(),
+    )
+    presenter = new ChatListPresenter(store, libraryStore, window, composer, registry, chatSwitch, nullLog())
   })
 
   afterEach(() => {

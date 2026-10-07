@@ -6,6 +6,7 @@ import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { RunStore } from "@/mirror/run-store/run-store"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
 import { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
@@ -16,14 +17,14 @@ function setup() {
   const panel = new PanelStore()
   const meta = new MetaStore()
   const store = new ChangesStore(panel, new RunStore(), meta)
-  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]))
+  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), nullLog())
   vi.spyOn(panelPresenter, "selectTab")
   vi.spyOn(panelPresenter, "setOpen")
-  const layout = new LayoutPresenter(new LayoutStore(), window)
+  const layout = new LayoutPresenter(new LayoutStore(), window, nullLog())
   vi.spyOn(layout, "handleResizeStart").mockImplementation(() => undefined)
   vi.spyOn(layout, "handleResizeReset").mockImplementation(() => undefined)
   const commands = new CommandRegistry()
-  const presenter = new ChangesPresenter(store, panel, panelPresenter, layout, commands)
+  const presenter = new ChangesPresenter(store, panel, panelPresenter, layout, commands, nullLog())
   return { panel, meta, panelPresenter, layout, commands, presenter }
 }
 

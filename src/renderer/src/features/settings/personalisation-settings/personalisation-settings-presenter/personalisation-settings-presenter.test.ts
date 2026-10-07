@@ -5,6 +5,7 @@ import { PersonalisationSettingsPresenter } from "@/features/settings/personalis
 import { PersonalisationSettingsStore } from "@/features/settings/personalisation-settings/personalisation-settings-store/personalisation-settings-store"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { createMockInstance } from "@/test/create-mock-instance"
@@ -36,7 +37,7 @@ function setup() {
   const overlay = new OverlayStore()
   const tabs = new SettingsStore()
   const store = new PersonalisationSettingsStore()
-  const presenter = new PersonalisationSettingsPresenter(store, api, meta, overlay, tabs)
+  const presenter = new PersonalisationSettingsPresenter(store, api, meta, overlay, tabs, nullLog())
   return { api, meta, overlay, tabs, store, presenter }
 }
 

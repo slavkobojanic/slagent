@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite"
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { PersonalisationSettings } from "./personalisation-settings"
@@ -13,11 +14,13 @@ export function createPersonalisationSettings({
   metaStore,
   overlayStore,
   settingsStore,
+  log,
 }: {
   api: API
   metaStore: MetaStore
   overlayStore: OverlayStore
   settingsStore: SettingsStore
+  log: Log
 }) {
   const personalisationSettingsStore = new PersonalisationSettingsStore()
   const personalisationSettingsPresenter = new PersonalisationSettingsPresenter(
@@ -26,6 +29,7 @@ export function createPersonalisationSettings({
     metaStore,
     overlayStore,
     settingsStore,
+    log,
   )
   personalisationSettingsPresenter.start()
 

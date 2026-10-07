@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { type HistoryKeyEvent, PromptHistoryPresenter } from "@/features/composer/prompt-history/prompt-history-presenter/prompt-history-presenter"
+import { nullLog } from "@/log/log"
 import { PromptHistoryStore } from "@/features/composer/prompt-history/prompt-history-store/prompt-history-store"
 
 const STORAGE_KEY = "slagent:prompt-history"
@@ -11,7 +12,7 @@ function keyEvent(key: string, init: { shiftKey?: boolean; ctrlKey?: boolean } =
 function setup(items: string[] = []) {
   const store = new PromptHistoryStore()
   store.replace(items)
-  const presenter = new PromptHistoryPresenter(store, window)
+  const presenter = new PromptHistoryPresenter(store, window, nullLog())
   return { store, presenter }
 }
 

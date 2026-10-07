@@ -5,6 +5,7 @@ import { CliSettingsPresenter } from "@/features/settings/cli-settings/cli-setti
 import { CliSettingsStore } from "@/features/settings/cli-settings/cli-settings-store/cli-settings-store"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 
@@ -20,7 +21,7 @@ function setup() {
   const store = new CliSettingsStore()
   const overlay = new OverlayStore()
   const tabs = new SettingsStore()
-  const presenter = new CliSettingsPresenter(store, api, overlay, tabs)
+  const presenter = new CliSettingsPresenter(store, api, overlay, tabs, nullLog())
   return { api, store, overlay, tabs, presenter }
 }
 

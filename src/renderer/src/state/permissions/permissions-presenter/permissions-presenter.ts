@@ -1,4 +1,5 @@
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import { errorText } from "@/lib/format"
 import type { PermissionsStore } from "@/state/permissions/permissions-store/permissions-store"
 
@@ -13,6 +14,7 @@ export class PermissionsPresenter {
     private readonly api: API,
     private readonly platform: string,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -38,12 +40,14 @@ export class PermissionsPresenter {
       }
       this.store.setPermissions(next)
       if (next.accessibility && next.screenRecording) {
+        this.log.debug("granted", next)
         this.clearTimer()
       }
     } catch (error) {
       if (!this.running) {
         return
       }
+      this.log.warn("refresh-failed", { error })
       this.store.setPermissions({ accessibility: false, screenRecording: false, error: errorText(error) })
     }
   }

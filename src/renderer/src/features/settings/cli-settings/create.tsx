@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite"
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { CliSettings } from "./cli-settings"
 import { CliSettingsPresenter } from "./cli-settings-presenter/cli-settings-presenter"
@@ -12,13 +13,15 @@ export function createCliSettings({
   api,
   overlayStore,
   settingsStore,
+  log,
 }: {
   api: API
   overlayStore: OverlayStore
   settingsStore: SettingsStore
+  log: Log
 }) {
   const cliSettingsStore = new CliSettingsStore()
-  const cliSettingsPresenter = new CliSettingsPresenter(cliSettingsStore, api, overlayStore, settingsStore)
+  const cliSettingsPresenter = new CliSettingsPresenter(cliSettingsStore, api, overlayStore, settingsStore, log)
   cliSettingsPresenter.start()
 
   const InstallCommand = createInstallCommand({ cliSettingsStore, cliSettingsPresenter })

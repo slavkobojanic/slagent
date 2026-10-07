@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite"
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { createKeyActions } from "./key-actions/create"
@@ -15,14 +16,16 @@ export function createOpenRouterKey({
   metaStore,
   overlayStore,
   settingsStore,
+  log,
 }: {
   api: API
   metaStore: MetaStore
   overlayStore: OverlayStore
   settingsStore: SettingsStore
+  log: Log
 }) {
   const openRouterKeyStore = new OpenRouterKeyStore()
-  const openRouterKeyPresenter = new OpenRouterKeyPresenter(openRouterKeyStore, api, overlayStore, settingsStore)
+  const openRouterKeyPresenter = new OpenRouterKeyPresenter(openRouterKeyStore, api, overlayStore, settingsStore, log)
   openRouterKeyPresenter.start()
 
   const KeyField = createKeyField({ metaStore, openRouterKeyStore, openRouterKeyPresenter })

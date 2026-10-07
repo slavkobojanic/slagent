@@ -1,3 +1,4 @@
+import type { Log } from "@/log/log"
 import { LAYOUT_EDGES, type LayoutStore, type ResizeEdge } from "@/state/layout/layout-store/layout-store"
 
 type PressEvent = Pick<PointerEvent, "button" | "clientX" | "preventDefault">
@@ -9,6 +10,7 @@ export class LayoutPresenter {
   constructor(
     private readonly store: LayoutStore,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -31,10 +33,12 @@ export class LayoutPresenter {
   }
 
   toggleSidebar = () => {
+    this.log.action("toggle-sidebar", { open: !this.store.sidebarOpen })
     this.store.setSidebarOpen(!this.store.sidebarOpen)
   }
 
   setSidebarOpen = (open: boolean) => {
+    this.log.action("set-sidebar-open", { open })
     this.store.setSidebarOpen(open)
   }
 
@@ -67,6 +71,7 @@ export class LayoutPresenter {
   }
 
   handleResizeReset = (edge: ResizeEdge) => {
+    this.log.action("reset-width", { edge })
     this.store.setWidth(edge, this.clamp(edge, LAYOUT_EDGES[edge].fallback))
     try {
       this.window.localStorage.removeItem(LAYOUT_EDGES[edge].storageKey)
@@ -85,6 +90,7 @@ export class LayoutPresenter {
     this.window.document.body.classList.remove("resizing")
     this.store.setResizing(null)
     this.persist(edge)
+    this.log.action("resize", { edge, width: edge === "sidebar" ? this.store.sidebarWidth : this.store.diffWidth })
   }
 
   private restore = (edge: ResizeEdge) => {

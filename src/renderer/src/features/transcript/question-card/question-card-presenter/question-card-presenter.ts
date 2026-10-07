@@ -1,8 +1,8 @@
-import { reaction } from "mobx"
 import type { QuestionAnswer, QuestionReply, QuestionRequest } from "@shared/types"
 import type { API } from "@/ipc/api"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import { errorText } from "@/lib/format"
+import type { Log } from "@/log/log"
 import { parseFrameReport } from "@/features/transcript/question-card/frame-document"
 import type { QuestionKeyPress } from "@/features/transcript/question-card/question-keys"
 import { emptyDraft, type QuestionDraft, type QuestionCardStore } from "@/features/transcript/question-card/question-card-store/question-card-store"
@@ -20,13 +20,14 @@ export class QuestionCardPresenter {
     private readonly runStore: RunStore,
     private readonly api: API,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
     if (this.stopListening !== null) {
       return
     }
-    const stopRequest = reaction(() => this.runStore.question, this.handleRequest, { fireImmediately: true })
+    const stopRequest = this.log.reaction("question", () => this.runStore.question, this.handleRequest, { fireImmediately: true })
     this.window.addEventListener("message", this.handleMessage)
     this.stopListening = () => {
       stopRequest()
@@ -70,14 +71,17 @@ export class QuestionCardPresenter {
       return false
     }
     if (press.key === "ArrowLeft" && this.store.hasPrevious) {
+      this.log.action("back", { index: this.store.index - 1 })
       this.store.goTo(this.store.index - 1)
       return true
     }
     if (press.key === "ArrowRight" && this.store.hasNext) {
+      this.log.action("next", { index: this.store.index + 1 })
       this.store.goTo(this.store.index + 1)
       return true
     }
     if (press.key === "Escape") {
+      this.log.action("close")
       this.setOpen(false)
       return true
     }
@@ -91,6 +95,7 @@ export class QuestionCardPresenter {
     if (question === null) {
       return
     }
+    this.log.action("pick", { questionId: question.id, label })
     const draft = this.store.draftOf(question.id)
     if (question.multiSelect) {
       const selected = draft.selected.includes(label) ? draft.selected.filter((item) => item !== label) : [...draft.selected, label]
@@ -129,6 +134,7 @@ export class QuestionCardPresenter {
     if (!this.store.hasPrevious) {
       return
     }
+    this.log.action("back", { index: this.store.index - 1 })
     this.store.goTo(this.store.index - 1)
   }
 
@@ -136,10 +142,12 @@ export class QuestionCardPresenter {
     if (!this.store.hasNext || !this.store.stepReady) {
       return
     }
+    this.log.action("next", { index: this.store.index + 1 })
     this.store.goTo(this.store.index + 1)
   }
 
   handleToggleOpen = () => {
+    this.log.action("toggle-open", { open: !this.store.open })
     this.setOpen(!this.store.open)
   }
 
@@ -147,15 +155,18 @@ export class QuestionCardPresenter {
     if (!this.store.ready) {
       return
     }
+    this.log.action("send", { requestId: this.store.requestId, drafts: this.store.drafts })
     this.submit(this.store.drafts)
   }
 
   handleSkip = () => {
+    this.log.action("skip", { requestId: this.store.requestId })
     this.cancelSend()
     void this.send({ skipped: true })
   }
 
   handleZoomChange = (open: boolean) => {
+    this.log.action("zoom", { open })
     this.store.setZoomed(open)
   }
 
@@ -214,6 +225,7 @@ export class QuestionCardPresenter {
     try {
       await this.api.answerQuestion(id, reply)
     } catch (error) {
+      this.log.warn("answer-question-failed", { requestId: id, error })
       this.store.setError(errorText(error))
       this.store.setBusy(false)
     }

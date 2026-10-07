@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { createQuestionBlock } from "./question-block/create"
@@ -15,14 +16,16 @@ export function createQuestionCard({
   window,
   runStore,
   themeStore,
+  log,
 }: {
   api: API
   window: Window
   runStore: RunStore
   themeStore: ThemeStore
+  log: Log
 }): ComponentType {
   const store = new QuestionCardStore()
-  const presenter = new QuestionCardPresenter(store, runStore, api, window)
+  const presenter = new QuestionCardPresenter(store, runStore, api, window, log)
   presenter.start()
 
   const Header = createQuestionHeader({ questionCardStore: store, questionCardPresenter: presenter })

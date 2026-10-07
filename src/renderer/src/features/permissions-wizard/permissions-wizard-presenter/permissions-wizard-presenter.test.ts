@@ -3,6 +3,7 @@ import type { ComputerPermissions } from "@shared/types"
 import { PermissionsWizardPresenter } from "@/features/permissions-wizard/permissions-wizard-presenter/permissions-wizard-presenter"
 import { PermissionsWizardStore } from "@/features/permissions-wizard/permissions-wizard-store/permissions-wizard-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { PermissionsStore } from "@/state/permissions/permissions-store/permissions-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 
@@ -15,7 +16,7 @@ function setup(known: ComputerPermissions | null = MISSING) {
   permissions.setPermissions(known)
   const store = new PermissionsWizardStore(permissions, "26.0.0")
   const api = createMockInstance<API>(["requestAccessibility", "requestScreenRecording", "openPermissionSettings"])
-  const presenter = new PermissionsWizardPresenter(store, api, permissions)
+  const presenter = new PermissionsWizardPresenter(store, api, permissions, nullLog())
   return { permissions, store, api, presenter }
 }
 

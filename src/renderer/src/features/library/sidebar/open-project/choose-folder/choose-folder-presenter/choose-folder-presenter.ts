@@ -1,5 +1,6 @@
 import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 
 export class ChooseFolderPresenter {
@@ -8,6 +9,7 @@ export class ChooseFolderPresenter {
   constructor(
     private readonly api: API,
     private readonly commandRegistry: CommandRegistry,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -29,5 +31,8 @@ export class ChooseFolderPresenter {
     this.disposer = null
   }
 
-  handleChooseFolder = () => toastFailure(() => this.api.chooseFolder())
+  handleChooseFolder = () => {
+    this.log.action("choose-folder")
+    return toastFailure(() => this.api.chooseFolder())
+  }
 }

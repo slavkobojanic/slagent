@@ -1,10 +1,10 @@
-import { reaction } from "mobx"
 import type { ChatSummary } from "@shared/types"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatRowMenuStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-store/chat-row-menu-store"
 import type { ChatRowStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-store/chat-row-store"
 import { nextDoneExpiry } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-utils"
 import { toastFailure } from "@/features/library/toast-failure"
-import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 
 // The clock re-reads a little after a done window closes, so the timer never fires before it.
@@ -17,16 +17,17 @@ export class ChatRowPresenter {
   constructor(
     private readonly store: ChatRowStore,
     private readonly libraryStore: LibraryStore,
-    private readonly api: API,
     private readonly window: Window,
     private readonly chatRowMenuStore: ChatRowMenuStore,
+    private readonly chatSwitchPresenter: ChatSwitchPresenter,
+    private readonly log: Log,
   ) {}
 
   start = () => {
     if (this.disposer !== null) {
       return
     }
-    this.disposer = reaction(() => this.libraryStore.library, this.refreshClock)
+    this.disposer = this.log.reaction("library", () => this.libraryStore.library, this.refreshClock)
     this.refreshClock()
   }
 
@@ -36,9 +37,13 @@ export class ChatRowPresenter {
     this.clearClockTimer()
   }
 
-  handleOpen = (chat: ChatSummary) => toastFailure(() => this.api.openChat(chat.id))
+  handleOpen = (chat: ChatSummary) => {
+    this.log.action("open-chat", { chatId: chat.id, title: chat.title })
+    return toastFailure(() => this.chatSwitchPresenter.openChat(chat.id))
+  }
 
   handleContextMenu = (chat: ChatSummary) => {
+    this.log.action("open-chat-menu", { chatId: chat.id })
     this.chatRowMenuStore.setChatId(chat.id)
   }
 

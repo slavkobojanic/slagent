@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
@@ -39,6 +40,7 @@ export function createShell({
   permissionsStore,
   mcpStore,
   commandRegistry,
+  log,
 }: {
   Library: ComponentType
   Settings: ComponentType
@@ -58,6 +60,7 @@ export function createShell({
   permissionsStore: PermissionsStore
   mcpStore: McpStore
   commandRegistry: CommandRegistry
+  log: Log
 }): ComponentType {
   // The header owns these, but their errors show above the transcript in the main column.
   const projectMenuStore = new ProjectMenuStore()
@@ -77,6 +80,7 @@ export function createShell({
     commandRegistry,
     projectMenuStore,
     updateButtonStore,
+    log: log.child("shell-header"),
   })
   const SidebarFrame = createSidebarFrame({ Library, layoutStore })
   const MainColumn = createMainColumn({ Transcript, Composer, metaStore, projectMenuStore, updateButtonStore })

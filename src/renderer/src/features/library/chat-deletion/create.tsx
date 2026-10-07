@@ -2,11 +2,12 @@ import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import { ChatDeletion } from "./chat-deletion"
 import { ChatDeletionPresenter } from "./chat-deletion-presenter/chat-deletion-presenter"
 
-export function createChatDeletion({ api, chatDeletionStore }: { api: API; chatDeletionStore: ChatDeletionStore }): ComponentType {
-  const presenter = new ChatDeletionPresenter(chatDeletionStore, api)
+export function createChatDeletion({ api, chatDeletionStore, log }: { api: API; chatDeletionStore: ChatDeletionStore; log: Log }): ComponentType {
+  const presenter = new ChatDeletionPresenter(chatDeletionStore, api, log)
 
   return observer(function ChatDeletionHost() {
     return (

@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
@@ -36,6 +37,7 @@ export function createLibrary({
   commandRegistry,
   composerPort,
   jumpPort,
+  log,
 }: {
   api: API
   window: Window
@@ -50,10 +52,14 @@ export function createLibrary({
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
   jumpPort: JumpPort
+  log: Log
 }): ComponentType {
   // Sidebar rows open the confirmations, so their stores live here, above both.
   const chatDeletionStore = new ChatDeletionStore()
   const projectRemovalStore = new ProjectRemovalStore()
+
+  const chatSwitchPresenter = new ChatSwitchPresenter(libraryStore, runStore, api, panelPresenter, reviewPresenter, log.child("chat-switch"))
+  chatSwitchPresenter.start()
 
   const Sidebar = createSidebar({
     api,
@@ -66,16 +72,36 @@ export function createLibrary({
     jumpPort,
     chatDeletionStore,
     projectRemovalStore,
+    chatSwitchPresenter,
+    log: log.child("sidebar"),
   })
-  const ChatDeletion = createChatDeletion({ api, chatDeletionStore })
-  const ProjectRemoval = createProjectRemoval({ api, projectRemovalStore })
+  const ChatDeletion = createChatDeletion({ api, chatDeletionStore, log: log.child("chat-deletion") })
+  const ProjectRemoval = createProjectRemoval({ api, projectRemovalStore, log: log.child("project-removal") })
 
-  const navHistoryPresenter = new NavHistoryPresenter(new NavHistoryStore(), api, window, libraryStore, composerPort, commandRegistry)
+  const navHistoryPresenter = new NavHistoryPresenter(
+    new NavHistoryStore(),
+    api,
+    window,
+    libraryStore,
+    composerPort,
+    commandRegistry,
+    chatSwitchPresenter,
+    log.child("nav-history"),
+  )
   navHistoryPresenter.start()
-  const chatSwitchPresenter = new ChatSwitchPresenter(libraryStore, panelPresenter, reviewPresenter)
-  chatSwitchPresenter.start()
 
-  const CommandPalette = createCommandPalette({ api, window, libraryStore, metaStore, runStore, overlayStore, commandRegistry, composerPort })
+  const CommandPalette = createCommandPalette({
+    api,
+    window,
+    libraryStore,
+    metaStore,
+    runStore,
+    overlayStore,
+    commandRegistry,
+    composerPort,
+    chatSwitchPresenter,
+    log: log.child("command-palette"),
+  })
 
   return function LibraryHost() {
     return <Library Sidebar={Sidebar} ChatDeletion={ChatDeletion} ProjectRemoval={ProjectRemoval} CommandPalette={CommandPalette} />

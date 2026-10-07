@@ -4,13 +4,14 @@ import type { API } from "@/ipc/api"
 import { PlanCardPresenter } from "@/features/transcript/plan-card/plan-card-presenter/plan-card-presenter"
 import { PlanCardStore } from "@/features/transcript/plan-card/plan-card-store/plan-card-store"
 import { createMockInstance } from "@/test/create-mock-instance"
+import { nullLog } from "@/log/log"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
 
 function setup() {
   const store = new PlanCardStore()
   const api = createMockInstance<API>(["approvePlan"])
-  const presenter = new PlanCardPresenter(store, api)
+  const presenter = new PlanCardPresenter(store, api, nullLog())
   return { store, api, presenter }
 }
 

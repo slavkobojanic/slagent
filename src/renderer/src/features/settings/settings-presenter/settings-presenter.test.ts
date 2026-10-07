@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { SettingsPresenter } from "@/features/settings/settings-presenter/settings-presenter"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
+import { nullLog } from "@/log/log"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 
@@ -8,7 +9,7 @@ function setup() {
   const store = new SettingsStore()
   const overlay = new OverlayStore()
   const commands = new CommandRegistry()
-  const presenter = new SettingsPresenter(store, overlay, commands)
+  const presenter = new SettingsPresenter(store, overlay, commands, nullLog())
   return { store, overlay, commands, presenter }
 }
 

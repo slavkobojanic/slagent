@@ -1,5 +1,6 @@
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { McpStore } from "@/state/mcp/mcp-store/mcp-store"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
@@ -13,14 +14,16 @@ export function createMcpSettings({
   metaStore,
   overlayStore,
   mcpStore,
+  log,
 }: {
   api: API
   metaStore: MetaStore
   overlayStore: OverlayStore
   mcpStore: McpStore
+  log: Log
 }) {
   const mcpSettingsStore = new McpSettingsStore()
-  const mcpSettingsPresenter = new McpSettingsPresenter(mcpSettingsStore, api, mcpStore, overlayStore, metaStore)
+  const mcpSettingsPresenter = new McpSettingsPresenter(mcpSettingsStore, api, mcpStore, overlayStore, metaStore, log)
   mcpSettingsPresenter.start()
 
   const McpServerList = createMcpServerList({ mcpStore, mcpSettingsStore, mcpSettingsPresenter })

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { DiffComment, ReplyComment } from "@shared/types"
 import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
 import { ReviewStore } from "@/state/review/review-store/review-store"
+import { nullLog } from "@/log/log"
 
 const diffComment: DiffComment = { id: "d1", path: "src/app.ts", line: 4, side: "new", code: "const a = 1", text: "rename" }
 const replyComment: ReplyComment = { id: "r1", messageId: "m1", block: "Use a map.", quote: "a map", at: 4, text: "why" }
@@ -9,7 +10,7 @@ const otherReply: ReplyComment = { id: "r2", messageId: "m1", block: "Use a map.
 
 function setup() {
   const store = new ReviewStore()
-  const presenter = new ReviewPresenter(store)
+  const presenter = new ReviewPresenter(store, nullLog())
   return { store, presenter }
 }
 

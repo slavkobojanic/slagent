@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ChatSearchResult, FileMatch, SlashCommand } from "@shared/types"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { PromptHistoryStore } from "@/features/composer/prompt-history/prompt-history-store/prompt-history-store"
 import { type MenuKeyEvent, SuggestionsPresenter } from "@/features/composer/suggestions/suggestions-presenter/suggestions-presenter"
 import { SuggestionsStore } from "@/features/composer/suggestions/suggestions-store/suggestions-store"
@@ -36,7 +37,7 @@ describe("SuggestionsPresenter", () => {
     api.searchFiles.mockResolvedValue([])
     api.searchChats.mockResolvedValue([])
     api.listCommands.mockResolvedValue([])
-    presenter = new SuggestionsPresenter(store, history, api, window)
+    presenter = new SuggestionsPresenter(store, history, api, window, nullLog())
   })
 
   afterEach(() => {

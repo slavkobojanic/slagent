@@ -5,6 +5,7 @@ declare global {
     slagent?: SlagentApi
     URL: typeof URL
     FileReader: typeof FileReader
+    console: Console
   }
 }
 

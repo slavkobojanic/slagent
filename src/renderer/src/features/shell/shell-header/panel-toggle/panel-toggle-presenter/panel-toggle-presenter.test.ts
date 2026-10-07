@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import type { API } from "@/ipc/api"
 import { PanelTogglePresenter } from "@/features/shell/shell-header/panel-toggle/panel-toggle-presenter/panel-toggle-presenter"
+import { nullLog } from "@/log/log"
 import { createMockInstance } from "@/test/create-mock-instance"
 import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
@@ -11,7 +12,7 @@ describe("PanelTogglePresenter", () => {
 
   beforeEach(() => {
     panelStore = new PanelStore()
-    presenter = new PanelTogglePresenter(panelStore, new PanelPresenter(panelStore, createMockInstance<API>([])))
+    presenter = new PanelTogglePresenter(panelStore, new PanelPresenter(panelStore, createMockInstance<API>([]), nullLog()), nullLog())
   })
 
   describe("toggle", () => {

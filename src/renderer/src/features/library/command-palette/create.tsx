@@ -1,6 +1,8 @@
 import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
@@ -21,6 +23,8 @@ export function createCommandPalette({
   overlayStore,
   commandRegistry,
   composerPort,
+  chatSwitchPresenter,
+  log,
 }: {
   api: API
   window: Window
@@ -30,9 +34,11 @@ export function createCommandPalette({
   overlayStore: OverlayStore
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
+  chatSwitchPresenter: ChatSwitchPresenter
+  log: Log
 }): ComponentType {
   const store = new CommandPaletteStore()
-  const presenter = new CommandPalettePresenter(store, api, window, overlayStore, commandRegistry, composerPort)
+  const presenter = new CommandPalettePresenter(store, api, window, overlayStore, commandRegistry, composerPort, chatSwitchPresenter, log)
   presenter.start()
 
   return observer(function CommandPaletteHost() {

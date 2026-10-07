@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react"
 import { observer } from "mobx-react-lite"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
 import type { ReviewStore } from "@/state/review/review-store/review-store"
@@ -19,14 +20,16 @@ export function createCommentableResponse({
   runStore,
   reviewStore,
   reviewPresenter,
+  log,
 }: {
   window: Window
   runStore: RunStore
   reviewStore: ReviewStore
   reviewPresenter: ReviewPresenter
+  log: Log
 }): ComponentType<CommentableResponseHostProps> {
   const store = new CommentableResponseStore()
-  const presenter = new CommentableResponsePresenter(store, reviewStore, reviewPresenter, runStore, window)
+  const presenter = new CommentableResponsePresenter(store, reviewStore, reviewPresenter, runStore, window, log)
   presenter.start()
 
   const Block = createCommentableBlock({ commentableResponseStore: store, commentableResponsePresenter: presenter, reviewStore })

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ThemePresenter } from "@/state/theme/theme-presenter/theme-presenter"
 import { ThemeStore } from "@/state/theme/theme-store/theme-store"
+import { nullLog } from "@/log/log"
 
 const STORAGE_KEY = "slagent-theme"
 
@@ -22,7 +23,7 @@ describe("ThemePresenter", () => {
   beforeEach(() => {
     window.localStorage.clear()
     store = new ThemeStore()
-    presenter = new ThemePresenter(store, window)
+    presenter = new ThemePresenter(store, window, nullLog())
   })
 
   afterEach(() => {

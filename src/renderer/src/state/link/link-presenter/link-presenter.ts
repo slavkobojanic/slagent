@@ -1,4 +1,5 @@
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import { looksLikePath } from "@/lib/format"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 
@@ -18,6 +19,7 @@ export class LinkPresenter {
     private readonly window: Window,
     private readonly panel: PanelPresenter,
     private readonly api: API,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -52,6 +54,7 @@ export class LinkPresenter {
     }
     if (href.startsWith("http://") || href.startsWith("https://")) {
       event.preventDefault()
+      this.log.action("open-external", { href })
       void this.api.openExternal(href)
       return
     }
@@ -60,6 +63,7 @@ export class LinkPresenter {
       return
     }
     event.preventDefault()
+    this.log.action("open-path", { path })
     void this.panel.openFile(path)
   }
 
@@ -72,6 +76,7 @@ export class LinkPresenter {
     if (!looksLikePath(text)) {
       return
     }
+    this.log.action("open-inline-path", { path: text })
     void this.panel.openFile(text)
   }
 }

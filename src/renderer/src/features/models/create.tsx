@@ -2,6 +2,7 @@ import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
 import { toast } from "sonner"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
@@ -19,6 +20,7 @@ export function createModels({
   overlayStore,
   commandRegistry,
   composerPort,
+  log,
 }: {
   api: API
   metaStore: MetaStore
@@ -26,10 +28,17 @@ export function createModels({
   overlayStore: OverlayStore
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
+  log: Log
 }): ComponentType {
   const modelsStore = new ModelsStore(metaStore, runStore)
-  const modelsPresenter = new ModelsPresenter(modelsStore, api, overlayStore, composerPort, commandRegistry, (message) =>
-    toast.message(message),
+  const modelsPresenter = new ModelsPresenter(
+    modelsStore,
+    api,
+    overlayStore,
+    composerPort,
+    commandRegistry,
+    (message) => toast.message(message),
+    log,
   )
   modelsPresenter.start()
 

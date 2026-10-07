@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -13,14 +14,16 @@ export function createUsageMeter({
   runStore,
   metaStore,
   commandRegistry,
+  log,
 }: {
   api: API
   runStore: RunStore
   metaStore: MetaStore
   commandRegistry: CommandRegistry
+  log: Log
 }): ComponentType {
   const store = new UsageMeterStore(runStore, metaStore)
-  const presenter = new UsageMeterPresenter(store, api, commandRegistry)
+  const presenter = new UsageMeterPresenter(store, api, commandRegistry, log)
   presenter.start()
 
   return observer(function UsageMeterHost() {

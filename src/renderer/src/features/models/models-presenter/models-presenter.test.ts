@@ -3,6 +3,7 @@ import { EMPTY_PERSONALISATION, type AppMeta, type ModelOption } from "@shared/t
 import { ModelsPresenter } from "@/features/models/models-presenter/models-presenter"
 import { ModelsStore } from "@/features/models/models-store/models-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { RunStore, type RunTranscript } from "@/mirror/run-store/run-store"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -64,7 +65,7 @@ function setup({ ready = true, streaming = false } = {}) {
   composerPort.attach(composer)
   const commands = new CommandRegistry()
   const notify = vi.fn()
-  const presenter = new ModelsPresenter(store, api, overlay, composerPort, commands, notify)
+  const presenter = new ModelsPresenter(store, api, overlay, composerPort, commands, notify, nullLog())
   return { store, overlay, api, composer, commands, notify, presenter }
 }
 

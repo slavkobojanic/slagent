@@ -1,4 +1,5 @@
 import { CommandRegistry, isCommandEnabled, matchesShortcut } from "@/state/keyboard/command-registry/command-registry"
+import type { Log } from "@/log/log"
 import type { PermissionsStore } from "@/state/permissions/permissions-store/permissions-store"
 
 export class KeyboardPresenter {
@@ -8,6 +9,7 @@ export class KeyboardPresenter {
     private readonly registry: CommandRegistry,
     private readonly window: Window,
     private readonly permissions: PermissionsStore,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -33,6 +35,7 @@ export class KeyboardPresenter {
       return
     }
     event.preventDefault()
+    this.log.action("shortcut", { id: command.id, label: command.label })
     command.run()
   }
 }

@@ -1,8 +1,9 @@
-import { reaction } from "mobx"
 import type { LibraryState } from "@shared/types"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import { isDraftBecomingChat, libraryContext, samePlace, type LibraryContext, type Place } from "@/features/library/library-utils"
 import type { NavHistoryStore } from "@/features/library/nav-history/nav-history-store/nav-history-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -22,6 +23,8 @@ export class NavHistoryPresenter {
     private readonly libraryStore: LibraryStore,
     private readonly composerPort: ComposerPort,
     private readonly commandRegistry: CommandRegistry,
+    private readonly chatSwitchPresenter: ChatSwitchPresenter,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -29,7 +32,7 @@ export class NavHistoryPresenter {
       return
     }
     this.started = true
-    this.disposers.push(reaction(() => this.libraryStore.library, this.handleLibraryChange))
+    this.disposers.push(this.log.reaction("library", () => this.libraryStore.library, this.handleLibraryChange))
     this.disposers.push(
       this.commandRegistry.register({
         id: "history.back",
@@ -38,6 +41,7 @@ export class NavHistoryPresenter {
         shortcut: { key: "[", mod: true },
         inPalette: false,
         run: () => {
+          this.log.action("back", { index: this.store.index, entries: this.store.entries.length })
           void this.back()
         },
       }),
@@ -50,6 +54,7 @@ export class NavHistoryPresenter {
         shortcut: { key: "]", mod: true },
         inPalette: false,
         run: () => {
+          this.log.action("forward", { index: this.store.index, entries: this.store.entries.length })
           void this.forward()
         },
       }),
@@ -109,7 +114,8 @@ export class NavHistoryPresenter {
         this.store.moveTo(index)
         this.focusComposer()
         return
-      } catch {
+      } catch (error) {
+        this.log.warn("open-place-failed", { place, error })
         this.store.setPending(null)
         this.store.removeAt(index)
         if (direction === -1) {
@@ -121,7 +127,7 @@ export class NavHistoryPresenter {
 
   private open = async (place: Place) => {
     if (place.chatId !== null) {
-      await this.api.openChat(place.chatId, place.projectId ?? undefined)
+      await this.chatSwitchPresenter.openChat(place.chatId, place.projectId ?? undefined)
       return
     }
     if (place.projectId !== null && place.projectId !== this.libraryStore.openProjectId) {

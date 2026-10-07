@@ -1,6 +1,7 @@
-import { compareStructural, reaction } from "mobx"
+import { compareStructural } from "mobx"
 import type { FileViewerStore } from "@/features/changes/file-viewer/file-viewer-store/file-viewer-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 
 // The target line is re-centred this many times, this far apart, while Pierre fills the file in.
@@ -31,6 +32,7 @@ export class FileViewerPresenter {
     private readonly api: API,
     private readonly window: Window,
     private readonly loadHighlighter: () => Promise<boolean>,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -39,8 +41,9 @@ export class FileViewerPresenter {
     }
     this.started = true
     // Opening the same file again keeps the scroll, as it did when the view compared its inputs.
-    this.disposers = [reaction(() => this.followKey(), this.restartFollowing, { equals: compareStructural })]
-    void this.loadHighlighter().then((ready) => {
+    this.disposers = [this.log.reaction("follow-key", () => this.followKey(), this.restartFollowing, { equals: compareStructural })]
+    // The file's contents arrive with the panel's viewed file. The viewer's own load is Pierre's highlighter.
+    void this.log.span("load-highlighter", this.loadHighlighter).then((ready) => {
       if (!ready) {
         return
       }
@@ -68,8 +71,11 @@ export class FileViewerPresenter {
     if (file === null) {
       return
     }
+    this.log.action("open-in-editor", { path: file.absolutePath, line: file.line })
     const path = file.line ? `${file.absolutePath}:${file.line}` : file.absolutePath
-    void this.api.openInEditor(path).catch(() => undefined)
+    void this.api.openInEditor(path).catch((error: unknown) => {
+      this.log.warn("open-in-editor-failed", { path, error })
+    })
   }
 
   private followKey = () => {

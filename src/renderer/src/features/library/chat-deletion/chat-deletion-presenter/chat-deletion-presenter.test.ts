@@ -4,6 +4,7 @@ import type { ChatSummary } from "@shared/types"
 import { ChatDeletionPresenter } from "@/features/library/chat-deletion/chat-deletion-presenter/chat-deletion-presenter"
 import { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
@@ -29,7 +30,7 @@ describe("ChatDeletionPresenter", () => {
     store = new ChatDeletionStore()
     api = createMockInstance<API>(["deleteChat"])
     api.deleteChat.mockResolvedValue(undefined)
-    presenter = new ChatDeletionPresenter(store, api)
+    presenter = new ChatDeletionPresenter(store, api, nullLog())
   })
 
   describe("handleCancel", () => {

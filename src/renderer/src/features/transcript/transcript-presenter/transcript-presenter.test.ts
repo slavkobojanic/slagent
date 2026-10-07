@@ -7,6 +7,7 @@ import { TranscriptStore } from "@/features/transcript/transcript-store/transcri
 import { RunStore } from "@/mirror/run-store/run-store"
 import { JumpPort } from "@/state/jump-port/jump-port"
 import { createMockInstance } from "@/test/create-mock-instance"
+import { nullLog } from "@/log/log"
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
@@ -78,7 +79,7 @@ function setup() {
   const detachJump = vi.fn()
   vi.spyOn(jump, "attach").mockReturnValue(detachJump)
   api.pageTranscript.mockResolvedValue(undefined)
-  const presenter = new TranscriptPresenter(store, run, api, jump, window)
+  const presenter = new TranscriptPresenter(store, run, api, jump, window, nullLog())
   return { run, store, api, jump, detachJump, presenter, settle }
 }
 

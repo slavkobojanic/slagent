@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite"
 import { type ComponentType, useEffect } from "react"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
@@ -34,6 +35,7 @@ export function createComposer({
   reviewPresenter,
   commandRegistry,
   composerPort,
+  log,
 }: {
   api: API
   window: Window
@@ -44,14 +46,15 @@ export function createComposer({
   reviewPresenter: ReviewPresenter
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
+  log: Log
 }): ComponentType {
   const composerStore = new ComposerStore(libraryStore, metaStore, runStore)
   const attachmentsStore = new AttachmentsStore()
-  const attachmentsPresenter = new AttachmentsPresenter(attachmentsStore, api, window)
+  const attachmentsPresenter = new AttachmentsPresenter(attachmentsStore, api, window, log.child("attachments"))
   const promptHistoryStore = new PromptHistoryStore()
-  const promptHistoryPresenter = new PromptHistoryPresenter(promptHistoryStore, window)
+  const promptHistoryPresenter = new PromptHistoryPresenter(promptHistoryStore, window, log.child("prompt-history"))
   const suggestionsStore = new SuggestionsStore()
-  const suggestionsPresenter = new SuggestionsPresenter(suggestionsStore, promptHistoryStore, api, window)
+  const suggestionsPresenter = new SuggestionsPresenter(suggestionsStore, promptHistoryStore, api, window, log.child("suggestions"))
   const composerPresenter = new ComposerPresenter(
     composerStore,
     promptHistoryPresenter,
@@ -62,9 +65,10 @@ export function createComposer({
     commandRegistry,
     composerPort,
     window,
+    log,
   )
 
-  const RunStatus = createRunStatus({ api, window, runStore, metaStore, commandRegistry })
+  const RunStatus = createRunStatus({ api, window, runStore, metaStore, commandRegistry, log: log.child("run-status") })
   const PendingComments = createPendingComments({ reviewStore, reviewPresenter })
   const PromptHistory = createPromptHistory({ promptHistoryStore, promptHistoryPresenter, composerPresenter })
   const Suggestions = createSuggestions({ suggestionsStore, suggestionsPresenter, composerPresenter })

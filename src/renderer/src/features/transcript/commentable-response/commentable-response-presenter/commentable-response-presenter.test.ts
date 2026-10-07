@@ -7,6 +7,7 @@ import { CommentableResponseStore } from "@/features/transcript/commentable-resp
 import { RunStore } from "@/mirror/run-store/run-store"
 import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
 import { ReviewStore } from "@/state/review/review-store/review-store"
+import { nullLog } from "@/log/log"
 
 const block = "Use a map."
 const unit: CommentUnit = { key: "m1\nUse a map.", messageId: "m1", block, enabled: true }
@@ -26,9 +27,9 @@ class FakeHighlight {
 function setup() {
   const store = new CommentableResponseStore()
   const reviewStore = new ReviewStore()
-  const review = new ReviewPresenter(reviewStore)
+  const review = new ReviewPresenter(reviewStore, nullLog())
   const run = new RunStore()
-  const presenter = new CommentableResponsePresenter(store, reviewStore, review, run, window)
+  const presenter = new CommentableResponsePresenter(store, reviewStore, review, run, window, nullLog())
   return { store, reviewStore, review, run, presenter }
 }
 

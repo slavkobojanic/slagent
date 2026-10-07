@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { EMPTY_PERSONALISATION, type AppMeta, type UsageState } from "@shared/types"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { RunStore } from "@/mirror/run-store/run-store"
@@ -50,7 +51,7 @@ describe("UsageMeterPresenter", () => {
     store = new UsageMeterStore(run, metaStore)
     api = createMockInstance<API>(["compact"])
     commands = new CommandRegistry()
-    presenter = new UsageMeterPresenter(store, api, commands)
+    presenter = new UsageMeterPresenter(store, api, commands, nullLog())
   })
 
   afterEach(() => {

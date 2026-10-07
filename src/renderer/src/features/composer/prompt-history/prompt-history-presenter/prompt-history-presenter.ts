@@ -1,3 +1,4 @@
+import type { Log } from "@/log/log"
 import type { PromptHistoryStore } from "@/features/composer/prompt-history/prompt-history-store/prompt-history-store"
 
 const STORAGE_KEY = "slagent:prompt-history"
@@ -19,6 +20,7 @@ export class PromptHistoryPresenter {
   constructor(
     private readonly store: PromptHistoryStore,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -55,6 +57,7 @@ export class PromptHistoryPresenter {
     if (item === undefined) {
       return null
     }
+    this.log.action("choose-history", { index })
     this.store.setQuery(null)
     return item
   }
@@ -63,6 +66,7 @@ export class PromptHistoryPresenter {
   handleSearchKey = (event: HistoryKeyEvent, text: string): HistoryKeyResult => {
     if (event.ctrlKey && event.key === "r") {
       event.preventDefault()
+      this.log.action("toggle-history-search", { open: !this.store.searching })
       this.store.toggleSearch(text)
       return HANDLED
     }
@@ -71,6 +75,7 @@ export class PromptHistoryPresenter {
     }
     if (event.key === "Escape") {
       event.preventDefault()
+      this.log.action("close-history-search")
       this.store.setQuery(null)
       return HANDLED
     }

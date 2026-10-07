@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react"
 import { observer } from "mobx-react-lite"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import { waitingForText, type Turn } from "@/features/transcript/transcript-blocks"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
@@ -12,13 +13,15 @@ export function createAssistantTurn({
   runStore,
   panelPresenter,
   CommentableResponse,
+  log,
 }: {
   window: Window
   runStore: RunStore
   panelPresenter: PanelPresenter
   CommentableResponse: ComponentType<{ messageId: string; children: ReactNode }>
+  log: Log
 }): ComponentType<{ turn: Turn }> {
-  const Response = createResponse({ window, runStore, CommentableResponse })
+  const Response = createResponse({ window, runStore, CommentableResponse, log: log.child("response") })
   const ToolChain = createToolChain({ panelPresenter })
 
   return observer(function AssistantTurnHost({ turn }: { turn: Turn }) {

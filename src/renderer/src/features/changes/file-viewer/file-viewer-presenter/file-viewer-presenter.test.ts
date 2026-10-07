@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { makeFile } from "@/features/changes/changes-fixtures"
 import { FileViewerStore } from "@/features/changes/file-viewer/file-viewer-store/file-viewer-store"
 import type { API } from "@/ipc/api"
+import { Log, nullLog, type Sink } from "@/log/log"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 import { FileViewerPresenter } from "./file-viewer-presenter"
@@ -30,11 +31,11 @@ function makeScroller(): { scroller: HTMLDivElement; scrollTop: () => number } {
   return { scroller, scrollTop: () => top }
 }
 
-function setup(loadHighlighter = vi.fn(async () => true)) {
+function setup(loadHighlighter = vi.fn(async () => true), log: Log = nullLog()) {
   const panel = new PanelStore()
   const store = new FileViewerStore()
   const api = createMockInstance<API>(["openInEditor"])
-  const presenter = new FileViewerPresenter(store, panel, api, window, loadHighlighter)
+  const presenter = new FileViewerPresenter(store, panel, api, window, loadHighlighter, log)
   return { panel, store, api, loadHighlighter, presenter }
 }
 
@@ -57,6 +58,23 @@ describe("FileViewerPresenter", () => {
       presenter.start()
 
       await vi.waitFor(() => expect(store.highlighterReady).toBe(true))
+    })
+
+    it("can time the highlighter load", async () => {
+      const sink = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } satisfies Sink
+      let now = 0
+      const log = Log.create({ sink, clock: { now: () => now, measure: vi.fn() }, verbose: true, spec: "*:time" }).child("changes")
+      const loadHighlighter = vi.fn(async () => {
+        now += 80
+        return true
+      })
+      const { store, presenter } = setup(loadHighlighter, log)
+
+      presenter.start()
+
+      await vi.waitFor(() => expect(store.highlighterReady).toBe(true))
+      expect(String(sink.debug.mock.calls[0][0])).toContain("time %cload-highlighter 80ms")
+      presenter.stop()
     })
 
     it("can leave the highlighter not ready when it fails to load", async () => {

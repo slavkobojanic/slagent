@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import type { API } from "@/ipc/api"
 import { ProjectMenuPresenter } from "@/features/shell/shell-header/project-menu/project-menu-presenter/project-menu-presenter"
 import { ProjectMenuStore } from "@/features/shell/shell-header/project-menu/project-menu-store/project-menu-store"
+import { nullLog } from "@/log/log"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 describe("ProjectMenuPresenter", () => {
@@ -14,7 +15,7 @@ describe("ProjectMenuPresenter", () => {
     api = createMockInstance<API>(["openProject", "chooseFolder"])
     api.openProject.mockResolvedValue(undefined)
     api.chooseFolder.mockResolvedValue(undefined)
-    presenter = new ProjectMenuPresenter(store, api)
+    presenter = new ProjectMenuPresenter(store, api, nullLog())
   })
 
   describe("openProject", () => {

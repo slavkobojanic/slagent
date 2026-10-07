@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import type { ProjectSummary } from "@shared/types"
 import { PinnedProjectsPresenter } from "@/features/library/sidebar/pinned-projects/pinned-projects-presenter/pinned-projects-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { createMockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
@@ -15,7 +16,7 @@ describe("PinnedProjectsPresenter", () => {
       const api = createMockInstance<API>(["openProject"])
       api.openProject.mockResolvedValue(undefined)
 
-      await new PinnedProjectsPresenter(api).handleOpen(atlas)
+      await new PinnedProjectsPresenter(api, nullLog()).handleOpen(atlas)
 
       expect(api.openProject).toHaveBeenCalledWith("p1")
     })
@@ -24,7 +25,7 @@ describe("PinnedProjectsPresenter", () => {
       const api = createMockInstance<API>(["openProject"])
       api.openProject.mockRejectedValue(new Error("Folder is gone"))
 
-      await new PinnedProjectsPresenter(api).handleOpen(atlas)
+      await new PinnedProjectsPresenter(api, nullLog()).handleOpen(atlas)
 
       expect(toast.error).toHaveBeenCalledWith("Folder is gone")
     })

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { QueuePresenter } from "@/features/composer/run-status/queue/queue-presenter/queue-presenter"
 import { QueueStore } from "@/features/composer/run-status/queue/queue-store/queue-store"
 import { RunStore } from "@/mirror/run-store/run-store"
@@ -13,7 +14,7 @@ describe("QueuePresenter", () => {
   beforeEach(() => {
     store = new QueueStore(new RunStore())
     api = createMockInstance<API>(["setQueueMode", "removeQueued"])
-    presenter = new QueuePresenter(store, api)
+    presenter = new QueuePresenter(store, api, nullLog())
   })
 
   describe("handleModeChange", () => {

@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import { preloadPierreHighlighter } from "@/lib/pierre"
 import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
@@ -9,9 +10,21 @@ import { FileViewerPresenter } from "./file-viewer-presenter/file-viewer-present
 import { FileViewerStore } from "./file-viewer-store/file-viewer-store"
 import { formatFileSize } from "./format-file-size"
 
-export function createFileViewer({ api, window, panelStore, themeStore }: { api: API; window: Window; panelStore: PanelStore; themeStore: ThemeStore }): ComponentType {
+export function createFileViewer({
+  api,
+  window,
+  panelStore,
+  themeStore,
+  log,
+}: {
+  api: API
+  window: Window
+  panelStore: PanelStore
+  themeStore: ThemeStore
+  log: Log
+}): ComponentType {
   const store = new FileViewerStore()
-  const presenter = new FileViewerPresenter(store, panelStore, api, window, preloadPierreHighlighter)
+  const presenter = new FileViewerPresenter(store, panelStore, api, window, preloadPierreHighlighter, log)
   presenter.start()
 
   return observer(function FileViewerHost() {

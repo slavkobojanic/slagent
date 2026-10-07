@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { TaskInfo } from "@shared/types"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { TasksPresenter } from "@/features/composer/run-status/tasks/tasks-presenter/tasks-presenter"
 import { TasksStore } from "@/features/composer/run-status/tasks/tasks-store/tasks-store"
 import { RunStore } from "@/mirror/run-store/run-store"
@@ -69,7 +70,7 @@ describe("TasksPresenter", () => {
     run = new RunStore()
     store = new TasksStore(run)
     api = createMockInstance<API>(["taskOutput", "stopTask"])
-    presenter = new TasksPresenter(store, api, window)
+    presenter = new TasksPresenter(store, api, window, nullLog())
   })
 
   afterEach(() => {

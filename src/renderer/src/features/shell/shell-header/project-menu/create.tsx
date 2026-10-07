@@ -2,6 +2,7 @@ import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
 import { projectStatus, sortedProjects } from "@/lib/projects"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import { ProjectMenu } from "./project-menu"
 import { ProjectMenuPresenter } from "./project-menu-presenter/project-menu-presenter"
@@ -12,12 +13,14 @@ export function createProjectMenu({
   api,
   libraryStore,
   projectMenuStore,
+  log,
 }: {
   api: API
   libraryStore: LibraryStore
   projectMenuStore: ProjectMenuStore
+  log: Log
 }): ComponentType {
-  const presenter = new ProjectMenuPresenter(projectMenuStore, api)
+  const presenter = new ProjectMenuPresenter(projectMenuStore, api, log)
 
   return observer(function ProjectMenuHost() {
     const library = libraryStore.library

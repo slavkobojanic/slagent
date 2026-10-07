@@ -4,6 +4,7 @@ import type { FileView } from "@shared/types"
 import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { createMockInstance } from "@/test/create-mock-instance"
+import { nullLog } from "@/log/log"
 
 const file: FileView = {
   path: "src/app.ts",
@@ -18,7 +19,7 @@ const file: FileView = {
 function setup() {
   const files = createMockInstance<API>(["readFile"])
   const store = new PanelStore()
-  const presenter = new PanelPresenter(store, files)
+  const presenter = new PanelPresenter(store, files, nullLog())
   return { files, store, presenter }
 }
 

@@ -1,13 +1,24 @@
 import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { EmptyState } from "./empty-state"
 import { EmptyStatePresenter } from "./empty-state-presenter/empty-state-presenter"
 
-export function createEmptyState({ api, metaStore, overlayStore }: { api: API; metaStore: MetaStore; overlayStore: OverlayStore }): ComponentType {
-  const presenter = new EmptyStatePresenter(api, overlayStore)
+export function createEmptyState({
+  api,
+  metaStore,
+  overlayStore,
+  log,
+}: {
+  api: API
+  metaStore: MetaStore
+  overlayStore: OverlayStore
+  log: Log
+}): ComponentType {
+  const presenter = new EmptyStatePresenter(api, overlayStore, log)
 
   return observer(function EmptyStateHost() {
     return (

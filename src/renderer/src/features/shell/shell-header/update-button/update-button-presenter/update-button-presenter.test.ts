@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import type { API } from "@/ipc/api"
 import { UpdateButtonPresenter } from "@/features/shell/shell-header/update-button/update-button-presenter/update-button-presenter"
 import { UpdateButtonStore } from "@/features/shell/shell-header/update-button/update-button-store/update-button-store"
+import { nullLog } from "@/log/log"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -19,7 +20,7 @@ describe("UpdateButtonPresenter", () => {
     api.updateStatus.mockResolvedValue(null)
     api.installUpdate.mockResolvedValue(undefined)
     api.onUpdateReady.mockReturnValue(dispose)
-    presenter = new UpdateButtonPresenter(store, api)
+    presenter = new UpdateButtonPresenter(store, api, nullLog())
   })
 
   afterEach(() => {

@@ -1,6 +1,7 @@
 import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
 import type { UpdateButtonStore } from "@/features/shell/shell-header/update-button/update-button-store/update-button-store"
+import type { Log } from "@/log/log"
 
 export class UpdateButtonPresenter {
   private unsubscribe: (() => void) | null = null
@@ -8,6 +9,7 @@ export class UpdateButtonPresenter {
   constructor(
     private readonly store: UpdateButtonStore,
     private readonly api: API,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -18,7 +20,9 @@ export class UpdateButtonPresenter {
     this.api
       .updateStatus()
       .then(this.handleStatus)
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        this.log.debug("update-status-failed", { error })
+      })
   }
 
   stop = () => {
@@ -30,18 +34,21 @@ export class UpdateButtonPresenter {
     if (!this.store.canInstall) {
       return
     }
+    this.log.action("install-update", { version: this.store.version })
 
     this.store.setError(null)
     this.store.setInstalling(true)
     try {
       await this.api.installUpdate()
     } catch (error) {
+      this.log.warn("install-update-failed", { error })
       this.store.setInstalling(false)
       this.store.setError(errorText(error))
     }
   }
 
   private handleUpdateReady = (version: string) => {
+    this.log.info("update-ready", { version })
     this.store.setVersion(version)
   }
 

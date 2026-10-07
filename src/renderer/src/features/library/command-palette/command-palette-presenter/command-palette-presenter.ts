@@ -1,9 +1,10 @@
-import { reaction } from "mobx"
 import { toast } from "sonner"
 import type { ChatSummary, ProjectSummary } from "@shared/types"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { CommandPaletteStore } from "@/features/library/command-palette/command-palette-store/command-palette-store"
 import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import { errorText } from "@/lib/format"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -21,6 +22,8 @@ export class CommandPalettePresenter {
     private readonly overlayStore: OverlayStore,
     private readonly commandRegistry: CommandRegistry,
     private readonly composerPort: ComposerPort,
+    private readonly chatSwitchPresenter: ChatSwitchPresenter,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -39,7 +42,8 @@ export class CommandPalettePresenter {
       }),
     )
     this.disposers.push(
-      reaction(
+      this.log.reaction(
+        "palette-open",
         () => this.overlayStore.paletteOpen,
         (open) => {
           if (open) {
@@ -60,26 +64,31 @@ export class CommandPalettePresenter {
   }
 
   handleOpenChange = (open: boolean) => {
+    this.log.action(open ? "open-palette" : "close-palette")
     this.overlayStore.setOpen("palette", open)
   }
 
   handleRunCommand = (id: string) => {
+    this.log.action("run-command", { id })
     this.close()
     this.commandRegistry.run(id)
   }
 
   handleOpenChat = (chat: ChatSummary) => {
+    this.log.action("open-chat", { chatId: chat.id, title: chat.title })
     this.close()
-    void toastFailure(() => this.api.openChat(chat.id))
+    void toastFailure(() => this.chatSwitchPresenter.openChat(chat.id))
   }
 
   handleOpenProject = (project: ProjectSummary) => {
+    this.log.action("open-project", { projectId: project.id, name: project.name })
     this.close()
     void toastFailure(() => this.api.openProject(project.id))
   }
 
   // The trailing space leaves the caret ready for the user to finish the command.
   handleFillCommand = (insert: string) => {
+    this.log.action("fill-command", { insert })
     this.close()
     this.window.requestAnimationFrame(() => {
       this.composerPort.fill(`${insert} `)
@@ -91,6 +100,7 @@ export class CommandPalettePresenter {
   }
 
   handleSelectModel = (modelId: string) => {
+    this.log.action("select-model", { modelId })
     this.close()
     void this.setModel(modelId)
   }
@@ -99,6 +109,7 @@ export class CommandPalettePresenter {
     try {
       await this.api.setModel(modelId)
     } catch (error) {
+      this.log.warn("set-model-failed", { modelId, error })
       toast.error(errorText(error))
     }
   }
@@ -108,6 +119,7 @@ export class CommandPalettePresenter {
   }
 
   private toggle = () => {
+    this.log.action("toggle-palette", { open: !this.overlayStore.paletteOpen })
     this.overlayStore.setOpen("palette", !this.overlayStore.paletteOpen)
   }
 

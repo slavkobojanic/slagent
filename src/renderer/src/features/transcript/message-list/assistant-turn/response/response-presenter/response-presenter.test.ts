@@ -4,6 +4,7 @@ import { ResponsePresenter } from "@/features/transcript/message-list/assistant-
 import { ResponseStore } from "@/features/transcript/message-list/assistant-turn/response/response-store/response-store"
 import { REVEAL_STEP_MS } from "@/features/transcript/message-list/assistant-turn/response/reveal-timing"
 import { RunStore } from "@/mirror/run-store/run-store"
+import { nullLog } from "@/log/log"
 
 // Splits on blank lines, which is enough to stand in for the markdown block parser here.
 function parse(text: string): string[] {
@@ -37,7 +38,7 @@ function show(run: RunStore, messages: ChatMessage[], chatId: string | null = "c
 function setup() {
   const run = new RunStore()
   const store = new ResponseStore()
-  const presenter = new ResponsePresenter(store, run, parse, window)
+  const presenter = new ResponsePresenter(store, run, parse, window, nullLog())
   presenter.start()
   return { run, store, presenter }
 }

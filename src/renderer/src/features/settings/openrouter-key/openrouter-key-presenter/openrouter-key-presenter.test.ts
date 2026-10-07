@@ -4,6 +4,7 @@ import { OpenRouterKeyPresenter } from "@/features/settings/openrouter-key/openr
 import { OpenRouterKeyStore } from "@/features/settings/openrouter-key/openrouter-key-store/openrouter-key-store"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 
@@ -14,7 +15,7 @@ function setup() {
   const overlay = new OverlayStore()
   const tabs = new SettingsStore()
   const store = new OpenRouterKeyStore()
-  const presenter = new OpenRouterKeyPresenter(store, api, overlay, tabs)
+  const presenter = new OpenRouterKeyPresenter(store, api, overlay, tabs, nullLog())
   return { api, overlay, tabs, store, presenter }
 }
 

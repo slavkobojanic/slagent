@@ -4,6 +4,7 @@ import type { ProjectSummary } from "@shared/types"
 import { ProjectRemovalPresenter } from "@/features/library/project-removal/project-removal-presenter/project-removal-presenter"
 import { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
@@ -29,7 +30,7 @@ describe("ProjectRemovalPresenter", () => {
     store = new ProjectRemovalStore()
     api = createMockInstance<API>(["removeProject"])
     api.removeProject.mockResolvedValue(undefined)
-    presenter = new ProjectRemovalPresenter(store, api)
+    presenter = new ProjectRemovalPresenter(store, api, nullLog())
   })
 
   describe("handleTypedChange", () => {

@@ -1,8 +1,10 @@
 import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { JumpPort } from "@/state/jump-port/jump-port"
@@ -30,6 +32,8 @@ export function createSidebar({
   jumpPort,
   chatDeletionStore,
   projectRemovalStore,
+  chatSwitchPresenter,
+  log,
 }: {
   api: API
   window: Window
@@ -41,14 +45,43 @@ export function createSidebar({
   jumpPort: JumpPort
   chatDeletionStore: ChatDeletionStore
   projectRemovalStore: ProjectRemovalStore
+  chatSwitchPresenter: ChatSwitchPresenter
+  log: Log
 }): ComponentType {
   // The palette lists commands in registration order: new chat, open folder, then search.
-  const ProjectRow = createProjectRow({ api, window, libraryStore, composerPort, commandRegistry, projectRemovalStore })
-  const OpenProject = createOpenProject({ api, window, libraryStore, composerPort, commandRegistry, chatDeletionStore, ProjectRow })
-  const PinnedProjects = createPinnedProjects({ api, libraryStore, ProjectRow })
+  const ProjectRow = createProjectRow({
+    api,
+    window,
+    libraryStore,
+    composerPort,
+    commandRegistry,
+    projectRemovalStore,
+    log: log.child("project-row"),
+  })
+  const OpenProject = createOpenProject({
+    api,
+    window,
+    libraryStore,
+    composerPort,
+    commandRegistry,
+    chatDeletionStore,
+    chatSwitchPresenter,
+    ProjectRow,
+    log: log.child("open-project"),
+  })
+  const PinnedProjects = createPinnedProjects({ api, libraryStore, ProjectRow, log: log.child("pinned-projects") })
 
   const chatSearchStore = new ChatSearchStore()
-  const chatSearchPresenter = new ChatSearchPresenter(chatSearchStore, api, window, jumpPort, layoutPresenter, commandRegistry)
+  const chatSearchPresenter = new ChatSearchPresenter(
+    chatSearchStore,
+    api,
+    window,
+    jumpPort,
+    layoutPresenter,
+    commandRegistry,
+    chatSwitchPresenter,
+    log.child("chat-search"),
+  )
   chatSearchPresenter.start()
   const SearchBox = createSearchBox({ chatSearchStore, chatSearchPresenter })
   const SearchResults = createSearchResults({ libraryStore, chatSearchStore, chatSearchPresenter })

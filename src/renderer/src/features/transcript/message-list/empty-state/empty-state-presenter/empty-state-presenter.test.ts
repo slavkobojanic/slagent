@@ -4,13 +4,14 @@ import type { API } from "@/ipc/api"
 import { EmptyStatePresenter } from "@/features/transcript/message-list/empty-state/empty-state-presenter/empty-state-presenter"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { createMockInstance } from "@/test/create-mock-instance"
+import { nullLog } from "@/log/log"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
 
 function setup() {
   const api = createMockInstance<API>(["chooseFolder"])
   const overlayStore = createMockInstance<OverlayStore>(["setOpen"])
-  const presenter = new EmptyStatePresenter(api, overlayStore)
+  const presenter = new EmptyStatePresenter(api, overlayStore, nullLog())
   return { api, overlayStore, presenter }
 }
 

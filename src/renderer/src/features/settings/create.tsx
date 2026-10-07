@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import type { McpStore } from "@/state/mcp/mcp-store/mcp-store"
@@ -24,6 +25,7 @@ export function createSettings({
   themePresenter,
   mcpStore,
   commandRegistry,
+  log,
 }: {
   api: API
   metaStore: MetaStore
@@ -32,15 +34,22 @@ export function createSettings({
   themePresenter: ThemePresenter
   mcpStore: McpStore
   commandRegistry: CommandRegistry
+  log: Log
 }): ComponentType {
   const settingsStore = new SettingsStore()
-  const presenter = new SettingsPresenter(settingsStore, overlayStore, commandRegistry)
+  const presenter = new SettingsPresenter(settingsStore, overlayStore, commandRegistry, log)
 
   const ThemePicker = createThemePicker({ themeStore, themePresenter })
-  const OpenRouterKey = createOpenRouterKey({ api, metaStore, overlayStore, settingsStore })
-  const PersonalisationSettings = createPersonalisationSettings({ api, metaStore, overlayStore, settingsStore })
-  const McpSettings = createMcpSettings({ api, metaStore, overlayStore, mcpStore })
-  const CliSettings = createCliSettings({ api, overlayStore, settingsStore })
+  const OpenRouterKey = createOpenRouterKey({ api, metaStore, overlayStore, settingsStore, log: log.child("openrouter-key") })
+  const PersonalisationSettings = createPersonalisationSettings({
+    api,
+    metaStore,
+    overlayStore,
+    settingsStore,
+    log: log.child("personalisation-settings"),
+  })
+  const McpSettings = createMcpSettings({ api, metaStore, overlayStore, mcpStore, log: log.child("mcp-settings") })
+  const CliSettings = createCliSettings({ api, overlayStore, settingsStore, log: log.child("cli-settings") })
 
   presenter.start()
 

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
 import { LayoutStore } from "@/state/layout/layout-store/layout-store"
+import { nullLog } from "@/log/log"
 
 const SIDEBAR_KEY = "slagent:sidebar-width"
 const CHANGES_KEY = "slagent:changes-width"
@@ -29,7 +30,7 @@ describe("LayoutPresenter", () => {
     window.localStorage.clear()
     setViewport(1200)
     store = new LayoutStore()
-    presenter = new LayoutPresenter(store, window)
+    presenter = new LayoutPresenter(store, window, nullLog())
   })
 
   afterEach(() => {

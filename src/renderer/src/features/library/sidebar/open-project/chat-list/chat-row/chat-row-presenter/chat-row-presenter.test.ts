@@ -3,7 +3,14 @@ import { DONE_WINDOW_MS, type ChatSummary, type LibraryState } from "@shared/typ
 import { ChatRowMenuStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-store/chat-row-menu-store"
 import { ChatRowPresenter } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-presenter/chat-row-presenter"
 import { ChatRowStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-store/chat-row-store"
+import { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
+import { RunStore } from "@/mirror/run-store/run-store"
+import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { PanelStore } from "@/state/panel/panel-store/panel-store"
+import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewStore } from "@/state/review/review-store/review-store"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
@@ -30,7 +37,15 @@ describe("ChatRowPresenter", () => {
     menu = new ChatRowMenuStore()
     api = createMockInstance<API>(["openChat"])
     api.openChat.mockResolvedValue(undefined)
-    presenter = new ChatRowPresenter(store, libraryStore, api, window, menu)
+    const chatSwitch = new ChatSwitchPresenter(
+      new LibraryStore(),
+      new RunStore(),
+      api,
+      new PanelPresenter(new PanelStore(), api, nullLog()),
+      new ReviewPresenter(new ReviewStore(), nullLog()),
+      nullLog(),
+    )
+    presenter = new ChatRowPresenter(store, libraryStore, window, menu, chatSwitch, nullLog())
   })
 
   afterEach(() => {

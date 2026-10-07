@@ -4,6 +4,7 @@ import type { LibraryState, ProjectSummary } from "@shared/types"
 import { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import { ProjectRowPresenter } from "@/features/library/sidebar/project-row/project-row-presenter/project-row-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { ComposerPort } from "@/state/composer-port/composer-port"
 import { CommandRegistry, type Command } from "@/state/keyboard/command-registry/command-registry"
@@ -48,7 +49,7 @@ describe("ProjectRowPresenter", () => {
     vi.spyOn(composer, "focus")
     registry = new CommandRegistry()
     removal = new ProjectRemovalStore()
-    presenter = new ProjectRowPresenter(api, window, libraryStore, composer, registry, removal)
+    presenter = new ProjectRowPresenter(api, window, libraryStore, composer, registry, removal, nullLog())
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(0)
       return 0

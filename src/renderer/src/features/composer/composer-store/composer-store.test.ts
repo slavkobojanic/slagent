@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { EMPTY_PERSONALISATION, type AppMeta } from "@shared/types"
+import { EMPTY_PERSONALISATION, type AppMeta, type ChatMessage } from "@shared/types"
 import { ComposerStore } from "@/features/composer/composer-store/composer-store"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
@@ -166,6 +166,26 @@ describe("ComposerStore", () => {
 
     it("can enable the plan toggle when the box is open and idle", () => {
       expect(setup().store.planDisabled).toBe(false)
+    })
+  })
+
+  describe("replyId", () => {
+    const asked: ChatMessage = { id: "u1", role: "user", text: "hi", attachments: [] }
+    const empty: ChatMessage = { id: "a1", role: "assistant", text: "", thinking: "", streaming: true, error: null }
+    const thinking: ChatMessage = { ...empty, thinking: "hmm" }
+
+    it("can be null when the latest prompt has no output yet", () => {
+      const { mirror, store } = setup()
+      mirror.run.setTranscript(transcriptWith({ messages: [{ ...thinking, id: "a0" }, asked, empty] }))
+
+      expect(store.replyId).toBeNull()
+    })
+
+    it("can name the reply once it shows thinking or text", () => {
+      const { mirror, store } = setup()
+      mirror.run.setTranscript(transcriptWith({ messages: [asked, thinking] }))
+
+      expect(store.replyId).toBe("a1")
     })
   })
 

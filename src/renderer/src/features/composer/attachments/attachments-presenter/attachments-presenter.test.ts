@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { toast } from "sonner"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { AttachmentsPresenter } from "@/features/composer/attachments/attachments-presenter/attachments-presenter"
 import { AttachmentsStore } from "@/features/composer/attachments/attachments-store/attachments-store"
 import { createMockInstance } from "@/test/create-mock-instance"
@@ -64,7 +65,7 @@ describe("AttachmentsPresenter", () => {
     const fake = fakeWindow()
     urls = fake.URL
     reader = fake.reader
-    presenter = new AttachmentsPresenter(store, api, fake.window)
+    presenter = new AttachmentsPresenter(store, api, fake.window, nullLog())
   })
 
   describe("handleFileChange", () => {

@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
@@ -34,6 +35,7 @@ export function createTranscript({
   commandRegistry,
   composerPort,
   jumpPort,
+  log,
 }: {
   api: API
   window: Window
@@ -47,12 +49,19 @@ export function createTranscript({
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
   jumpPort: JumpPort
+  log: Log
 }): ComponentType {
   const store = new TranscriptStore()
-  const presenter = new TranscriptPresenter(store, runStore, api, jumpPort, window)
+  const presenter = new TranscriptPresenter(store, runStore, api, jumpPort, window, log)
   presenter.start()
 
-  const CommentableResponse = createCommentableResponse({ window, runStore, reviewStore, reviewPresenter })
+  const CommentableResponse = createCommentableResponse({
+    window,
+    runStore,
+    reviewStore,
+    reviewPresenter,
+    log: log.child("commentable-response"),
+  })
   const MessageList = createMessageList({
     api,
     window,
@@ -63,11 +72,12 @@ export function createTranscript({
     commandRegistry,
     composerPort,
     CommentableResponse,
+    log: log.child("message-list"),
   })
-  const PlanCard = createPlanCard({ api, runStore })
+  const PlanCard = createPlanCard({ api, runStore, log: log.child("plan-card") })
   const Status = createStatus({ runStore })
   const ScrollDown = createScrollDown({ runStore, transcriptStore: store, transcriptPresenter: presenter })
-  const QuestionCard = createQuestionCard({ api, window, runStore, themeStore })
+  const QuestionCard = createQuestionCard({ api, window, runStore, themeStore, log: log.child("question-card") })
 
   return observer(function TranscriptHost() {
     // Keyed by the chat, so opening a chat mounts the transcript fresh.

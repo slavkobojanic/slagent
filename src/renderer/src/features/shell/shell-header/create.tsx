@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
@@ -35,6 +36,7 @@ export function createShellHeader({
   commandRegistry,
   projectMenuStore,
   updateButtonStore,
+  log,
 }: {
   api: API
   libraryStore: LibraryStore
@@ -49,14 +51,15 @@ export function createShellHeader({
   commandRegistry: CommandRegistry
   projectMenuStore: ProjectMenuStore
   updateButtonStore: UpdateButtonStore
+  log: Log
 }): ComponentType {
   const SidebarToggle = createSidebarToggle({ api, layoutStore, layoutPresenter, commandRegistry })
-  const ProjectMenu = createProjectMenu({ api, libraryStore, projectMenuStore })
+  const ProjectMenu = createProjectMenu({ api, libraryStore, projectMenuStore, log: log.child("project-menu") })
   const ChatTitle = createChatTitle({ libraryStore })
-  const UpdateButton = createUpdateButton({ api, updateButtonStore })
-  const ModelButton = createModelButton({ metaStore, runStore, overlayStore })
-  const PanelToggle = createPanelToggle({ api, metaStore, panelStore, panelPresenter })
-  const SettingsButton = createSettingsButton({ mcpStore, overlayStore })
+  const UpdateButton = createUpdateButton({ api, updateButtonStore, log: log.child("update-button") })
+  const ModelButton = createModelButton({ metaStore, runStore, overlayStore, log: log.child("model-button") })
+  const PanelToggle = createPanelToggle({ api, metaStore, panelStore, panelPresenter, log: log.child("panel-toggle") })
+  const SettingsButton = createSettingsButton({ mcpStore, overlayStore, log: log.child("settings-button") })
   const macos = api.platform === "darwin"
 
   return function ShellHeaderHost() {

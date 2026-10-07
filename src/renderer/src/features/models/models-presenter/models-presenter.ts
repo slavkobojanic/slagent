@@ -1,6 +1,7 @@
 import type { ModelsStore } from "@/features/models/models-store/models-store"
 import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
+import type { Log } from "@/log/log"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
@@ -17,6 +18,7 @@ export class ModelsPresenter {
     private readonly composerPort: ComposerPort,
     private readonly commandRegistry: CommandRegistry,
     private readonly notify: (message: string) => void,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -38,10 +40,12 @@ export class ModelsPresenter {
   }
 
   handleOpen = () => {
+    this.log.action("open-models")
     this.overlayStore.setOpen("model", true)
   }
 
   handleOpenChange = (open: boolean) => {
+    this.log.action("set-open", { open })
     if (!open) {
       this.store.reset()
     }
@@ -58,6 +62,7 @@ export class ModelsPresenter {
     if (!this.store.canSelect) {
       return
     }
+    this.log.action("select-model", { modelId })
 
     this.store.setBusy(true)
     this.store.setError(null)
@@ -69,6 +74,7 @@ export class ModelsPresenter {
       this.overlayStore.setOpen("model", false)
       this.composerPort.focus()
     } catch (error) {
+      this.log.warn("select-model-failed", { modelId, error })
       this.store.setError(errorText(error))
     } finally {
       this.store.setBusy(false)

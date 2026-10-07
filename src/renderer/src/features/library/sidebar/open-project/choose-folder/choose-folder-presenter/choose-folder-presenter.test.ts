@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { toast } from "sonner"
 import { ChooseFolderPresenter } from "@/features/library/sidebar/open-project/choose-folder/choose-folder-presenter/choose-folder-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
@@ -19,7 +20,7 @@ describe("ChooseFolderPresenter", () => {
     api = createMockInstance<API>(["chooseFolder"])
     api.chooseFolder.mockResolvedValue(undefined)
     registry = new CommandRegistry()
-    presenter = new ChooseFolderPresenter(api, registry)
+    presenter = new ChooseFolderPresenter(api, registry, nullLog())
   })
 
   afterEach(() => {

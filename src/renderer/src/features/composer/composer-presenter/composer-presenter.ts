@@ -1,8 +1,8 @@
-import { reaction } from "mobx"
 import { toast } from "sonner"
 import type { PromptFile, PromptRequest } from "@shared/types"
 import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
+import type { Log, LogData } from "@/log/log"
 import type { AttachmentsPresenter } from "@/features/composer/attachments/attachments-presenter/attachments-presenter"
 import type { ComposerStore } from "@/features/composer/composer-store/composer-store"
 import type { PromptHistoryPresenter } from "@/features/composer/prompt-history/prompt-history-presenter/prompt-history-presenter"
@@ -27,10 +27,13 @@ export type KeyEventLike = {
 export type TextEventLike = { currentTarget: Pick<HTMLTextAreaElement, "value" | "selectionStart"> }
 export type SubmitEventLike = { preventDefault: () => void }
 
+type EndTimer = (more?: LogData) => void
+
 export class ComposerPresenter {
   private attached = false
   private disposers: Array<() => void> = []
   private textarea: HTMLTextAreaElement | null = null
+  private endFirstToken: EndTimer | null = null
 
   constructor(
     private readonly store: ComposerStore,
@@ -42,6 +45,7 @@ export class ComposerPresenter {
     private readonly commandRegistry: CommandRegistry,
     private readonly composerPort: ComposerPort,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   // A dialog or menu keeps the focus, so mounting only takes it when none is open.
@@ -113,9 +117,11 @@ export class ComposerPresenter {
   }
 
   handleStop = async () => {
+    this.log.action("stop-run")
     try {
       await this.api.abort()
     } catch (error) {
+      this.log.warn("stop-run-failed", { error })
       toast.error(errorText(error))
     }
   }
@@ -124,7 +130,9 @@ export class ComposerPresenter {
     if (this.store.streaming) {
       return
     }
+    this.log.action("toggle-plan-mode", { enabled: !this.store.planMode })
     void this.api.setPlanMode(!this.store.planMode).catch((error: unknown) => {
+      this.log.warn("toggle-plan-mode-failed", { error })
       toast.error(errorText(error))
     })
   }
@@ -163,7 +171,7 @@ export class ComposerPresenter {
     this.promptHistoryPresenter.start()
     this.restoreDraft()
     this.disposers = [
-      reaction(() => this.store.draftKey, this.switchChat),
+      this.log.reaction("draft-key", () => this.store.draftKey, this.switchChat),
       this.composerPort.attach({ focus: this.focus, fill: this.fill }),
       this.commandRegistry.register({
         id: "composer.abort",
@@ -180,6 +188,7 @@ export class ComposerPresenter {
         shortcut: { key: "l", mod: true },
         inPalette: false,
         run: () => {
+          this.log.action("focus-composer")
           this.composerPort.focus()
         },
       }),
@@ -195,6 +204,7 @@ export class ComposerPresenter {
       dispose()
     }
     this.disposers = []
+    this.endFirstToken = null
     this.attachmentsPresenter.stop()
   }
 
@@ -285,6 +295,10 @@ export class ComposerPresenter {
   private send = async () => {
     const text = this.store.text
     const draftKey = this.store.draftKey
+    const chatId = this.store.chatId
+    // A prompt sent mid-run is queued, so its first token is not the next output.
+    const queued = this.store.streaming
+    const endFirstToken = this.log.time("first-token", { chatId })
     const { mentions, chatMentions } = this.suggestionsPresenter.mentionsIn(text)
     const attached = this.attachmentsPresenter.take()
     const snapshot = this.reviewPresenter.takeForSubmit()
@@ -303,8 +317,13 @@ export class ComposerPresenter {
       comments: snapshot.diffComments,
       replies: snapshot.replyComments,
     }
+    this.log.action("send", { chatId, text, files: files.length, mentions: mentions.length, chatMentions: chatMentions.length, comments: snapshot.diffComments.length, replies: snapshot.replyComments.length, queued })
+    const finish = queued ? null : this.waitForFirstToken(endFirstToken, chatId)
     const sentKey = this.store.draftKey
     void this.api.prompt(request).catch((error: unknown) => {
+      if (finish !== null && this.endFirstToken === finish) {
+        finish({ failed: true })
+      }
       this.restoreFailedSend(request, sentKey, snapshot, error)
     })
     this.promptHistoryPresenter.remember(text)
@@ -312,8 +331,40 @@ export class ComposerPresenter {
     this.suggestionsPresenter.reset()
   }
 
+  // Ends the timer at the first reply output in the sent chat. A newer send ends a pending one as superseded.
+  private waitForFirstToken = (end: EndTimer, chatId: string | null): EndTimer => {
+    this.endFirstToken?.({ superseded: true })
+    const dispose = this.log.reaction(
+      "reply-id",
+      () => this.store.replyId,
+      (replyId) => {
+        if (replyId === null) {
+          return
+        }
+        // A new chat has no id until the main process makes one, so any transcript counts.
+        if (chatId !== null && this.store.transcriptChatId !== chatId) {
+          return
+        }
+        finish({ replyId })
+      },
+    )
+    const cancel = () => {
+      dispose()
+      this.endFirstToken = null
+    }
+    const finish: EndTimer = (more) => {
+      cancel()
+      this.disposers = this.disposers.filter((item) => item !== cancel)
+      end(more)
+    }
+    this.endFirstToken = finish
+    this.disposers.push(cancel)
+    return finish
+  }
+
   // The text goes back in the box while the same chat is open, or is saved as that chat's draft when it is not.
   private restoreFailedSend = (request: PromptRequest, sentKey: string, snapshot: ReviewSnapshot, error: unknown) => {
+    this.log.warn("send-failed", { error })
     const sameChat = sentKey === this.store.draftKey
     if (sameChat) {
       this.reviewPresenter.restore(snapshot)

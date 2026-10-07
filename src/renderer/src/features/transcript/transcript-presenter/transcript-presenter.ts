@@ -1,9 +1,9 @@
-import { reaction } from "mobx"
 import { toast } from "sonner"
 import type { TranscriptPage } from "@shared/types"
 import type { API } from "@/ipc/api"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import { errorText } from "@/lib/format"
+import type { Log } from "@/log/log"
 import { findMessage, nextPage, visibleMessage } from "@/features/transcript/transcript-scroll"
 import type { TranscriptStore } from "@/features/transcript/transcript-store/transcript-store"
 import type { JumpPort } from "@/state/jump-port/jump-port"
@@ -36,6 +36,7 @@ export class TranscriptPresenter {
     private readonly api: API,
     private readonly jumpPort: JumpPort,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -43,8 +44,8 @@ export class TranscriptPresenter {
       return
     }
     this.disposers.push(
-      reaction(() => this.runStore.transcriptChatId, this.handleChatChanged),
-      reaction(() => this.store.jumpTo, this.followJump),
+      this.log.reaction("transcript-chat-id", () => this.runStore.transcriptChatId, this.handleChatChanged),
+      this.log.reaction("jump-to", () => this.store.jumpTo, this.followJump),
       this.jumpPort.attach(this.jumpTo),
     )
   }
@@ -77,6 +78,7 @@ export class TranscriptPresenter {
 
   // Goes to the bottom, or loads the latest turns when the window is not at the live end.
   handleScrollDown = () => {
+    this.log.action("scroll-down", { hasNewer: this.runStore.transcriptPage.hasNewer })
     if (!this.runStore.transcriptPage.hasNewer) {
       void this.stick?.scrollToBottom()
       return
@@ -87,6 +89,7 @@ export class TranscriptPresenter {
 
   // The scroll happens once the message is rendered, so the request may arrive before its chat has loaded.
   jumpTo = (messageId: string) => {
+    this.log.action("jump-to", { messageId })
     this.store.setJumpTo(messageId)
   }
 
@@ -141,6 +144,7 @@ export class TranscriptPresenter {
       // The new window renders before the next frame; the anchor is released after it.
       .then(() => new Promise<void>((resolve) => this.window.requestAnimationFrame(() => resolve())))
       .catch((error: unknown) => {
+        this.log.warn("page-transcript-failed", { page: next, error })
         toast.error(errorText(error))
       })
       .finally(() => {

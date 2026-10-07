@@ -1,8 +1,13 @@
 import { toJS } from "mobx"
 import type { SlagentApi } from "@shared/types"
+import type { Log } from "@/log/log"
+
+// Subscriptions and sync calls are not round trips, so they are not timed.
+const UNTIMED = ["platform", "systemVersion", "pathForFile", "onEvent", "onUpdateReady"]
 
 // Methods close over the bridge instead of holding it in a private field, so a test mock satisfies the type.
 // Store values are MobX proxies, which the preload bridge cannot clone, so object arguments go through toJS.
+// Every round trip is a span on the ipc log.
 export class API implements SlagentApi {
   readonly platform: string
   readonly systemVersion: string
@@ -64,7 +69,8 @@ export class API implements SlagentApi {
   readonly uninstallCli: SlagentApi["uninstallCli"]
   readonly setPersonalisation: SlagentApi["setPersonalisation"]
 
-  constructor(bridge: SlagentApi) {
+  constructor(raw: SlagentApi, log: Log) {
+    const bridge = timed(raw, log)
     this.platform = bridge.platform
     this.systemVersion = bridge.systemVersion
     this.getSnapshot = () => bridge.getSnapshot()
@@ -126,10 +132,23 @@ export class API implements SlagentApi {
     this.setPersonalisation = (value) => bridge.setPersonalisation(toJS(value))
   }
 
-  static fromWindow(window: Window): API | null {
+  static fromWindow(window: Window, log: Log): API | null {
     if (window.slagent === undefined) {
       return null
     }
-    return new API(window.slagent)
+    return new API(window.slagent, log)
   }
+}
+
+function timed(bridge: SlagentApi, log: Log): SlagentApi {
+  const wrapped: Record<string, unknown> = {}
+  for (const [name, value] of Object.entries(bridge)) {
+    if (typeof value !== "function" || UNTIMED.includes(name)) {
+      wrapped[name] = value
+      continue
+    }
+    const call = value as (...args: unknown[]) => unknown
+    wrapped[name] = (...args: unknown[]) => log.span(name, () => call(...args), { args })
+  }
+  return wrapped as SlagentApi
 }

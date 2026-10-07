@@ -1,5 +1,6 @@
-import { compareStructural, reaction } from "mobx"
+import { compareStructural } from "mobx"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { TasksStore } from "@/features/composer/run-status/tasks/tasks-store/tasks-store"
 import { errorText } from "@/lib/format"
 
@@ -21,6 +22,7 @@ export class TasksPresenter {
     private readonly store: TasksStore,
     private readonly api: API,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -29,8 +31,8 @@ export class TasksPresenter {
     }
     this.started = true
     this.disposers = [
-      reaction(() => this.store.anyRunning, this.handleRunningChange, { fireImmediately: true }),
-      reaction(this.viewed, this.handleViewedChange, { equals: compareStructural, fireImmediately: true }),
+      this.log.reaction("any-running", () => this.store.anyRunning, this.handleRunningChange, { fireImmediately: true }),
+      this.log.reaction("viewed", this.viewed, this.handleViewedChange, { equals: compareStructural, fireImmediately: true }),
     ]
   }
 
@@ -48,18 +50,22 @@ export class TasksPresenter {
   }
 
   handleOpen = (id: string) => {
+    this.log.action("open-task", { id })
     this.store.openTask(id)
   }
 
   handleClose = () => {
+    this.log.action("close-task")
     this.store.closeTask()
   }
 
   handleStop = async (id: string) => {
+    this.log.action("stop-task", { id })
     this.store.setError(null)
     try {
       await this.api.stopTask(id)
     } catch (error) {
+      this.log.warn("stop-task-failed", { error })
       this.store.setError(errorText(error))
     }
   }
@@ -106,6 +112,7 @@ export class TasksPresenter {
       output = await this.api.taskOutput(id)
     } catch (error) {
       if (this.store.viewingId === id) {
+        this.log.warn("task-output-failed", { id, error })
         this.store.setError(errorText(error))
       }
       return

@@ -5,6 +5,7 @@ import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 import type { FileView } from "@shared/types"
+import { nullLog } from "@/log/log"
 
 const file: FileView = {
   path: "src/app.ts",
@@ -44,7 +45,7 @@ describe("LinkPresenter", () => {
     readFile = api.readFile
     openExternal = api.openExternal
     panel = new PanelStore()
-    presenter = new LinkPresenter(window, new PanelPresenter(panel, api), api)
+    presenter = new LinkPresenter(window, new PanelPresenter(panel, api, nullLog()), api, nullLog())
     presenter.start()
   })
 

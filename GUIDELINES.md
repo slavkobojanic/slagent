@@ -26,6 +26,7 @@ This file is the source of truth. Do not invent a different state, folder, styli
 | **Assemble `create.tsx`** | Re-runnable. Returns a `ReactElement`. Composes already-built pieces. | Store, presenter, IPC, `observer` |
 | **`ipc/api.ts`** | `API`: one thin class over `window.slagent`, `toJS` on object arguments. | UI, stores, presenters, logic |
 | **`mirror/`** | Applies `UiEvent`s and the snapshot to mirrored stores, with revision gates. | UI, IPC outside the service interfaces |
+| **`log/`** | `Log`: namespaced debug logging, timings, logged reactions. The only place that touches `console`. | UI, stores, presenters |
 
 Dumb units (a row, a pill, a label) are `name.tsx` with classes inline. No `create.tsx`, no store.
 
@@ -46,7 +47,7 @@ A wrapper is not concerned with a child's rows, fetch, or clicks. It only knows 
 - A parent's owning `create` builds its children's owning creates (the composer builds its run status, the transcript builds its question card). The root only builds what the shell slots.
 - Assemble results are **elements**, not component types (`rows={createMessageRow(...)}`).
 - Mapping a list of N lives in the unit that owns that list (the transcript view), not in the shell chrome.
-- **Explicit deps.** Every `create` takes one destructured object naming exactly what it uses (`{ api, runStore, commandRegistry }`), typed inline. No deps bags, no spreading a parent's deps into a child. A child gets only what the child uses. Shared names: `api`, `window`, `libraryStore`, `metaStore`, `runStore`, `layoutStore`, `layoutPresenter`, `overlayStore`, `panelStore`, `panelPresenter`, `themeStore`, `themePresenter`, `permissionsStore`, `reviewStore`, `reviewPresenter`, `mcpStore`, `commandRegistry`, `composerPort`, `jumpPort`.
+- **Explicit deps.** Every `create` takes one destructured object naming exactly what it uses (`{ api, runStore, commandRegistry }`), typed inline. No deps bags, no spreading a parent's deps into a child. A child gets only what the child uses. Shared names: `log`, `api`, `window`, `libraryStore`, `metaStore`, `runStore`, `layoutStore`, `layoutPresenter`, `overlayStore`, `panelStore`, `panelPresenter`, `themeStore`, `themePresenter`, `permissionsStore`, `reviewStore`, `reviewPresenter`, `mcpStore`, `commandRegistry`, `composerPort`, `jumpPort`.
 - Each create returns one component. There is no shared slots file: a view types its own slot props (`Library: ComponentType`). Features never import another feature's `create`.
 - **One component per `.tsx` file**, `create.tsx` included (one host per create). Views stay small: a view with a long prop list is split into child units that each read their own store and pass themselves up as slots.
 - Shared dumb components used by two features live in `components/`, never imported from another feature's folder.
@@ -59,6 +60,7 @@ src/renderer/src/
   create.tsx                        # root owning create: API, mirror, shared stores, slices, shell
   index.css                         # Tailwind import, theme tokens, global base only
   ipc/api.ts                        # API: the window.slagent wrapper
+  log/log.ts                        # Log: namespaced debug logger, created once by the root
   mirror/                           # main-process state mirrored from events (single writer)
     <name>-store/<name>-store.ts
     mirror-presenter/mirror-presenter.ts
@@ -103,6 +105,22 @@ Comments record a non-obvious *why* (an ordering constraint, an Electron or brow
 - Do not call `ipcRenderer`, `fetch`, or `window.slagent` anywhere else. A `check:spc` rule enforces it.
 - Anything the presenter needs from the browser (`window`, `document`, `navigator.clipboard`, `matchMedia`) is passed in as `window: Window` or a port. Presenters never touch globals directly.
 
+## Logging
+
+`log/log.ts` is a small custom logger. It is a dependency like `api`: the root builds one with `createLog({ window, dev })` and passes scoped children down. Nothing imports a global logger, and `console` is used only inside `log/` (`check:spc` enforces it outside tests).
+
+- **Scoping.** Every create that builds a presenter or child creates takes `log: Log`, already scoped to it by its caller. It hands `log` to its own presenter and `log.child("<child-unit>")` to each child create that needs one. The root scopes slices (`log.child("composer")`) and shared presenters (`log.child("panel")`). `ipc` and `nav` are scoped by the root too.
+- **Presenters** take `private readonly log: Log` as their **last** constructor parameter. Stores, views, assemble creates and ports take no logger.
+- **What to log.**
+  - `log.action(event, data)` for a user intent: a click, a command `run`, a submit, a select or toggle. Write it after the guards, so it records what actually happened. Skip per-keystroke `onChange`, pointer moves, scroll and hover.
+  - `log.reaction(name, expression, effect, options)` replaces `reaction(...)` in presenters. It logs the new and previous value, and it returns the disposer, which is kept as before.
+  - `log.time(event)` returns `end(data)`. `log.span(event, run)` times an async block and records `ok`. Both write a `performance.measure` (visible in the DevTools Performance panel). IPC round trips are already spans on `ipc:time`, so do not wrap `api` calls again.
+  - `log.debug` / `log.info` for other notable events. `log.warn` when a caught error is put on a store. `warn` and `error` always print, in production too.
+- **Payloads** are full values. The logger snapshots observables with `toJS` at write time, so pass store values directly.
+- **Namespaces.** A line is filed under `<scope>`, `<scope>:action`, `<scope>:reaction` or `<scope>:time`. Navigation (open project and chat, right panel, overlays) is logged once, by `state/nav-log`, under `nav`. Do not log "navigated" in features.
+- **Turning it on (dev only).** Nothing below `warn` prints until a namespace is enabled. In DevTools, `__log.enable("nav,*:action")` (it persists to `localStorage.debug`), `__log.disable()`, or `__log.spec()`. Globs use `*`, a leading `-` excludes (`"*,-mirror"`). Production builds drop `debug` and `info`.
+- **Tests** pass `nullLog()`. Assert on logging only when the log line *is* the behaviour (a timing): build a real `Log.create({ sink, clock, verbose: true, spec })` with fakes.
+
 ## Mirror (main-process state)
 
 - `mirror/mirror-presenter.ts` is the only writer of `library-store`, `meta-store`, and `run-store`. Those cover the snapshot and the three `UiEvent` types: `library`, `meta`, and `transcript`.
@@ -118,7 +136,7 @@ Comments record a non-obvious *why* (an ordering constraint, an Electron or brow
 - Prefer store methods for mutations with invariants (`setSelection` also clears the draft). Skip one-line setters: the owning presenter may assign that field on **its own** store. Never assign fields on an injected store, call its method.
 - Owning `create` is the only `observer` when it reads a store. It reads the **store** for values and the **presenter** for commands, and passes them as **individual JSX props**. No `presenter.props`. No `toProps()`.
 - `presenter.start()` attaches DOM listeners, IPC subscriptions, and timers. `presenter.stop()` removes them and cancels pending work. `stop` does not reset the store.
-- Every `reaction`, `autorun`, or `when` returns a disposer. The presenter keeps it and calls it in `stop()`. A bare `reaction(...)` statement fails `check:spc`.
+- Every `reaction`, `autorun`, or `when` returns a disposer (in presenters, `this.log.reaction(...)`; see Logging). The presenter keeps it and calls it in `stop()`. A bare `reaction(...)` statement fails `check:spc`.
 - No module-level mutable state: no top-level `let`, no module-level `Map`, `Set`, or array that changes. No side effects on import. Theme application and the preload warm-up run from `main.tsx` or a presenter `start()`.
 - Views never import stores, presenters, `ipc/`, `mirror/`, or `state/`. Stores never import React or `.tsx`. Presenters never import React.
 
@@ -153,7 +171,7 @@ Comments record a non-obvious *why* (an ordering constraint, an Electron or brow
 ## Testing
 
 - **Stores:** real instance. One `describe` per member. One `it` per branch.
-- **Presenters:** mocked collaborators (`createMockInstance(IpcXService)`, real stores where practical). One guard per test. Assert IPC calls and store changes. Tests that cover listeners call `start()`, then `stop()`.
+- **Presenters:** mocked collaborators (`createMockInstance(IpcXService)`, real stores where practical), and `nullLog()` for the logger. One guard per test. Assert IPC calls and store changes. Tests that cover listeners call `start()`, then `stop()`.
 - **Views:** props in, markup out. Each named state gets one test. No clicks or submits in view tests. Interaction is covered by presenter tests. Snapshot with `viewMarkup()` when the markup is the contract.
 - **No Storybook.** A view's test file renders the same named states a story would.
 - **Not unit-tested:** `create.tsx`. The mirror's ordering and revision gates are tested directly.
@@ -574,19 +592,20 @@ The `resize-handle` view receives `onPointerDown={(event) => onResizeStart(event
 ```tsx
 // src/renderer/src/create.tsx — root: builds everything once, then the shell
 export function createApp(): ComponentType {
-  const api = API.fromWindow(window);
+  const log = createLog({ window, dev: import.meta.env.DEV });
+  const api = API.fromWindow(window, log.child("ipc"));
   if (api === null) {
     return BridgeMissing;
   }
 
   const libraryStore = new LibraryStore();
   const runStore = new RunStore();
-  const mirrorPresenter = new MirrorPresenter(api, libraryStore, metaStore, runStore);
+  const mirrorPresenter = new MirrorPresenter(api, libraryStore, metaStore, runStore, log.child("mirror"));
   const commandRegistry = new CommandRegistry();
   // ...each shared store and presenter, constructed once
 
-  const Transcript = createTranscript({ api, window, runStore, commandRegistry /* ...only what it uses */ });
-  const Composer = createComposer({ api, window, libraryStore, runStore /* ... */ });
+  const Transcript = createTranscript({ log: log.child("transcript"), api, window, runStore, commandRegistry /* ...only what it uses */ });
+  const Composer = createComposer({ log: log.child("composer"), api, window, libraryStore, runStore /* ... */ });
   // ...Library, Settings, Models, Changes
   const Shell = createShell({ Library, Settings, Models, Transcript, Composer, Changes, api /* ...stores it reads */ });
 
@@ -611,6 +630,7 @@ export function createApp(): ComponentType {
 - IPC call, DOM listener, clipboard, or timer? Presenter method (arrow), started and stopped in the presenter.
 - Own-store pure one-liner? The presenter may assign the field. Injected store? Call a method.
 - View takes a model when the owner would only unwrap fields. Formatted or derived values come as primitives from the owning store.
+- New presenter → trailing `log: Log` constructor parameter. `log.action` in intent handlers, `log.reaction` for reactions, `log.warn` on caught errors. Never `console`.
 - Global keyboard shortcut? Register a command in `shared.commands`. Do not add a window-level `keydown` listener in a feature. An element's own `onKeyDown` (a card or a field handling its keys while it has focus) is a view prop and is fine.
 - A hook in a view? Stop. Move the state to a store, the effect to a presenter, the ref to a callback ref, the context to props.
 - Styling: Tailwind classes plus `cn()`. Spacing from the scale. Colours from tokens. No arbitrary values, no template-built classes, no CSS modules.

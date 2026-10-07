@@ -4,6 +4,7 @@ import type { ComputerPermissions } from "@shared/types"
 import { PermissionsPresenter } from "@/state/permissions/permissions-presenter/permissions-presenter"
 import { PermissionsStore } from "@/state/permissions/permissions-store/permissions-store"
 import { createMockInstance } from "@/test/create-mock-instance"
+import { nullLog } from "@/log/log"
 
 const MISSING: ComputerPermissions = { accessibility: false, screenRecording: false, error: null }
 const GRANTED: ComputerPermissions = { accessibility: true, screenRecording: true, error: null }
@@ -12,7 +13,7 @@ const TIMER_ID = 7
 function setup(platform = "darwin") {
   const store = new PermissionsStore(platform)
   const service = createMockInstance<API>(["getPermissions"])
-  const presenter = new PermissionsPresenter(store, service, platform, window)
+  const presenter = new PermissionsPresenter(store, service, platform, window, nullLog())
   return { store, service, presenter }
 }
 

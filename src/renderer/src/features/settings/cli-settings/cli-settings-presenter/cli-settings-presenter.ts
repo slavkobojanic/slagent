@@ -1,10 +1,10 @@
-import { reaction } from "mobx"
 import { toast } from "sonner"
 import type { CliStatus } from "@shared/types"
 import type { SettingsStore } from "@/features/settings/settings-store/settings-store"
 import type { CliAction, CliSettingsStore } from "@/features/settings/cli-settings/cli-settings-store/cli-settings-store"
 import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
+import type { Log } from "@/log/log"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 
 export class CliSettingsPresenter {
@@ -15,13 +15,15 @@ export class CliSettingsPresenter {
     private readonly api: API,
     private readonly overlayStore: OverlayStore,
     private readonly settingsStore: SettingsStore,
+    private readonly log: Log,
   ) {}
 
   start = () => {
     if (this.disposeShown !== null) {
       return
     }
-    this.disposeShown = reaction(
+    this.disposeShown = this.log.reaction(
+      "shown",
       () => this.shown(),
       (shown) => {
         if (shown) {
@@ -41,6 +43,7 @@ export class CliSettingsPresenter {
     if (!this.store.canInstall) {
       return
     }
+    this.log.action("install-cli")
     await this.run("install", () => this.api.installCli(), "slagent command installed")
   }
 
@@ -48,6 +51,7 @@ export class CliSettingsPresenter {
     if (!this.store.canUninstall) {
       return
     }
+    this.log.action("uninstall-cli")
     await this.run("uninstall", () => this.api.uninstallCli(), "slagent command removed")
   }
 
@@ -58,6 +62,7 @@ export class CliSettingsPresenter {
     try {
       this.store.setStatus(await this.api.cliStatus())
     } catch (error) {
+      this.log.warn("load-status-failed", { error })
       this.store.setError(errorText(error))
     }
   }
@@ -69,6 +74,7 @@ export class CliSettingsPresenter {
       this.store.setStatus(await call())
       toast.success(message)
     } catch (error) {
+      this.log.warn(`${action}-failed`, { error })
       this.store.setError(errorText(error))
     } finally {
       this.store.setBusy(null)

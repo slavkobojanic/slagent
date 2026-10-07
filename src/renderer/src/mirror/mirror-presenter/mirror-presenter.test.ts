@@ -6,6 +6,7 @@ import { MirrorPresenter } from "@/mirror/mirror-presenter/mirror-presenter"
 import { RunStore } from "@/mirror/run-store/run-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 import { EMPTY_PERSONALISATION, type AppMeta, type ChatMessage, type LibraryState, type Snapshot, type UiEvent } from "@shared/types"
+import { nullLog } from "@/log/log"
 
 type Listener = (event: UiEvent) => void
 
@@ -79,7 +80,7 @@ function setup() {
   const libraryStore = new LibraryStore()
   const metaStore = new MetaStore()
   const runStore = new RunStore()
-  const presenter = new MirrorPresenter(app, libraryStore, metaStore, runStore)
+  const presenter = new MirrorPresenter(app, libraryStore, metaStore, runStore, nullLog())
   return {
     app,
     dispose,

@@ -1,6 +1,6 @@
-import { reaction } from "mobx"
 import type { ChatMention, ChatSearchResult, FileMatch, PromptMention, SlashCommand } from "@shared/types"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { PromptHistoryStore } from "@/features/composer/prompt-history/prompt-history-store/prompt-history-store"
 import { chatMentionAt, mentionAt, slashAt, type Trigger } from "@/features/composer/prompt-text"
 import type { SuggestionsStore } from "@/features/composer/suggestions/suggestions-store/suggestions-store"
@@ -32,6 +32,7 @@ export class SuggestionsPresenter {
     private readonly promptHistoryStore: PromptHistoryStore,
     private readonly api: API,
     private readonly window: Window,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -40,11 +41,12 @@ export class SuggestionsPresenter {
     }
     this.attached = true
     this.disposers = [
-      reaction(() => this.store.mention, this.searchFiles),
-      reaction(() => this.store.chatMention, this.searchChats),
-      reaction(() => this.store.slash !== null, this.loadCommands),
+      this.log.reaction("mention", () => this.store.mention, this.searchFiles),
+      this.log.reaction("chat-mention", () => this.store.chatMention, this.searchChats),
+      this.log.reaction("slash-open", () => this.store.slash !== null, this.loadCommands),
       // The history search takes over the box, so the other menus close while it is open.
-      reaction(
+      this.log.reaction(
+        "history-searching",
         () => this.promptHistoryStore.searching,
         (searching) => {
           if (searching) {
@@ -103,6 +105,7 @@ export class SuggestionsPresenter {
     }
     if (event.key === "Escape") {
       event.preventDefault()
+      this.log.action("dismiss-suggestions")
       this.store.dismiss()
       return true
     }
@@ -162,6 +165,7 @@ export class SuggestionsPresenter {
     if (trigger === null) {
       return
     }
+    this.log.action("choose-file-mention", { path: match.path })
     const token = `@${match.name} `
     apply(`${text.slice(0, trigger.start)}${token}${text.slice(caret)}`, trigger.start + token.length)
     this.store.closeMention()
@@ -173,6 +177,7 @@ export class SuggestionsPresenter {
     if (trigger === null) {
       return
     }
+    this.log.action("choose-chat-mention", { chatId: match.chatId })
     const token = `$${match.title} `
     apply(`${text.slice(0, trigger.start)}${token}${text.slice(caret)}`, trigger.start + token.length)
     this.store.closeChatMention()
@@ -180,6 +185,7 @@ export class SuggestionsPresenter {
   }
 
   private chooseCommand = (command: SlashCommand, text: string, caret: number, apply: ApplyText) => {
+    this.log.action("choose-command", { command: command.insert })
     const token = `${command.insert} `
     apply(`${token}${text.slice(caret).trimStart()}`, token.length)
     this.store.closeSlash()

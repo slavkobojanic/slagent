@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react"
 import { observer } from "mobx-react-lite"
 import { parseMarkdownIntoBlocks } from "streamdown"
+import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import { isCodeBlock } from "./reveal-timing"
 import { Response } from "./response"
@@ -13,13 +14,15 @@ export function createResponse({
   window,
   runStore,
   CommentableResponse,
+  log,
 }: {
   window: Window
   runStore: RunStore
   CommentableResponse: ComponentType<{ messageId: string; children: ReactNode }>
+  log: Log
 }): ComponentType<ResponseHostProps> {
   const store = new ResponseStore()
-  const presenter = new ResponsePresenter(store, runStore, parseMarkdownIntoBlocks, window)
+  const presenter = new ResponsePresenter(store, runStore, parseMarkdownIntoBlocks, window, log)
   presenter.start()
 
   return observer(function ResponseHost({ messageId, text, streaming }: ResponseHostProps) {

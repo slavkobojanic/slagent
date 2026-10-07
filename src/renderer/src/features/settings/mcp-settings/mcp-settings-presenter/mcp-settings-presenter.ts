@@ -1,8 +1,8 @@
-import { reaction } from "mobx"
 import type { McpServerStatus } from "@shared/types"
 import type { McpSettingsStore } from "@/features/settings/mcp-settings/mcp-settings-store/mcp-settings-store"
 import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
+import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { McpStore } from "@/state/mcp/mcp-store/mcp-store"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
@@ -17,13 +17,15 @@ export class McpSettingsPresenter {
     private readonly mcpStore: McpStore,
     private readonly overlayStore: OverlayStore,
     private readonly metaStore: MetaStore,
+    private readonly log: Log,
   ) {}
 
   start = () => {
     if (this.disposeReady !== null) {
       return
     }
-    this.disposeReady = reaction(
+    this.disposeReady = this.log.reaction(
+      "meta-ready",
       () => this.metaStore.ready,
       (ready) => {
         if (ready) {
@@ -32,7 +34,8 @@ export class McpSettingsPresenter {
       },
       { fireImmediately: true },
     )
-    this.disposeOpen = reaction(
+    this.disposeOpen = this.log.reaction(
+      "settings-open",
       () => this.overlayStore.settingsOpen,
       (open) => {
         if (open) {
@@ -55,6 +58,7 @@ export class McpSettingsPresenter {
     if (this.store.refreshing) {
       return
     }
+    this.log.action("refresh")
 
     // A refresh reports the real state, so a spinner left by a sign-in still waiting on its browser is dropped.
     this.store.setRefreshing(true)
@@ -63,17 +67,27 @@ export class McpSettingsPresenter {
     try {
       this.mcpStore.setServers(await this.api.mcpList())
     } catch (error) {
+      this.log.warn("refresh-failed", { error })
       this.store.setError(errorText(error))
     } finally {
       this.store.setRefreshing(false)
     }
   }
 
-  handleSignIn = (name: string) => this.run(name, () => this.api.mcpSignIn(name))
+  handleSignIn = (name: string) => {
+    this.log.action("sign-in", { name })
+    return this.run(name, () => this.api.mcpSignIn(name))
+  }
 
-  handleSignOut = (name: string) => this.run(name, () => this.api.mcpSignOut(name))
+  handleSignOut = (name: string) => {
+    this.log.action("sign-out", { name })
+    return this.run(name, () => this.api.mcpSignOut(name))
+  }
 
-  handleSetEnabled = (name: string, enabled: boolean) => this.run(name, () => this.api.mcpSetEnabled(name, enabled))
+  handleSetEnabled = (name: string, enabled: boolean) => {
+    this.log.action("set-enabled", { name, enabled })
+    return this.run(name, () => this.api.mcpSetEnabled(name, enabled))
+  }
 
   // Background loads keep the list on screen when they fail. A refresh from the dialog reports its error.
   private loadQuietly = async () => {
@@ -90,6 +104,7 @@ export class McpSettingsPresenter {
     try {
       this.mcpStore.setServers(await action())
     } catch (error) {
+      this.log.warn("server-action-failed", { name, error })
       this.store.setError(errorText(error))
     } finally {
       this.store.setBusyName(null)

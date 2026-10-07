@@ -1,7 +1,7 @@
-import { reaction } from "mobx"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatListStore } from "@/features/library/sidebar/open-project/chat-list/chat-list-store/chat-list-store"
 import { toastFailure } from "@/features/library/toast-failure"
-import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -17,10 +17,11 @@ export class ChatListPresenter {
   constructor(
     private readonly store: ChatListStore,
     private readonly libraryStore: LibraryStore,
-    private readonly api: API,
     private readonly window: Window,
     private readonly composerPort: ComposerPort,
     private readonly commandRegistry: CommandRegistry,
+    private readonly chatSwitchPresenter: ChatSwitchPresenter,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -32,7 +33,8 @@ export class ChatListPresenter {
     this.store.setReduceMotion(this.media.matches)
     this.media.addEventListener("change", this.handleMotionChange)
     this.disposers.push(
-      reaction(
+      this.log.reaction(
+        "open-project-id",
         () => this.libraryStore.openProjectId,
         () => {
           this.store.setShowAll(false)
@@ -68,10 +70,12 @@ export class ChatListPresenter {
   }
 
   handleShowAll = () => {
+    this.log.action("show-all-chats")
     this.store.setShowAll(true)
   }
 
   handleShowLess = () => {
+    this.log.action("show-fewer-chats")
     this.store.setShowAll(false)
   }
 
@@ -80,7 +84,8 @@ export class ChatListPresenter {
     if (chat === undefined) {
       return
     }
-    await toastFailure(() => this.api.openChat(chat.id))
+    this.log.action("open-chat-at", { position, chatId: chat.id })
+    await toastFailure(() => this.chatSwitchPresenter.openChat(chat.id))
     this.window.requestAnimationFrame(() => {
       this.composerPort.focus()
     })

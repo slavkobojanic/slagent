@@ -1,7 +1,9 @@
 import type { ChatSearchResult } from "@shared/types"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatSearchStore } from "@/features/library/sidebar/chat-search/chat-search-store/chat-search-store"
 import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { JumpPort } from "@/state/jump-port/jump-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import type { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
@@ -22,6 +24,8 @@ export class ChatSearchPresenter {
     private readonly jumpPort: JumpPort,
     private readonly layoutPresenter: LayoutPresenter,
     private readonly commandRegistry: CommandRegistry,
+    private readonly chatSwitchPresenter: ChatSwitchPresenter,
+    private readonly log: Log,
   ) {}
 
   start = () => {
@@ -62,17 +66,19 @@ export class ChatSearchPresenter {
   }
 
   handleClear = () => {
+    this.log.action("clear-search")
     this.handleQueryChange("")
   }
 
   handleOpen = (result: ChatSearchResult) => {
-    this.handleClear()
+    this.log.action("open-search-result", { chatId: result.chatId, projectId: result.projectId, messageId: result.messageId })
+    this.handleQueryChange("")
     void this.openHit(result)
   }
 
   // A title-only hit, or a chat that failed to open, has nothing to jump to.
   private openHit = async (result: ChatSearchResult) => {
-    const opened = await toastFailure(() => this.api.openChat(result.chatId, result.projectId, result.messageId ?? undefined))
+    const opened = await toastFailure(() => this.chatSwitchPresenter.openChat(result.chatId, result.projectId, result.messageId ?? undefined))
     if (!opened || result.messageId === null) {
       return
     }
@@ -81,6 +87,7 @@ export class ChatSearchPresenter {
 
   // The caret goes in once the pane has its width.
   private focusSearch = () => {
+    this.log.action("focus-search")
     this.layoutPresenter.setSidebarOpen(true)
     this.window.requestAnimationFrame(() => {
       this.window.document.getElementById(SEARCH_INPUT_ID)?.focus()
@@ -98,12 +105,18 @@ export class ChatSearchPresenter {
     }
     this.searchTimer = this.window.setTimeout(() => {
       this.searchTimer = null
-      void this.api.searchChats(query).then((next) => {
-        if (token !== this.searchToken) {
-          return
-        }
-        this.store.setResults(next)
-      }, () => undefined)
+      void this.api.searchChats(query).then(
+        (next) => {
+          if (token !== this.searchToken) {
+            return
+          }
+          this.log.debug("search-results", { query, count: next.length })
+          this.store.setResults(next)
+        },
+        (error) => {
+          this.log.warn("search-failed", { query, error })
+        },
+      )
     }, SEARCH_DELAY_MS)
   }
 

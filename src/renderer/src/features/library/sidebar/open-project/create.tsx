@@ -1,8 +1,10 @@
 import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
 import type { ChatStatus, ProjectSummary } from "@shared/types"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import type { API } from "@/ipc/api"
+import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
@@ -19,7 +21,9 @@ export function createOpenProject({
   composerPort,
   commandRegistry,
   chatDeletionStore,
+  chatSwitchPresenter,
   ProjectRow,
+  log,
 }: {
   api: API
   window: Window
@@ -27,6 +31,7 @@ export function createOpenProject({
   composerPort: ComposerPort
   commandRegistry: CommandRegistry
   chatDeletionStore: ChatDeletionStore
+  chatSwitchPresenter: ChatSwitchPresenter
   ProjectRow: ComponentType<{
     project: ProjectSummary
     status: ChatStatus
@@ -34,12 +39,22 @@ export function createOpenProject({
     collapsed: boolean
     onSelect: (project: ProjectSummary) => void
   }>
+  log: Log
 }): ComponentType {
   const store = new OpenProjectStore(libraryStore)
-  const presenter = new OpenProjectPresenter(store)
+  const presenter = new OpenProjectPresenter(store, log)
 
-  const ChooseFolder = createChooseFolder({ api, commandRegistry })
-  const ChatList = createChatList({ api, window, libraryStore, composerPort, commandRegistry, chatDeletionStore })
+  const ChooseFolder = createChooseFolder({ api, commandRegistry, log: log.child("choose-folder") })
+  const ChatList = createChatList({
+    api,
+    window,
+    libraryStore,
+    composerPort,
+    commandRegistry,
+    chatDeletionStore,
+    chatSwitchPresenter,
+    log: log.child("chat-list"),
+  })
 
   return observer(function OpenProjectHost() {
     return (

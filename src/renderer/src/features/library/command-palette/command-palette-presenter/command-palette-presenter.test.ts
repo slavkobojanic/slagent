@@ -3,7 +3,15 @@ import { toast } from "sonner"
 import type { ChatSummary, ProjectSummary, SlashCommand } from "@shared/types"
 import { CommandPalettePresenter } from "@/features/library/command-palette/command-palette-presenter/command-palette-presenter"
 import { CommandPaletteStore } from "@/features/library/command-palette/command-palette-store/command-palette-store"
+import { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { API } from "@/ipc/api"
+import { nullLog } from "@/log/log"
+import { LibraryStore } from "@/mirror/library-store/library-store"
+import { RunStore } from "@/mirror/run-store/run-store"
+import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { PanelStore } from "@/state/panel/panel-store/panel-store"
+import { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import { ReviewStore } from "@/state/review/review-store/review-store"
 import { CommandRegistry, type Command } from "@/state/keyboard/command-registry/command-registry"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import { ComposerPort } from "@/state/composer-port/composer-port"
@@ -51,7 +59,15 @@ describe("CommandPalettePresenter", () => {
     registry = new CommandRegistry()
     composer = new ComposerPort()
     vi.spyOn(composer, "fill")
-    presenter = new CommandPalettePresenter(store, api, window, overlay, registry, composer)
+    const chatSwitch = new ChatSwitchPresenter(
+      new LibraryStore(),
+      new RunStore(),
+      api,
+      new PanelPresenter(new PanelStore(), api, nullLog()),
+      new ReviewPresenter(new ReviewStore(), nullLog()),
+      nullLog(),
+    )
+    presenter = new CommandPalettePresenter(store, api, window, overlay, registry, composer, chatSwitch, nullLog())
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(0)
       return 0

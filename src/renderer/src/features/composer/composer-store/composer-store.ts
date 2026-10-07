@@ -27,6 +27,29 @@ export class ComposerStore {
     return this.runStore.planMode
   }
 
+  get chatId(): string | null {
+    return this.libraryStore.openChatId
+  }
+
+  get transcriptChatId(): string | null {
+    return this.runStore.transcriptChatId
+  }
+
+  // The newest message since the last prompt that shows output, so the presenter can time the first token.
+  get replyId(): string | null {
+    const { messages } = this.runStore
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i]
+      if (message.role === "user") {
+        return null
+      }
+      if (message.role === "tool" || message.text !== "" || message.thinking !== "") {
+        return message.id
+      }
+    }
+    return null
+  }
+
   // Drafts are kept per project and chat. A new chat in a project shares the "new" key.
   get draftKey(): string {
     const { openProjectId, openChatId } = this.libraryStore
