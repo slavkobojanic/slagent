@@ -9,6 +9,7 @@ function props(overrides: Partial<PromptFormProps> = {}): PromptFormProps {
     AttachButton: () => <i>attach</i>,
     PlanToggle: () => <i>plan</i>,
     SubmitButton: () => <i>submit</i>,
+    UsageMeter: () => <i>usage</i>,
     onSubmit: vi.fn(),
     onDragOver: vi.fn(),
     onDrop: vi.fn(),
@@ -20,7 +21,7 @@ describe("PromptForm", () => {
   it("can lay out the attachments, the textarea, the tools and the submit button in that order", () => {
     const markup = viewMarkup(<PromptForm {...props()} />)
 
-    const order = ["attachments", "textarea", "attach", "plan", "submit"].map((name) => markup.indexOf(`<i>${name}</i>`))
+    const order = ["attachments", "textarea", "attach", "plan", "submit", "usage"].map((name) => markup.indexOf(`<i>${name}</i>`))
     expect(order.every((index) => index >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
   })

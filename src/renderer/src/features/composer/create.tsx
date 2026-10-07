@@ -21,6 +21,7 @@ import { PromptHistoryPresenter } from "./prompt-history/prompt-history-presente
 import { PromptHistoryStore } from "./prompt-history/prompt-history-store/prompt-history-store"
 import { createPromptForm } from "./prompt-form/create"
 import { createRunStatus } from "./run-status/create"
+import { createUsageMeter } from "./run-status/usage-meter/create"
 import { createSuggestions } from "./suggestions/create"
 import { SuggestionsPresenter } from "./suggestions/suggestions-presenter/suggestions-presenter"
 import { SuggestionsStore } from "./suggestions/suggestions-store/suggestions-store"
@@ -68,12 +69,13 @@ export function createComposer({
     log,
   )
 
-  const RunStatus = createRunStatus({ api, window, runStore, metaStore, commandRegistry, log: log.child("run-status") })
+  const RunStatus = createRunStatus({ api, window, runStore, log: log.child("run-status") })
   const PendingComments = createPendingComments({ reviewStore, reviewPresenter })
   const PromptHistory = createPromptHistory({ promptHistoryStore, promptHistoryPresenter, composerPresenter })
   const Suggestions = createSuggestions({ suggestionsStore, suggestionsPresenter, composerPresenter })
   const FileInput = createFileInput({ attachmentsPresenter })
-  const PromptForm = createPromptForm({ composerStore, composerPresenter, attachmentsStore, attachmentsPresenter })
+  const UsageMeter = createUsageMeter({ api, runStore, metaStore, commandRegistry, log: log.child("usage-meter") })
+  const PromptForm = createPromptForm({ composerStore, composerPresenter, attachmentsStore, attachmentsPresenter, UsageMeter })
 
   return observer(function ComposerHost() {
     // Each chat gets a fresh box: the key remounts the view, and the effect restarts the presenter.

@@ -4,16 +4,14 @@ export type RunStatusProps = {
   Tasks: ComponentType
   Todos: ComponentType
   Queue: ComponentType
-  Usage: ComponentType
 }
 
-export function RunStatus({ Tasks, Todos, Queue, Usage }: RunStatusProps) {
+export function RunStatus({ Tasks, Todos, Queue }: RunStatusProps) {
   return (
     <>
       <Tasks />
       <Todos />
       <Queue />
-      <Usage />
     </>
   )
 }

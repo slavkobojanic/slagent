@@ -15,11 +15,13 @@ export function createPromptForm({
   composerPresenter,
   attachmentsStore,
   attachmentsPresenter,
+  UsageMeter,
 }: {
   composerStore: ComposerStore
   composerPresenter: ComposerPresenter
   attachmentsStore: AttachmentsStore
   attachmentsPresenter: AttachmentsPresenter
+  UsageMeter: ComponentType
 }): ComponentType {
   const Attachments = createAttachments({ attachmentsStore, attachmentsPresenter })
   const PromptTextarea = createPromptTextarea({ composerStore, composerPresenter, attachmentsPresenter })
@@ -35,6 +37,7 @@ export function createPromptForm({
         AttachButton={AttachButton}
         PlanToggle={PlanToggle}
         SubmitButton={SubmitButton}
+        UsageMeter={UsageMeter}
         onSubmit={composerPresenter.handleSubmit}
         onDragOver={attachmentsPresenter.handleDragOver}
         onDrop={attachmentsPresenter.handleDrop}
