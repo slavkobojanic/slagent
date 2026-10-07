@@ -19,6 +19,7 @@ import type {
   ExtensionInfo,
   QueueMode,
   PromptRequest,
+  TodoItem,
   SlashCommand,
   ToolMessage,
   TranscriptState,
@@ -31,10 +32,13 @@ import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
 import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
-import { focusGuard } from "./focus-guard"
+import { focusGuard } from "./extensions/focus-guard"
+import { todoExtension } from "./extensions/todo"
 import { preparePrompt, queueDetail } from "./prompt"
 
-const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"]
+// Pi treats the tools list as an allowlist, so tools from slagent's own
+// extensions are named here too.
+const CODING_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls", "todo"]
 
 export type AgentModel = NonNullable<ReturnType<ModelRuntime["getModel"]>>
 
@@ -85,6 +89,7 @@ export class ChatRuntime {
   private noticeIsError = false
   private awaiting = false
   private usageState: UsageState | null = null
+  private todos: TodoItem[] = []
   private named: boolean
   private titleGenerated: boolean
   private session: AgentSession | null = null
@@ -160,6 +165,7 @@ export class ChatRuntime {
       terminal: this.terminal,
       terminalStreaming: this.terminalStreaming,
       usage: this.usageState,
+      todos: this.todos,
     }
   }
 
@@ -208,7 +214,12 @@ export class ChatRuntime {
     const sessionManager = this.sessionManager()
     let toolNames = CODING_TOOLS
     let customTools: ReturnType<typeof computerTools> = []
-    const extensionFactories: InlineExtension[] = []
+    const extensionFactories: InlineExtension[] = [
+      todoExtension((todos) => {
+        this.todos = todos
+        this.emit(false)
+      }),
+    ]
     if (process.platform === "darwin") {
       toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]
       customTools = computerTools(this.options.computer, this.options.gate)

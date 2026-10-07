@@ -1,7 +1,7 @@
 import { PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, UsageState } from "@shared/types"
+import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TodoItem, UsageState } from "@shared/types"
 import { BashTerminal } from "@/components/bash-terminal"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
@@ -45,6 +45,7 @@ function AgentApp() {
   const [terminal, setTerminal] = useState("")
   const [terminalStreaming, setTerminalStreaming] = useState(false)
   const [usage, setUsage] = useState<UsageState | null>(null)
+  const [todos, setTodos] = useState<TodoItem[]>([])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -80,6 +81,7 @@ function AgentApp() {
         setTerminal(event.terminal)
         setTerminalStreaming(event.terminalStreaming)
         setUsage(event.usage)
+        setTodos(event.todos)
       }
       if (event.type === "meta" && event.revision >= metaRevision.current) {
         metaRevision.current = event.revision
@@ -107,6 +109,7 @@ function AgentApp() {
         setTerminal(snapshot.terminal)
         setTerminalStreaming(snapshot.terminalStreaming)
         setUsage(snapshot.usage)
+        setTodos(snapshot.todos)
       }
       if (snapshot.revision >= metaRevision.current) {
         metaRevision.current = snapshot.revision
@@ -386,6 +389,7 @@ function AgentApp() {
             placeholder={placeholder}
             queue={queue}
             usage={usage}
+            todos={todos}
             onCompact={() => window.slagent.compact()}
             onPrompt={(request) => window.slagent.prompt(request)}
             onAbort={() => window.slagent.abort()}

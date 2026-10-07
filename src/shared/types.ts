@@ -183,6 +183,13 @@ export type LibraryState = {
   openChatId: string | null
 }
 
+export type TodoStatus = "pending" | "in_progress" | "completed"
+
+export type TodoItem = {
+  text: string
+  status: TodoStatus
+}
+
 export type UsageState = {
   contextTokens: number | null
   contextWindow: number
@@ -199,6 +206,7 @@ export type TranscriptState = {
   terminal: string
   terminalStreaming: boolean
   usage: UsageState | null
+  todos: TodoItem[]
 }
 
 export type Snapshot = TranscriptState & {

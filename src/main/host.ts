@@ -706,6 +706,7 @@ export class AgentHost {
         terminal: "",
         terminalStreaming: false,
         usage: null,
+        todos: [],
       }
     }
     return runtime.transcript()
