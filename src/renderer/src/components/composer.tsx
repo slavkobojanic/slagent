@@ -29,6 +29,7 @@ import {
 } from "@/components/ai-elements/queue"
 import { Button } from "@/components/ui/button"
 import { setTextareaValue } from "@/lib/composer"
+import { clearDraft, readDraft, saveDraft } from "@/lib/drafts"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
 import type { DiffComment, FileMatch, ReplyComment, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
@@ -188,6 +189,7 @@ function ImageAttachment({ name, url, onRemove }: { name: string; url: string; o
 function Composer({
   streaming,
   disabled,
+  draftKey,
   placeholder,
   queue,
   usage,
@@ -208,6 +210,7 @@ function Composer({
 }: {
   streaming: boolean
   disabled: boolean
+  draftKey: string
   placeholder: string
   queue: QueuedMessage[]
   usage: UsageState | null
@@ -246,6 +249,18 @@ function Composer({
     if (document.querySelector("[role=dialog], [role=menu]")) return
     textareaRef.current?.focus()
   }, [])
+
+  // The draft is saved on every change, so this only has to restore it: when
+  // the composer mounts for another chat, or moves between projects' drafts,
+  // the saved prompt comes back.
+  useEffect(() => {
+    const text = readDraft(draftKey)
+    if (!text) return
+    const textarea = textareaRef.current
+    if (!textarea) return
+    setTextareaValue(textarea, text)
+    textarea.setSelectionRange(text.length, text.length)
+  }, [draftKey])
 
   useEffect(() => {
     if (!slashOpen) return
@@ -425,6 +440,7 @@ function Composer({
     const text = message.text
     const kept = mentions.filter((item) => text.includes(`@${item.name}`))
     if (!text.trim() && files.length === 0 && kept.length === 0 && comments.length === 0 && replies.length === 0) return
+    clearDraft(draftKey)
     try {
       await onPrompt({ text, mentions: kept, files, comments, replies })
       rememberPrompt(text)
@@ -434,6 +450,7 @@ function Composer({
       setMention(null)
       setSlash(null)
     } catch (error) {
+      saveDraft(draftKey, text)
       toast.error(errorText(error))
       throw error
     }
@@ -540,6 +557,7 @@ function Composer({
             disabled={disabled}
             onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
               textareaRef.current = event.currentTarget
+              saveDraft(draftKey, event.currentTarget.value)
               if (historyQuery !== null) {
                 setHistoryQuery(event.currentTarget.value)
                 setActive(0)

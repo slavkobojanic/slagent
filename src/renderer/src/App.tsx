@@ -654,6 +654,7 @@ function AgentApp() {
             key={library.openChatId ?? "draft"}
             streaming={streaming}
             disabled={composerDisabled}
+            draftKey={`${library.openProjectId ?? "none"}:${library.openChatId ?? "new"}`}
             placeholder={placeholder}
             queue={queue}
             usage={usage}
