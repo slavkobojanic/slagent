@@ -214,6 +214,8 @@ export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => {
     const { isStreaming } = useReasoning();
     const scrollRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [isScrollable, setIsScrollable] = useState(false);
 
     // Keep the box pinned to the newest thoughts while streaming so the
     // user can see it is active. Overflow is hidden, so this is the only
@@ -224,6 +226,21 @@ export const ReasoningContent = memo(
         el.scrollTop = el.scrollHeight;
       }
     }, [children, isStreaming]);
+
+    // Only show the edge fades when the content actually overflows the box.
+    // Measured on the inner content element (not scrollHeight) and re-checked
+    // via ResizeObserver so streaming growth is caught.
+    useEffect(() => {
+      const el = scrollRef.current;
+      const content = contentRef.current;
+      if (!el || !content) return;
+      const measure = () =>
+        setIsScrollable(content.offsetHeight > el.clientHeight + 1);
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(content);
+      return () => observer.disconnect();
+    }, []);
 
     return (
       <CollapsibleContent
@@ -239,9 +256,15 @@ export const ReasoningContent = memo(
           style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX, minHeight: THOUGHTS_MIN_HEIGHT_PX }}
           className="relative overflow-hidden"
         >
-          <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-5 bg-gradient-to-b from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-background to-transparent" />
+          <div ref={contentRef}>
+            <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+          </div>
+          {isScrollable ? (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-5 animate-in fade-in duration-300 bg-gradient-to-b from-background to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 animate-in fade-in duration-300 bg-gradient-to-t from-background to-transparent" />
+            </>
+          ) : null}
         </div>
       </CollapsibleContent>
     );
