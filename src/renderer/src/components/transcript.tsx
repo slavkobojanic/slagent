@@ -17,6 +17,7 @@ import {
 } from "@/components/ai-elements/conversation"
 import { Message, MessageAction, MessageActions, MessageContent, MessageResponse } from "@/components/ai-elements/message"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning"
 import { Shimmer } from "@/components/ai-elements/shimmer"
@@ -225,7 +226,7 @@ function ToolLabel({ tool }: { tool: ToolMessage }) {
       <button
         type="button"
         className="underline-offset-2 hover:text-foreground hover:underline"
-        title="Open in editor"
+        title="View file"
         onClick={() => openPath(path)}
       >
         {path}
@@ -288,12 +289,14 @@ function AssistantText({ text, streaming }: { text: string; streaming: boolean }
 function UserTurn({
   message,
   editable,
+  latest,
   editing,
   onEditing,
   onEdit,
 }: {
   message: UserMessage
   editable: boolean
+  latest: boolean
   editing: boolean
   onEditing: (editing: boolean) => void
   onEdit: (id: string, text: string) => Promise<void>
@@ -321,6 +324,16 @@ function UserTurn({
     } catch (error) {
       toast.error(errorText(error))
     }
+  }
+
+  const [confirming, setConfirming] = useState(false)
+
+  function startEdit() {
+    if (latest) {
+      onEditing(true)
+      return
+    }
+    setConfirming(true)
   }
 
   const attachments = message.attachments ?? []
@@ -370,7 +383,7 @@ function UserTurn({
       ) : null}
       {editable ? (
         <MessageActions className="justify-end opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-          <MessageAction tooltip="Edit and resend" onClick={() => onEditing(true)}>
+          <MessageAction tooltip="Edit and resend" onClick={startEdit}>
             <PencilIcon className="size-3.5" />
           </MessageAction>
           <DropdownMenu>
@@ -395,6 +408,30 @@ function UserTurn({
           </DropdownMenu>
         </MessageActions>
       ) : null}
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit earlier message?</DialogTitle>
+            <DialogDescription>
+              Sending the edit replaces this message and deletes everything after it in the chat.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setConfirming(false)
+                onEditing(true)
+              }}
+            >
+              Edit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Message>
   )
 }
@@ -570,6 +607,7 @@ function Transcript({
 }) {
   const blocks = groupMessages(messages)
   const pending = awaitingModel(messages, streaming) && !planProposal
+  const latestUserId = [...messages].reverse().find((message) => message.role === "user" && message.entryId)?.id
   const [editingId, setEditingId] = useState<string | null>(null)
   const latest = useRef(messages)
   latest.current = messages
@@ -601,6 +639,7 @@ function Transcript({
                 key={block.message.id}
                 message={block.message}
                 editable={!streaming && Boolean(block.message.entryId)}
+                latest={block.message.id === latestUserId}
                 editing={editingId === block.message.id}
                 onEditing={(editing) => setEditingId(editing ? block.message.id : null)}
                 onEdit={edit}

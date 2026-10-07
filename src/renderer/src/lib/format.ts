@@ -15,7 +15,20 @@ export function looksLikePath(text: string): boolean {
   return FILE_PATH.test(text)
 }
 
+export const VIEW_FILE_EVENT = "slagent:view-file"
+
+// Shows the file in the right panel. Paths that are not files, such as inline
+// code that only looks like one, do nothing.
 export function openPath(path: string): void {
+  void window.slagent
+    .readFile(path)
+    .then((file) => {
+      if (file) window.dispatchEvent(new CustomEvent(VIEW_FILE_EVENT, { detail: file }))
+    })
+    .catch(() => undefined)
+}
+
+export function openInEditor(path: string): void {
   void window.slagent.openInEditor(path).catch(() => undefined)
 }
 

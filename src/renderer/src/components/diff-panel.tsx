@@ -1,5 +1,5 @@
 import { ChevronRightIcon, GitBranchIcon, MessageSquarePlusIcon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react"
-import { useCallback, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import type { DiffComment, DiffScope, GitStatus } from "@shared/types"
 import { Button } from "@/components/ui/button"
@@ -10,22 +10,14 @@ import { cn } from "@/lib/utils"
 
 function DiffPanel({
   streaming,
-  width,
   comments,
   onAddComment,
   onRemoveComment,
-  onResizeStart,
-  onResetWidth,
-  onClose,
 }: {
   streaming: boolean
-  width: number
   comments: DiffComment[]
   onAddComment: (comment: DiffComment) => void
   onRemoveComment: (id: string) => void
-  onResizeStart: (event: ReactPointerEvent<HTMLDivElement>) => void
-  onResetWidth: () => void
-  onClose: () => void
 }) {
   const [scope, setScope] = useState<DiffScope>("uncommitted")
   const [status, setStatus] = useState<GitStatus | null>(null)
@@ -71,17 +63,8 @@ function DiffPanel({
   if (status && status.ahead > 0) pushLabel = `Push ${status.ahead}`
 
   return (
-    <aside className="relative flex h-full shrink-0 flex-col border-l border-white/10" style={{ width }} aria-label="Changes">
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize changes panel"
-        title="Drag to resize, double-click to reset"
-        className="resize-handle -left-[5px]"
-        onPointerDown={onResizeStart}
-        onDoubleClick={onResetWidth}
-      />
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 px-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3">
         <GitBranchIcon className="size-4 text-white/50" />
         <span className="truncate text-sm">{status?.branch ?? (repo ? "Detached" : "Changes")}</span>
         <div className="ml-auto flex items-center gap-1">
@@ -100,9 +83,6 @@ function DiffPanel({
           </div>
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh" onClick={() => void refresh()}>
             <RefreshCwIcon className={cn("size-3.5", loading && "animate-spin")} />
-          </Button>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Close changes" onClick={onClose}>
-            <XIcon className="size-4" />
           </Button>
         </div>
       </header>
@@ -210,7 +190,7 @@ function DiffPanel({
           </div>
         </footer>
       ) : null}
-    </aside>
+    </div>
   )
 }
 
@@ -238,7 +218,7 @@ function FileSection({
         <span className="text-emerald-400 tabular-nums">+{file.added}</span>
         <span className="text-[#ff5c5c] tabular-nums">-{file.removed}</span>
         <button type="button" className="text-white/50 hover:text-white" onClick={() => openPath(file.path)}>
-          Open
+          View
         </button>
       </div>
       {open ? (

@@ -4,7 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, pr
 import { channels } from "../shared/types"
 import { AgentHost, type Notifier } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
-import { openInEditor } from "./editor"
+import { openInEditor, readFileView } from "./editor"
 import { parsePrompt } from "./prompt"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
@@ -173,6 +173,10 @@ function registerIpc(): void {
   ipcMain.handle(channels.openInEditor, (_event, path: unknown) => {
     if (typeof path !== "string") return false
     return openInEditor(requireHost().getCwd(), path)
+  })
+  ipcMain.handle(channels.readFile, (_event, path: unknown) => {
+    if (typeof path !== "string") return null
+    return readFileView(requireHost().getCwd(), path)
   })
   ipcMain.handle(channels.chooseFolder, async () => {
     const current = requireHost()

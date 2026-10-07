@@ -2,10 +2,10 @@ import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { CSSProperties } from "react"
-import type { AppMeta, DiffComment, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
+import type { AppMeta, DiffComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
-import { DiffPanel } from "@/components/diff-panel"
+import { RightPanel, type RightTab } from "@/components/right-panel"
 import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dialogs"
 import { ModelDialog } from "@/components/model-dialog"
 import { PermissionsWizard } from "@/components/permissions-wizard"
@@ -15,7 +15,7 @@ import { EDIT_LAST_EVENT, Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
 import { focusComposer } from "@/lib/composer"
 import { useResizableWidth } from "@/lib/resize"
-import { errorText, formatTranscript, looksLikePath, openPath } from "@/lib/format"
+import { errorText, formatTranscript, looksLikePath, openPath, VIEW_FILE_EVENT } from "@/lib/format"
 
 const emptyStatus = { configured: false, source: null, type: null } as const
 const emptyLibrary: LibraryState = {
@@ -52,7 +52,10 @@ function AgentApp() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [diffOpen, setDiffOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelTab, setPanelTab] = useState<RightTab>("changes")
+  const [viewedFile, setViewedFile] = useState<FileView | null>(null)
+  const changesShown = panelOpen && panelTab === "changes"
   const [diffComments, setDiffComments] = useState<DiffComment[]>([])
   const sidebarSize = useResizableWidth("slagent:sidebar-width", 256, 200, () => Math.min(480, window.innerWidth * 0.4), 1)
   const diffSize = useResizableWidth("slagent:changes-width", 560, 320, () => window.innerWidth - 520, -1)
@@ -66,6 +69,7 @@ function AgentApp() {
   const openProjectRef = useRef<string | null>(null)
   const permissionsLockedRef = useRef(false)
   const libraryRef = useRef<LibraryState>(emptyLibrary)
+  const toggleChangesRef = useRef<() => void>(() => undefined)
   const streamingRef = useRef(false)
   libraryRef.current = library
   streamingRef.current = streaming
@@ -159,7 +163,7 @@ function AgentApp() {
       }
       if (key === "d" && event.shiftKey) {
         event.preventDefault()
-        setDiffOpen((open) => !open)
+        toggleChangesRef.current()
         return
       }
       if (key === "e" && event.shiftKey) {
@@ -209,11 +213,20 @@ function AgentApp() {
       void window.slagent.openExternal(href)
     }
 
+    function onViewFile(event: Event) {
+      const file = (event as CustomEvent<FileView>).detail
+      setViewedFile(file)
+      setPanelTab("file")
+      setPanelOpen(true)
+    }
+
     window.addEventListener("keydown", onKeyDown)
+    window.addEventListener(VIEW_FILE_EVENT, onViewFile)
     document.addEventListener("click", onClick)
     return () => {
       off()
       window.removeEventListener("keydown", onKeyDown)
+      window.removeEventListener(VIEW_FILE_EVENT, onViewFile)
       document.removeEventListener("click", onClick)
     }
   }, [])
@@ -303,6 +316,18 @@ function AgentApp() {
     }
   }
 
+  // The changes button and Cmd+Shift+D show the changes tab, or close the
+  // panel when it is already showing.
+  function toggleChanges() {
+    if (changesShown) {
+      setPanelOpen(false)
+      return
+    }
+    setPanelTab("changes")
+    setPanelOpen(true)
+  }
+  toggleChangesRef.current = toggleChanges
+
   const composerDisabled = !ready || !configured || !meta?.modelId || !cwd
   const mod = modKey()
   const paletteActions: PaletteAction[] = [
@@ -334,7 +359,7 @@ function AgentApp() {
       disabled: streaming || !cwd,
       run: () => window.slagent.setPlanMode(!planMode),
     },
-    { id: "changes", label: diffOpen ? "Hide changes" : "Show changes and commit", shortcut: `${mod}⇧D`, disabled: !cwd, run: () => setDiffOpen((open) => !open) },
+    { id: "changes", label: changesShown ? "Hide changes" : "Show changes and commit", shortcut: `${mod}⇧D`, disabled: !cwd, run: toggleChanges },
     { id: "model", label: "Change model", disabled: !ready || streaming, run: () => setModelOpen(true) },
     { id: "compact", label: "Summarize earlier messages", disabled: !usage || streaming, run: () => window.slagent.compact() },
     { id: "folder", label: "Open folder", run: () => chooseFolder() },
@@ -380,11 +405,11 @@ function AgentApp() {
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={diffOpen ? "Hide changes" : "Show changes"}
-            aria-pressed={diffOpen}
+            aria-label={changesShown ? "Hide changes" : "Show changes"}
+            aria-pressed={changesShown}
             title={`Changes (${modKey()}⇧D)`}
             disabled={!cwd}
-            onClick={() => setDiffOpen((open) => !open)}
+            onClick={toggleChanges}
           >
             <GitCompareIcon className="size-4" />
           </Button>
@@ -487,17 +512,23 @@ function AgentApp() {
             onRemoveQueued={(id) => window.slagent.removeQueued(id)}
           />
         </main>
-        {diffOpen && cwd ? (
-          <DiffPanel
-            key={cwd}
-            streaming={streaming}
+        {panelOpen && cwd ? (
+          <RightPanel
+            tab={panelTab}
+            file={viewedFile}
             width={diffSize.width}
+            streaming={streaming}
             comments={diffComments}
+            onTab={setPanelTab}
+            onCloseFile={() => {
+              setViewedFile(null)
+              setPanelTab("changes")
+            }}
+            onClose={() => setPanelOpen(false)}
             onAddComment={(comment) => setDiffComments((current) => [...current, comment])}
             onRemoveComment={(id) => setDiffComments((current) => current.filter((comment) => comment.id !== id))}
             onResizeStart={diffSize.onPointerDown}
             onResetWidth={diffSize.onDoubleClick}
-            onClose={() => setDiffOpen(false)}
           />
         ) : null}
       </div>

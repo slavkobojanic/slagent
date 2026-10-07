@@ -20,6 +20,7 @@ export const channels = {
   logout: "agent:logout",
   openExternal: "agent:open-external",
   openInEditor: "agent:open-in-editor",
+  readFile: "agent:read-file",
   setQueueMode: "agent:set-queue-mode",
   removeQueued: "agent:remove-queued",
   editMessage: "agent:edit-message",
@@ -296,6 +297,16 @@ export type GitStatus = {
 
 export type DiffScope = "uncommitted" | "turn"
 
+export type FileView = {
+  path: string
+  absolutePath: string
+  line: number | null
+  contents: string
+  size: number
+  binary: boolean
+  truncated: boolean
+}
+
 export type ModelChange = {
   applied: boolean
 }
@@ -325,6 +336,7 @@ export type SlagentApi = {
   logoutOpenRouter: () => Promise<void>
   openExternal: (url: string) => Promise<void>
   openInEditor: (path: string) => Promise<boolean>
+  readFile: (path: string) => Promise<FileView | null>
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   editMessage: (id: string, text: string) => Promise<void>
