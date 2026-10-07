@@ -5,6 +5,7 @@ import { getAgentDir, ModelRuntime as ModelRuntimeClass, type ModelRuntime } fro
 import type {
   AppMeta,
   ChatMessage,
+  ChatStatus,
   ChatSummary,
   ExtensionInfo,
   LibraryState,
@@ -378,6 +379,7 @@ export class AgentHost {
     this.chatId = chatId
     this.cwd = project.path
     await this.library.touchProject(projectId, chatId)
+    if (chat.unread) await this.library.updateChat(projectId, chatId, { unread: false })
     const existing = this.runtimeFor(projectId, chatId)
     if (existing) return
     const runtimeModel = this.modelRuntime
@@ -420,6 +422,10 @@ export class AgentHost {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
           if (this.projectId === projectId && this.chatId === chatId) this.publishMeta()
         })
+      },
+      onSettled: () => {
+        if (this.projectId === projectId && this.chatId === chatId) return
+        void this.library.updateChat(projectId, chatId, { unread: true }).then(() => this.publishLibrary())
       },
       saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
     })
@@ -614,6 +620,7 @@ export class AgentHost {
       pinnedAt: project.pinnedAt,
       lastOpenedAt: project.lastOpenedAt,
       running: this.projectRunning(project.id),
+      attention: this.projectAttention(project.id),
     }))
     let chats: ChatSummary[] = []
     if (this.projectId) chats = this.library.projectChats(this.projectId).map((chat) => this.chatSummary(chat))
@@ -634,7 +641,25 @@ export class AgentHost {
       pinnedAt: chat.pinnedAt,
       updatedAt: chat.updatedAt,
       running: runtime?.running ?? false,
+      status: this.chatStatus(chat, runtime),
     }
+  }
+
+  private chatStatus(chat: StoredChat, runtime: ChatRuntime | null): ChatStatus {
+    if (runtime?.waiting) return "waiting"
+    if (runtime?.running) return "running"
+    if (runtime?.failed) return "error"
+    if (chat.unread) return "unread"
+    return "idle"
+  }
+
+  private projectAttention(projectId: string): boolean {
+    if (projectId === this.projectId) return false
+    for (const chat of this.library.projectChats(projectId)) {
+      if (chat.unread) return true
+      if (this.runtimeFor(projectId, chat.id)?.waiting) return true
+    }
+    return false
   }
 
   private projectRunning(projectId: string): boolean {

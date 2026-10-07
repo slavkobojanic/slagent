@@ -150,7 +150,10 @@ export type ProjectSummary = {
   pinnedAt: number
   lastOpenedAt: number
   running: boolean
+  attention: boolean
 }
+
+export type ChatStatus = "idle" | "running" | "waiting" | "unread" | "error"
 
 export type ChatSummary = {
   id: string
@@ -159,6 +162,7 @@ export type ChatSummary = {
   pinnedAt: number
   updatedAt: number
   running: boolean
+  status: ChatStatus
 }
 
 export type LibraryState = {

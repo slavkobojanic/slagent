@@ -1,6 +1,6 @@
 import { EllipsisIcon, PinIcon } from "lucide-react"
 import { useRef, useState, type ReactNode } from "react"
-import type { ChatSummary, LibraryState, ProjectSummary } from "@shared/types"
+import type { ChatStatus, ChatSummary, LibraryState, ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -159,7 +159,9 @@ function ProjectMenu({
         {projects.map((project) => (
           <DropdownMenuItem key={project.id} onSelect={() => onOpen(project.id)}>
             <span className="truncate">{project.name}</span>
-            {project.running && <span className="ml-auto size-1.5 rounded-full bg-current" />}
+            <span className="ml-auto">
+              <StatusDot status={projectStatus(project)} />
+            </span>
           </DropdownMenuItem>
         ))}
         {projects.length > 0 ? <DropdownMenuSeparator /> : null}
@@ -187,7 +189,7 @@ function ProjectRow({
   return (
     <div className={cn("flex w-full min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}>
       <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm" onClick={onOpen}>
-        <RunningDot running={project.running} />
+        <StatusDot status={projectStatus(project)} />
         <span className="truncate">{project.name}</span>
         {project.pinned && <PinIcon className="size-3 shrink-0 text-white/40" />}
       </button>
@@ -264,7 +266,7 @@ function ChatRow({
       }}
     >
       <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm" onClick={onOpen}>
-        <RunningDot running={chat.running} />
+        <StatusDot status={chat.status} />
         <span className="truncate">{chat.title}</span>
         {chat.pinned && <PinIcon className="size-3 shrink-0 text-white/40" />}
       </button>
@@ -287,10 +289,28 @@ function ChatRow({
   )
 }
 
-function RunningDot({ running }: { running: boolean }) {
+const STATUS_LABELS: Record<ChatStatus, string> = {
+  idle: "",
+  running: "Running",
+  waiting: "Needs your input",
+  unread: "Finished, not read yet",
+  error: "Stopped with an error",
+}
+
+function projectStatus(project: ProjectSummary): ChatStatus {
+  if (project.running) return "running"
+  if (project.attention) return "unread"
+  return "idle"
+}
+
+function StatusDot({ status }: { status: ChatStatus }) {
   let className = "size-1.5 shrink-0 rounded-full bg-transparent"
-  if (running) className = "size-1.5 shrink-0 rounded-full bg-white"
-  return <span className={className} />
+  if (status === "running") className = "size-1.5 shrink-0 animate-pulse rounded-full bg-white"
+  if (status === "waiting") className = "size-1.5 shrink-0 rounded-full bg-amber-400"
+  if (status === "unread") className = "size-1.5 shrink-0 rounded-full bg-sky-400"
+  if (status === "error") className = "size-1.5 shrink-0 rounded-full bg-[#ff5c5c]"
+  const label = STATUS_LABELS[status]
+  return <span className={className} title={label || undefined} aria-label={label || undefined} role={label ? "img" : undefined} />
 }
 
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {

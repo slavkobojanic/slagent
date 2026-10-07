@@ -65,6 +65,7 @@ export type ChatRuntimeOptions = {
   onTitle: (title: string, generated: boolean) => void
   generateTitle: (user: string, assistant: string) => Promise<string | null>
   onModel: (modelId: string) => void
+  onSettled: () => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
 }
 
@@ -80,6 +81,8 @@ export class ChatRuntime {
   private streaming = false
   private sending = false
   private notice: string | null = null
+  private noticeIsError = false
+  private awaiting = false
   private named: boolean
   private titleGenerated: boolean
   private session: AgentSession | null = null
@@ -108,6 +111,18 @@ export class ChatRuntime {
 
   get running(): boolean {
     return this.streaming || this.sending
+  }
+
+  // Set by features that pause a run for the user, such as plan approval.
+  get waiting(): boolean {
+    return this.awaiting
+  }
+
+  get failed(): boolean {
+    if (this.running) return false
+    if (this.notice) return this.noticeIsError
+    const last = this.messages[this.messages.length - 1]
+    return last?.role === "assistant" && Boolean(last.error)
   }
 
   load(messages: ChatMessage[]): void {
@@ -319,6 +334,11 @@ export class ChatRuntime {
     }
   }
 
+  private setNotice(text: string | null, isError = false): void {
+    this.notice = text
+    this.noticeIsError = isError
+  }
+
   private enqueue(request: PromptRequest, mode: QueueMode): void {
     this.queue.push({ id: randomUUID(), mode, request })
     this.emit(false)
@@ -329,7 +349,7 @@ export class ChatRuntime {
     if (!session) throw new Error("The session is not ready.")
     const prepared = await preparePrompt(request, this.options.saveBytes)
     const message = this.pushUser(request, prepared.attachments)
-    this.notice = null
+    this.setNotice(null)
     this.emit(true)
     try {
       await session.prompt(prepared.text, { images: promptImages(prepared.images) })
@@ -337,7 +357,7 @@ export class ChatRuntime {
       const last = this.messages[this.messages.length - 1]
       if (last?.id === message.id) this.messages = this.messages.filter((item) => item.id !== message.id)
       this.streaming = false
-      this.notice = errorMessage(error)
+      this.setNotice(errorMessage(error), true)
       this.emit(true)
       throw error
     }
@@ -461,7 +481,7 @@ export class ChatRuntime {
 
     if (event.type === "agent_start") {
       this.streaming = true
-      this.notice = null
+      this.setNotice(null)
       this.emit(true)
       void this.deliverPendingSteers()
       return
@@ -469,7 +489,7 @@ export class ChatRuntime {
 
     if (event.type === "agent_settled") {
       this.streaming = false
-      this.notice = null
+      this.setNotice(null)
       this.finishStreamingMessages()
       const pending = this.pendingModel
       this.pendingModel = null
@@ -484,24 +504,25 @@ export class ChatRuntime {
       }
       this.emit(true)
       this.scheduleFlush()
+      this.options.onSettled()
       void this.autoTitle()
       return
     }
 
     if (event.type === "auto_retry_start") {
-      this.notice = `Retrying ${event.attempt} of ${event.maxAttempts}`
+      this.setNotice(`Retrying ${event.attempt} of ${event.maxAttempts}`)
       this.emit(false)
       return
     }
 
     if (event.type === "compaction_start") {
-      this.notice = "Summarizing earlier messages"
+      this.setNotice("Summarizing earlier messages")
       this.emit(false)
       return
     }
 
     if (event.type === "compaction_end" || event.type === "auto_retry_end") {
-      this.notice = null
+      this.setNotice(null)
       this.emit(false)
     }
   }
@@ -563,7 +584,7 @@ export class ChatRuntime {
       try {
         await session.steer(prepared.text, promptImages(prepared.images))
       } catch (error) {
-        this.notice = errorMessage(error)
+        this.setNotice(errorMessage(error), true)
         this.emit(false)
       }
     }
@@ -585,7 +606,7 @@ export class ChatRuntime {
     try {
       await this.send(next.request)
     } catch (error) {
-      this.notice = errorMessage(error)
+      this.setNotice(errorMessage(error), true)
       this.emit(false)
     } finally {
       this.sending = false

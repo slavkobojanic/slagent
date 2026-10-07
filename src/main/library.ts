@@ -26,6 +26,7 @@ export type StoredChat = {
   named: boolean
   titleCustom: boolean
   titleGenerated?: boolean
+  unread?: boolean
 }
 
 type IndexFile = {
