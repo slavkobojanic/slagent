@@ -207,12 +207,10 @@ type ReasoningContentProps = ComponentProps<
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 const THOUGHTS_MAX_HEIGHT_PX = 100;
-// Fade height for the top/bottom edges. Must stay in sync with
-// THOUGHTS_MASK_CLASS below.
-const THOUGHTS_FADE_PX = 40;
-// Tailwind scans source text statically, so this arbitrary property must be
-// written out literally — interpolating the fade size would break the token
-// and the utility would never be generated.
+// Fade height (40px) for the top/bottom edges. Tailwind scans source text
+// statically, so the arbitrary property must be written out literally —
+// interpolating the fade size would break the token and the utility would
+// never be generated.
 const THOUGHTS_MASK_CLASS =
   "[mask-image:linear-gradient(to_bottom,transparent,black_40px,black_calc(100%_-_40px),transparent)]";
 
