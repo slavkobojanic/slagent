@@ -17,6 +17,8 @@ const WRITE_TOOLS = new Set([
   "computer_type",
   "computer_key",
   "computer_scroll",
+  "bash_background",
+  "task_stop",
 ])
 
 const PROMPT = `[PLAN MODE]
@@ -70,6 +72,8 @@ export function isReadOnlyCommand(command: string): boolean {
 export type PlanModeHooks = {
   onEnabled: (enabled: boolean) => void
   onProposal: (plan: string) => void
+  // Subagents that cannot change files, so they may run while planning.
+  readOnlyAgents: () => Set<string>
 }
 
 export type PlanModeControl = {
@@ -146,6 +150,19 @@ export function planMode(hooks: PlanModeHooks): PlanModeControl {
       if (!enabled) return
       if (WRITE_TOOLS.has(event.toolName)) {
         return { block: true, reason: `Plan mode: ${event.toolName} is off until the user approves a plan.` }
+      }
+      if (event.toolName === "subagent") {
+        const input = event.input as { agent?: unknown; task?: unknown; tasks?: { agent?: unknown }[] }
+        const names: string[] = []
+        if (input.task || !Array.isArray(input.tasks)) names.push(typeof input.agent === "string" ? input.agent : "explore")
+        for (const task of Array.isArray(input.tasks) ? input.tasks : []) names.push(typeof task.agent === "string" ? task.agent : "explore")
+        const allowed = hooks.readOnlyAgents()
+        const blocked = names.filter((name) => !allowed.has(name))
+        if (blocked.length === 0) return
+        return {
+          block: true,
+          reason: `Plan mode: only read-only subagents run until the user approves a plan (${[...allowed].join(", ") || "none"}). Blocked: ${blocked.join(", ")}.`,
+        }
       }
       if (event.toolName !== "bash") return
       const command = String((event.input as { command?: unknown }).command ?? "")

@@ -39,6 +39,7 @@ import { CheckpointStore } from "./checkpoints"
 import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
 import { type BackgroundTasks, backgroundTasks } from "./extensions/background-tasks"
 import { focusGuard } from "./extensions/focus-guard"
+import { discoverAgents, subagentExtension } from "./extensions/subagents"
 import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { todoExtension } from "./extensions/todo"
 import { preparePrompt, queueDetail } from "./prompt"
@@ -58,6 +59,7 @@ const CODING_TOOLS = [
   "bash_background",
   "task_output",
   "task_stop",
+  "subagent",
 ]
 const APPROVED_PLAN = "The plan is approved. Carry it out now. Track the steps with the todo tool and check the result at the end."
 
@@ -129,6 +131,12 @@ export class ChatRuntime {
       this.planProposal = plan
       this.awaiting = true
       this.emit(true)
+    },
+    readOnlyAgents: () => {
+      const names = discoverAgents(this.options.cwd)
+        .filter((agent) => agent.readOnly)
+        .map((agent) => agent.name)
+      return new Set(names)
     },
   })
   // Transcript user messages waiting for Pi to persist them, oldest first.
@@ -282,14 +290,31 @@ export class ChatRuntime {
     const sessionManager = this.sessionManager()
     let toolNames = CODING_TOOLS
     let customTools: ReturnType<typeof computerTools> = []
+    // Tool-providing extensions are replaceable: a Pi package that registers a
+    // tool with the same name, such as pi-subagents, is used instead.
     const extensionFactories: InlineExtension[] = [
-      checkpointExtension(this.checkpoints),
-      this.tasks.extension,
-      this.plan.extension,
-      todoExtension((todos) => {
-        this.todos = todos
-        this.emit(false)
-      }),
+      { name: "slagent-checkpoints", factory: checkpointExtension(this.checkpoints), hidden: true },
+      { name: "slagent-background-tasks", factory: this.tasks.extension, hidden: true, replaceable: true },
+      {
+        name: "slagent-subagents",
+        hidden: true,
+        replaceable: true,
+        factory: subagentExtension({
+          cwd: this.options.cwd,
+          modelRuntime: this.options.modelRuntime,
+          model: () => (this.session?.model as AgentModel | undefined) ?? this.options.model,
+        }),
+      },
+      { name: "slagent-plan-mode", factory: this.plan.extension, hidden: true, replaceable: true },
+      {
+        name: "slagent-todo",
+        hidden: true,
+        replaceable: true,
+        factory: todoExtension((todos) => {
+          this.todos = todos
+          this.emit(false)
+        }),
+      },
     ]
     if (process.platform === "darwin") {
       toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]

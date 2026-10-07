@@ -27,7 +27,7 @@ import {
 import { errorText, openPath } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
-import { FileTextIcon, FolderIcon, PencilIcon, RotateCcwIcon, SearchIcon, TerminalIcon } from "lucide-react"
+import { BotIcon, FileTextIcon, FolderIcon, ListChecksIcon, PencilIcon, RotateCcwIcon, SearchIcon, ServerIcon, TerminalIcon } from "lucide-react"
 import type { RewindMode } from "@shared/types"
 import {
   DropdownMenu,
@@ -81,6 +81,9 @@ function toolIcon(name: string): LucideIcon {
   if (name === "grep" || name === "find") return SearchIcon
   if (name === "ls") return FolderIcon
   if (name === "edit" || name === "write") return PencilIcon
+  if (name === "subagent") return BotIcon
+  if (name === "todo" || name === "propose_plan") return ListChecksIcon
+  if (name === "bash_background" || name === "task_output" || name === "task_stop") return ServerIcon
   return FileTextIcon
 }
 
