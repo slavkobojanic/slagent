@@ -51,7 +51,7 @@ function SettingsDialog({
   const [tab, setTab] = useState<SettingsTab>("general")
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-1/2 w-1/2 flex-col p-0">
+      <DialogContent genieTo='[data-genie-target="settings"]' className="flex h-1/2 w-1/2 flex-col p-0">
         {/* Radix needs a title in the content; the tab labels say the rest. */}
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <div className="flex min-h-0 flex-1">

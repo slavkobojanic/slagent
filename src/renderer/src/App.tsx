@@ -575,6 +575,7 @@ function AgentApp() {
             size="icon"
             className="relative"
             aria-label="Settings"
+            data-genie-target="settings"
             onClick={() => setSettingsOpen(true)}
           >
             <Settings className="size-4" />
