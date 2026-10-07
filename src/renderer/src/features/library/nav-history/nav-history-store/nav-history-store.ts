@@ -1,10 +1,8 @@
-import { makeAutoObservable, observableRef } from "mobx"
+import { makeAutoObservable } from "mobx"
 import type { Place } from "@/features/library/library-utils"
 
-// Most places kept for back and forward. Older ones fall off the front.
 export const NAV_HISTORY_LIMIT = 100
 
-// The places visited in this window, oldest first. The index marks the one on screen.
 export class NavHistoryStore {
   entries: Place[] = []
   index = -1
@@ -12,7 +10,7 @@ export class NavHistoryStore {
   pending: Place | null = null
 
   constructor() {
-    makeAutoObservable(this, { entries: observableRef })
+    makeAutoObservable(this)
   }
 
   get current(): Place | null {
@@ -41,7 +39,6 @@ export class NavHistoryStore {
     this.index = index
   }
 
-  // Drops a place that can no longer be opened. The index follows the entries it was pointing at.
   removeAt(position: number) {
     this.entries = this.entries.filter((_entry, entryIndex) => entryIndex !== position)
     if (position < this.index) {

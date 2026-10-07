@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ChatSummary, LibraryState } from "@shared/types"
-import type { ChatService } from "@/ipc/chat-service/chat-service"
-import type { LibraryService } from "@/ipc/library-service/library-service"
 import { NavHistoryPresenter } from "@/features/library/nav-history/nav-history-presenter/nav-history-presenter"
 import { NavHistoryStore } from "@/features/library/nav-history/nav-history-store/nav-history-store"
-import { LibraryStore } from "@/mirror/library-store"
-import { CommandRegistry } from "@/state/command-registry"
-import { createMockInstance } from "@/test/create-mock-instance"
+import { LibraryStore } from "@/mirror/library-store/library-store"
+import { ComposerPort } from "@/state/composer-port/composer-port"
+import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import type { API } from "@/ipc/api"
+import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 function chat(id: string): ChatSummary {
   return { id, title: id, pinned: false, pinnedAt: 0, updatedAt: 0, running: false, status: "idle", finishedAt: null }
@@ -23,20 +23,19 @@ function libraryState(openProjectId: string | null, openChatId: string | null, c
 describe("NavHistoryPresenter", () => {
   let store: NavHistoryStore
   let mirror: LibraryStore
-  let library: { [K in keyof LibraryService]: Mock }
-  let chatService: { [K in keyof ChatService]: Mock }
-  let composer: { focus: Mock }
+  let api: MockInstance<API>
+  let composer: ComposerPort
   let registry: CommandRegistry
   let presenter: NavHistoryPresenter
 
   beforeEach(() => {
     store = new NavHistoryStore()
     mirror = new LibraryStore()
-    library = createMockInstance<LibraryService>(["openChat", "openProject"])
-    chatService = createMockInstance<ChatService>(["newChat"])
-    composer = { focus: vi.fn() }
+    api = createMockInstance<API>(["openChat", "openProject", "newChat"])
+    composer = new ComposerPort()
+    vi.spyOn(composer, "focus")
     registry = new CommandRegistry()
-    presenter = new NavHistoryPresenter(store, library, chatService, mirror, composer, registry, { window })
+    presenter = new NavHistoryPresenter(store, api, window, mirror, composer, registry)
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(0)
       return 0
@@ -142,7 +141,7 @@ describe("NavHistoryPresenter", () => {
 
       await presenter.back()
 
-      expect(library.openChat).toHaveBeenCalledWith("c1", "p1")
+      expect(api.openChat).toHaveBeenCalledWith("c1", "p1")
       expect(store.index).toBe(0)
       expect(composer.focus).toHaveBeenCalledTimes(1)
     })
@@ -155,7 +154,7 @@ describe("NavHistoryPresenter", () => {
 
       await presenter.back()
 
-      expect(library.openChat).toHaveBeenCalledWith("c1", "p1")
+      expect(api.openChat).toHaveBeenCalledWith("c1", "p1")
       expect(store.index).toBe(0)
     })
 
@@ -164,11 +163,11 @@ describe("NavHistoryPresenter", () => {
       store.record(place("p1", "c1"))
       store.record(place("p1", "c2"))
       mirror.setLibrary(libraryState("p1", "c2"))
-      library.openChat.mockRejectedValueOnce(new Error("gone")).mockResolvedValueOnce(undefined)
+      api.openChat.mockRejectedValueOnce(new Error("gone")).mockResolvedValueOnce(undefined)
 
       await presenter.back()
 
-      expect(library.openChat.mock.calls.map((call) => call[0])).toEqual(["c1", "c0"])
+      expect(api.openChat.mock.calls.map((call) => call[0])).toEqual(["c1", "c0"])
       expect(store.entries).toEqual([place("p1", "c0"), place("p1", "c2")])
       expect(store.index).toBe(0)
     })
@@ -179,7 +178,7 @@ describe("NavHistoryPresenter", () => {
 
       await presenter.back()
 
-      expect(library.openChat).not.toHaveBeenCalled()
+      expect(api.openChat).not.toHaveBeenCalled()
     })
   })
 
@@ -192,7 +191,7 @@ describe("NavHistoryPresenter", () => {
 
       await presenter.forward()
 
-      expect(library.openChat).toHaveBeenCalledWith("c2", "p1")
+      expect(api.openChat).toHaveBeenCalledWith("c2", "p1")
       expect(store.index).toBe(1)
     })
 
@@ -204,8 +203,8 @@ describe("NavHistoryPresenter", () => {
 
       await presenter.forward()
 
-      expect(library.openProject).toHaveBeenCalledWith("p1")
-      expect(chatService.newChat).toHaveBeenCalledTimes(1)
+      expect(api.openProject).toHaveBeenCalledWith("p1")
+      expect(api.newChat).toHaveBeenCalledTimes(1)
       expect(store.index).toBe(1)
     })
   })

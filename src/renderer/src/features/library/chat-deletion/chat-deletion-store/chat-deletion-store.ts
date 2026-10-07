@@ -1,13 +1,12 @@
-import { makeAutoObservable, observableRef } from "mobx"
+import { makeAutoObservable } from "mobx"
 import type { ChatSummary } from "@shared/types"
 
-// The chat waiting in the delete confirmation, and whether its delete is running.
 export class ChatDeletionStore {
   target: ChatSummary | null = null
   busy = false
 
   constructor() {
-    makeAutoObservable(this, { target: observableRef })
+    makeAutoObservable(this)
   }
 
   get open(): boolean {

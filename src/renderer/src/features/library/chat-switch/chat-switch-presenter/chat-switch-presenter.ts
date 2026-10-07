@@ -1,9 +1,9 @@
 import { reaction } from "mobx"
 import type { LibraryState } from "@shared/types"
 import { isDraftBecomingChat, libraryContext, samePlace, type LibraryContext } from "@/features/library/library-utils"
-import type { LibraryStore } from "@/mirror/library-store"
-import type { PanelPresenter } from "@/state/panel-presenter"
-import type { ReviewPresenter } from "@/state/review-presenter"
+import type { LibraryStore } from "@/mirror/library-store/library-store"
+import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import type { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
 
 // The side panel, the open file, and pending review comments belong to the chat they were made in.
 // They reset when the user moves to another chat or project. A draft that becomes a chat on its first
@@ -13,16 +13,16 @@ export class ChatSwitchPresenter {
   private previous: LibraryContext = { projectId: null, chatId: null, chatIds: new Set() }
 
   constructor(
-    private readonly mirror: LibraryStore,
-    private readonly panel: Pick<PanelPresenter, "reset">,
-    private readonly review: Pick<ReviewPresenter, "reset">,
+    private readonly libraryStore: LibraryStore,
+    private readonly panelPresenter: PanelPresenter,
+    private readonly reviewPresenter: ReviewPresenter,
   ) {}
 
   start = () => {
     if (this.disposer !== null) {
       return
     }
-    this.disposer = reaction(() => this.mirror.library, this.handleLibraryChange)
+    this.disposer = reaction(() => this.libraryStore.library, this.handleLibraryChange)
   }
 
   stop = () => {
@@ -40,7 +40,7 @@ export class ChatSwitchPresenter {
     if (isDraftBecomingChat(previous, next)) {
       return
     }
-    this.panel.reset()
-    this.review.reset()
+    this.panelPresenter.reset()
+    this.reviewPresenter.reset()
   }
 }

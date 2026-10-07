@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import type { ChatSummary, ModelOption, ProjectSummary, SlashCommand } from "@shared/types"
 import { formatShortcut, paletteGroups, type PaletteSources } from "@/features/library/command-palette/palette-items"
-import type { Command } from "@/state/command-registry"
+import type { Command } from "@/state/keyboard/command-registry/command-registry"
 
 function command(id: string, overrides: Partial<Command> = {}): Command {
   return { id, label: id, group: "Actions", run: vi.fn(), ...overrides }
