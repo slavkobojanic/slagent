@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, UsageState } from "@shared/types"
 import { BashTerminal } from "@/components/bash-terminal"
+import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
 import { DeleteChatDialog, RemoveProjectDialog } from "@/components/library-dialogs"
 import { ModelDialog } from "@/components/model-dialog"
@@ -11,6 +12,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { modKey, orderedChats, ProjectMenu, Sidebar } from "@/components/sidebar"
 import { Transcript } from "@/components/transcript"
 import { Button } from "@/components/ui/button"
+import { focusComposer } from "@/lib/composer"
 import { errorText, formatTranscript, looksLikePath, openPath } from "@/lib/format"
 
 const emptyStatus = { configured: false, source: null, type: null } as const
@@ -45,6 +47,7 @@ function AgentApp() {
   const [usage, setUsage] = useState<UsageState | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [permissions, setPermissions] = useState<ComputerPermissions | null>(null)
   const [deleteChat, setDeleteChat] = useState<ChatSummary | null>(null)
   const [removeProject, setRemoveProject] = useState<ProjectSummary | null>(null)
@@ -121,6 +124,11 @@ function AgentApp() {
       }
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return
       const key = event.key.toLowerCase()
+      if (key === "k" && !event.shiftKey) {
+        event.preventDefault()
+        setPaletteOpen((open) => !open)
+        return
+      }
       if (key === ",") {
         event.preventDefault()
         setSettingsOpen(true)
@@ -272,6 +280,26 @@ function AgentApp() {
   }
 
   const composerDisabled = !ready || !configured || !meta?.modelId || !cwd
+  const mod = modKey()
+  const paletteActions: PaletteAction[] = [
+    { id: "new-chat", label: "New chat", shortcut: `${mod}N`, disabled: !library.openProjectId, run: () => newChat().then(focusComposer) },
+    { id: "stop", label: "Stop the run", shortcut: "Esc", disabled: !streaming, run: () => window.slagent.abort() },
+    {
+      id: "search",
+      label: "Search chats",
+      shortcut: `${mod}⇧F`,
+      run: () => {
+        setSidebarOpen(true)
+        window.requestAnimationFrame(() => document.getElementById("chat-search")?.focus())
+      },
+    },
+    { id: "sidebar", label: sidebarOpen ? "Hide sidebar" : "Show sidebar", shortcut: `${mod}B`, run: () => setSidebarOpen((open) => !open) },
+    { id: "model", label: "Change model", disabled: !ready || streaming, run: () => setModelOpen(true) },
+    { id: "compact", label: "Summarize earlier messages", disabled: !usage || streaming, run: () => window.slagent.compact() },
+    { id: "folder", label: "Open folder", run: () => chooseFolder() },
+    { id: "clear-terminal", label: "Clear terminal", disabled: !terminal, run: () => window.slagent.clearTerminal() },
+    { id: "settings", label: "Settings", shortcut: `${mod},`, run: () => setSettingsOpen(true) },
+  ]
   let permissionsLocked = false
   if (platform === "darwin") {
     if (!permissions) permissionsLocked = true
@@ -388,6 +416,14 @@ function AgentApp() {
         modelId={meta?.modelId ?? null}
         disabled={!ready}
       />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        actions={paletteActions}
+        library={library}
+        meta={meta}
+        streaming={streaming}
+      />
       <DeleteChatDialog chat={deleteChat} onOpenChange={(open) => { if (!open) setDeleteChat(null) }} />
       <RemoveProjectDialog project={removeProject} onOpenChange={(open) => { if (!open) setRemoveProject(null) }} />
     </div>
@@ -403,13 +439,6 @@ function AgentApp() {
     />
   </>
   )
-}
-
-function focusComposer() {
-  window.requestAnimationFrame(() => {
-    const textarea = document.querySelector<HTMLTextAreaElement>("main form textarea")
-    textarea?.focus()
-  })
 }
 
 export { App }

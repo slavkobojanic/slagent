@@ -28,6 +28,7 @@ import {
   QueueSectionTrigger,
 } from "@/components/ai-elements/queue"
 import { Button } from "@/components/ui/button"
+import { setTextareaValue } from "@/lib/composer"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
 import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, UsageState } from "@shared/types"
@@ -538,15 +539,6 @@ function filterCommands(commands: SlashCommand[], query: string): SlashCommand[]
     else if (name.includes(needle)) contains.push(command)
   }
   return [...starts, ...contains].slice(0, 50)
-}
-
-// The prompt input keeps its own state, so programmatic edits go through the
-// native setter and an input event to stay in sync with React.
-function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set
-  if (setter) setter.call(textarea, value)
-  else textarea.value = value
-  textarea.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
 function promptFiles(message: PromptInputMessage): PromptFile[] {
