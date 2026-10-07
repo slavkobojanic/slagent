@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 export function PromptInput({ className, children, ...props }: HTMLAttributes<HTMLFormElement>) {
   return (
     <form className={cn("w-full", className)} {...props}>
-      <InputGroup className="overflow-hidden rounded-2xl border-0 bg-transparent shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0">
+      <InputGroup className="overflow-hidden rounded-2xl border-0 bg-input/40 shadow-none dark:bg-input/30 has-[[data-slot=input-group-control]:focus-visible]:ring-0">
         {children}
       </InputGroup>
     </form>
