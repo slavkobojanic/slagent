@@ -206,8 +206,8 @@ type ReasoningContentProps = ComponentProps<
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
-const THOUGHTS_MAX_HEIGHT_PX = 100;
-// Fade height (40px) for the top/bottom edges.
+const THOUGHTS_MAX_HEIGHT_PX = 140;
+// Fade height (20px) for the top/bottom edges.
 
 export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => {
@@ -245,8 +245,8 @@ export const ReasoningContent = memo(
           <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
           {isScrollable ? (
             <>
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-background to-transparent" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-5 bg-gradient-to-b from-background to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-background to-transparent" />
             </>
           ) : null}
         </div>
