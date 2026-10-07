@@ -1,0 +1,106 @@
+.sidebar-slot {
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 16rem);
+  min-width: 0;
+  overflow: hidden;
+  transition: grid-template-columns 250ms var(--ease-drawer);
+}
+
+/* A fixed length, not 0fr: a 0fr track still keeps the 16rem aside's
+   min-content width, so the chat would never get the space back. */
+.sidebar-slot[data-closed] {
+  grid-template-columns: 0rem;
+}
+
+.sidebar-slot > aside {
+  width: var(--sidebar-width, 16rem);
+  min-width: 0;
+  transform: translateX(0);
+  opacity: 1;
+  transition:
+    transform 250ms var(--ease-drawer),
+    opacity 200ms var(--ease-out);
+}
+
+.sidebar-slot[data-closed] > aside {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-slot {
+    transition: none;
+  }
+
+  .sidebar-slot > aside {
+    transform: none;
+    transition: opacity 200ms var(--ease-out);
+  }
+}
+
+/* The right panel animates like the sidebar, mirrored: the slot collapses to
+   zero width while the aside slides out to the right. */
+.panel-slot {
+  display: grid;
+  grid-template-columns: var(--panel-width, 35rem);
+  min-width: 0;
+  overflow: hidden;
+  transition: grid-template-columns 250ms var(--ease-drawer);
+}
+
+.panel-slot[data-closed] {
+  grid-template-columns: 0rem;
+}
+
+.panel-slot > aside {
+  width: var(--panel-width, 35rem);
+  min-width: 0;
+  transform: translateX(0);
+  opacity: 1;
+  transition:
+    transform 250ms var(--ease-drawer),
+    opacity 200ms var(--ease-out);
+}
+
+.panel-slot[data-closed] > aside {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-slot {
+    transition: none;
+  }
+
+  .panel-slot > aside {
+    transform: none;
+    transition: opacity 200ms var(--ease-out);
+  }
+}
+
+/* While a pane is dragged its width follows the pointer, so its slot and aside drop the
+   width transition. */
+.sidebar-slot[data-resizing],
+.sidebar-slot[data-resizing] > aside,
+.panel-slot[data-resizing],
+.panel-slot[data-resizing] > aside {
+  transition: none;
+}
+
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.resizing * {
+  cursor: col-resize !important;
+}
+
+/* Electron window drag regions. Tailwind has no utility for -webkit-app-region. */
+.drag {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
