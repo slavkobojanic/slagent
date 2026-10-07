@@ -233,7 +233,7 @@ function ToolLabel({ tool }: { tool: ToolMessage }) {
       {tool.name}{" "}
       <button
         type="button"
-        className="underline-offset-2 hover:text-foreground hover:underline"
+        className="text-left underline-offset-2 hover:text-foreground hover:underline"
         title="View file"
         onClick={() => openPath(path)}
       >
