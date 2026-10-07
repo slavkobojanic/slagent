@@ -19,6 +19,8 @@ import type {
   ExtensionInfo,
   QueueMode,
   PromptRequest,
+  RewindMode,
+  RewindResult,
   TodoItem,
   SlashCommand,
   ToolMessage,
@@ -32,6 +34,8 @@ import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
 import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
+import { CheckpointStore } from "./checkpoints"
+import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
 import { focusGuard } from "./extensions/focus-guard"
 import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { todoExtension } from "./extensions/todo"
@@ -60,6 +64,7 @@ export type ChatRuntimeOptions = {
   chatId: string
   cwd: string
   sessionDir: string
+  checkpointDir: string
   sessionFile: string | null
   model: AgentModel
   named: boolean
@@ -92,6 +97,7 @@ export class ChatRuntime {
   private awaiting = false
   private usageState: UsageState | null = null
   private todos: TodoItem[] = []
+  private checkpoints: CheckpointStore
   private planEnabled = false
   private planProposal: string | null = null
   private readonly plan: PlanModeControl = planMode({
@@ -128,6 +134,7 @@ export class ChatRuntime {
     this.modelName = options.model.name
     this.named = options.named
     this.titleGenerated = options.titleGenerated
+    this.checkpoints = new CheckpointStore(options.cwd, options.checkpointDir)
   }
 
   get key(): string {
@@ -235,6 +242,7 @@ export class ChatRuntime {
     let toolNames = CODING_TOOLS
     let customTools: ReturnType<typeof computerTools> = []
     const extensionFactories: InlineExtension[] = [
+      checkpointExtension(this.checkpoints),
       this.plan.extension,
       todoExtension((todos) => {
         this.todos = todos
@@ -358,6 +366,40 @@ export class ChatRuntime {
   commands(): SlashCommand[] {
     if (!this.session) return []
     return sessionCommands(this.session)
+  }
+
+  // Code goes back to the snapshot taken before the message. The chat goes
+  // back to just before it, and its text is returned for the composer.
+  async rewind(id: string, mode: RewindMode): Promise<RewindResult> {
+    const session = this.session
+    if (!session) throw new Error("The session is not ready.")
+    if (this.running || session.isStreaming) throw new Error("Stop the run before rewinding.")
+    const index = this.messages.findIndex((message) => message.id === id)
+    const message = this.messages[index]
+    if (!message || message.role !== "user" || !message.entryId) throw new Error("That message can't be rewound.")
+    let undo: string | null = null
+    if (mode !== "chat") {
+      const commit = checkpointBefore(session.sessionManager, message.entryId)
+      if (!commit) throw new Error("There is no code checkpoint for that message.")
+      undo = await this.checkpoints.restore(commit)
+    }
+    if (mode !== "code") {
+      const result = await session.navigateTree(message.entryId)
+      if (!result.cancelled) {
+        this.load(this.messages.slice(0, index))
+        this.pendingUserIds = []
+        this.clearProposal()
+        this.setNotice(null)
+        this.refreshUsage()
+      }
+    }
+    this.emit(true)
+    return { text: message.text, undo }
+  }
+
+  async undoRewind(commit: string): Promise<void> {
+    if (this.running) throw new Error("Stop the run first.")
+    await this.checkpoints.restore(commit)
   }
 
   setPlanMode(enabled: boolean): void {
@@ -507,7 +549,11 @@ export class ChatRuntime {
       const entryId = session.sessionManager.getLeafId() ?? undefined
       if (id) {
         const message = this.messages.find((item) => item.id === id)
-        if (message?.role === "user") message.entryId = entryId
+        if (message?.role === "user") {
+          message.entryId = entryId
+          message.checkpoint = Boolean(entryId && checkpointBefore(session.sessionManager, entryId))
+          this.emit(false)
+        }
         return
       }
       const text = userText(content)

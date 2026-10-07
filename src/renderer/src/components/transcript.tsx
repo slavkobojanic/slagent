@@ -27,7 +27,17 @@ import {
 import { errorText, openPath } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
-import { FileTextIcon, FolderIcon, PencilIcon, SearchIcon, TerminalIcon } from "lucide-react"
+import { FileTextIcon, FolderIcon, PencilIcon, RotateCcwIcon, SearchIcon, TerminalIcon } from "lucide-react"
+import type { RewindMode } from "@shared/types"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { fillComposer } from "@/lib/composer"
 
 export const EDIT_LAST_EVENT = "slagent:edit-last"
 
@@ -212,6 +222,31 @@ function UserTurn({
   onEditing: (editing: boolean) => void
   onEdit: (id: string, text: string) => Promise<void>
 }) {
+  async function rewind(mode: RewindMode) {
+    try {
+      const result = await window.slagent.rewind(message.id, mode)
+      if (mode !== "code") fillComposer(result.text)
+      const undo = result.undo
+      let label = "Chat rewound"
+      if (mode === "code") label = "Code rewound"
+      if (mode === "both") label = "Code and chat rewound"
+      if (!undo) {
+        toast.success(label)
+        return
+      }
+      toast.success(label, {
+        action: {
+          label: "Undo code",
+          onClick: () => {
+            void window.slagent.undoRewind(undo).catch((error: unknown) => toast.error(errorText(error)))
+          },
+        },
+      })
+    } catch (error) {
+      toast.error(errorText(error))
+    }
+  }
+
   const attachments = message.attachments ?? []
   if (editing) {
     return <EditMessage message={message} onCancel={() => onEditing(false)} onSave={(text) => onEdit(message.id, text)} />
@@ -245,6 +280,26 @@ function UserTurn({
           <MessageAction tooltip="Edit and resend" onClick={() => onEditing(true)}>
             <PencilIcon className="size-3.5" />
           </MessageAction>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <MessageAction label="Rewind">
+                <RotateCcwIcon className="size-3.5" />
+              </MessageAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Go back to before this message
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled={!message.checkpoint} onSelect={() => void rewind("both")}>
+                Rewind code and chat
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void rewind("chat")}>Rewind chat only</DropdownMenuItem>
+              <DropdownMenuItem disabled={!message.checkpoint} onSelect={() => void rewind("code")}>
+                Rewind code only
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </MessageActions>
       ) : null}
     </Message>

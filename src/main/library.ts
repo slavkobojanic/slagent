@@ -208,6 +208,10 @@ export class Library {
     return join(this.projectDir(projectId), "sessions")
   }
 
+  checkpointDir(projectId: string): string {
+    return join(this.projectDir(projectId), "checkpoints.git")
+  }
+
   attachmentDir(projectId: string, chatId: string): string {
     return join(this.chatDir(projectId, chatId), "attachments")
   }

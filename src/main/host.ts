@@ -15,6 +15,8 @@ import type {
   ProjectSummary,
   PromptRequest,
   QueueMode,
+  RewindMode,
+  RewindResult,
   SlashCommand,
   Snapshot,
   TranscriptState,
@@ -290,6 +292,18 @@ export class AgentHost {
     await runtime.approvePlan()
   }
 
+  async rewind(id: string, mode: RewindMode): Promise<RewindResult> {
+    const runtime = this.openRuntime()
+    if (!runtime) throw new Error("Open a chat first.")
+    return runtime.rewind(id, mode)
+  }
+
+  async undoRewind(commit: string): Promise<void> {
+    const runtime = this.openRuntime()
+    if (!runtime) throw new Error("Open a chat first.")
+    await runtime.undoRewind(commit)
+  }
+
   removeQueued(id: string): void {
     this.openRuntime()?.removeQueued(id)
   }
@@ -442,6 +456,7 @@ export class AgentHost {
       chatId,
       cwd: project.path,
       sessionDir: this.library.sessionDir(projectId),
+      checkpointDir: this.library.checkpointDir(projectId),
       sessionFile: chat.sessionFile,
       model,
       named: chat.named || chat.titleCustom,

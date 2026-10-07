@@ -143,6 +143,14 @@ function registerIpc(): void {
   })
   ipcMain.handle(channels.setPlanMode, (_event, enabled: unknown) => requireHost().setPlanMode(enabled === true))
   ipcMain.handle(channels.approvePlan, () => requireHost().approvePlan())
+  ipcMain.handle(channels.rewind, (_event, id: string, mode: unknown) => {
+    if (mode !== "both" && mode !== "chat" && mode !== "code") throw new Error("Unknown rewind.")
+    return requireHost().rewind(id, mode)
+  })
+  ipcMain.handle(channels.undoRewind, (_event, commit: unknown) => {
+    if (typeof commit !== "string" || !/^[0-9a-f]{7,64}$/.test(commit)) throw new Error("Unknown checkpoint.")
+    return requireHost().undoRewind(commit)
+  })
   ipcMain.handle(channels.removeQueued, (_event, id: string) => {
     requireHost().removeQueued(id)
   })

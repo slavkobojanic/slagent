@@ -25,6 +25,8 @@ export const channels = {
   editMessage: "agent:edit-message",
   setPlanMode: "agent:set-plan-mode",
   approvePlan: "agent:approve-plan",
+  rewind: "agent:rewind",
+  undoRewind: "agent:undo-rewind",
   clearTerminal: "agent:clear-terminal",
   compact: "agent:compact",
   permissions: "computer:permissions",
@@ -82,6 +84,7 @@ export type UserMessage = {
   text: string
   attachments: UserAttachment[]
   entryId?: string
+  checkpoint?: boolean
 }
 
 export type AssistantMessage = {
@@ -232,6 +235,13 @@ export type ComputerPermissions = {
   error: string | null
 }
 
+export type RewindMode = "both" | "chat" | "code"
+
+export type RewindResult = {
+  text: string
+  undo: string | null
+}
+
 export type ModelChange = {
   applied: boolean
 }
@@ -266,6 +276,8 @@ export type SlagentApi = {
   editMessage: (id: string, text: string) => Promise<void>
   setPlanMode: (enabled: boolean) => Promise<void>
   approvePlan: () => Promise<void>
+  rewind: (id: string, mode: RewindMode) => Promise<RewindResult>
+  undoRewind: (commit: string) => Promise<void>
   clearTerminal: () => Promise<void>
   compact: () => Promise<void>
   getPermissions: () => Promise<ComputerPermissions>
