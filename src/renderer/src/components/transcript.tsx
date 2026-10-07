@@ -515,9 +515,9 @@ function PlanCard({ plan, onApprove }: { plan: string; onApprove: () => Promise<
   }
 
   return (
-    <section className="rounded-md border border-amber-300/40 bg-amber-300/5" aria-label="Proposed plan">
+    <section className="rounded-md border border-amber-500/40 bg-amber-300/10 dark:border-amber-300/40 dark:bg-amber-300/5" aria-label="Proposed plan">
       <header className="flex items-center gap-2 border-b border-amber-300/20 px-4 py-2 text-sm">
-        <span className="font-medium text-amber-200">Proposed plan</span>
+        <span className="font-medium text-amber-800 dark:text-amber-200">Proposed plan</span>
         <span className="text-xs text-muted-foreground">Nothing has changed yet.</span>
       </header>
       <div className="max-h-[50vh] overflow-y-auto px-4 py-3">

@@ -531,7 +531,7 @@ function Composer({
               type="button"
               variant="ghost"
               size="sm"
-              className={planMode ? "h-7 gap-1.5 bg-white/10 px-2 text-amber-300 hover:text-amber-200" : "h-7 gap-1.5 px-2 text-white/60"}
+              className={planMode ? "h-7 gap-1.5 bg-white/10 px-2 text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200" : "h-7 gap-1.5 px-2 text-white/60"}
               aria-pressed={planMode}
               title="Plan mode (Shift+Tab): research and propose a plan before changing anything"
               disabled={disabled || streaming}

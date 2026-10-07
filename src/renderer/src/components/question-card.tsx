@@ -50,7 +50,7 @@ function OptionText({ option }: { option: QuestionOption }) {
       <span className="flex flex-wrap items-center gap-1.5">
         <span className="font-medium">{option.label}</span>
         {option.recommended ? (
-          <span className="rounded bg-emerald-400/15 px-1.5 text-[11px] text-emerald-300">Recommended</span>
+          <span className="rounded bg-emerald-400/15 px-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">Recommended</span>
         ) : null}
       </span>
       {option.description ? <span className="mt-0.5 block text-xs text-muted-foreground">{option.description}</span> : null}

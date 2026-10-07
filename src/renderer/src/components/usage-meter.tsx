@@ -27,7 +27,7 @@ function UsageMeter({
   if (!usage) return <span className="ml-auto" />
   const percent = usage.percent ?? 0
   let tone = "text-white/50"
-  if (percent >= 70) tone = "text-amber-400"
+  if (percent >= 70) tone = "text-amber-600 dark:text-amber-400"
   if (percent >= 90) tone = "text-[#ff5c5c]"
   let contextLabel = "Context not measured yet"
   if (usage.contextTokens !== null) {
