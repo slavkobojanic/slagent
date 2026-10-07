@@ -2,7 +2,7 @@ import { makeAutoObservable } from "mobx"
 import type { ChatMention, ChatSearchResult, FileMatch, PromptMention, SlashCommand } from "@shared/types"
 import { filterCommands, kindLabel, type Trigger } from "@/features/composer/prompt-text"
 
-export type Triggers = { mention: Trigger | null; chatMention: Trigger | null; slash: string | null }
+export type Triggers = { mention: Trigger | null; chatMention: Trigger | null; slash: Trigger | null }
 
 export type SuggestionItem = { key: string; label: string; detail: string }
 
@@ -19,7 +19,7 @@ export class SuggestionsStore {
   chatMentions: ChatMention[] = []
   mention: Trigger | null = null
   chatMention: Trigger | null = null
-  slash: string | null = null
+  slash: Trigger | null = null
   fileMatches: FileMatch[] = []
   chatMatches: ChatSearchResult[] = []
   commands: SlashCommand[] = []
@@ -33,7 +33,7 @@ export class SuggestionsStore {
     if (this.slash === null) {
       return []
     }
-    return filterCommands(this.commands, this.slash)
+    return filterCommands(this.commands, this.slash.query)
   }
 
   // One menu at a time: @file, then $chat, then slash commands.

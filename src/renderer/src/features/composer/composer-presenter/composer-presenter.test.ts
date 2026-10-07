@@ -223,7 +223,7 @@ describe("ComposerPresenter", () => {
       presenter.handleSelect(textEvent("/co", 3))
 
       expect(store.caret).toBe(3)
-      expect(suggestions.slash).toBe("co")
+      expect(suggestions.slash).toEqual({ query: "co", start: 0 })
     })
   })
 
@@ -239,6 +239,21 @@ describe("ComposerPresenter", () => {
       expect(event.preventDefault).toHaveBeenCalledTimes(1)
       expect(api.prompt).toHaveBeenCalledTimes(1)
       expect(api.prompt.mock.calls[0]?.[0]).toMatchObject({ text: "hi" })
+    })
+
+    it("can send a command chosen mid-sentence from the start of the prompt", async () => {
+      const { store, api, presenter, suggestions } = harness()
+      suggestions.setCommands([command])
+      presenter.handleChange(textEvent("please /re"))
+      presenter.chooseSuggestion(0)
+      store.setText("please /review fix the bug")
+
+      const event = keyEvent("Enter")
+      presenter.handleKeyDown(event)
+      await flush()
+
+      expect(api.prompt).toHaveBeenCalledTimes(1)
+      expect(api.prompt.mock.calls[0]?.[0]).toMatchObject({ text: "/review please fix the bug" })
     })
 
     it("can leave Shift+Enter alone so that it adds a line", () => {

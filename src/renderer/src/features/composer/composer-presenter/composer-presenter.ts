@@ -295,6 +295,8 @@ export class ComposerPresenter {
   // The box empties at once: the prompt call resolves only when the run ends, and the box is free before then.
   private send = async () => {
     const text = this.store.text
+    // A command chosen mid-sentence leads the prompt, since pi only runs it from the start.
+    const sentText = this.suggestionsPresenter.hoistCommand(text)
     const draftKey = this.store.draftKey
     const chatId = this.store.chatId
     // A prompt sent mid-run is queued, so its first token is not the next output.
@@ -312,7 +314,7 @@ export class ComposerPresenter {
     }
     this.saveDraft(draftKey, "")
     const request: PromptRequest = {
-      text,
+      text: sentText,
       mentions,
       chatMentions,
       files,

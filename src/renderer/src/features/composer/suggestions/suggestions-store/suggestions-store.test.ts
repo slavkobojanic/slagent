@@ -37,7 +37,7 @@ describe("SuggestionsStore", () => {
 
     it("can show slash commands with their description, or their kind when there is none", () => {
       const store = new SuggestionsStore()
-      store.setTriggers({ mention: null, chatMention: null, slash: "re" })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "re", start: 0 } })
       store.setCommands([command, { name: "ship", insert: "/ship", description: "", kind: "prompt" }])
 
       expect(store.menu?.items).toEqual([{ key: "/review", label: "/review", detail: "Review the diff" }])
@@ -45,7 +45,7 @@ describe("SuggestionsStore", () => {
 
     it("can label a command without a description by its kind", () => {
       const store = new SuggestionsStore()
-      store.setTriggers({ mention: null, chatMention: null, slash: "sh" })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "sh", start: 0 } })
       store.setCommands([{ name: "ship", insert: "/ship", description: "", kind: "prompt" }])
 
       expect(store.menu?.items).toEqual([{ key: "/ship", label: "/ship", detail: "Prompt template" }])
@@ -75,7 +75,7 @@ describe("SuggestionsStore", () => {
   describe("dismiss", () => {
     it("can close every menu at once", () => {
       const store = new SuggestionsStore()
-      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: { query: "b", start: 2 }, slash: "c" })
+      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: { query: "b", start: 2 }, slash: { query: "c", start: 4 } })
       store.dismiss()
 
       expect([store.mention, store.chatMention, store.slash]).toEqual([null, null, null])

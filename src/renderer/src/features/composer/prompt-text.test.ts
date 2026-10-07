@@ -35,16 +35,20 @@ describe("chatMentionAt", () => {
 })
 
 describe("slashAt", () => {
-  it("can return the command typed so far while the caret is in the first word", () => {
-    expect(slashAt("/com", 4)).toBe("com")
+  it("can return the command typed so far at the start", () => {
+    expect(slashAt("/com", 4)).toEqual({ query: "com", start: 0 })
   })
 
   it("can return an empty query for a lone slash", () => {
-    expect(slashAt("/", 1)).toBe("")
+    expect(slashAt("/", 1)).toEqual({ query: "", start: 0 })
   })
 
-  it("can ignore a slash that is not at the start", () => {
-    expect(slashAt("hi /com", 7)).toBeNull()
+  it("can open mid-sentence like @ and $", () => {
+    expect(slashAt("hi /com", 7)).toEqual({ query: "com", start: 3 })
+  })
+
+  it("can ignore a slash inside a word", () => {
+    expect(slashAt("see src/com", 11)).toBeNull()
   })
 
   it("can close once a space follows the command", () => {

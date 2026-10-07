@@ -140,7 +140,7 @@ describe("SuggestionsPresenter", () => {
       api.listCommands.mockResolvedValue([command])
       presenter.start()
 
-      store.setTriggers({ mention: null, chatMention: null, slash: "" })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "", start: 0 } })
       await flush()
 
       expect(api.listCommands).toHaveBeenCalledTimes(1)
@@ -150,8 +150,8 @@ describe("SuggestionsPresenter", () => {
     it("can keep the same list while the slash query changes", async () => {
       presenter.start()
 
-      store.setTriggers({ mention: null, chatMention: null, slash: "" })
-      store.setTriggers({ mention: null, chatMention: null, slash: "r" })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "", start: 0 } })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "r", start: 0 } })
       await flush()
 
       expect(api.listCommands).toHaveBeenCalledTimes(1)
@@ -164,7 +164,7 @@ describe("SuggestionsPresenter", () => {
       }))
       presenter.start()
 
-      store.setTriggers({ mention: null, chatMention: null, slash: "" })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "", start: 0 } })
       store.setTriggers({ mention: null, chatMention: null, slash: null })
       resolveCommands([command])
       await flush()
@@ -177,7 +177,7 @@ describe("SuggestionsPresenter", () => {
       store.setCommands([command])
       presenter.start()
 
-      store.setTriggers({ mention: null, chatMention: null, slash: "" })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "", start: 0 } })
       await flush()
 
       expect(store.commands).toEqual([command])
@@ -187,7 +187,7 @@ describe("SuggestionsPresenter", () => {
   describe("history search", () => {
     it("can close the menus when the history search opens", () => {
       presenter.start()
-      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: null, slash: "x" })
+      store.setTriggers({ mention: { query: "a", start: 0 }, chatMention: null, slash: { query: "x", start: 0 } })
 
       history.toggleSearch("")
 
@@ -285,7 +285,7 @@ describe("SuggestionsPresenter", () => {
     })
 
     it("can put the command at the start of the box", () => {
-      store.setTriggers({ mention: null, chatMention: null, slash: "re" })
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "re", start: 0 } })
       store.setCommands([command])
       const apply = vi.fn()
 
@@ -293,6 +293,35 @@ describe("SuggestionsPresenter", () => {
 
       expect(apply).toHaveBeenCalledWith("/review rest", 8)
       expect(store.slash).toBeNull()
+    })
+
+    it("can insert the command mid-sentence and keep the text around it", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "re", start: 7 } })
+      store.setCommands([command])
+      const apply = vi.fn()
+
+      presenter.choose(0, "please /re the diff", 10, apply)
+
+      expect(apply).toHaveBeenCalledWith("please /review the diff", 15)
+      expect(store.slash).toBeNull()
+    })
+
+    it("can hoist a command chosen mid-sentence to the front of the prompt", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "re", start: 8 } })
+      store.setCommands([command])
+      const apply = vi.fn()
+      presenter.choose(0, "please /re", 10, apply)
+
+      expect(presenter.hoistCommand("please /review fix the bug")).toBe("/review please fix the bug")
+      expect(presenter.hoistCommand("done")).toBe("done")
+    })
+
+    it("can hoist a command only once", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "re", start: 0 } })
+      store.setCommands([command])
+      presenter.choose(0, "/re rest", 3, vi.fn())
+
+      expect(presenter.hoistCommand("/review rest")).toBe("/review rest")
     })
 
     it("can ignore a choice with no row at that index", () => {

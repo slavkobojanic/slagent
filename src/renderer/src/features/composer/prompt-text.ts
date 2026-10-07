@@ -38,13 +38,15 @@ export function chatMentionAt(value: string, cursor: number): Trigger | null {
   return triggerAt(before, dollar)
 }
 
-// The text after a leading "/" while the caret is still in the first word, or null.
-export function slashAt(value: string, cursor: number): string | null {
-  const match = /^\/(\S*)$/.exec(value.slice(0, cursor))
-  if (match === null) {
+// An open "/" command, like @ and $: it can sit anywhere a word starts, and the query
+// stops at the first space or newline.
+export function slashAt(value: string, cursor: number): Trigger | null {
+  const before = value.slice(0, cursor)
+  const slash = before.lastIndexOf("/")
+  if (slash < 0) {
     return null
   }
-  return match[1] ?? ""
+  return triggerAt(before, slash)
 }
 
 // Commands whose name starts with the query come first, then those that contain it. At most 50.

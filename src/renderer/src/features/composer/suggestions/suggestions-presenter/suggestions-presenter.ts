@@ -26,6 +26,8 @@ export class SuggestionsPresenter {
   private fileRequest = 0
   private chatRequest = 0
   private commandRequest = 0
+  // The command last chosen from the slash menu, wherever it sits in the box now.
+  private commandToken: string | null = null
 
   constructor(
     private readonly store: SuggestionsStore,
@@ -153,10 +155,12 @@ export class SuggestionsPresenter {
   }
 
   reset = () => {
+    this.commandToken = null
     this.store.resetAfterSend()
   }
 
   resetForChat = () => {
+    this.commandToken = null
     this.store.resetForChat()
   }
 
@@ -185,10 +189,34 @@ export class SuggestionsPresenter {
   }
 
   private chooseCommand = (command: SlashCommand, text: string, caret: number, apply: ApplyText) => {
+    const trigger = this.store.slash
+    if (trigger === null) {
+      return
+    }
     this.log.action("choose-command", { command: command.insert })
     const token = `${command.insert} `
-    apply(`${token}${text.slice(caret).trimStart()}`, token.length)
+    apply(`${text.slice(0, trigger.start)}${token}${text.slice(caret).trimStart()}`, trigger.start + token.length)
+    this.commandToken = command.insert
     this.store.closeSlash()
+  }
+
+  // Pi only runs a slash command from the start of the prompt, so a command chosen
+  // mid-sentence moves to the front when the prompt is sent.
+  hoistCommand = (text: string): string => {
+    const token = this.commandToken
+    if (token === null || !text.includes(token)) {
+      this.commandToken = null
+      return text
+    }
+    const start = text.indexOf(token)
+    const before = text.slice(0, start)
+    let after = text.slice(start + token.length)
+    // The token was inserted with a trailing space, so drop the doubled one.
+    if (/\s$/.test(before) && /^\s/.test(after)) {
+      after = after.replace(/^\s/, "")
+    }
+    const rest = `${before}${after}`.trim()
+    return rest === "" ? token : `${token} ${rest}`
   }
 
   private searchFiles = (trigger: Trigger | null) => {
