@@ -78,6 +78,7 @@ export type ChatRuntimeOptions = {
   generateTitle: (user: string, assistant: string) => Promise<string | null>
   onModel: (modelId: string) => void
   onSettled: () => void
+  onUsage: (usage: UsageState) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
 }
 
@@ -200,6 +201,7 @@ export class ChatRuntime {
   // rather than on each streamed delta.
   private refreshUsage(): void {
     this.usageState = this.readUsage()
+    if (this.usageState) this.options.onUsage(this.usageState)
   }
 
   private readUsage(): UsageState | null {
@@ -212,6 +214,9 @@ export class ChatRuntime {
         contextTokens: context?.tokens ?? null,
         contextWindow: context?.contextWindow ?? session.model?.contextWindow ?? 0,
         percent: context?.percent ?? null,
+        inputTokens: stats.tokens.input,
+        outputTokens: stats.tokens.output,
+        cacheTokens: stats.tokens.cacheRead + stats.tokens.cacheWrite,
         totalTokens: stats.tokens.total,
         cost: stats.cost,
       }
@@ -628,7 +633,11 @@ export class ChatRuntime {
       bubble.streaming = false
       bubble.error = event.message.errorMessage ?? null
       this.currentAssistantId = null
-      this.refreshUsage()
+      // Pi saves the message, and its usage, right after this event.
+      queueMicrotask(() => {
+        this.refreshUsage()
+        this.emit(false)
+      })
       this.emit(false)
       return
     }

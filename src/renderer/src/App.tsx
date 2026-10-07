@@ -422,6 +422,7 @@ function AgentApp() {
             placeholder={placeholder}
             queue={queue}
             usage={usage}
+            usageTotals={meta?.usageTotals ?? null}
             todos={todos}
             planMode={planMode}
             onPlanMode={(enabled) => window.slagent.setPlanMode(enabled)}

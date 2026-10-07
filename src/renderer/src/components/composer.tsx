@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button"
 import { setTextareaValue } from "@/lib/composer"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
-import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TodoItem, UsageState } from "@shared/types"
+import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TodoItem, UsageState, UsageTotals } from "@shared/types"
 import { TodoPanel } from "@/components/todo-panel"
 import { UsageMeter } from "@/components/usage-meter"
 
@@ -180,6 +180,7 @@ function Composer({
   placeholder,
   queue,
   usage,
+  usageTotals,
   todos,
   planMode,
   onPlanMode,
@@ -194,6 +195,7 @@ function Composer({
   placeholder: string
   queue: QueuedMessage[]
   usage: UsageState | null
+  usageTotals: UsageTotals | null
   todos: TodoItem[]
   planMode: boolean
   onPlanMode: (enabled: boolean) => Promise<void>
@@ -508,7 +510,7 @@ function Composer({
               Plan
             </Button>
           </PromptInputTools>
-          <UsageMeter usage={usage} busy={streaming} onCompact={onCompact} />
+          <UsageMeter usage={usage} totals={usageTotals} busy={streaming} onCompact={onCompact} />
           <PromptInputSubmit disabled={submitDisabled} status={status} onStop={() => void onStop()} />
         </PromptInputFooter>
       </PromptInput>

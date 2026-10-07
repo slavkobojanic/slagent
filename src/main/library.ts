@@ -27,6 +27,8 @@ export type StoredChat = {
   titleCustom: boolean
   titleGenerated?: boolean
   unread?: boolean
+  tokens?: number
+  cost?: number
 }
 
 type IndexFile = {
@@ -153,6 +155,10 @@ export class Library {
     const chat = this.chat(projectId, chatId)
     if (!chat) return
     Object.assign(chat, patch)
+    await this.writeProject(projectId)
+  }
+
+  async saveProject(projectId: string): Promise<void> {
     await this.writeProject(projectId)
   }
 

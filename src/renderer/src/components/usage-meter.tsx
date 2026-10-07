@@ -1,5 +1,5 @@
 import { toast } from "sonner"
-import type { UsageState } from "@shared/types"
+import type { UsageState, UsageTotals } from "@shared/types"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,10 +15,12 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 function UsageMeter({
   usage,
+  totals,
   busy,
   onCompact,
 }: {
   usage: UsageState | null
+  totals: UsageTotals | null
   busy: boolean
   onCompact: () => Promise<void>
 }) {
@@ -64,14 +66,25 @@ function UsageMeter({
             />
           </svg>
           {percentLabel}
+          {usage.cost > 0 ? <span className="text-white/40">· {formatCost(usage.cost)}</span> : null}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="space-y-1 font-normal">
+        <DropdownMenuLabel className="space-y-2 font-normal">
           <p className="text-sm">{contextLabel}</p>
-          <p className="text-xs text-white/50">
-            {formatTokens(usage.totalTokens)} tokens this chat · {formatCost(usage.cost)}
-          </p>
+          <div className="space-y-0.5 text-xs text-white/50 tabular-nums">
+            <p className="text-white/80">
+              This chat: {formatTokens(usage.totalTokens)} tokens · {formatCost(usage.cost)}
+            </p>
+            <p>
+              {formatTokens(usage.inputTokens)} in · {formatTokens(usage.outputTokens)} out · {formatTokens(usage.cacheTokens)} cached
+            </p>
+            {totals && totals.chats > 0 ? (
+              <p className="pt-1 text-white/80">
+                All chats: {formatTokens(totals.tokens)} tokens · {formatCost(totals.cost)}
+              </p>
+            ) : null}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={busy} onSelect={() => void compact()}>

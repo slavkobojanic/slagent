@@ -66,6 +66,7 @@ export type AppMeta = {
   openRouter: OpenRouterStatus
   extensions: ExtensionInfo[]
   extensionErrors: string[]
+  usageTotals: UsageTotals
 }
 
 export type AttachmentKind = "image" | "pdf" | "code" | "file"
@@ -201,8 +202,17 @@ export type UsageState = {
   contextTokens: number | null
   contextWindow: number
   percent: number | null
+  inputTokens: number
+  outputTokens: number
+  cacheTokens: number
   totalTokens: number
   cost: number
+}
+
+export type UsageTotals = {
+  tokens: number
+  cost: number
+  chats: number
 }
 
 export type TranscriptState = {

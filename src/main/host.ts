@@ -21,6 +21,7 @@ import type {
   Snapshot,
   TranscriptState,
   UiEvent,
+  UsageTotals,
 } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import type { ComputerUse } from "./computer"
@@ -377,9 +378,12 @@ export class AgentHost {
   }
 
   async flush(): Promise<void> {
-    for (const timer of this.timers.values()) clearTimeout(timer)
-    this.timers.clear()
     const writes: Promise<void>[] = []
+    for (const [key, timer] of this.timers) {
+      clearTimeout(timer)
+      if (key.startsWith("usage:")) writes.push(this.library.saveProject(key.slice("usage:".length)))
+    }
+    this.timers.clear()
     for (const runtime of this.runtimes.values()) {
       writes.push(this.library.writeTranscript(runtime.projectId, runtime.chatId, runtime.messages))
     }
@@ -488,6 +492,14 @@ export class AgentHost {
           if (this.projectId === projectId && this.chatId === chatId) this.publishMeta()
         })
       },
+      onUsage: (usage) => {
+        const stored = this.library.chat(projectId, chatId)
+        if (!stored) return
+        if (stored.tokens === usage.totalTokens && stored.cost === usage.cost) return
+        stored.tokens = usage.totalTokens
+        stored.cost = usage.cost
+        this.scheduleUsageSave(projectId)
+      },
       onSettled: () => {
         if (this.projectId === projectId && this.chatId === chatId) return
         void this.library.updateChat(projectId, chatId, { unread: true }).then(() => this.publishLibrary())
@@ -532,6 +544,33 @@ export class AgentHost {
         void this.library.writeTranscript(runtime.projectId, runtime.chatId, runtime.messages)
       }, 200),
     )
+  }
+
+  // Usage changes on every reply, so the project file is written at most once
+  // a second and the totals in meta follow it.
+  private scheduleUsageSave(projectId: string): void {
+    const key = `usage:${projectId}`
+    if (this.timers.has(key)) return
+    this.timers.set(
+      key,
+      setTimeout(() => {
+        this.timers.delete(key)
+        void this.library.saveProject(projectId).then(() => this.publishMeta())
+      }, 1000),
+    )
+  }
+
+  private usageTotals(): UsageTotals {
+    const totals: UsageTotals = { tokens: 0, cost: 0, chats: 0 }
+    for (const project of this.library.projects()) {
+      for (const chat of this.library.projectChats(project.id)) {
+        if (!chat.tokens && !chat.cost) continue
+        totals.tokens += chat.tokens ?? 0
+        totals.cost += chat.cost ?? 0
+        totals.chats += 1
+      }
+    }
+    return totals
   }
 
   private clearTimer(key: string): void {
@@ -673,6 +712,7 @@ export class AgentHost {
       openRouter: this.openRouter,
       extensions: cached?.extensions ?? [],
       extensionErrors: cached?.errors ?? [],
+      usageTotals: this.usageTotals(),
     }
   }
 
