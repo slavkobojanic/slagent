@@ -8,6 +8,7 @@ import { McpManager } from "./mcp"
 import { openInEditor, readFileView } from "./editor"
 import { parsePrompt } from "./prompt"
 import { parseReply } from "./extensions/ask-user"
+import { startUpdater } from "./updater"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
@@ -240,6 +241,14 @@ app.whenReady().then(async () => {
   )
   createWindow()
   void host.start()
+  startUpdater({
+    prepareQuit: async () => {
+      quitting = true
+      await (host?.flush() ?? Promise.resolve())
+      host?.close()
+      computer?.stop()
+    },
+  })
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

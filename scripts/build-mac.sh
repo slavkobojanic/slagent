@@ -6,35 +6,16 @@ sh "$root/scripts/build-computer.sh"
 mkdir -p "$root/build"
 cp "$root/resources/slagent.app/Contents/Resources/icon.icns" "$root/build/icon.icns"
 pnpm exec electron-vite build
-CSC_IDENTITY_AUTO_DISCOVERY=false pnpm exec electron-builder --mac dir --publish never
+# electron-builder owns signing from here: it imports the Developer ID from CSC_LINK,
+# signs the app and the nested helper, notarizes when APPLE_* env vars are present,
+# staples the ticket, then emits the zip and latest-mac.yml for the updater.
+pnpm exec electron-builder --mac --publish never
 app="$root/dist/mac-arm64/slagent.app"
 if [ ! -d "$app" ]; then
   app="$root/dist/mac/slagent.app"
 fi
-# electron-builder leaves only Electron's linker signature (identifier "Electron", nothing sealed),
-# which macOS privacy checks reject, so granted switches never apply. Sign the bundle inside out.
-# A real identity keeps grants across rebuilds; an ad-hoc one ("-") resets them on every build.
-identity="${SLAGENT_SIGN_IDENTITY:-}"
-if [ -z "$identity" ]; then
-  identity="$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development|Developer ID Application/ { print $2; exit }')"
-fi
-if [ -z "$identity" ]; then
-  identity="-"
-fi
-sign() {
-  codesign --force --timestamp=none --sign "$identity" "$@"
-}
-for helper in "$app"/Contents/Frameworks/*.framework; do
-  sign --deep "$helper"
-done
-for helper in "$app"/Contents/Frameworks/*.app; do
-  sign --deep "$helper"
-done
-sign --identifier com.slagent.computer "$app/Contents/Resources/slagent.app"
-sign --identifier com.slagent.app "$app"
-codesign --verify --deep --strict "$app"
 
-# CI builds stop here; the release workflow packages the signed bundle itself.
+# CI builds stop here; the release workflow publishes the signed bundle and latest-mac.yml.
 if [ -n "${SLAGENT_NO_INSTALL:-}" ]; then
   echo "$app"
   exit 0

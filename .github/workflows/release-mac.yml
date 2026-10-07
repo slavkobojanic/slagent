@@ -44,6 +44,14 @@ jobs:
           case "$tag" in v*) ;; *) tag="v$tag" ;; esac
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      - name: Stamp version into package.json
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          # The packaged app version and latest-mac.yml must match the tag, otherwise the
+          # updater always thinks the installed build is current.
+          node -e 'const fs=require("fs");const p=require("./package.json");p.version=process.argv[1].replace(/^v/,"");fs.writeFileSync("package.json",JSON.stringify(p,null,2)+"\n")' "$TAG"
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm typecheck
@@ -51,21 +59,23 @@ jobs:
       - name: Build slagent.app
         env:
           SLAGENT_NO_INSTALL: "1"
-          SLAGENT_SIGN_IDENTITY: "-"
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: pnpm build:mac
 
       - name: Package
         id: package
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          app="dist/mac-arm64/slagent.app"
-          [ -d "$app" ] || app="dist/mac/slagent.app"
-          zip="slagent-$TAG-mac-arm64.zip"
-          # ditto keeps symlinks and code signatures intact; plain zip breaks the Electron frameworks.
-          ditto -c -k --sequesterRsrc --keepParent "$app" "$zip"
+          zip="$(ls dist/*-mac.zip | head -n 1)"
+          yml="dist/latest-mac.yml"
+          [ -f "$zip" ] || { echo "No mac zip produced"; exit 1; }
+          [ -f "$yml" ] || { echo "No latest-mac.yml produced"; exit 1; }
           shasum -a 256 "$zip" > "$zip.sha256"
           echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "yml=$yml" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -73,18 +83,21 @@ jobs:
           path: |
             ${{ steps.package.outputs.zip }}
             ${{ steps.package.outputs.zip }}.sha256
+            ${{ steps.package.outputs.yml }}
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
           ZIP: ${{ steps.package.outputs.zip }}
+          YML: ${{ steps.package.outputs.yml }}
           PRERELEASE: ${{ inputs.prerelease }}
         run: |
+          # latest-mac.yml must be a release asset: electron-updater reads the feed from it.
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
+            gh release upload "$TAG" "$ZIP" "$ZIP.sha256" "$YML" --clobber
           else
             flags="--generate-notes --target $GITHUB_SHA"
             [ "$PRERELEASE" = "true" ] && flags="$flags --prerelease"
-            gh release create "$TAG" "$ZIP" "$ZIP.sha256" --title "slagent $TAG" $flags
+            gh release create "$TAG" "$ZIP" "$ZIP.sha256" "$YML" --title "slagent $TAG" $flags
           fi

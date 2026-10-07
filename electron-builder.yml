@@ -19,12 +19,22 @@ extraResources:
     to: slagent.app
   - from: resources/icon.png
     to: icon.png
+# Writes app-update.yml into the bundle and latest-mac.yml next to the zip so the
+# in-app updater can read from the GitHub release feed.
+publish:
+  provider: github
+  owner: slavkobojanic
+  repo: slagent
 mac:
   category: public.app-category.developer-tools
   icon: icon.icns
-  identity: null
+  # zip (not just dir) is required for auto-update: electron-builder only emits
+  # app-update.yml / latest-mac.yml for zip or dmg targets.
   target:
     - target: dir
+      arch:
+        - arm64
+    - target: zip
       arch:
         - arm64
   extendInfo:
