@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { makeFile } from "@/features/changes/changes-fixtures"
-import { FileViewer, type FileViewerProps } from "@/features/changes/file-viewer/file-viewer"
+import { FileViewer, type FileViewerProps } from "./file-viewer"
 import { viewMarkup } from "@/test/view-markup"
 
 function viewer(overrides: Partial<FileViewerProps> = {}): FileViewerProps {
