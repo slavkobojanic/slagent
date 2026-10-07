@@ -511,6 +511,7 @@ function Composer({
       {historyQuery !== null && (
         <Suggestions
           active={active}
+          onActive={setActive}
           empty="No matching prompts"
           title={`History search${historyQuery ? `: ${historyQuery}` : ""}`}
           items={historyMatches.map((item, index) => ({
@@ -524,6 +525,7 @@ function Composer({
       {historyQuery === null && mention && matches.length > 0 && (
         <Suggestions
           active={active}
+          onActive={setActive}
           items={matches.map((match) => ({
             key: match.path,
             label: `@${match.name}`,
@@ -535,6 +537,7 @@ function Composer({
       {historyQuery === null && !mention && slash !== null && commandMatches.length > 0 && (
         <Suggestions
           active={active}
+          onActive={setActive}
           items={commandMatches.map((command) => ({
             key: command.insert,
             label: command.insert,
@@ -609,11 +612,13 @@ type Suggestion = {
 function Suggestions({
   items,
   active,
+  onActive,
   title,
   empty,
 }: {
   items: Suggestion[]
   active: number
+  onActive: (index: number) => void
   title?: string
   empty?: string
 }) {
@@ -623,12 +628,22 @@ function Suggestions({
       {items.length === 0 && empty ? <p className="px-3 py-1.5 text-sm text-white/50">{empty}</p> : null}
       <div className="max-h-56 overflow-y-auto">
         {items.map((item, index) => {
-          let className = "block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-white/10"
+          let className = "block w-full truncate px-3 py-1.5 text-left text-sm"
           if (index === 0) className += " rounded-t-md"
           if (index === items.length - 1) className += " rounded-b-md"
+          // Hovering moves the selection instead of stacking a second style on
+          // the selected item, so the chosen look stays exactly one style.
           if (index === active) className += " bg-white text-black"
+          else className += " hover:bg-white/10"
           return (
-            <button key={item.key} type="button" className={className} onMouseDown={(event) => event.preventDefault()} onClick={item.choose}>
+            <button
+              key={item.key}
+              type="button"
+              className={className}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => onActive(index)}
+              onClick={item.choose}
+            >
               <span>{item.label}</span>
               <span className="ml-2 text-xs opacity-60">{item.detail}</span>
             </button>
