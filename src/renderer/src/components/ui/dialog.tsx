@@ -24,10 +24,15 @@ function DialogContent({
 
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className={overlay} />
+      <DialogPrimitive.Overlay
+        className={cn(
+          overlay,
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200",
+        )}
+      />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-[min(100%-2rem,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-white/15 bg-black p-5 text-white shadow-none",
+          "dialog-genie fixed left-1/2 top-1/2 z-50 w-[min(100%-2rem,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-white/15 bg-black p-5 text-white shadow-none",
           className,
         )}
         {...props}

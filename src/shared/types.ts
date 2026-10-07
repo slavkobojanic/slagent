@@ -53,8 +53,52 @@ export const channels = {
   cliStatus: "cli:status",
   cliInstall: "cli:install",
   cliUninstall: "cli:uninstall",
+  setPersonalisation: "agent:set-personalisation",
   event: "agent:event",
 } as const
+
+// Global agent personalisation. Every field is optional: null or missing means
+// "no preference", so the agent keeps its own defaults.
+export type PersonalisationTone = "direct" | "friendly" | "professional"
+export type PersonalisationBrevity = "terse" | "balanced" | "detailed"
+export type PersonalisationBranch = "descriptive" | "prefix"
+export type PersonalisationCommit = "conventional" | "imperative" | "free"
+export type PersonalisationExplanation = "minimal" | "normal" | "educational"
+// When the agent commits: only after a yes, only when told to, or on its own
+// (once at the end of the work, or in small chunks as it goes).
+export type PersonalisationCommitStrategy = "ask" | "when-asked" | "at-end" | "as-you-go"
+
+export type Personalisation = {
+  tone: PersonalisationTone | null
+  brevity: PersonalisationBrevity | null
+  branchNaming: PersonalisationBranch | null
+  // Branch prefix, used with branchNaming: "prefix" (e.g. "feat" for feat/fix-x).
+  branchPrefix: string | null
+  commitStyle: PersonalisationCommit | null
+  emoji: boolean | null
+  // Reply language, or null to match the user's messages.
+  language: string | null
+  explanation: PersonalisationExplanation | null
+  // Run typecheck/tests before ending a turn that changed code.
+  checkBeforeFinish: boolean | null
+  commitStrategy: PersonalisationCommitStrategy | null
+  // Free-text instructions, appended verbatim.
+  notes: string | null
+}
+
+export const EMPTY_PERSONALISATION: Personalisation = {
+  tone: null,
+  brevity: null,
+  branchNaming: null,
+  branchPrefix: null,
+  commitStyle: null,
+  emoji: null,
+  language: null,
+  explanation: null,
+  checkBeforeFinish: null,
+  commitStrategy: null,
+  notes: null,
+}
 
 export type ModelProvider = "openrouter" | "claude-code"
 
@@ -100,6 +144,7 @@ export type AppMeta = {
   extensions: ExtensionInfo[]
   extensionErrors: string[]
   usageTotals: UsageTotals
+  personalisation: Personalisation
 }
 
 export type AttachmentKind = "image" | "pdf" | "code" | "file"
@@ -500,4 +545,5 @@ export type SlagentApi = {
   cliStatus: () => Promise<CliStatus>
   installCli: () => Promise<CliStatus>
   uninstallCli: () => Promise<CliStatus>
+  setPersonalisation: (value: Personalisation) => Promise<void>
 }

@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { Eye, EyeOff, LogIn, LogOut, Loader2, Plug, Power, RefreshCw, Settings2, SquareTerminal, X } from "lucide-react"
+import { Eye, EyeOff, LogIn, LogOut, Loader2, Plug, Power, RefreshCw, Settings2, Sparkles, SquareTerminal, X } from "lucide-react"
 import { toast } from "sonner"
-import type { CliStatus, McpServerState, McpServerStatus, OpenRouterStatus } from "@shared/types"
+import type { CliStatus, McpServerState, McpServerStatus, OpenRouterStatus, Personalisation } from "@shared/types"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { errorText, openRouterLabel } from "@/lib/format"
 import { setThemePreference, type ThemePreference, useThemePreference } from "@/lib/theme"
@@ -18,10 +20,11 @@ const THEMES: { value: ThemePreference; label: string }[] = [
   { value: "dark", label: "Dark" },
 ]
 
-type SettingsTab = "general" | "mcp" | "cli"
+type SettingsTab = "general" | "personalisation" | "mcp" | "cli"
 
 const TABS: { value: SettingsTab; label: string; icon: typeof Plug }[] = [
   { value: "general", label: "General", icon: Settings2 },
+  { value: "personalisation", label: "Personalisation", icon: Sparkles },
   { value: "mcp", label: "MCP", icon: Plug },
   { value: "cli", label: "CLI", icon: SquareTerminal },
 ]
@@ -34,6 +37,7 @@ function SettingsDialog({
   mcpServers,
   onMcpServers,
   onRefreshMcp,
+  personalisation,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -42,16 +46,15 @@ function SettingsDialog({
   mcpServers: McpServerStatus[]
   onMcpServers: (servers: McpServerStatus[]) => void
   onRefreshMcp: () => Promise<McpServerStatus[]>
+  personalisation: Personalisation
 }) {
   const [tab, setTab] = useState<SettingsTab>("general")
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-1/2 w-1/2 flex-col p-0">
-        <DialogHeader className="px-5 pt-5">
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>Appearance, model credentials, MCP servers, and the slagent command.</DialogDescription>
-        </DialogHeader>
-        <div className="flex min-h-0 flex-1 border-t border-white/10">
+        {/* Radix needs a title in the content; the tab labels say the rest. */}
+        <DialogTitle className="sr-only">Settings</DialogTitle>
+        <div className="flex min-h-0 flex-1">
           <nav aria-label="Settings sections" className="w-40 shrink-0 space-y-1 border-r border-white/10 p-2">
             {TABS.map((item) => {
               const Icon = item.icon
@@ -72,8 +75,9 @@ function SettingsDialog({
               )
             })}
           </nav>
-          <div className="min-w-0 flex-1 overflow-y-auto p-5">
+          <div className="min-w-0 flex-1 overflow-y-auto p-5 pt-12">
             {tab === "general" ? <GeneralSettings status={status} authFile={authFile} /> : null}
+            {tab === "personalisation" ? <PersonalisationSettings value={personalisation} /> : null}
             {tab === "mcp" ? (
               <McpSettings servers={mcpServers} onServers={onMcpServers} onRefresh={onRefreshMcp} />
             ) : null}
@@ -225,6 +229,218 @@ function GeneralSettings({ status, authFile }: { status: OpenRouterStatus; authF
       </section>
     </div>
   )
+}
+
+const DEFAULT = "default"
+
+function triValue(value: string): boolean | null {
+  if (value === "yes") return true
+  if (value === "no") return false
+  return null
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  )
+}
+
+function ChoiceSelect({
+  value,
+  onValueChange,
+  options,
+}: {
+  value: string | null
+  onValueChange: (value: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <Select value={value ?? DEFAULT} onValueChange={onValueChange}>
+      <SelectTrigger className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={DEFAULT}>Default</SelectItem>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function PersonalisationSettings({ value }: { value: Personalisation }) {
+  const [draft, setDraft] = useState<Personalisation>(value)
+  const [saving, setSaving] = useState(false)
+  const dirty = JSON.stringify(draft) !== JSON.stringify(value)
+
+  function patch(next: Partial<Personalisation>) {
+    setDraft((current) => ({ ...current, ...next }))
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      await window.slagent.setPersonalisation(draft)
+      toast.success("Personalisation saved")
+    } catch (error) {
+      toast.error(errorText(error))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <section className="space-y-4 border-t border-white/10 pt-4">
+        <div>
+          <h2 className="text-sm font-medium">Personalisation</h2>
+          <p className="text-xs text-white/50">
+            How the agent talks and works, in every chat. Anything left on Default keeps the agent's own behaviour.
+            Changes apply from your next message.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Tone">
+            <ChoiceSelect
+              value={draft.tone}
+              onValueChange={(tone) => patch({ tone: tone === DEFAULT ? null : (tone as Personalisation["tone"]) })}
+              options={[
+                { value: "direct", label: "Direct" },
+                { value: "friendly", label: "Friendly" },
+                { value: "professional", label: "Professional" },
+              ]}
+            />
+          </Field>
+          <Field label="Brevity">
+            <ChoiceSelect
+              value={draft.brevity}
+              onValueChange={(brevity) => patch({ brevity: brevity === DEFAULT ? null : (brevity as Personalisation["brevity"]) })}
+              options={[
+                { value: "terse", label: "Terse" },
+                { value: "balanced", label: "Balanced" },
+                { value: "detailed", label: "Detailed" },
+              ]}
+            />
+          </Field>
+          <Field label="Explanations">
+            <ChoiceSelect
+              value={draft.explanation}
+              onValueChange={(explanation) =>
+                patch({ explanation: explanation === DEFAULT ? null : (explanation as Personalisation["explanation"]) })
+              }
+              options={[
+                { value: "minimal", label: "Minimal — just do it" },
+                { value: "normal", label: "Normal" },
+                { value: "educational", label: "Educational — explain choices" },
+              ]}
+            />
+          </Field>
+          <Field label="Emoji">
+            <ChoiceSelect
+              value={tri(draft.emoji)}
+              onValueChange={(emoji) => patch({ emoji: emoji === DEFAULT ? null : emoji === "yes" })}
+              options={[
+                { value: "yes", label: "Prefer emoji" },
+                { value: "no", label: "No emoji" },
+              ]}
+            />
+          </Field>
+          <Field label="Branch names">
+            <ChoiceSelect
+              value={draft.branchNaming}
+              onValueChange={(branchNaming) =>
+                patch({ branchNaming: branchNaming === DEFAULT ? null : (branchNaming as Personalisation["branchNaming"]) })
+              }
+              options={[
+                { value: "descriptive", label: "Kebab-case description" },
+                { value: "prefix", label: "Type prefix" },
+              ]}
+            />
+          </Field>
+          <Field label="Commit messages">
+            <ChoiceSelect
+              value={draft.commitStyle}
+              onValueChange={(commitStyle) =>
+                patch({ commitStyle: commitStyle === DEFAULT ? null : (commitStyle as Personalisation["commitStyle"]) })
+              }
+              options={[
+                { value: "conventional", label: "Conventional commits" },
+                { value: "imperative", label: "Imperative summary" },
+                { value: "free", label: "Keep it simple" },
+              ]}
+            />
+          </Field>
+          <Field label="Reply language">
+            <Input
+              value={draft.language ?? ""}
+              placeholder="Auto — match your messages"
+              onChange={(event) => patch({ language: event.target.value })}
+            />
+          </Field>
+          {draft.branchNaming === "prefix" ? (
+            <Field label="Branch prefix">
+              <Input
+                value={draft.branchPrefix ?? ""}
+                placeholder="feat, fix, ticket-id…"
+                spellCheck={false}
+                onChange={(event) => patch({ branchPrefix: event.target.value })}
+              />
+            </Field>
+          ) : null}
+          <Field label="Before finishing a turn">
+            <ChoiceSelect
+              value={tri(draft.checkBeforeFinish)}
+              onValueChange={(check) => patch({ checkBeforeFinish: triValue(check) })}
+              options={[
+                { value: "yes", label: "Typecheck and test" },
+                { value: "no", label: "Just finish" },
+              ]}
+            />
+          </Field>
+          <Field label="Committing and pushing">
+            <ChoiceSelect
+              value={draft.commitStrategy}
+              onValueChange={(strategy) =>
+                patch({ commitStrategy: strategy === DEFAULT ? null : (strategy as Personalisation["commitStrategy"]) })
+              }
+              options={[
+                { value: "ask", label: "Always ask first" },
+                { value: "when-asked", label: "Only when I ask" },
+                { value: "at-end", label: "Automatically — one commit at the end" },
+                { value: "as-you-go", label: "Automatically — small commits as it goes" },
+              ]}
+            />
+          </Field>
+        </div>
+        <Field label="Anything else">
+          <Textarea
+            value={draft.notes ?? ""}
+            rows={4}
+            placeholder="Extra instructions for the agent — conventions, pet peeves, context it should always have…"
+            onChange={(event) => patch({ notes: event.target.value })}
+          />
+        </Field>
+        <div className="flex items-center gap-2">
+          <Button type="button" disabled={!dirty || saving} onClick={() => void save()}>
+            {saving ? "Saving" : "Save"}
+          </Button>
+          {dirty ? <span className="text-xs text-white/40">Unsaved changes</span> : null}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function tri(value: boolean | null): string | null {
+  if (value === true) return "yes"
+  if (value === false) return "no"
+  return null
 }
 
 function McpSettings({

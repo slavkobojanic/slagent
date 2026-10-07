@@ -21,6 +21,7 @@ import type {
   AssistantMessage,
   ChatMessage,
   ExtensionInfo,
+  Personalisation,
   QueueMode,
   PromptRequest,
   QuestionReply,
@@ -47,6 +48,7 @@ import { type BackgroundTasks, backgroundTasks } from "./extensions/background-t
 import { focusGuard } from "./extensions/focus-guard"
 import { discoverAgents, subagentExtension } from "./extensions/subagents"
 import { ASK_USER, askUser, type AskUserDetails } from "./extensions/ask-user"
+import { personalisationExtension } from "./extensions/personalisation"
 import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { todoExtension } from "./extensions/todo"
 import { preparePrompt, queueDetail } from "./prompt"
@@ -109,6 +111,8 @@ export type ChatRuntimeOptions = {
   modelRuntime: ModelRuntime
   // Servers slagent manages, registered with Pi's MCP extension for this session.
   mcpServers?: Record<string, McpServerConfig>
+  // Global personalisation, re-read on every run so edits apply from the next message.
+  personalisation: () => Personalisation
   onChange: (runningChanged: boolean) => void
   onExtensions: (extensions: ExtensionInfo[], errors: string[]) => void
   onTitle: (title: string, generated: boolean) => void
@@ -335,6 +339,7 @@ export class ChatRuntime {
           model: () => (this.session?.model as AgentModel | undefined) ?? this.options.model,
         }),
       },
+      { name: "slagent-personalisation", hidden: true, factory: personalisationExtension(this.options.personalisation) },
       { name: "slagent-plan-mode", factory: this.plan.extension, hidden: true, replaceable: true },
       { name: "slagent-ask-user", factory: this.questions.extension, hidden: true, replaceable: true },
       {

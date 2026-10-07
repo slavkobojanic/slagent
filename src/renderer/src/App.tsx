@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { CSSProperties } from "react"
 import type { AppMeta, DiffComment, ReplyComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, McpServerStatus, ProjectSummary, QueuedMessage, QuestionRequest, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
+import { EMPTY_PERSONALISATION } from "@shared/types"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
 import { RightPanel, type RightTab } from "@/components/right-panel"
@@ -714,6 +715,7 @@ function AgentApp() {
         mcpServers={mcpServers}
         onMcpServers={setMcpServers}
         onRefreshMcp={refreshMcp}
+        personalisation={meta?.personalisation ?? EMPTY_PERSONALISATION}
       />
       <ModelDialog
         open={modelOpen}

@@ -14,6 +14,7 @@ import type {
   AssistantMessage,
   ChatMessage,
   ModelOption,
+  Personalisation,
   PromptRequest,
   QueueMode,
   QuestionReply,
@@ -29,6 +30,7 @@ import type {
   UserMessage,
 } from "../shared/types"
 import { answered, parseQuestions } from "./extensions/ask-user"
+import { personalisationPrompt } from "./extensions/personalisation"
 import { errorMessage, formatValue, toolLabel, truncate } from "./format"
 import { preparePrompt, type PreparedPrompt, queueDetail } from "./prompt"
 
@@ -122,6 +124,8 @@ export type ClaudeRuntimeOptions = {
   onUsage: (usage: UsageState) => void
   onQuestion: (request: QuestionRequest) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
+  // Global personalisation, re-read on every run so edits apply from the next message.
+  personalisation: () => Personalisation
 }
 
 export class ClaudeRuntime {
@@ -148,6 +152,8 @@ export class ClaudeRuntime {
   private sessionId: string | null
   private session: Query | null = null
   private input: InputQueue | null = null
+  // Personalisation fragment the live process was created with.
+  private sessionPersonalisation: string | null = null
   private abortController: AbortController | null = null
   private slashCommands: SlashCommand[] = []
   private subscription = false
@@ -374,6 +380,16 @@ export class ClaudeRuntime {
   // One Claude Code process per chat, fed through a queue so follow-ups and
   // mid-turn messages reach the same session.
   private ensureSession(): InputQueue {
+    const append = personalisationPrompt(this.options.personalisation())
+    if (this.input && this.session && !this.streaming && this.sessionPersonalisation !== append) {
+      // The recorded system prompt would ignore a changed append on resume, so
+      // start a fresh process; resume keeps the conversation. Happens only
+      // between turns, when the queue is empty.
+      this.input?.close()
+      this.abortController?.abort()
+      this.session = null
+      this.input = null
+    }
     if (this.input && this.session) return this.input
     const input = new InputQueue()
     const abortController = new AbortController()
@@ -388,7 +404,9 @@ export class ClaudeRuntime {
         includePartialMessages: true,
         permissionMode: this.planEnabled ? "plan" : "default",
         canUseTool: this.canUseTool,
-        systemPrompt: { type: "preset", preset: "claude_code" },
+        // Render fresh on every request, so a recreated process picks up the
+        // current personalisation even though the conversation resumes.
+        systemPrompt: { type: "preset", preset: "claude_code", append: append ?? undefined, snapshot: false },
         settingSources: ["user", "project", "local"],
         env: claudeEnv(),
         ...(executable ? { pathToClaudeCodeExecutable: executable } : {}),
@@ -396,6 +414,7 @@ export class ClaudeRuntime {
     })
     this.input = input
     this.session = session
+    this.sessionPersonalisation = append
     this.abortController = abortController
     void this.consume(session)
     return input

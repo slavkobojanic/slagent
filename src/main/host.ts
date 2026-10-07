@@ -19,6 +19,7 @@ import type {
   LibraryState,
   ModelChange,
   OpenRouterStatus,
+  Personalisation,
   ProjectSummary,
   PromptRequest,
   QuestionReply,
@@ -32,7 +33,7 @@ import type {
   UiEvent,
   UsageTotals,
 } from "../shared/types"
-import { DONE_WINDOW_MS } from "../shared/types"
+import { DONE_WINDOW_MS, EMPTY_PERSONALISATION } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import { CLAUDE_MODELS, ClaudeRuntime, claudeModel, isClaudeModel } from "./claude-runtime"
 import type { ComputerUse } from "./computer"
@@ -42,7 +43,7 @@ import { ComputerGate } from "./computer-gate"
 import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
-import { readPrefs, writePrefs, type Prefs } from "./prefs"
+import { parsePersonalisation, readPrefs, writePrefs, type Prefs } from "./prefs"
 import { generateCommitMessage, generateTitle, TITLE_MODELS } from "./titles"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { importShellEnv } from "./shell-env"
@@ -80,6 +81,7 @@ export class AgentHost {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly extensionCache = new Map<string, ExtensionCache>()
   private prefs: Prefs = {}
+  private personalisation: Personalisation = { ...EMPTY_PERSONALISATION }
   private projectId: string | null = null
   private chatId: string | null = null
   private cwd = ""
@@ -125,6 +127,7 @@ export class AgentHost {
     try {
       this.prefs = await readPrefs(this.prefsPath)
       this.draftModelId = this.prefs.modelId ?? null
+      this.personalisation = this.prefs.personalisation ?? { ...EMPTY_PERSONALISATION }
       await this.library.load()
       void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
       await importShellEnv("OPENROUTER_API_KEY")
@@ -407,6 +410,12 @@ export class AgentHost {
     await runtime.compact()
   }
 
+  async setPersonalisation(value: Personalisation): Promise<void> {
+    this.personalisation = parsePersonalisation(value)
+    await this.persistPrefs()
+    this.publishMeta()
+  }
+
   async setModel(modelId: string): Promise<ModelChange> {
     const claude = claudeModel(modelId)
     let piModel: AgentModel | undefined
@@ -575,6 +584,7 @@ export class AgentHost {
       gate: this.gate,
       modelRuntime: runtimeModel,
       mcpServers: this.getMcpServers(),
+      personalisation: () => this.personalisation,
       onChange: (runningChanged) => {
         this.onRuntimeChange(runtime, runningChanged)
       },
@@ -671,6 +681,7 @@ export class AgentHost {
         if (generated) patch.titleGenerated = true
         void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
       },
+      personalisation: () => this.personalisation,
       // Titles come from a small OpenRouter model, so without a key the
       // first line of the message stays as the title.
       generateTitle: (user, assistant) => {
@@ -911,7 +922,11 @@ export class AgentHost {
   }
 
   private async persistPrefs(): Promise<void> {
-    this.prefs = { cwd: this.cwd || undefined, modelId: this.draftModelId ?? undefined }
+    this.prefs = {
+      cwd: this.cwd || undefined,
+      modelId: this.draftModelId ?? undefined,
+      personalisation: this.personalisation,
+    }
     await writePrefs(this.prefsPath, this.prefs)
   }
 
@@ -937,6 +952,7 @@ export class AgentHost {
       extensions: cached?.extensions ?? [],
       extensionErrors: cached?.errors ?? [],
       usageTotals: this.usageTotals(),
+      personalisation: this.personalisation,
     }
   }
 
