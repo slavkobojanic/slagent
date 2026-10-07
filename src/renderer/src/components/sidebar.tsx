@@ -1,6 +1,6 @@
 import { EllipsisIcon, PinIcon, SearchIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import type { ChatSearchResult, ChatStatus, ChatSummary, LibraryState, ProjectSummary } from "@shared/types"
+import { DONE_WINDOW_MS, type ChatSearchResult, type ChatStatus, type ChatSummary, type LibraryState, type ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -320,7 +320,7 @@ function ChatRow({
       }}
     >
       <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm" onClick={onOpen}>
-        <StatusDot status={chat.status} />
+        <StatusDot status={chat.status} finishedAt={chat.finishedAt} />
         <span className="truncate">{chat.title}</span>
         {chat.pinned && <PinIcon className="size-3 shrink-0 text-white/40" />}
       </button>
@@ -339,26 +339,46 @@ function ChatRow({
 
 const STATUS_LABELS: Record<ChatStatus, string> = {
   idle: "",
-  running: "Running",
+  running: "Working",
   waiting: "Needs your input",
-  unread: "Finished, not read yet",
+  done: "Finished",
   error: "Stopped with an error",
+}
+
+const STATUS_CLASSES: Record<ChatStatus, string> = {
+  idle: "bg-white/15",
+  running: "animate-pulse bg-white/60",
+  waiting: "bg-sky-400",
+  done: "bg-emerald-400",
+  error: "bg-[#ff5c5c]",
 }
 
 function projectStatus(project: ProjectSummary): ChatStatus {
   if (project.running) return "running"
-  if (project.attention) return "unread"
+  if (project.attention) return "done"
   return "idle"
 }
 
-function StatusDot({ status }: { status: ChatStatus }) {
-  let className = "size-1.5 shrink-0 rounded-full bg-transparent"
-  if (status === "running") className = "size-1.5 shrink-0 animate-pulse rounded-full bg-white"
-  if (status === "waiting") className = "size-1.5 shrink-0 rounded-full bg-amber-400"
-  if (status === "unread") className = "size-1.5 shrink-0 rounded-full bg-sky-400"
-  if (status === "error") className = "size-1.5 shrink-0 rounded-full bg-[#ff5c5c]"
-  const label = STATUS_LABELS[status]
-  return <span className={className} title={label || undefined} aria-label={label || undefined} role={label ? "img" : undefined} />
+function StatusDot({ status, finishedAt = null }: { status: ChatStatus; finishedAt?: number | null }) {
+  const [, setTick] = useState(0)
+  const doneUntil = status === "done" && finishedAt !== null ? finishedAt + DONE_WINDOW_MS : null
+  // Re-render when the done window closes so the dot falls back to idle.
+  useEffect(() => {
+    if (doneUntil === null) return
+    const timer = window.setTimeout(() => setTick((tick) => tick + 1), Math.max(0, doneUntil - Date.now()) + 50)
+    return () => window.clearTimeout(timer)
+  }, [doneUntil])
+  let shown = status
+  if (doneUntil !== null && Date.now() >= doneUntil) shown = "idle"
+  const label = STATUS_LABELS[shown]
+  return (
+    <span
+      className={cn("mx-[3px] size-1.5 shrink-0 rounded-full", STATUS_CLASSES[shown])}
+      title={label || undefined}
+      aria-label={label || undefined}
+      role={label ? "img" : undefined}
+    />
+  )
 }
 
 function SearchResults({

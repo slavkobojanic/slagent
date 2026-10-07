@@ -26,6 +26,7 @@ import type {
   UiEvent,
   UsageTotals,
 } from "../shared/types"
+import { DONE_WINDOW_MS } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import { CLAUDE_MODELS, ClaudeRuntime, claudeModel, isClaudeModel } from "./claude-runtime"
 import type { ComputerUse } from "./computer"
@@ -581,8 +582,11 @@ export class AgentHost {
           else if (runtime.failed) body = "Stopped with an error"
           this.notify(projectId, chatId, body)
         }
-        if (open) return
-        void this.library.updateChat(projectId, chatId, { unread: true }).then(() => this.publishLibrary())
+        const patch: Partial<StoredChat> = {}
+        if (!runtime.waiting && !runtime.failed) patch.finishedAt = Date.now()
+        if (!open) patch.unread = true
+        if (Object.keys(patch).length === 0) return
+        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
       },
       onTaskFinished: (task) => {
         let body = `${task.label} finished`
@@ -663,8 +667,11 @@ export class AgentHost {
           else if (runtime.failed) body = "Stopped with an error"
           this.notify(projectId, chatId, body)
         }
-        if (open) return
-        void this.library.updateChat(projectId, chatId, { unread: true }).then(() => this.publishLibrary())
+        const patch: Partial<StoredChat> = {}
+        if (!runtime.waiting && !runtime.failed) patch.finishedAt = Date.now()
+        if (!open) patch.unread = true
+        if (Object.keys(patch).length === 0) return
+        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
       },
       onQuestion: (request) => {
         const open = this.projectId === projectId && this.chatId === chatId
@@ -931,6 +938,7 @@ export class AgentHost {
       updatedAt: chat.updatedAt,
       running: runtime?.running ?? false,
       status: this.chatStatus(chat, runtime),
+      finishedAt: chat.finishedAt ?? null,
     }
   }
 
@@ -938,7 +946,7 @@ export class AgentHost {
     if (runtime?.waiting) return "waiting"
     if (runtime?.running) return "running"
     if (runtime?.failed) return "error"
-    if (chat.unread) return "unread"
+    if (chat.finishedAt && Date.now() - chat.finishedAt < DONE_WINDOW_MS) return "done"
     return "idle"
   }
 

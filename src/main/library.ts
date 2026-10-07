@@ -29,6 +29,8 @@ export type StoredChat = {
   titleCustom: boolean
   titleGenerated?: boolean
   unread?: boolean
+  // When the last run finished without an error or a pending question.
+  finishedAt?: number
   tokens?: number
   cost?: number
 }
