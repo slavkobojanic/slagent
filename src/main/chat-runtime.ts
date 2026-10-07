@@ -56,12 +56,14 @@ export type ChatRuntimeOptions = {
   sessionFile: string | null
   model: AgentModel
   named: boolean
+  titleGenerated: boolean
   computer: ComputerUse
   gate: ComputerGate
   modelRuntime: ModelRuntime
   onChange: (runningChanged: boolean) => void
   onExtensions: (extensions: ExtensionInfo[], errors: string[]) => void
-  onTitle: (title: string) => void
+  onTitle: (title: string, generated: boolean) => void
+  generateTitle: (user: string, assistant: string) => Promise<string | null>
   onModel: (modelId: string) => void
   saveBytes: (name: string, mimeType: string, bytes: Buffer) => Promise<SavedFile>
 }
@@ -79,6 +81,7 @@ export class ChatRuntime {
   private sending = false
   private notice: string | null = null
   private named: boolean
+  private titleGenerated: boolean
   private session: AgentSession | null = null
   private unsubscribe: (() => void) | null = null
   private sessionToken: object | null = null
@@ -96,6 +99,7 @@ export class ChatRuntime {
     this.modelId = options.model.id
     this.modelName = options.model.name
     this.named = options.named
+    this.titleGenerated = options.titleGenerated
   }
 
   get key(): string {
@@ -122,6 +126,7 @@ export class ChatRuntime {
 
   lockTitle(): void {
     this.named = true
+    this.titleGenerated = true
   }
 
   transcript(): TranscriptState {
@@ -359,7 +364,28 @@ export class ChatRuntime {
       if (first) title = first.name
     }
     if (!title) title = "New chat"
-    this.options.onTitle(title.slice(0, 80))
+    this.options.onTitle(title.slice(0, 80), false)
+  }
+
+  // Replaces the first-line placeholder with a short generated title once the
+  // first exchange has settled.
+  private async autoTitle(): Promise<void> {
+    if (this.titleGenerated) return
+    this.titleGenerated = true
+    const user = this.messages.find((message) => message.role === "user")
+    if (!user || user.role !== "user" || !user.text) return
+    let assistant = ""
+    for (const message of this.messages) {
+      if (message.role === "assistant" && message.text) assistant = message.text
+    }
+    try {
+      const title = await this.options.generateTitle(user.text, assistant)
+      if (!title || this.disposed) return
+      this.session?.setSessionName(title)
+      this.options.onTitle(title, true)
+    } catch {
+      // The first-line title stays.
+    }
   }
 
   private onEvent(event: AgentSessionEvent): void {
@@ -458,6 +484,7 @@ export class ChatRuntime {
       }
       this.emit(true)
       this.scheduleFlush()
+      void this.autoTitle()
       return
     }
 

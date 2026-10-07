@@ -25,6 +25,7 @@ export type StoredChat = {
   sessionFile: string | null
   named: boolean
   titleCustom: boolean
+  titleGenerated?: boolean
 }
 
 type IndexFile = {
@@ -137,6 +138,7 @@ export class Library {
       sessionFile: null,
       named: false,
       titleCustom: false,
+      titleGenerated: false,
     }
     const chats = this.chats.get(projectId) ?? []
     chats.unshift(chat)

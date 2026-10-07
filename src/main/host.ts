@@ -26,6 +26,7 @@ import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
 import { readPrefs, writePrefs, type Prefs } from "./prefs"
+import { generateTitle, TITLE_MODELS } from "./titles"
 
 const PROVIDER = "openrouter"
 const PREFERRED_MODELS = [
@@ -392,6 +393,7 @@ export class AgentHost {
       sessionFile: chat.sessionFile,
       model,
       named: chat.named || chat.titleCustom,
+      titleGenerated: chat.titleCustom || (chat.titleGenerated ?? chat.named),
       computer: this.computer,
       gate: this.gate,
       modelRuntime: runtimeModel,
@@ -402,10 +404,17 @@ export class AgentHost {
         this.extensionCache.set(projectId, { extensions, errors })
         if (this.projectId === projectId) this.publishMeta()
       },
-      onTitle: (title) => {
-        void this.library
-          .updateChat(projectId, chatId, { title, named: true, updatedAt: Date.now() })
-          .then(() => this.publishLibrary())
+      onTitle: (title, generated) => {
+        const current = this.library.chat(projectId, chatId)
+        if (generated && current?.titleCustom) return
+        const patch: Partial<StoredChat> = { title, named: true, updatedAt: Date.now() }
+        if (generated) patch.titleGenerated = true
+        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
+      },
+      generateTitle: (user, assistant) => {
+        const titleModel = this.titleModel(runtime.modelId)
+        if (!titleModel) return Promise.resolve(null)
+        return generateTitle(runtimeModel, titleModel, user, assistant)
       },
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
@@ -526,6 +535,16 @@ export class AgentHost {
     const first = this.models[0]
     if (!first) return undefined
     return runtime.getModel(PROVIDER, first.id)
+  }
+
+  private titleModel(fallbackId: string): AgentModel | undefined {
+    const runtime = this.modelRuntime
+    if (!runtime) return undefined
+    for (const id of [...TITLE_MODELS, fallbackId]) {
+      const model = runtime.getModel(PROVIDER, id)
+      if (model) return model
+    }
+    return undefined
   }
 
   private catalog(): AppMeta["models"] {
