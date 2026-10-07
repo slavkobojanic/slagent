@@ -1,17 +1,19 @@
-import { FileCodeIcon, GitCompareIcon, XIcon } from "lucide-react"
+import { FileCodeIcon, GitCompareIcon, ScrollTextIcon, XIcon } from "lucide-react"
 import type { PointerEvent as ReactPointerEvent } from "react"
 import type { DiffComment, FileView } from "@shared/types"
 import { DiffPanel } from "@/components/diff-panel"
 import { FileViewer } from "@/components/file-viewer"
+import { MessageResponse } from "@/components/ai-elements/message"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export type RightTab = "changes" | "file"
+export type RightTab = "changes" | "file" | "plan"
 
 function RightPanel({
   tab,
   file,
-  width,
+  plan,
+  active,
   streaming,
   comments,
   onTab,
@@ -24,7 +26,9 @@ function RightPanel({
 }: {
   tab: RightTab
   file: FileView | null
-  width: number
+  plan: string | null
+  // Whether the panel is on screen; the diff only loads while it is.
+  active: boolean
   streaming: boolean
   comments: DiffComment[]
   onTab: (tab: RightTab) => void
@@ -35,9 +39,9 @@ function RightPanel({
   onResizeStart: (event: ReactPointerEvent<HTMLDivElement>) => void
   onResetWidth: () => void
 }) {
-  const showing: RightTab = tab === "file" && file ? "file" : "changes"
+  const showing: RightTab = tab === "file" && file ? "file" : tab === "plan" && plan ? "plan" : "changes"
   return (
-    <aside className="relative flex h-full shrink-0 flex-col border-l border-white/10" style={{ width }} aria-label="Side panel">
+    <aside className="relative flex h-full shrink-0 flex-col border-l border-white/10" aria-label="Side panel">
       <div
         role="separator"
         aria-orientation="vertical"
@@ -52,6 +56,12 @@ function RightPanel({
           <GitCompareIcon className="size-3.5" />
           Changes
         </Tab>
+        {plan ? (
+          <Tab active={showing === "plan"} onClick={() => onTab("plan")}>
+            <ScrollTextIcon className="size-3.5" />
+            Plan
+          </Tab>
+        ) : null}
         {file ? (
           <span className={cn("flex min-w-0 items-center rounded-md", showing === "file" && "bg-white/10")}>
             <button
@@ -76,8 +86,12 @@ function RightPanel({
       </div>
       {showing === "file" && file ? (
         <FileViewer file={file} />
+      ) : showing === "plan" && plan ? (
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm" aria-label="Plan document">
+          <MessageResponse>{plan}</MessageResponse>
+        </div>
       ) : (
-        <DiffPanel streaming={streaming} comments={comments} onAddComment={onAddComment} onRemoveComment={onRemoveComment} />
+        <DiffPanel active={active && showing === "changes"} streaming={streaming} comments={comments} onAddComment={onAddComment} onRemoveComment={onRemoveComment} />
       )}
     </aside>
   )

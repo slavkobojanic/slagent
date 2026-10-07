@@ -14,11 +14,14 @@ import { useResolvedTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 function DiffPanel({
+  active,
   streaming,
   comments,
   onAddComment,
   onRemoveComment,
 }: {
+  // Whether the diff is on screen; nothing is fetched while the panel is hidden.
+  active: boolean
   streaming: boolean
   comments: DiffComment[]
   onAddComment: (comment: DiffComment) => void
@@ -46,9 +49,9 @@ function DiffPanel({
 
   // Refresh when the panel opens, the scope changes, and each time a run ends.
   useEffect(() => {
-    if (streaming) return
+    if (!active || streaming) return
     void refresh()
-  }, [refresh, streaming])
+  }, [active, refresh, streaming])
 
   async function act(name: string, task: () => Promise<void>) {
     setBusy(name)

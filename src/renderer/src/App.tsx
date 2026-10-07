@@ -1,4 +1,4 @@
-import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
+import { PanelLeft, PanelRight, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { CSSProperties } from "react"
@@ -473,6 +473,12 @@ function AgentApp() {
   }
   toggleChangesRef.current = toggleChanges
 
+  // The header panel button toggles the side panel, whatever tab it was on:
+  // changes, an open file's source, or the plan document.
+  function togglePanel() {
+    setPanelOpen((open) => !open)
+  }
+
   const composerDisabled = !ready || !configured || !meta?.modelId || !cwd
   const mod = modKey()
   const paletteActions: PaletteAction[] = [
@@ -563,13 +569,13 @@ function AgentApp() {
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={changesShown ? "Hide changes" : "Show changes"}
-            aria-pressed={changesShown}
-            title={`Changes (${modKey()}⇧D)`}
+            aria-label={panelOpen ? "Hide panel" : "Show panel"}
+            aria-pressed={panelOpen}
+            title={`${panelOpen ? "Hide" : "Show"} panel (${modKey()}⇧D)`}
             disabled={!cwd}
-            onClick={toggleChanges}
+            onClick={togglePanel}
           >
-            <GitCompareIcon className="size-4" />
+            <PanelRight className="size-4" />
           </Button>
           <Button
             type="button"
@@ -704,25 +710,34 @@ function AgentApp() {
             onRemoveQueued={(id) => window.slagent.removeQueued(id)}
           />
         </main>
-        {panelOpen && cwd ? (
-          <RightPanel
-            tab={panelTab}
-            file={viewedFile}
-            width={diffSize.width}
-            streaming={streaming}
-            comments={diffComments}
-            onTab={setPanelTab}
-            onCloseFile={() => {
-              setViewedFile(null)
-              setPanelTab("changes")
-            }}
-            onClose={() => setPanelOpen(false)}
-            onAddComment={(comment) => setDiffComments((current) => [...current, comment])}
-            onRemoveComment={(id) => setDiffComments((current) => current.filter((comment) => comment.id !== id))}
-            onResizeStart={diffSize.onPointerDown}
-            onResetWidth={diffSize.onDoubleClick}
-          />
-        ) : null}
+        <div
+          className="panel-slot"
+          data-closed={panelOpen ? undefined : true}
+          data-resizing={diffSize.resizing ? true : undefined}
+          inert={panelOpen ? undefined : true}
+          style={{ "--panel-width": `${diffSize.width}px` } as CSSProperties}
+        >
+          {cwd ? (
+            <RightPanel
+              tab={panelTab}
+              file={viewedFile}
+              plan={planProposal}
+              active={panelOpen}
+              streaming={streaming}
+              comments={diffComments}
+              onTab={setPanelTab}
+              onCloseFile={() => {
+                setViewedFile(null)
+                setPanelTab("changes")
+              }}
+              onClose={() => setPanelOpen(false)}
+              onAddComment={(comment) => setDiffComments((current) => [...current, comment])}
+              onRemoveComment={(id) => setDiffComments((current) => current.filter((comment) => comment.id !== id))}
+              onResizeStart={diffSize.onPointerDown}
+              onResetWidth={diffSize.onDoubleClick}
+            />
+          ) : null}
+        </div>
       </div>
       <SettingsDialog
         open={settingsOpen}

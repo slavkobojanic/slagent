@@ -214,8 +214,50 @@ html.light {
   }
 }
 
+/* The right panel animates like the sidebar, mirrored: the slot collapses to
+   zero width while the aside slides out to the right. */
+.panel-slot {
+  display: grid;
+  grid-template-columns: var(--panel-width, 35rem);
+  min-width: 0;
+  overflow: hidden;
+  transition: grid-template-columns 250ms var(--ease-drawer);
+}
+
+.panel-slot[data-closed] {
+  grid-template-columns: 0rem;
+}
+
+.panel-slot > aside {
+  width: var(--panel-width, 35rem);
+  min-width: 0;
+  transform: translateX(0);
+  opacity: 1;
+  transition:
+    transform 250ms var(--ease-drawer),
+    opacity 200ms var(--ease-out);
+}
+
+.panel-slot[data-closed] > aside {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-slot {
+    transition: none;
+  }
+
+  .panel-slot > aside {
+    transform: none;
+    transition: opacity 200ms var(--ease-out);
+  }
+}
+
 .sidebar-slot[data-resizing],
-.sidebar-slot[data-resizing] > aside {
+.sidebar-slot[data-resizing] > aside,
+.panel-slot[data-resizing],
+.panel-slot[data-resizing] > aside {
   transition: none;
 }
 
