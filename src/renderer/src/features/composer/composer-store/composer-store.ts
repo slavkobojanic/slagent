@@ -1,95 +1,43 @@
-import { makeAutoObservable, observableRef } from "mobx"
-import type { ChatMention, ChatSearchResult, DiffComment, FileMatch, PromptMention, ReplyComment, SlashCommand } from "@shared/types"
-import type { AppDeps } from "@/state/app-deps"
-import type { ReviewStore } from "@/state/review-store"
-import type { PromptHistoryStore } from "@/features/composer/prompt-history-store/prompt-history-store"
-import { filterCommands, kindLabel, pendingLabel, type Trigger } from "@/features/composer/prompt-text"
+import { makeAutoObservable } from "mobx"
+import type { LibraryStore } from "@/mirror/library-store/library-store"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { RunStore } from "@/mirror/run-store/run-store"
 
-// A file on its way into the next prompt. The preview URL is released when the file leaves the list.
-export type ComposerAttachment = {
-  id: string
-  name: string
-  mimeType: string
-  url: string
-  // The disk path, when the platform gives one for the file. Empty when it does not.
-  path: string
-  file: File
-}
+const DRAFT_LIMIT = 100
 
-export type Triggers = { mention: Trigger | null; chatMention: Trigger | null; slash: string | null }
-
-export type SuggestionItem = { key: string; label: string; detail: string }
-
-export type SuggestionMenu = {
-  kind: "history" | "file" | "chat" | "command"
-  title: string | null
-  empty: string | null
-  items: SuggestionItem[]
-}
-
-export type AttachmentChip = { id: string; name: string; imageUrl: string | null }
-export type PendingReply = { id: string; quote: string; text: string }
-export type PendingDiff = { id: string; location: string; text: string }
-
-export type ComposerSource = {
-  mirror: AppDeps["mirror"]
-  review: ReviewStore
-  history: PromptHistoryStore
-}
-
-// The prompt box: what is typed, the menu open over it, the mentions in the text, and the files
-// attached to it. The getters are the rules for when the box is closed and what it says.
 export class ComposerStore {
   text = ""
   caret = 0
   composing = false
-  attachments: ComposerAttachment[] = []
-  mentions: PromptMention[] = []
-  chatMentions: ChatMention[] = []
-  mention: Trigger | null = null
-  chatMention: Trigger | null = null
-  slash: string | null = null
-  fileMatches: FileMatch[] = []
-  chatMatches: ChatSearchResult[] = []
-  commands: SlashCommand[] = []
-  active = 0
-  historyQuery: string | null = null
-  historyIndex: number | null = null
-  historyDraft = ""
+  drafts: Record<string, string> = {}
 
-  constructor(private readonly source: ComposerSource) {
-    makeAutoObservable<ComposerStore, "source">(this, {
-      source: false,
-      attachments: observableRef,
-      mentions: observableRef,
-      chatMentions: observableRef,
-      fileMatches: observableRef,
-      chatMatches: observableRef,
-      commands: observableRef,
-    })
+  constructor(
+    private readonly libraryStore: LibraryStore,
+    private readonly metaStore: MetaStore,
+    private readonly runStore: RunStore,
+  ) {
+    makeAutoObservable(this)
   }
 
   get streaming(): boolean {
-    return this.source.mirror.run.streaming
+    return this.runStore.streaming
   }
 
   get planMode(): boolean {
-    return this.source.mirror.run.planMode
+    return this.runStore.planMode
   }
 
   // Drafts are kept per project and chat. A new chat in a project shares the "new" key.
   get draftKey(): string {
-    const { openProjectId, openChatId } = this.source.mirror.library
+    const { openProjectId, openChatId } = this.libraryStore
     return `${openProjectId ?? "none"}:${openChatId ?? "new"}`
   }
 
-  // The box is closed until the app is ready, a provider is configured, a model is chosen, and a folder is open.
   get disabled(): boolean {
-    const meta = this.source.mirror.meta
-    if (!meta.ready || !meta.configured) {
+    if (!this.metaStore.ready || !this.metaStore.configured) {
       return true
     }
-    const app = meta.meta
+    const app = this.metaStore.meta
     if (app === null || !app.modelId || !app.cwd) {
       return true
     }
@@ -97,17 +45,16 @@ export class ComposerStore {
   }
 
   get placeholder(): string {
-    const meta = this.source.mirror.meta
-    if (!meta.ready) {
+    if (!this.metaStore.ready) {
       return "Starting"
     }
-    if (!meta.meta?.cwd) {
+    if (!this.metaStore.meta?.cwd) {
       return "Choose a folder"
     }
-    if (!meta.configured) {
+    if (!this.metaStore.configured) {
       return "Connect OpenRouter to start"
     }
-    if (this.source.mirror.run.question !== null) {
+    if (this.runStore.question !== null) {
       return "Answer in your own words"
     }
     if (this.streaming) {
@@ -119,7 +66,6 @@ export class ComposerStore {
     return "Describe a change"
   }
 
-  // While a run streams, the button stops it. A send then queues a follow-up instead.
   get submitStatus(): "ready" | "streaming" {
     if (this.streaming) {
       return "streaming"
@@ -141,110 +87,6 @@ export class ComposerStore {
     return false
   }
 
-  get pendingCount(): number {
-    return this.source.review.diffComments.length + this.source.review.replyComments.length
-  }
-
-  get pendingLabel(): string {
-    return pendingLabel(this.source.review.diffComments.length, this.source.review.replyComments.length)
-  }
-
-  get pendingReplies(): PendingReply[] {
-    return this.source.review.replyComments.map((comment: ReplyComment) => ({
-      id: comment.id,
-      quote: comment.quote.replace(/\s+/g, " "),
-      text: comment.text,
-    }))
-  }
-
-  get pendingDiffs(): PendingDiff[] {
-    return this.source.review.diffComments.map((comment: DiffComment) => ({
-      id: comment.id,
-      location: `${comment.path.split("/").pop() ?? comment.path}:${comment.line}`,
-      text: comment.text,
-    }))
-  }
-
-  get attachmentChips(): AttachmentChip[] {
-    return this.attachments.map((item) => ({
-      id: item.id,
-      name: item.name || "file",
-      imageUrl: item.mimeType.startsWith("image/") && item.url ? item.url : null,
-    }))
-  }
-
-  get historyMatches(): string[] {
-    if (this.historyQuery === null) {
-      return []
-    }
-    return this.source.history.search(this.historyQuery)
-  }
-
-  get commandMatches(): SlashCommand[] {
-    if (this.slash === null) {
-      return []
-    }
-    return filterCommands(this.commands, this.slash)
-  }
-
-  // One menu at a time. History search wins, then @file, then $chat, then slash commands.
-  get menu(): SuggestionMenu | null {
-    if (this.historyQuery !== null) {
-      return {
-        kind: "history",
-        title: `History search${this.historyQuery ? `: ${this.historyQuery}` : ""}`,
-        empty: "No matching prompts",
-        items: this.historyMatches.map((item, index) => ({
-          key: `${index}:${item}`,
-          label: item.replace(/\s+/g, " "),
-          detail: "",
-        })),
-      }
-    }
-    if (this.mention !== null) {
-      if (this.fileMatches.length === 0) {
-        return null
-      }
-      return {
-        kind: "file",
-        title: null,
-        empty: null,
-        items: this.fileMatches.map((match) => ({ key: match.path, label: `@${match.name}`, detail: match.path })),
-      }
-    }
-    if (this.chatMention !== null) {
-      if (this.chatMatches.length === 0) {
-        return null
-      }
-      return {
-        kind: "chat",
-        title: null,
-        empty: null,
-        items: this.chatMatches.map((match) => ({ key: match.chatId, label: `$${match.title}`, detail: match.projectName })),
-      }
-    }
-    if (this.slash !== null) {
-      if (this.commandMatches.length === 0) {
-        return null
-      }
-      return {
-        kind: "command",
-        title: null,
-        empty: null,
-        items: this.commandMatches.map((command) => ({
-          key: command.insert,
-          label: command.insert,
-          detail: command.description || kindLabel(command.kind),
-        })),
-      }
-    }
-    return null
-  }
-
-  get suggestionCount(): number {
-    return this.menu?.items.length ?? 0
-  }
-
   setText(text: string) {
     this.text = text
   }
@@ -257,103 +99,35 @@ export class ComposerStore {
     this.composing = value
   }
 
-  setAttachments(items: ComposerAttachment[]) {
-    this.attachments = items
+  draft(key: string): string {
+    return this.drafts[key] ?? ""
   }
 
-  // Typing moves the menus to the caret, and a fresh menu starts at its first item.
-  setTriggers(triggers: Triggers) {
-    this.mention = triggers.mention
-    this.chatMention = triggers.chatMention
-    this.slash = triggers.slash
-    this.active = 0
+  replaceDrafts(drafts: Record<string, string>) {
+    this.drafts = drafts
   }
 
-  // Escape closes every menu at once.
-  dismissTriggers() {
-    this.mention = null
-    this.chatMention = null
-    this.slash = null
-    this.historyQuery = null
-  }
-
-  closeMention() {
-    this.mention = null
-  }
-
-  closeChatMention() {
-    this.chatMention = null
-  }
-
-  closeSlash() {
-    this.slash = null
-  }
-
-  setActive(index: number) {
-    this.active = index
-  }
-
-  // Ctrl+R opens the history search with the current text as its query, or closes it.
-  toggleHistorySearch(text: string) {
-    this.historyQuery = this.historyQuery === null ? text : null
-    this.active = 0
-  }
-
-  setHistoryQuery(query: string | null) {
-    this.historyQuery = query
-  }
-
-  setHistoryIndex(index: number | null) {
-    this.historyIndex = index
-  }
-
-  setHistoryDraft(text: string) {
-    this.historyDraft = text
-  }
-
-  setFileMatches(matches: FileMatch[]) {
-    this.fileMatches = matches
-  }
-
-  setChatMatches(matches: ChatSearchResult[]) {
-    this.chatMatches = matches
-  }
-
-  setCommands(commands: SlashCommand[]) {
-    this.commands = commands
-  }
-
-  addMention(mention: PromptMention) {
-    if (this.mentions.some((item) => item.path === mention.path)) {
-      return
+  // Returns true when the drafts changed, so the presenter knows to persist them.
+  writeDraft(key: string, text: string): boolean {
+    if (text.trim() === "") {
+      return this.removeDraft(key)
     }
-    this.mentions = [...this.mentions, mention]
-  }
-
-  addChatMention(mention: ChatMention) {
-    if (this.chatMentions.some((item) => item.chatId === mention.chatId)) {
-      return
+    const next: Record<string, string> = { ...this.drafts, [key]: text }
+    const keys = Object.keys(next)
+    for (const stale of keys.slice(0, Math.max(0, keys.length - DRAFT_LIMIT))) {
+      delete next[stale]
     }
-    this.chatMentions = [...this.chatMentions, mention]
+    this.drafts = next
+    return true
   }
 
-  // After a send, the menus and the mentions start over. The text is cleared by the presenter.
-  resetAfterSend() {
-    this.historyIndex = null
-    this.historyQuery = null
-    this.mentions = []
-    this.mention = null
-    this.chatMentions = []
-    this.chatMention = null
-    this.slash = null
-  }
-
-  // A different chat opens with the menus, mentions and history position of a fresh box.
-  resetForChat() {
-    this.resetAfterSend()
-    this.fileMatches = []
-    this.chatMatches = []
-    this.active = 0
-    this.historyDraft = ""
+  private removeDraft(key: string): boolean {
+    if (!Object.hasOwn(this.drafts, key)) {
+      return false
+    }
+    const next = { ...this.drafts }
+    delete next[key]
+    this.drafts = next
+    return true
   }
 }

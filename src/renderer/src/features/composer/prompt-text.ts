@@ -16,7 +16,6 @@ function triggerAt(before: string, start: number): Trigger | null {
   return { query, start }
 }
 
-// The @file mention the caret is in, or null.
 export function mentionAt(value: string, cursor: number): Trigger | null {
   const before = value.slice(0, cursor)
   const at = before.lastIndexOf("@")
@@ -26,7 +25,7 @@ export function mentionAt(value: string, cursor: number): Trigger | null {
   return triggerAt(before, at)
 }
 
-// The $chat mention the caret is in, or null. It yields to "@" so that "@a$b" stays a file mention.
+// Yields to "@" so that "@a$b" stays a file mention.
 export function chatMentionAt(value: string, cursor: number): Trigger | null {
   const before = value.slice(0, cursor)
   const dollar = before.lastIndexOf("$")
@@ -72,35 +71,4 @@ export function kindLabel(kind: SlashCommandKind): string {
     return "Prompt template"
   }
   return "Command"
-}
-
-// The part of a data URL after "base64,", or null when there is none.
-export function base64FromDataUrl(url: string | undefined): string | null {
-  if (!url) {
-    return null
-  }
-  const marker = "base64,"
-  const index = url.indexOf(marker)
-  if (index < 0) {
-    return null
-  }
-  return url.slice(index + marker.length)
-}
-
-// "1 reply comment and 2 diff comments". Replies come first, as the summary always showed them.
-export function pendingLabel(diffComments: number, replies: number): string {
-  const parts: string[] = []
-  if (replies === 1) {
-    parts.push("1 reply comment")
-  }
-  if (replies > 1) {
-    parts.push(`${replies} reply comments`)
-  }
-  if (diffComments === 1) {
-    parts.push("1 diff comment")
-  }
-  if (diffComments > 1) {
-    parts.push(`${diffComments} diff comments`)
-  }
-  return parts.join(" and ")
 }

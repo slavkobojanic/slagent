@@ -1,120 +1,85 @@
-import { useEffect } from "react"
 import { observer } from "mobx-react-lite"
-import { toast } from "sonner"
-import { AttachmentsPresenter } from "@/features/composer/attachments-presenter/attachments-presenter"
-import { Composer } from "@/features/composer/composer"
-import { ComposerPresenter } from "@/features/composer/composer-presenter/composer-presenter"
-import { ComposerStore } from "@/features/composer/composer-store/composer-store"
-import { DraftsPresenter } from "@/features/composer/drafts-presenter/drafts-presenter"
-import { DraftsStore } from "@/features/composer/drafts-store/drafts-store"
-import { PromptHistoryPresenter } from "@/features/composer/prompt-history-presenter/prompt-history-presenter"
-import { PromptHistoryStore } from "@/features/composer/prompt-history-store/prompt-history-store"
-import { SuggestionsPresenter } from "@/features/composer/suggestions-presenter/suggestions-presenter"
-import type { AppDeps } from "@/state/app-deps"
-import type { ComposerSlots, ReviewSlots, RunStatusSlots } from "@/state/slots"
+import { type ComponentType, useEffect } from "react"
+import type { API } from "@/ipc/api"
+import type { LibraryStore } from "@/mirror/library-store/library-store"
+import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { RunStore } from "@/mirror/run-store/run-store"
+import type { ComposerPort } from "@/state/composer-port/composer-port"
+import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
+import type { ReviewPresenter } from "@/state/review/review-presenter/review-presenter"
+import type { ReviewStore } from "@/state/review/review-store/review-store"
+import { AttachmentsPresenter } from "./attachments/attachments-presenter/attachments-presenter"
+import { AttachmentsStore } from "./attachments/attachments-store/attachments-store"
+import { createFileInput } from "./attachments/file-input/create"
+import { Composer } from "./composer"
+import { ComposerPresenter } from "./composer-presenter/composer-presenter"
+import { ComposerStore } from "./composer-store/composer-store"
+import { createPendingComments } from "./pending-comments/create"
+import { createPromptHistory } from "./prompt-history/create"
+import { PromptHistoryPresenter } from "./prompt-history/prompt-history-presenter/prompt-history-presenter"
+import { PromptHistoryStore } from "./prompt-history/prompt-history-store/prompt-history-store"
+import { createPromptForm } from "./prompt-form/create"
+import { createRunStatus } from "./run-status/create"
+import { createSuggestions } from "./suggestions/create"
+import { SuggestionsPresenter } from "./suggestions/suggestions-presenter/suggestions-presenter"
+import { SuggestionsStore } from "./suggestions/suggestions-store/suggestions-store"
 
-// Reads a file as a data URL, or resolves null when the browser cannot read it.
-function readDataUrl(file: File): Promise<string | null> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.addEventListener("load", () => {
-      resolve(typeof reader.result === "string" ? reader.result : null)
-    })
-    reader.addEventListener("error", () => {
-      resolve(null)
-    })
-    reader.readAsDataURL(file)
+export function createComposer({
+  api,
+  window,
+  libraryStore,
+  metaStore,
+  runStore,
+  reviewStore,
+  reviewPresenter,
+  commandRegistry,
+  composerPort,
+}: {
+  api: API
+  window: Window
+  libraryStore: LibraryStore
+  metaStore: MetaStore
+  runStore: RunStore
+  reviewStore: ReviewStore
+  reviewPresenter: ReviewPresenter
+  commandRegistry: CommandRegistry
+  composerPort: ComposerPort
+}): ComponentType {
+  const composerStore = new ComposerStore(libraryStore, metaStore, runStore)
+  const attachmentsStore = new AttachmentsStore()
+  const attachmentsPresenter = new AttachmentsPresenter(attachmentsStore, api, window)
+  const promptHistoryStore = new PromptHistoryStore()
+  const promptHistoryPresenter = new PromptHistoryPresenter(promptHistoryStore, window)
+  const suggestionsStore = new SuggestionsStore()
+  const suggestionsPresenter = new SuggestionsPresenter(suggestionsStore, promptHistoryStore, api, window)
+  const composerPresenter = new ComposerPresenter(
+    composerStore,
+    promptHistoryPresenter,
+    suggestionsPresenter,
+    attachmentsPresenter,
+    reviewPresenter,
+    api,
+    commandRegistry,
+    composerPort,
+    window,
+  )
+
+  const RunStatus = createRunStatus({ api, window, runStore, metaStore, commandRegistry })
+  const PendingComments = createPendingComments({ reviewStore, reviewPresenter })
+  const PromptHistory = createPromptHistory({ promptHistoryStore, promptHistoryPresenter, composerPresenter })
+  const Suggestions = createSuggestions({ suggestionsStore, suggestionsPresenter, composerPresenter })
+  const FileInput = createFileInput({ attachmentsPresenter })
+  const PromptForm = createPromptForm({ composerStore, composerPresenter, attachmentsStore, attachmentsPresenter })
+
+  return observer(function ComposerHost() {
+    // Each chat gets a fresh box: the key remounts the view, and the effect restarts the presenter.
+    const chatKey = libraryStore.openChatId ?? "draft"
+
+    useEffect(() => {
+      composerPresenter.start()
+      return composerPresenter.stop
+    }, [chatKey])
+
+    return <Composer key={chatKey} RunStatus={RunStatus} PendingComments={PendingComments} PromptHistory={PromptHistory} Suggestions={Suggestions} FileInput={FileInput} PromptForm={PromptForm} />
   })
-}
-
-// Builds the prompt box once at boot. It wires the stores and presenters together; the host mounts
-// the view, starts the presenter for as long as it is mounted, and passes every value down as a prop.
-export function createComposer(deps: AppDeps & { review: ReviewSlots; runStatus: RunStatusSlots }): ComposerSlots {
-  const { services, env, mirror, shared, runStatus } = deps
-  const RunStatusBar = runStatus.RunStatusBar
-  const notify = (message: string) => {
-    toast.error(message)
-  }
-
-  const drafts = new DraftsStore()
-  const draftsPresenter = new DraftsPresenter(drafts, env.window.localStorage)
-  const history = new PromptHistoryStore()
-  const historyPresenter = new PromptHistoryPresenter(history, env.window.localStorage)
-  const store = new ComposerStore({ mirror, review: shared.review, history })
-  const suggestions = new SuggestionsPresenter({ store, files: services.files, library: services.library, commands: services.commands, env })
-  const attachments = new AttachmentsPresenter({
-    store,
-    files: services.files,
-    browser: {
-      createUrl: (file) => URL.createObjectURL(file),
-      releaseUrl: (url) => {
-        URL.revokeObjectURL(url)
-      },
-      readDataUrl,
-    },
-    notify,
-  })
-  const presenter = new ComposerPresenter({
-    store,
-    drafts,
-    draftsPresenter,
-    history,
-    historyPresenter,
-    suggestions,
-    attachments,
-    chat: services.chat,
-    review: shared.reviewPresenter,
-    commands: shared.commands,
-    port: shared.composer,
-    env,
-    notify,
-  })
-
-  return {
-    Composer: observer(function ComposerHost() {
-      useEffect(() => {
-        presenter.start()
-        return presenter.stop
-      }, [])
-
-      return (
-        <Composer
-          RunStatusBar={RunStatusBar}
-          text={store.text}
-          placeholder={store.placeholder}
-          disabled={store.disabled}
-          submitStatus={store.submitStatus}
-          submitDisabled={store.submitDisabled}
-          planMode={store.planMode}
-          planDisabled={store.planDisabled}
-          attachments={store.attachmentChips}
-          menu={store.menu}
-          activeSuggestion={store.active}
-          pendingLabel={store.pendingLabel}
-          pendingReplies={store.pendingReplies}
-          pendingDiffs={store.pendingDiffs}
-          attachTextarea={presenter.attachTextarea}
-          attachFileInput={attachments.attachFileInput}
-          onTextChange={presenter.handleChange}
-          onSelect={presenter.handleSelect}
-          onKeyDown={presenter.handleKeyDown}
-          onCompositionStart={presenter.handleCompositionStart}
-          onCompositionEnd={presenter.handleCompositionEnd}
-          onPaste={attachments.handlePaste}
-          onSubmit={presenter.handleSubmit}
-          onDragOver={attachments.handleDragOver}
-          onDrop={attachments.handleDrop}
-          onFileChange={attachments.handleFileChange}
-          onAttach={attachments.openFileDialog}
-          onTogglePlan={presenter.togglePlan}
-          onStop={presenter.handleStop}
-          onRemoveAttachment={attachments.remove}
-          onChoose={presenter.chooseSuggestion}
-          onHover={presenter.hoverSuggestion}
-          onRemoveReply={shared.reviewPresenter.removeReplyComment}
-          onRemoveDiff={shared.reviewPresenter.removeDiffComment}
-        />
-      )
-    }),
-  }
 }

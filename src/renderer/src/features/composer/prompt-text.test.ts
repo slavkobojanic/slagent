@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { SlashCommand } from "@shared/types"
-import { base64FromDataUrl, chatMentionAt, filterCommands, kindLabel, mentionAt, pendingLabel, slashAt } from "@/features/composer/prompt-text"
+import { chatMentionAt, filterCommands, kindLabel, mentionAt, slashAt } from "@/features/composer/prompt-text"
 
 function command(insert: string, description = ""): SlashCommand {
   return { name: insert.slice(1), insert, description, kind: "command" }
@@ -75,37 +75,5 @@ describe("filterCommands", () => {
 describe("kindLabel", () => {
   it("can name a skill, a prompt template, and a command", () => {
     expect([kindLabel("skill"), kindLabel("prompt"), kindLabel("command")]).toEqual(["Skill", "Prompt template", "Command"])
-  })
-})
-
-describe("base64FromDataUrl", () => {
-  it("can return the bytes after the base64 marker", () => {
-    expect(base64FromDataUrl("data:text/plain;base64,aGk=")).toBe("aGk=")
-  })
-
-  it("can return null when the URL has no base64 part", () => {
-    expect(base64FromDataUrl("blob:abc")).toBeNull()
-  })
-
-  it("can return null when there is no URL", () => {
-    expect(base64FromDataUrl(undefined)).toBeNull()
-  })
-})
-
-describe("pendingLabel", () => {
-  it("can be empty when nothing is pending", () => {
-    expect(pendingLabel(0, 0)).toBe("")
-  })
-
-  it("can name a single diff comment", () => {
-    expect(pendingLabel(1, 0)).toBe("1 diff comment")
-  })
-
-  it("can count reply comments in the plural", () => {
-    expect(pendingLabel(0, 2)).toBe("2 reply comments")
-  })
-
-  it("can join replies and diff comments with and, replies first", () => {
-    expect(pendingLabel(3, 1)).toBe("1 reply comment and 3 diff comments")
   })
 })
