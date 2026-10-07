@@ -15,6 +15,7 @@ const base: MainColumnProps = {
   actionError: null,
   Transcript: slot("transcript"),
   Composer: slot("composer"),
+  PlanOverlay: slot("plan overlay"),
 }
 
 describe("MainColumn", () => {

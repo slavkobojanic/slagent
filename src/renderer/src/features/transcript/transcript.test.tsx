@@ -23,7 +23,6 @@ function props(overrides: Partial<TranscriptProps> = {}): TranscriptProps {
     attachScroll: noop,
     onSettle: noop,
     MessageList: slot("Message list"),
-    PlanCard: slot("Plan card"),
     Status: slot("Working on it"),
     ScrollDown: slot("Scroll down"),
     QuestionCard: slot("Question card"),
@@ -48,11 +47,10 @@ describe("Transcript", () => {
     expect(markup).toContain("Message list")
   })
 
-  it("renders the plan and the status line after the messages", () => {
+  it("renders the status line after the messages", () => {
     const markup = viewMarkup(<Transcript {...props()} />)
 
-    expect(markup.indexOf("Message list")).toBeLessThan(markup.indexOf("Plan card"))
-    expect(markup.indexOf("Plan card")).toBeLessThan(markup.indexOf("Working on it"))
+    expect(markup.indexOf("Message list")).toBeLessThan(markup.indexOf("Working on it"))
   })
 
   it("renders the scroll-down control inside the conversation", () => {
