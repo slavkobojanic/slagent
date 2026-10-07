@@ -29,6 +29,7 @@ import {
 } from "@/components/ai-elements/queue"
 import { Button } from "@/components/ui/button"
 import { errorText } from "@/lib/format"
+import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
 import type { FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand } from "@shared/types"
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024
@@ -196,7 +197,11 @@ function Composer({
   const [slash, setSlash] = useState<string | null>(null)
   const [commands, setCommands] = useState<SlashCommand[]>([])
   const [active, setActive] = useState(0)
+  const [historyQuery, setHistoryQuery] = useState<string | null>(null)
+  const historyIndex = useRef<number | null>(null)
+  const historyDraft = useRef("")
   const slashOpen = slash !== null
+  const historyMatches = historyQuery === null ? [] : searchHistory(historyQuery)
 
   useEffect(() => {
     if (!slashOpen) return
@@ -269,11 +274,69 @@ function Composer({
     })
   }
 
+  function browseHistory(textarea: HTMLTextAreaElement, direction: -1 | 1): boolean {
+    const items = promptHistory()
+    if (items.length === 0) return false
+    const index = historyIndex.current
+    const browsing = index !== null && textarea.value === items[index]
+    if (direction === -1) {
+      if (!browsing && textarea.value.slice(0, textarea.selectionStart).includes("\n")) return false
+      if (!browsing) historyDraft.current = textarea.value
+      let next = items.length - 1
+      if (browsing && index !== null) next = index - 1
+      if (next < 0) return true
+      historyIndex.current = next
+      setTextareaValue(textarea, items[next] ?? "")
+      return true
+    }
+    if (!browsing || index === null) return false
+    const next = index + 1
+    if (next >= items.length) {
+      historyIndex.current = null
+      setTextareaValue(textarea, historyDraft.current)
+      return true
+    }
+    historyIndex.current = next
+    setTextareaValue(textarea, items[next] ?? "")
+    return true
+  }
+
+  function chooseHistory(text: string) {
+    const textarea = textareaRef.current
+    setHistoryQuery(null)
+    if (!textarea) return
+    setTextareaValue(textarea, text)
+    textarea.setSelectionRange(text.length, text.length)
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    const textarea = event.currentTarget
+    textareaRef.current = textarea
+    if (event.ctrlKey && event.key === "r") {
+      event.preventDefault()
+      setHistoryQuery((current) => (current === null ? textarea.value : null))
+      setActive(0)
+      return
+    }
     let count = 0
-    if (mention) count = matches.length
+    if (historyQuery !== null) count = historyMatches.length
+    else if (mention) count = matches.length
     else if (slash !== null) count = commandMatches.length
-    if (count === 0) return
+    if (historyQuery !== null && event.key === "Escape") {
+      event.preventDefault()
+      setHistoryQuery(null)
+      return
+    }
+    if (count === 0) {
+      if (historyQuery !== null) {
+        if (event.key === "Enter") event.preventDefault()
+        return
+      }
+      if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return
+      if (event.key === "ArrowUp" && browseHistory(textarea, -1)) event.preventDefault()
+      if (event.key === "ArrowDown" && browseHistory(textarea, 1)) event.preventDefault()
+      return
+    }
     if (event.key === "ArrowDown") {
       event.preventDefault()
       setActive((index) => Math.min(index + 1, count - 1))
@@ -288,10 +351,16 @@ function Composer({
       event.preventDefault()
       setMention(null)
       setSlash(null)
+      setHistoryQuery(null)
       return
     }
     if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
       event.preventDefault()
+      if (historyQuery !== null) {
+        const item = historyMatches[active]
+        if (item) chooseHistory(item)
+        return
+      }
       if (mention) {
         const match = matches[active]
         if (match) chooseMention(match)
@@ -309,6 +378,9 @@ function Composer({
     if (!text.trim() && files.length === 0 && kept.length === 0) return
     try {
       await onPrompt({ text, mentions: kept, files })
+      rememberPrompt(text)
+      historyIndex.current = null
+      setHistoryQuery(null)
       setMentions([])
       setMention(null)
       setSlash(null)
@@ -329,7 +401,20 @@ function Composer({
   return (
     <div className="relative mx-auto w-full max-w-3xl px-6 pb-3">
       {queue.length > 0 && <MessageQueue items={queue} onMode={onQueueMode} onRemove={onRemoveQueued} />}
-      {mention && matches.length > 0 && (
+      {historyQuery !== null && (
+        <Suggestions
+          active={active}
+          empty="No matching prompts"
+          title={`History search${historyQuery ? `: ${historyQuery}` : ""}`}
+          items={historyMatches.map((item, index) => ({
+            key: `${index}:${item}`,
+            label: item.replace(/\s+/g, " "),
+            detail: "",
+            choose: () => chooseHistory(item),
+          }))}
+        />
+      )}
+      {historyQuery === null && mention && matches.length > 0 && (
         <Suggestions
           active={active}
           items={matches.map((match) => ({
@@ -340,7 +425,7 @@ function Composer({
           }))}
         />
       )}
-      {!mention && slash !== null && commandMatches.length > 0 && (
+      {historyQuery === null && !mention && slash !== null && commandMatches.length > 0 && (
         <Suggestions
           active={active}
           items={commandMatches.map((command) => ({
@@ -364,12 +449,18 @@ function Composer({
             disabled={disabled}
             onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
               textareaRef.current = event.currentTarget
+              if (historyQuery !== null) {
+                setHistoryQuery(event.currentTarget.value)
+                setActive(0)
+                return
+              }
               syncMention(event.currentTarget.value, event.currentTarget.selectionStart)
             }}
             onKeyDown={onKeyDown}
             onSelect={(event) => {
               const target = event.currentTarget
               textareaRef.current = target
+              if (historyQuery !== null) return
               syncMention(target.value, target.selectionStart)
             }}
           />
@@ -392,9 +483,21 @@ type Suggestion = {
   choose: () => void
 }
 
-function Suggestions({ items, active }: { items: Suggestion[]; active: number }) {
+function Suggestions({
+  items,
+  active,
+  title,
+  empty,
+}: {
+  items: Suggestion[]
+  active: number
+  title?: string
+  empty?: string
+}) {
   return (
     <div className="absolute right-6 bottom-full left-6 z-20 mb-2 overflow-hidden rounded-md border border-white/15 bg-black">
+      {title ? <p className="truncate border-b border-white/10 px-3 py-1.5 text-xs text-white/50">{title}</p> : null}
+      {items.length === 0 && empty ? <p className="px-3 py-1.5 text-sm text-white/50">{empty}</p> : null}
       <div className="max-h-56 overflow-y-auto">
         {items.map((item, index) => {
           let className = "block w-full truncate px-3 py-1.5 text-left text-sm hover:bg-white/10"
