@@ -148,6 +148,30 @@ html.light {
 
 @import "./features/transcript/commentable-response/commentable-response.css";
 
+/* Sidebar status dot for a working chat: fades while growing, so it throbs
+   instead of only blinking like Tailwind's animate-pulse. */
+@keyframes status-dot-throb {
+  0%,
+  100% {
+    opacity: 0.5;
+    scale: 0.75;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.25;
+  }
+}
+
+.status-dot-throb {
+  animation: status-dot-throb 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot-throb {
+    animation: none;
+  }
+}
+
 /* Genie-style dialog motion, like macOS minimising a window into the Dock:
    the dialog squashes toward its bottom edge (transform-origin 50% 100%) while
    fading. The `scale` property is animated, not `transform`, so it composes

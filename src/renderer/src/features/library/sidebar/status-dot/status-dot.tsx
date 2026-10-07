@@ -10,7 +10,7 @@ const LABELS: Partial<Record<ChatStatus, string>> = {
 
 const CLASSES: Partial<Record<ChatStatus, string>> = {
   idle: "bg-foreground/15",
-  running: "animate-pulse bg-foreground/60",
+  running: "status-dot-throb bg-foreground/60",
   // Done is gray: green for finished is unnecessary.
   done: "bg-foreground/15",
   // Lighter than the palette colour so the dot does not shout.
