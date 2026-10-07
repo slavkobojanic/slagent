@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { EMPTY_PERSONALISATION } from "@shared/types"
 import { PersonalisationSettings, type PersonalisationSettingsProps } from "@/features/settings/personalisation-settings/personalisation-settings"
 
@@ -11,6 +11,8 @@ function props(overrides: Partial<PersonalisationSettingsProps> = {}): Personali
   return {
     draft: EMPTY_PERSONALISATION,
     onPatch: () => undefined,
+    onPickFiles: () => Promise.resolve(),
+    onRemoveFile: () => undefined,
     SaveBar: SaveSlot,
     ...overrides,
   }
@@ -39,5 +41,33 @@ describe("PersonalisationSettings", () => {
     render(<PersonalisationSettings {...props({ draft: { ...EMPTY_PERSONALISATION, branchNaming: "descriptive" } })} />)
 
     expect(screen.queryByText("Branch prefix")).toBeNull()
+  })
+
+  it("can show an empty pinned files field with the total limit", () => {
+    render(<PersonalisationSettings {...props()} />)
+
+    expect(screen.getByText("Pinned context files")).not.toBeNull()
+    expect(screen.getByPlaceholderText("No files pinned.")).not.toBeNull()
+    expect(screen.getByText(/0 \/ 50,000 chars/)).not.toBeNull()
+  })
+
+  it("can show pinned files as read-only content with a chip to remove", () => {
+    const draft = { ...EMPTY_PERSONALISATION, pinnedFiles: [{ name: "GUIDELINES.md", content: "Use tabs." }] }
+    render(<PersonalisationSettings {...props({ draft })} />)
+
+    expect(screen.getByText("GUIDELINES.md")).not.toBeNull()
+    expect(screen.getByDisplayValue(/Use tabs\./)).not.toBeNull()
+    expect(screen.getByText(/9 \/ 50,000 chars/)).not.toBeNull()
+    expect(screen.getByLabelText("Remove GUIDELINES.md")).not.toBeNull()
+  })
+
+  it("can remove a pinned file through the chip", async () => {
+    const onRemoveFile = vi.fn()
+    const draft = { ...EMPTY_PERSONALISATION, pinnedFiles: [{ name: "GUIDELINES.md", content: "Use tabs." }] }
+    render(<PersonalisationSettings {...props({ draft, onRemoveFile })} />)
+
+    fireEvent.click(screen.getByLabelText("Remove GUIDELINES.md"))
+
+    expect(onRemoveFile).toHaveBeenCalledWith("GUIDELINES.md")
   })
 })

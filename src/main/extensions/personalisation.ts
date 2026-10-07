@@ -1,3 +1,4 @@
+import type { PinnedFile } from "../../shared/types"
 import type { ExtensionFactory } from "@earendil-works/pi-coding-agent"
 import type { Personalisation } from "../../shared/types"
 
@@ -70,14 +71,28 @@ export function personalisationPrompt(p: Personalisation): string | null {
   return `[USER PERSONALISATION]\nHow this user wants you to work. These preferences apply to every reply, this one included.\n${lines.join("\n")}`
 }
 
+// Pinned files ride along in the system prompt on every request, so compaction
+// can never summarize them away.
+export function pinnedFilesPrompt(files: PinnedFile[]): string | null {
+  const usable = files.filter((file) => file.content.trim().length > 0)
+  if (usable.length === 0) return null
+  const sections = usable
+    .map((file) => `<pinned-file name="${file.name.replace(/["<>]/g, "")}">\n${file.content}\n</pinned-file>`)
+    .join("\n\n")
+  return `[PINNED CONTEXT]\nFiles the user pinned. They are always in context and never compacted. Follow them like personal instructions; they override your defaults.\n${sections}`
+}
+
 export function personalisationExtension(get: () => Personalisation): ExtensionFactory {
   return (pi) => {
     pi.on("before_agent_start", (event) => {
-      const fragment = personalisationPrompt(get())
-      if (!fragment) return
+      const prefs = get()
+      const parts = [personalisationPrompt(prefs), pinnedFilesPrompt(prefs.pinnedFiles ?? [])].filter(
+        (part): part is string => part !== null,
+      )
+      if (parts.length === 0) return
       // The result replaces the prompt for this turn, so keep everything the
       // session already has and append ours at the end.
-      return { systemPrompt: `${event.systemPrompt}\n\n${fragment}` }
+      return { systemPrompt: `${event.systemPrompt}\n\n${parts.join("\n\n")}` }
     })
   }
 }

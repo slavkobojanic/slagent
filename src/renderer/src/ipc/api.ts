@@ -68,6 +68,7 @@ export class API implements SlagentApi {
   readonly installCli: SlagentApi["installCli"]
   readonly uninstallCli: SlagentApi["uninstallCli"]
   readonly setPersonalisation: SlagentApi["setPersonalisation"]
+  readonly pickContextFiles: SlagentApi["pickContextFiles"]
 
   constructor(raw: SlagentApi, log: Log) {
     const bridge = timed(raw, log)
@@ -130,6 +131,7 @@ export class API implements SlagentApi {
     this.installCli = () => bridge.installCli()
     this.uninstallCli = () => bridge.uninstallCli()
     this.setPersonalisation = (value) => bridge.setPersonalisation(plain(value))
+    this.pickContextFiles = () => bridge.pickContextFiles()
   }
 
   static fromWindow(window: Window, log: Log): API | null {

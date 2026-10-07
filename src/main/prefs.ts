@@ -2,7 +2,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import {
   EMPTY_PERSONALISATION,
+  PINNED_FILE_CHAR_LIMIT,
+  PINNED_FILE_COUNT_LIMIT,
+  PINNED_TOTAL_CHAR_LIMIT,
   type Personalisation,
+  type PinnedFile,
   type PersonalisationBranch,
   type PersonalisationBrevity,
   type PersonalisationCommit,
@@ -43,6 +47,25 @@ export function parsePersonalisation(input: unknown): Personalisation {
     const value = record[key]
     return typeof value === "boolean" ? value : null
   }
+  const pinnedFiles = (key: string): PinnedFile[] | null => {
+    const value = record[key]
+    if (!Array.isArray(value)) return null
+    const files: PinnedFile[] = []
+    let total = 0
+    for (const entry of value.slice(0, PINNED_FILE_COUNT_LIMIT)) {
+      if (typeof entry !== "object" || entry === null) continue
+      const item = entry as Record<string, unknown>
+      if (typeof item.name !== "string" || typeof item.content !== "string") continue
+      const name = item.name.trim().slice(0, 200)
+      if (!name) continue
+      const content = item.content.slice(0, PINNED_FILE_CHAR_LIMIT)
+      if (!content) continue
+      if (total + content.length > PINNED_TOTAL_CHAR_LIMIT) break
+      files.push({ name, content })
+      total += content.length
+    }
+    return files.length > 0 ? files : null
+  }
   return {
     tone: pick("tone", TONES),
     brevity: pick("brevity", BREVITIES),
@@ -55,6 +78,7 @@ export function parsePersonalisation(input: unknown): Personalisation {
     checkBeforeFinish: flag("checkBeforeFinish"),
     commitStrategy: pick("commitStrategy", COMMIT_STRATEGIES) ?? legacyCommitStrategy(flag("askBeforeCommit"), flag("commitOften")),
     notes: text("notes", 4000),
+    pinnedFiles: pinnedFiles("pinnedFiles"),
   }
 }
 

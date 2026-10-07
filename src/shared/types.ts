@@ -54,6 +54,7 @@ export const channels = {
   cliInstall: "cli:install",
   cliUninstall: "cli:uninstall",
   setPersonalisation: "agent:set-personalisation",
+  pickContextFiles: "agent:pick-context-files",
   event: "agent:event",
 } as const
 
@@ -67,6 +68,18 @@ export type PersonalisationExplanation = "minimal" | "normal" | "educational"
 // When the agent commits: only after a yes, only when told to, or on its own
 // (once at the end of the work, or in small chunks as it goes).
 export type PersonalisationCommitStrategy = "ask" | "when-asked" | "at-end" | "as-you-go"
+
+// A user-pinned context file, re-sent in the system prompt of every request so
+// compaction can never drop it (e.g. GUIDELINES.md, DESIGN.md).
+export type PinnedFile = {
+  name: string
+  content: string
+}
+// Pinned files live in the system prompt permanently, so they are capped:
+// 25k characters per file, 50k characters in total (~12.5k tokens).
+export const PINNED_FILE_CHAR_LIMIT = 25_000
+export const PINNED_TOTAL_CHAR_LIMIT = 50_000
+export const PINNED_FILE_COUNT_LIMIT = 10
 
 export type Personalisation = {
   tone: PersonalisationTone | null
@@ -84,6 +97,8 @@ export type Personalisation = {
   commitStrategy: PersonalisationCommitStrategy | null
   // Free-text instructions, appended verbatim.
   notes: string | null
+  // Files whose content is appended to the system prompt of every request.
+  pinnedFiles: PinnedFile[] | null
 }
 
 export const EMPTY_PERSONALISATION: Personalisation = {
@@ -98,6 +113,7 @@ export const EMPTY_PERSONALISATION: Personalisation = {
   checkBeforeFinish: null,
   commitStrategy: null,
   notes: null,
+  pinnedFiles: null,
 }
 
 export type ModelProvider = "openrouter" | "claude-code"
@@ -555,4 +571,6 @@ export type SlagentApi = {
   installCli: () => Promise<CliStatus>
   uninstallCli: () => Promise<CliStatus>
   setPersonalisation: (value: Personalisation) => Promise<void>
+  // Opens a file picker and returns the picked text files with their contents.
+  pickContextFiles: () => Promise<PinnedFile[]>
 }

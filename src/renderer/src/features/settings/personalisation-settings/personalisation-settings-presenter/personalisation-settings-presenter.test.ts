@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { toast } from "sonner"
-import { EMPTY_PERSONALISATION, type AppMeta } from "@shared/types"
+import {
+  EMPTY_PERSONALISATION,
+  PINNED_FILE_CHAR_LIMIT,
+  PINNED_TOTAL_CHAR_LIMIT,
+  type AppMeta,
+  type PinnedFile,
+} from "@shared/types"
 import { PersonalisationSettingsPresenter } from "@/features/settings/personalisation-settings/personalisation-settings-presenter/personalisation-settings-presenter"
 import { PersonalisationSettingsStore } from "@/features/settings/personalisation-settings/personalisation-settings-store/personalisation-settings-store"
 import { SettingsStore } from "@/features/settings/settings-store/settings-store"
@@ -32,7 +38,7 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
 }
 
 function setup() {
-  const api = createMockInstance<API>(["setPersonalisation"])
+  const api = createMockInstance<API>(["setPersonalisation", "pickContextFiles"])
   const meta = new MetaStore()
   const overlay = new OverlayStore()
   const tabs = new SettingsStore()
@@ -53,6 +59,104 @@ describe("PersonalisationSettingsPresenter", () => {
       presenter.handlePatch({ notes: "Use tabs." })
 
       expect(store.draft.notes).toBe("Use tabs.")
+    })
+  })
+
+  describe("handlePickFiles", () => {
+    it("can pin picked files and report it", async () => {
+      const { api, store, presenter } = setup()
+      api.pickContextFiles.mockResolvedValue([
+        { name: "GUIDELINES.md", content: "Use tabs." },
+        { name: "DESIGN.md", content: "Dark mode only." },
+      ])
+
+      await presenter.handlePickFiles()
+
+      expect(store.draft.pinnedFiles).toEqual([
+        { name: "GUIDELINES.md", content: "Use tabs." },
+        { name: "DESIGN.md", content: "Dark mode only." },
+      ])
+      expect(toast.success).toHaveBeenCalledWith("2 files pinned — save to apply")
+    })
+
+    it("can leave the draft alone when nothing is picked", async () => {
+      const { api, store, presenter } = setup()
+      api.pickContextFiles.mockResolvedValue([])
+
+      await presenter.handlePickFiles()
+
+      expect(store.draft.pinnedFiles).toBeNull()
+      expect(toast.success).not.toHaveBeenCalled()
+    })
+
+    it("can reject a file over the per-file character limit", async () => {
+      const { api, store, presenter } = setup()
+      const big = "x".repeat(PINNED_FILE_CHAR_LIMIT + 1)
+      api.pickContextFiles.mockResolvedValue([{ name: "BIG.md", content: big }])
+
+      await presenter.handlePickFiles()
+
+      expect(store.draft.pinnedFiles).toBeNull()
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("too large"), expect.anything())
+    })
+
+    it("can reject files that would push the total over the limit", async () => {
+      const { api, store, presenter } = setup()
+      const half = "x".repeat(Math.floor(PINNED_TOTAL_CHAR_LIMIT / 2))
+      api.pickContextFiles.mockResolvedValue([
+        { name: "A.md", content: half },
+        { name: "B.md", content: half },
+        { name: "C.md", content: half },
+      ])
+
+      await presenter.handlePickFiles()
+
+      expect(store.draft.pinnedFiles).toEqual([
+        { name: "A.md", content: half },
+        { name: "B.md", content: half },
+      ])
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("C.md"), expect.anything())
+    })
+
+    it("can replace a pinned file with the same name", async () => {
+      const { api, store, presenter } = setup()
+      store.reset({ ...EMPTY_PERSONALISATION, pinnedFiles: [{ name: "GUIDELINES.md", content: "old" }] })
+      api.pickContextFiles.mockResolvedValue([{ name: "GUIDELINES.md", content: "new" }])
+
+      await presenter.handlePickFiles()
+
+      expect(store.draft.pinnedFiles).toEqual([{ name: "GUIDELINES.md", content: "new" }])
+    })
+
+    it("can show an error when the picker fails", async () => {
+      const { api, presenter } = setup()
+      api.pickContextFiles.mockRejectedValue(new Error("No picker"))
+
+      await presenter.handlePickFiles()
+
+      expect(toast.error).toHaveBeenCalledWith("No picker")
+    })
+  })
+
+  describe("handleRemoveFile", () => {
+    it("can remove a pinned file from the draft", () => {
+      const { store, presenter } = setup()
+      const files: PinnedFile[] = [{ name: "GUIDELINES.md", content: "Use tabs." }]
+      store.reset({ ...EMPTY_PERSONALISATION, pinnedFiles: files })
+
+      presenter.handleRemoveFile("GUIDELINES.md")
+
+      expect(store.draft.pinnedFiles).toEqual([])
+    })
+
+    it("can ignore a name that is not pinned", () => {
+      const { store, presenter } = setup()
+      const files: PinnedFile[] = [{ name: "GUIDELINES.md", content: "Use tabs." }]
+      store.reset({ ...EMPTY_PERSONALISATION, pinnedFiles: files })
+
+      presenter.handleRemoveFile("DESIGN.md")
+
+      expect(store.draft.pinnedFiles).toEqual(files)
     })
   })
 

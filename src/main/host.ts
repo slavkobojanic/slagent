@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
-import { mkdir, stat, writeFile } from "node:fs/promises"
-import { join } from "node:path"
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
+import { basename, join } from "node:path"
+import { dialog } from "electron"
 import {
   getAgentDir,
   ModelRuntime as ModelRuntimeClass,
@@ -20,6 +21,7 @@ import type {
   ModelChange,
   OpenRouterStatus,
   Personalisation,
+  PinnedFile,
   ProjectSummary,
   PromptRequest,
   QuestionReply,
@@ -414,6 +416,24 @@ export class AgentHost {
     this.personalisation = parsePersonalisation(value)
     await this.persistPrefs()
     this.publishMeta()
+  }
+
+  async pickContextFiles(): Promise<PinnedFile[]> {
+    // Read caps at 512KB per file; the settings UI enforces the pinning limits.
+    const READ_LIMIT = 512 * 1024
+    const result = await dialog.showOpenDialog({
+      title: "Pin context files",
+      properties: ["openFile", "multiSelections"],
+    })
+    if (result.canceled) return []
+    const files: PinnedFile[] = []
+    for (const path of result.filePaths) {
+      const bytes = await readFile(path).catch(() => null)
+      // Skip unreadable files and binaries (a NUL byte is not text).
+      if (!bytes || bytes.length === 0 || bytes.includes(0)) continue
+      files.push({ name: basename(path), content: bytes.toString("utf8").slice(0, READ_LIMIT) })
+    }
+    return files
   }
 
   async setModel(modelId: string): Promise<ModelChange> {

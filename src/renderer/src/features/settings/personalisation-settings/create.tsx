@@ -40,6 +40,8 @@ export function createPersonalisationSettings({
       <PersonalisationSettings
         draft={personalisationSettingsStore.draft}
         onPatch={personalisationSettingsPresenter.handlePatch}
+        onPickFiles={personalisationSettingsPresenter.handlePickFiles}
+        onRemoveFile={personalisationSettingsPresenter.handleRemoveFile}
         SaveBar={SaveBar}
       />
     )

@@ -132,6 +132,7 @@ function createWindow(): BrowserWindow {
 function registerIpc(): void {
   ipcMain.handle(channels.snapshot, () => requireHost().getSnapshot())
   ipcMain.handle(channels.setPersonalisation, (_event, value: unknown) => requireHost().setPersonalisation(value as Personalisation))
+  ipcMain.handle(channels.pickContextFiles, () => requireHost().pickContextFiles())
   ipcMain.handle(channels.prompt, (_event, request: unknown) => requireHost().prompt(parsePrompt(request)))
   ipcMain.handle(channels.abort, () => requireHost().abort())
   ipcMain.handle(channels.newChat, () => requireHost().newChat())

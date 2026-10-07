@@ -1,5 +1,7 @@
 import type { ComponentType } from "react"
 import type { Personalisation, PersonalisationBranch, PersonalisationBrevity, PersonalisationCommit, PersonalisationCommitStrategy, PersonalisationExplanation, PersonalisationTone } from "@shared/types"
+import { PINNED_FILE_CHAR_LIMIT, PINNED_TOTAL_CHAR_LIMIT } from "@shared/types"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ChoiceSelect } from "./choice-select/choice-select"
@@ -9,10 +11,12 @@ import { Field } from "./field/field"
 export type PersonalisationSettingsProps = {
   draft: Personalisation
   onPatch: (next: Partial<Personalisation>) => void
+  onPickFiles: () => Promise<void>
+  onRemoveFile: (name: string) => void
   SaveBar: ComponentType
 }
 
-export function PersonalisationSettings({ draft, onPatch, SaveBar }: PersonalisationSettingsProps) {
+export function PersonalisationSettings({ draft, onPatch, onPickFiles, onRemoveFile, SaveBar }: PersonalisationSettingsProps) {
   return (
     <div className="space-y-4">
       <section className="space-y-4 border-t border-white/10 pt-4">
@@ -136,8 +140,70 @@ export function PersonalisationSettings({ draft, onPatch, SaveBar }: Personalisa
             onChange={(event) => onPatch({ notes: event.target.value })}
           />
         </Field>
+        <PinnedFilesField draft={draft} onPickFiles={onPickFiles} onRemoveFile={onRemoveFile} />
         <SaveBar />
       </section>
     </div>
+  )
+}
+
+function PinnedFilesField({
+  draft,
+  onPickFiles,
+  onRemoveFile,
+}: {
+  draft: Personalisation
+  onPickFiles: () => Promise<void>
+  onRemoveFile: (name: string) => void
+}) {
+  const files = draft.pinnedFiles ?? []
+  const totalChars = files.reduce((sum, file) => sum + file.content.length, 0)
+  const tokens = Math.round(totalChars / 4)
+
+  return (
+    <Field label="Pinned context files">
+      <div className="space-y-2">
+        <Textarea
+          readOnly
+          value={files.map((file) => `${file.name}\n${file.content}`).join("\n\n")}
+          rows={5}
+          className="max-h-40 overflow-y-auto font-mono text-xs"
+          placeholder="No files pinned."
+          aria-label="Pinned context files"
+        />
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="outline" size="xs" onClick={() => void onPickFiles()}>
+            Add files…
+          </Button>
+          <span className="text-xs text-white/50">
+            {totalChars.toLocaleString()} / {PINNED_TOTAL_CHAR_LIMIT.toLocaleString()} chars
+            {tokens > 0 ? ` (~${tokens.toLocaleString()} tokens)` : ""} · max {PINNED_FILE_CHAR_LIMIT.toLocaleString()} per file
+          </span>
+        </div>
+        {files.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {files.map((file) => (
+              <span
+                key={file.name}
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2 py-0.5 text-xs"
+              >
+                {file.name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${file.name}`}
+                  className="text-white/40 hover:text-white/90"
+                  onClick={() => onRemoveFile(file.name)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <p className="text-xs text-white/50">
+          Appended to the agent&apos;s instructions in every request, so compaction never drops them.
+        </p>
+      </div>
+    </Field>
   )
 }
