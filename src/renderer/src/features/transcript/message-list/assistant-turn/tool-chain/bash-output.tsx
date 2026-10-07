@@ -11,7 +11,7 @@ export type BashOutputProps = {
 
 export function BashOutput({ command, output, running, isError }: BashOutputProps) {
   return (
-    <div className="mt-1 overflow-hidden rounded-md border border-white/10 bg-white/5 font-mono text-xs">
+    <div className="mt-1 overflow-hidden rounded-md bg-white/5 font-mono text-xs">
       <PinnedScroller watch={output} className="max-h-72 overflow-auto px-3 py-2">
         <div className="break-all whitespace-pre-wrap text-white/90">
           <span className="text-white/40 select-none">$ </span>
