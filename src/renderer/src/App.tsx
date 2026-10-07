@@ -2,7 +2,6 @@ import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { AppMeta, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, ProjectSummary, QueuedMessage, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
-import { BashTerminal } from "@/components/bash-terminal"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
 import { DiffPanel } from "@/components/diff-panel"
@@ -43,8 +42,6 @@ function AgentApp() {
   const [streaming, setStreaming] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [queue, setQueue] = useState<QueuedMessage[]>([])
-  const [terminal, setTerminal] = useState("")
-  const [terminalStreaming, setTerminalStreaming] = useState(false)
   const [usage, setUsage] = useState<UsageState | null>(null)
   const [todos, setTodos] = useState<TodoItem[]>([])
   const [planMode, setPlanMode] = useState(false)
@@ -83,8 +80,6 @@ function AgentApp() {
         setStreaming(event.streaming)
         setNotice(event.notice)
         setQueue(event.queue)
-        setTerminal(event.terminal)
-        setTerminalStreaming(event.terminalStreaming)
         setUsage(event.usage)
         setTodos(event.todos)
         setPlanMode(event.planMode)
@@ -114,8 +109,6 @@ function AgentApp() {
         setStreaming(snapshot.streaming)
         setNotice(snapshot.notice)
         setQueue(snapshot.queue)
-        setTerminal(snapshot.terminal)
-        setTerminalStreaming(snapshot.terminalStreaming)
         setUsage(snapshot.usage)
         setTodos(snapshot.todos)
         setPlanMode(snapshot.planMode)
@@ -340,7 +333,6 @@ function AgentApp() {
     { id: "model", label: "Change model", disabled: !ready || streaming, run: () => setModelOpen(true) },
     { id: "compact", label: "Summarize earlier messages", disabled: !usage || streaming, run: () => window.slagent.compact() },
     { id: "folder", label: "Open folder", run: () => chooseFolder() },
-    { id: "clear-terminal", label: "Clear terminal", disabled: !terminal, run: () => window.slagent.clearTerminal() },
     { id: "settings", label: "Settings", shortcut: `${mod},`, run: () => setSettingsOpen(true) },
   ]
   let permissionsLocked = false
@@ -455,13 +447,6 @@ function AgentApp() {
             onAbort={() => window.slagent.abort()}
             onQueueMode={(id, mode) => window.slagent.setQueueMode(id, mode)}
             onRemoveQueued={(id) => window.slagent.removeQueued(id)}
-          />
-          <BashTerminal
-            output={terminal}
-            streaming={terminalStreaming}
-            onClear={() => {
-              void window.slagent.clearTerminal()
-            }}
           />
         </main>
         {diffOpen && cwd ? <DiffPanel key={cwd} streaming={streaming} onClose={() => setDiffOpen(false)} /> : null}

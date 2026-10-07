@@ -26,13 +26,6 @@ export function formatValue(value: unknown, limit = ARGS_LIMIT): string {
   }
 }
 
-export function bashCommand(args: unknown): string {
-  if (typeof args !== "object" || args === null) return "bash"
-  const command = (args as { command?: unknown }).command
-  if (typeof command !== "string" || command.length === 0) return "bash"
-  return command
-}
-
 export function toolLabel(name: string, args: unknown): string {
   if (typeof args !== "object" || args === null) return name
   const record = args as Record<string, unknown>

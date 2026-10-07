@@ -47,7 +47,6 @@ const api: SlagentApi = {
   gitPush: () => ipcRenderer.invoke(channels.gitPush),
   gitPullRequest: () => ipcRenderer.invoke(channels.gitPullRequest),
   gitCommitMessage: () => ipcRenderer.invoke(channels.gitCommitMessage),
-  clearTerminal: () => ipcRenderer.invoke(channels.clearTerminal),
   compact: () => ipcRenderer.invoke(channels.compact),
   getPermissions: () => ipcRenderer.invoke(channels.permissions),
   requestAccessibility: () => ipcRenderer.invoke(channels.requestAccessibility),

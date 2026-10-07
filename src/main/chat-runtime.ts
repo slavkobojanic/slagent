@@ -34,7 +34,7 @@ import { sessionCommands } from "./commands"
 import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
-import { assistantParts, bashCommand, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
+import { assistantParts, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
 import { CheckpointStore } from "./checkpoints"
 import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
 import { type BackgroundTasks, backgroundTasks } from "./extensions/background-tasks"
@@ -107,8 +107,6 @@ export class ChatRuntime {
   modelName: string
   messages: ChatMessage[] = []
   private queue: Pending[] = []
-  private terminal = ""
-  private terminalStreaming = false
   private streaming = false
   private sending = false
   private notice: string | null = null
@@ -146,8 +144,6 @@ export class ChatRuntime {
   private session: AgentSession | null = null
   private unsubscribe: (() => void) | null = null
   private sessionToken: object | null = null
-  private bashBlocks = new Map<string, { command: string; output: string }>()
-  private bashOrder: string[] = []
   private currentAssistantId: string | null = null
   private pendingModel: AgentModel | null = null
   private lastRunning = false
@@ -203,16 +199,6 @@ export class ChatRuntime {
 
   load(messages: ChatMessage[]): void {
     this.messages = messages.map(normalizeMessage)
-    this.bashBlocks.clear()
-    this.bashOrder = []
-    for (const message of this.messages) {
-      if (message.role !== "tool" || message.name !== "bash") continue
-      this.bashOrder.push(message.id)
-      let command = message.label
-      if (command.startsWith("bash  ")) command = command.slice("bash  ".length)
-      this.bashBlocks.set(message.id, { command, output: message.output })
-    }
-    this.syncTerminal()
   }
 
   lockTitle(): void {
@@ -231,8 +217,6 @@ export class ChatRuntime {
         mode: item.mode,
         detail: queueDetail(item.request),
       })),
-      terminal: this.terminal,
-      terminalStreaming: this.terminalStreaming,
       usage: this.usageState,
       todos: this.todos,
       planMode: this.planEnabled,
@@ -505,14 +489,6 @@ export class ChatRuntime {
     this.emit(false)
   }
 
-  clearTerminal(): void {
-    this.bashBlocks.clear()
-    this.bashOrder = []
-    this.terminal = ""
-    this.terminalStreaming = false
-    this.emit(false)
-  }
-
   async abort(): Promise<void> {
     if (!this.session) return
     await this.session.abort()
@@ -731,7 +707,6 @@ export class ChatRuntime {
         isError: false,
       }
       this.messages.push(tool)
-      if (event.toolName === "bash") this.noteBash(event.toolCallId, bashCommand(event.args), "")
       this.emit(false)
       return
     }
@@ -740,7 +715,6 @@ export class ChatRuntime {
       const tool = this.findTool(event.toolCallId)
       if (!tool) return
       tool.output = toolResultText(event.partialResult)
-      if (tool.name === "bash") this.noteBash(event.toolCallId, tool.label, tool.output)
       this.emit(false)
       return
     }
@@ -751,7 +725,6 @@ export class ChatRuntime {
       tool.output = toolResultText(event.result)
       tool.running = false
       tool.isError = event.isError
-      if (tool.name === "bash") this.noteBash(event.toolCallId, tool.label, tool.output)
       const images = toolResultImages(event.result)
       if (images.length > 0) void this.attachImages(tool, images)
       this.emit(false)
@@ -848,7 +821,6 @@ export class ChatRuntime {
       if (message.role === "tool") message.running = false
     }
     this.currentAssistantId = null
-    this.syncTerminal()
   }
 
   private async deliverPendingSteers(): Promise<void> {
@@ -894,29 +866,6 @@ export class ChatRuntime {
       this.emit(true)
       this.scheduleFlush()
     }
-  }
-
-  private noteBash(id: string, command: string, output: string): void {
-    const existing = this.bashBlocks.get(id)
-    if (!existing) this.bashOrder.push(id)
-    let nextCommand = command
-    if (existing) nextCommand = existing.command
-    this.bashBlocks.set(id, { command: nextCommand, output })
-    this.syncTerminal()
-  }
-
-  private syncTerminal(): void {
-    const parts: string[] = []
-    for (const id of this.bashOrder) {
-      const block = this.bashBlocks.get(id)
-      if (!block) continue
-      if (block.output) parts.push(`$ ${block.command}\n${block.output}`)
-      else parts.push(`$ ${block.command}`)
-    }
-    this.terminal = parts.join("\n\n")
-    this.terminalStreaming = this.messages.some((message) => {
-      return message.role === "tool" && message.name === "bash" && message.running
-    })
   }
 
   private rememberExtensions(result: {

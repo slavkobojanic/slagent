@@ -163,9 +163,6 @@ function registerIpc(): void {
     requireHost().removeQueued(id)
   })
   ipcMain.handle(channels.compact, () => requireHost().compact())
-  ipcMain.handle(channels.clearTerminal, () => {
-    requireHost().clearTerminal()
-  })
   ipcMain.handle(channels.openExternal, (_event, url: string) => {
     const parsed = new URL(url)
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {

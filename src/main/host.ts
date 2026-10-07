@@ -363,10 +363,6 @@ export class AgentHost {
     await runtime.compact()
   }
 
-  clearTerminal(): void {
-    this.openRuntime()?.clearTerminal()
-  }
-
   async setModel(modelId: string): Promise<ModelChange> {
     const runtimeModel = this.modelRuntime
     if (!runtimeModel) throw new Error("Pi is not ready.")
@@ -859,8 +855,6 @@ export class AgentHost {
         streaming: false,
         notice: null,
         queue: [],
-        terminal: "",
-        terminalStreaming: false,
         usage: null,
         todos: [],
         planMode: this.draftPlanMode,

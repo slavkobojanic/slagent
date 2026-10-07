@@ -35,7 +35,6 @@ export const channels = {
   gitPullRequest: "git:pull-request",
   gitCommitMessage: "git:commit-message",
   undoRewind: "agent:undo-rewind",
-  clearTerminal: "agent:clear-terminal",
   compact: "agent:compact",
   permissions: "computer:permissions",
   requestAccessibility: "computer:request-accessibility",
@@ -238,8 +237,6 @@ export type TranscriptState = {
   streaming: boolean
   notice: string | null
   queue: QueuedMessage[]
-  terminal: string
-  terminalStreaming: boolean
   usage: UsageState | null
   todos: TodoItem[]
   planMode: boolean
@@ -332,7 +329,6 @@ export type SlagentApi = {
   gitPush: () => Promise<void>
   gitPullRequest: () => Promise<string>
   gitCommitMessage: () => Promise<string>
-  clearTerminal: () => Promise<void>
   compact: () => Promise<void>
   getPermissions: () => Promise<ComputerPermissions>
   requestAccessibility: () => Promise<ComputerPermissions>

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react"
+import Ansi from "ansi-to-react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { AssistantMessage, ChatMessage, ToolMessage, UserMessage } from "@shared/types"
 import { FadingResponse } from "@/components/fading-response"
@@ -95,7 +96,57 @@ function waitingForText(assistant: AssistantMessage | null, tools: ToolMessage[]
   return true
 }
 
+function bashCommand(tool: ToolMessage): string {
+  try {
+    const args = JSON.parse(tool.args) as { command?: unknown }
+    if (typeof args.command === "string" && args.command) return args.command
+  } catch {
+    // Long arguments are truncated and no longer parse.
+  }
+  if (tool.label.startsWith("bash  ")) return tool.label.slice("bash  ".length)
+  return tool.label
+}
+
+// Bash runs render as a small terminal right in the transcript: the command,
+// then its output, which stays pinned to the bottom while it streams.
+function BashOutput({ message }: { message: ToolMessage }) {
+  const scroller = useRef<HTMLDivElement | null>(null)
+  const pinned = useRef(true)
+
+  useLayoutEffect(() => {
+    const element = scroller.current
+    if (!element || !pinned.current) return
+    element.scrollTop = element.scrollHeight
+  }, [message.output])
+
+  return (
+    <div className="mt-1 overflow-hidden rounded-md border border-white/10 bg-white/[0.03] font-mono text-xs">
+      <div
+        ref={scroller}
+        className="max-h-72 overflow-auto px-3 py-2"
+        onScroll={(event) => {
+          const element = event.currentTarget
+          pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24
+        }}
+      >
+        <div className="break-all whitespace-pre-wrap text-white/90">
+          <span className="text-white/40 select-none">$ </span>
+          {bashCommand(message)}
+        </div>
+        {message.output ? (
+          <div className={cn("mt-1 break-words whitespace-pre-wrap text-white/60", message.isError && "text-[#ff8a8a]")}>
+            <Ansi>{message.output}</Ansi>
+          </div>
+        ) : message.running ? (
+          <div className="mt-1 text-white/30">Running…</div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 function ToolOutput({ message }: { message: ToolMessage }) {
+  if (message.name === "bash") return <BashOutput message={message} />
   const images = message.images ?? []
   if (!message.output && images.length === 0) return null
   return (
@@ -144,6 +195,7 @@ function toolPath(tool: ToolMessage): string | null {
 }
 
 function ToolLabel({ tool }: { tool: ToolMessage }) {
+  if (tool.name === "bash") return <>{tool.running ? "Running command" : tool.isError ? "Command failed" : "Ran command"}</>
   const path = toolPath(tool)
   if (!path) return <>{tool.label}</>
   return (
