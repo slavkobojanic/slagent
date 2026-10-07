@@ -1,5 +1,5 @@
 import type { ChatStatus } from "ai"
-import { ListChecksIcon, MessageSquareIcon, PaperclipIcon, XIcon } from "lucide-react"
+import { HighlighterIcon, ListChecksIcon, MessageSquareIcon, PaperclipIcon, XIcon } from "lucide-react"
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react"
 import { toast } from "sonner"
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button"
 import { setTextareaValue } from "@/lib/composer"
 import { errorText } from "@/lib/format"
 import { promptHistory, rememberPrompt, searchHistory } from "@/lib/history"
-import type { DiffComment, FileMatch, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
+import type { DiffComment, FileMatch, ReplyComment, PromptFile, PromptMention, PromptRequest, QueueMode, QueuedMessage, SlashCommand, TaskInfo, TodoItem, UsageState, UsageTotals } from "@shared/types"
 import { TaskStrip } from "@/components/task-strip"
 import { TodoPanel } from "@/components/todo-panel"
 import { UsageMeter } from "@/components/usage-meter"
@@ -106,6 +106,15 @@ function MessageQueue({
       </QueueSection>
     </Queue>
   )
+}
+
+function pendingLabel(diffComments: number, replies: number): string {
+  const parts: string[] = []
+  if (replies === 1) parts.push("1 reply comment")
+  if (replies > 1) parts.push(`${replies} reply comments`)
+  if (diffComments === 1) parts.push("1 diff comment")
+  if (diffComments > 1) parts.push(`${diffComments} diff comments`)
+  return parts.join(" and ")
 }
 
 function AttachButton() {
@@ -188,6 +197,8 @@ function Composer({
   onPlanMode,
   comments,
   onRemoveComment,
+  replies,
+  onRemoveReply,
   onCompact,
   onPrompt,
   onAbort,
@@ -206,6 +217,8 @@ function Composer({
   onPlanMode: (enabled: boolean) => Promise<void>
   comments: DiffComment[]
   onRemoveComment: (id: string) => void
+  replies: ReplyComment[]
+  onRemoveReply: (id: string) => void
   onCompact: () => Promise<void>
   onPrompt: (request: PromptRequest) => Promise<void>
   onAbort: () => Promise<void>
@@ -402,9 +415,9 @@ function Composer({
     const files = promptFiles(message)
     const text = message.text
     const kept = mentions.filter((item) => text.includes(`@${item.name}`))
-    if (!text.trim() && files.length === 0 && kept.length === 0 && comments.length === 0) return
+    if (!text.trim() && files.length === 0 && kept.length === 0 && comments.length === 0 && replies.length === 0) return
     try {
-      await onPrompt({ text, mentions: kept, files, comments })
+      await onPrompt({ text, mentions: kept, files, comments, replies })
       rememberPrompt(text)
       historyIndex.current = null
       setHistoryQuery(null)
@@ -435,12 +448,21 @@ function Composer({
   return (
     <div className="relative mx-auto w-full max-w-3xl px-6 pb-3">
       <TaskStrip tasks={tasks} />
-      {comments.length > 0 ? (
+      {comments.length + replies.length > 0 ? (
         <div className="mb-2 rounded-md bg-white/[0.06] px-3 py-2.5 text-xs">
-          <p className="mb-1.5 text-white/50">
-            {comments.length === 1 ? "1 diff comment" : `${comments.length} diff comments`} will be sent with your next message
-          </p>
+          <p className="mb-1.5 text-white/50">{pendingLabel(comments.length, replies.length)} will be sent with your next message</p>
           <ul className="max-h-32 space-y-1 overflow-y-auto">
+            {replies.map((reply) => (
+              <li key={reply.id} className="flex items-start gap-2">
+                <HighlighterIcon className="mt-0.5 size-3 shrink-0 text-amber-400/70" />
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="text-white/50">“{reply.quote.replace(/\s+/g, " ")}”</span> {reply.text}
+                </span>
+                <button type="button" className="text-white/40 hover:text-white" aria-label="Remove comment" onClick={() => onRemoveReply(reply.id)}>
+                  <XIcon className="size-3.5" />
+                </button>
+              </li>
+            ))}
             {comments.map((comment) => (
               <li key={comment.id} className="flex items-start gap-2">
                 <MessageSquareIcon className="mt-0.5 size-3 shrink-0 text-white/40" />

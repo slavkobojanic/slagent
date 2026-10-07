@@ -1,10 +1,11 @@
 import Ansi from "ansi-to-react"
 import { useStickToBottomContext } from "use-stick-to-bottom"
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { toast } from "sonner"
-import type { AssistantMessage, ChatMessage, QuestionRequest, ToolMessage, UserMessage } from "@shared/types"
+import type { AssistantMessage, ChatMessage, QuestionRequest, ReplyComment, ToolMessage, TranscriptPage, UserMessage } from "@shared/types"
 import { AnsweredQuestions, QuestionCard } from "@/components/question-card"
 import { FadingResponse } from "@/components/fading-response"
+import { CommentableResponse, ReplyCommentsContext } from "@/components/response-comments"
 import {
   ChainOfThought,
   ChainOfThoughtContent,
@@ -281,17 +282,17 @@ function AssistantTurn({ turn }: { turn: Turn }) {
       )}
       <ToolChain tools={turn.tools} />
       {assistant && waitingForText(assistant, turn.tools) && <Shimmer>Working</Shimmer>}
-      {assistant?.text && <AssistantText text={assistant.text} streaming={assistant.streaming} />}
+      {assistant?.text && <AssistantText messageId={assistant.id} text={assistant.text} streaming={assistant.streaming} />}
       {assistant?.error && <p className="text-sm text-destructive">{assistant.error}</p>}
     </Message>
   )
 }
 
-function AssistantText({ text, streaming }: { text: string; streaming: boolean }) {
+function AssistantText({ messageId, text, streaming }: { messageId: string; text: string; streaming: boolean }) {
   const animate = useRef(streaming)
   if (streaming) animate.current = true
-  if (animate.current) return <FadingResponse text={text} streaming={streaming} />
-  return <MessageResponse>{text}</MessageResponse>
+  if (animate.current) return <FadingResponse messageId={messageId} text={text} streaming={streaming} />
+  return <CommentableResponse messageId={messageId} text={text} />
 }
 
 function UserTurn({
@@ -369,6 +370,16 @@ function UserTurn({
               </span>
             )
           })}
+        </div>
+      ) : null}
+      {message.replies?.length ? (
+        <div className="ml-auto w-full max-w-[80%] divide-y divide-white/10 rounded-md bg-white/[0.06] px-3 text-xs">
+          {message.replies.map((reply) => (
+            <div key={reply.id} className="space-y-1.5 py-2.5">
+              <blockquote className="line-clamp-3 border-l-2 border-amber-400/50 pl-2 whitespace-pre-wrap text-white/50">{reply.quote}</blockquote>
+              <p className="whitespace-pre-wrap">{reply.text}</p>
+            </div>
+          ))}
         </div>
       ) : null}
       {message.text ? <MessageContent className="whitespace-pre-wrap">{message.text}</MessageContent> : null}
@@ -605,8 +616,14 @@ function Transcript({
   onEdit,
   jumpTo,
   onJumped,
+  page,
+  replies,
+  onReplies,
 }: {
   messages: ChatMessage[]
+  page: TranscriptWindowPage
+  replies: ReplyComment[]
+  onReplies: Dispatch<SetStateAction<ReplyComment[]>>
   notice: string | null
   configured: boolean
   cwd: string
@@ -622,13 +639,19 @@ function Transcript({
 }) {
   const blocks = groupMessages(messages)
   const pending = awaitingModel(messages, streaming) && !planProposal
-  const latestUserId = [...messages].reverse().find((message) => message.role === "user" && message.entryId)?.id
+  // With newer turns outside the window, the live end of the chat is not on screen.
+  const live = !page.hasNewer
+  let latestUserId: string | undefined
+  if (live) latestUserId = [...messages].reverse().find((message) => message.role === "user" && message.entryId)?.id
   const [editingId, setEditingId] = useState<string | null>(null)
   const latest = useRef(messages)
   latest.current = messages
+  const liveRef = useRef(live)
+  liveRef.current = live
 
   useEffect(() => {
     function editLast() {
+      if (!liveRef.current) return
       const last = [...latest.current].reverse().find((message) => message.role === "user" && message.entryId)
       if (last) setEditingId(last.id)
     }
@@ -641,37 +664,138 @@ function Transcript({
     setEditingId(null)
   }
 
+  const replyState = useMemo(() => ({ replies, onReplies }), [replies, onReplies])
+
   return (
-    <Conversation className="chat-transcript min-h-0">
-      <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-6 py-8">
-        {messages.length === 0 ? (
-          <EmptyState configured={configured} cwd={cwd} onConnect={onConnect} onChoose={onChoose} />
-        ) : null}
-        {blocks.map((block) => {
-          if (block.kind === "user") {
-            return (
-              <UserTurn
-                key={block.message.id}
-                message={block.message}
-                editable={!streaming && Boolean(block.message.entryId)}
-                latest={block.message.id === latestUserId}
-                editing={editingId === block.message.id}
-                onEditing={(editing) => setEditingId(editing ? block.message.id : null)}
-                onEdit={edit}
-              />
-            )
-          }
-          return <AssistantTurn key={block.turn.id} turn={block.turn} />
-        })}
-        {planProposal ? <PlanCard plan={planProposal} onApprove={onApprovePlan} /> : null}
-        {question ? <QuestionCard key={question.id} request={question} /> : null}
-        {pending ? <PendingReply label={notice ?? "Thinking"} /> : null}
-        {notice && !pending ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
-      </ConversationContent>
-      <ConversationScrollButton />
-      <JumpToMessage messages={messages} messageId={jumpTo} onJumped={onJumped} />
-    </Conversation>
+    <ReplyCommentsContext.Provider value={replyState}>
+      {/* Content settling after a chat opens (markdown, highlighting) snaps to the bottom;
+          only streamed output scrolls smoothly. */}
+      <Conversation className="chat-transcript min-h-0" resize={streaming ? "smooth" : "instant"}>
+        <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-6 py-8">
+          {messages.length === 0 ? (
+            <EmptyState configured={configured} cwd={cwd} onConnect={onConnect} onChoose={onChoose} />
+          ) : null}
+          {blocks.map((block) => {
+            if (block.kind === "user") {
+              return (
+                <UserTurn
+                  key={block.message.id}
+                  message={block.message}
+                  editable={!streaming && Boolean(block.message.entryId)}
+                  latest={block.message.id === latestUserId}
+                  editing={editingId === block.message.id}
+                  onEditing={(editing) => setEditingId(editing ? block.message.id : null)}
+                  onEdit={edit}
+                />
+              )
+            }
+            return <AssistantTurn key={block.turn.id} turn={block.turn} />
+          })}
+          {live && planProposal ? <PlanCard plan={planProposal} onApprove={onApprovePlan} /> : null}
+          {live && question ? <QuestionCard key={question.id} request={question} /> : null}
+          {live && pending ? <PendingReply label={notice ?? "Thinking"} /> : null}
+          {live && notice && !pending ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
+        </ConversationContent>
+        <WindowPager messages={messages} page={page} />
+        <JumpToMessage messages={messages} messageId={jumpTo} onJumped={onJumped} />
+      </Conversation>
+    </ReplyCommentsContext.Provider>
   )
+}
+
+type TranscriptWindowPage = { windowStart: number; hasOlder: boolean; hasNewer: boolean }
+
+// Distance from either end of the scroller at which the next page is requested.
+const PAGE_MARGIN = 800
+
+// Loads older or newer turns as the reader nears either end of the window, keeping the
+// message on screen in place while turns are added or trimmed around it.
+function WindowPager({ messages, page }: { messages: ChatMessage[]; page: TranscriptWindowPage }) {
+  const { scrollRef, scrollToBottom, stopScroll } = useStickToBottomContext()
+  const loading = useRef(false)
+  const toLatest = useRef(false)
+  // A message on screen and its offset from the scroller top before the window moved.
+  const anchor = useRef<{ id: string; top: number } | null>(null)
+  const pageRef = useRef(page)
+  pageRef.current = page
+
+  const request = useRef((next: TranscriptPage) => {
+    loading.current = true
+    window.slagent
+      .pageTranscript(next)
+      // The new window renders before the next frame; release the anchor after it.
+      .then(() => new Promise((resolve) => window.requestAnimationFrame(resolve)))
+      .catch((error) => toast.error(errorText(error)))
+      .finally(() => {
+        loading.current = false
+        anchor.current = null
+        check.current()
+      })
+  })
+
+  const check = useRef(() => {
+    const scroller = scrollRef.current
+    if (!scroller || loading.current) return
+    const current = pageRef.current
+    const fromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+    let next: TranscriptPage | null = null
+    if (current.hasOlder && scroller.scrollTop < PAGE_MARGIN) next = "older"
+    else if (current.hasNewer && fromBottom < PAGE_MARGIN) next = "newer"
+    if (!next) return
+    // Keep stick-to-bottom from chasing turns appended below the reader.
+    if (next === "newer") stopScroll()
+    anchor.current = visibleMessage(scroller)
+    request.current(next)
+  })
+
+  useEffect(() => {
+    const scroller = scrollRef.current
+    if (!scroller) return
+    const onScroll = () => check.current()
+    // Wheel too, so a window too short to scroll can still page.
+    scroller.addEventListener("scroll", onScroll, { passive: true })
+    scroller.addEventListener("wheel", onScroll, { passive: true })
+    return () => {
+      scroller.removeEventListener("scroll", onScroll)
+      scroller.removeEventListener("wheel", onScroll)
+    }
+  }, [scrollRef])
+
+  // Runs on every render while a page is loading, since streamed updates of the old
+  // window can arrive before the new one.
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current
+    if (toLatest.current && !page.hasNewer) {
+      toLatest.current = false
+      anchor.current = null
+      void scrollToBottom({ animation: "instant" })
+      return
+    }
+    const held = anchor.current
+    if (!scroller || !held) return
+    const element = scroller.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(held.id)}"]`)
+    if (element) scroller.scrollTop += element.getBoundingClientRect().top - scroller.getBoundingClientRect().top - held.top
+  }, [page.windowStart, page.hasOlder, page.hasNewer, messages, scrollRef, scrollToBottom])
+
+  if (!page.hasNewer) return <ConversationScrollButton />
+  return (
+    <ConversationScrollButton
+      aria-label="Jump to latest"
+      onClick={() => {
+        toLatest.current = true
+        request.current("latest")
+      }}
+    />
+  )
+}
+
+function visibleMessage(scroller: HTMLElement): { id: string; top: number } | null {
+  const top = scroller.getBoundingClientRect().top
+  for (const element of scroller.querySelectorAll<HTMLElement>("[data-message-id]")) {
+    const box = element.getBoundingClientRect()
+    if (box.bottom > top) return { id: element.dataset.messageId ?? "", top: box.top - top }
+  }
+  return null
 }
 
 // Scrolls a search result's message into view once it has rendered, and

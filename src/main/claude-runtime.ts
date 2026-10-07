@@ -23,7 +23,7 @@ import type {
   SlashCommand,
   TodoItem,
   ToolMessage,
-  TranscriptState,
+  RuntimeTranscript,
   UsageState,
   UserAttachment,
   UserMessage,
@@ -212,7 +212,7 @@ export class ClaudeRuntime {
     this.titleGenerated = true
   }
 
-  transcript(): TranscriptState {
+  transcript(): RuntimeTranscript {
     return {
       messages: this.messages,
       streaming: this.running,
@@ -736,6 +736,7 @@ export class ClaudeRuntime {
       text: request.text.trim(),
       attachments,
       comments: request.comments?.length ? request.comments : undefined,
+      replies: request.replies?.length ? request.replies : undefined,
     }
     this.messages.push(message)
     this.markTitle(message.text, attachments)

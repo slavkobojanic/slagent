@@ -2,7 +2,7 @@ import { GitCompareIcon, PanelLeft, Settings } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { CSSProperties } from "react"
-import type { AppMeta, DiffComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, McpServerStatus, ProjectSummary, QueuedMessage, QuestionRequest, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
+import type { AppMeta, DiffComment, ReplyComment, FileView, ChatMessage, ChatSummary, ComputerPermissions, LibraryState, McpServerStatus, ProjectSummary, QueuedMessage, QuestionRequest, Snapshot, TaskInfo, TodoItem, UsageState } from "@shared/types"
 import { CommandPalette, type PaletteAction } from "@/components/command-palette"
 import { Composer } from "@/components/composer"
 import { RightPanel, type RightTab } from "@/components/right-panel"
@@ -26,6 +26,12 @@ const emptyLibrary: LibraryState = {
   openChatId: null,
 }
 
+type NavEntry = { projectId: string | null; chatId: string | null }
+
+function sameEntry(a: NavEntry, b: NavEntry): boolean {
+  return a.projectId === b.projectId && a.chatId === b.chatId
+}
+
 function App() {
   if (!window.slagent) {
     return (
@@ -42,6 +48,8 @@ function AgentApp() {
   const [meta, setMeta] = useState<AppMeta | null>(null)
   const [library, setLibrary] = useState<LibraryState>(emptyLibrary)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  // Where the shown messages sit in the whole chat; the main process sends only a window.
+  const [transcriptPage, setTranscriptPage] = useState({ windowStart: 0, hasOlder: false, hasNewer: false })
   // The chat the shown messages belong to; keys the transcript so opening a
   // chat mounts it fresh and lands at the bottom instead of animating there.
   const [transcriptChatId, setTranscriptChatId] = useState<string | null>(null)
@@ -58,6 +66,8 @@ function AgentApp() {
   const [jumpTo, setJumpTo] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mcpServers, setMcpServers] = useState<McpServerStatus[]>([])
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null)
+  const [installingUpdate, setInstallingUpdate] = useState(false)
   const [modelOpen, setModelOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -65,6 +75,7 @@ function AgentApp() {
   const [viewedFile, setViewedFile] = useState<FileView | null>(null)
   const changesShown = panelOpen && panelTab === "changes"
   const [diffComments, setDiffComments] = useState<DiffComment[]>([])
+  const [replyComments, setReplyComments] = useState<ReplyComment[]>([])
   const sidebarSize = useResizableWidth("slagent:sidebar-width", 256, 200, () => Math.min(480, window.innerWidth * 0.4), 1)
   const diffSize = useResizableWidth("slagent:changes-width", 560, 320, () => window.innerWidth - 520, -1)
   const [permissions, setPermissions] = useState<ComputerPermissions | null>(null)
@@ -82,6 +93,31 @@ function AgentApp() {
   libraryRef.current = library
   streamingRef.current = streaming
   const contextRef = useRef({ projectId: library.openProjectId, chatId: library.openChatId, chatIds: new Set<string>() })
+  // Chats visited in this window, walked with ⌘[ and ⌘] like browser history.
+  const navRef = useRef<{ entries: NavEntry[]; index: number; pending: NavEntry | null }>({ entries: [], index: -1, pending: null })
+  const navContextRef = useRef<NavEntry & { chatIds: Set<string> }>({ projectId: null, chatId: null, chatIds: new Set() })
+
+  useEffect(() => {
+    const previous = navContextRef.current
+    const entry = { projectId: library.openProjectId, chatId: library.openChatId }
+    navContextRef.current = { ...entry, chatIds: new Set(library.chats.map((chat) => chat.id)) }
+    if (!entry.projectId) return
+    if (entry.projectId === previous.projectId && entry.chatId === previous.chatId) return
+    const nav = navRef.current
+    // While stepping through history, the steps on the way (a project opening
+    // before its draft) are not new visits.
+    if (nav.pending) {
+      if (sameEntry(nav.pending, entry)) nav.pending = null
+      return
+    }
+    const draftBecameChat = entry.projectId === previous.projectId && previous.chatId === null && entry.chatId !== null && !previous.chatIds.has(entry.chatId)
+    if (draftBecameChat && nav.index >= 0 && sameEntry(nav.entries[nav.index], previous)) {
+      nav.entries[nav.index] = entry
+      return
+    }
+    nav.entries = [...nav.entries.slice(0, nav.index + 1), entry].slice(-100)
+    nav.index = nav.entries.length - 1
+  }, [library])
 
   // The side panel, the open file and pending diff comments belong to the chat
   // they were opened in, so they reset when you switch chats or projects. A
@@ -98,7 +134,16 @@ function AgentApp() {
     setPanelTab("changes")
     setViewedFile(null)
     setDiffComments([])
+    setReplyComments([])
   }, [library])
+
+  useEffect(() => {
+    const off = window.slagent.onUpdateReady(setUpdateVersion)
+    void window.slagent.updateStatus().then((version) => {
+      if (version) setUpdateVersion(version)
+    })
+    return off
+  }, [])
 
   useEffect(() => {
     const off = window.slagent.onEvent((event) => {
@@ -112,6 +157,7 @@ function AgentApp() {
         transcriptRevision.current = event.revision
         if (event.chatId !== openChatRef.current || event.projectId !== openProjectRef.current) return
         setMessages(event.messages)
+        setTranscriptPage({ windowStart: event.windowStart, hasOlder: event.hasOlder, hasNewer: event.hasNewer })
         setTranscriptChatId(event.chatId)
         setStreaming(event.streaming)
         setNotice(event.notice)
@@ -143,6 +189,7 @@ function AgentApp() {
       if (snapshot.revision >= transcriptRevision.current) {
         transcriptRevision.current = snapshot.revision
         setMessages(snapshot.messages)
+        setTranscriptPage({ windowStart: snapshot.windowStart, hasOlder: snapshot.hasOlder, hasNewer: snapshot.hasNewer })
         setTranscriptChatId(snapshot.library.openChatId)
         setStreaming(snapshot.streaming)
         setNotice(snapshot.notice)
@@ -212,11 +259,48 @@ function AgentApp() {
         focusComposer()
         return
       }
+      if ((event.key === "[" || event.key === "]") && !event.shiftKey) {
+        event.preventDefault()
+        void navigateHistory(event.key === "[" ? -1 : 1)
+        return
+      }
       if (/^[1-9]$/.test(event.key) && !event.shiftKey) {
         const chat = orderedChats(libraryRef.current.chats)[Number(event.key) - 1]
         if (!chat) return
         event.preventDefault()
         void window.slagent.openChat(chat.id).then(focusComposer)
+      }
+    }
+
+    // Steps through visited chats, dropping any that were deleted since.
+    async function navigateHistory(direction: -1 | 1) {
+      const nav = navRef.current
+      let index = nav.index + direction
+      while (index >= 0 && index < nav.entries.length) {
+        const entry = nav.entries[index]
+        const current = { projectId: libraryRef.current.openProjectId, chatId: libraryRef.current.openChatId }
+        if (sameEntry(entry, current)) {
+          nav.index = index
+          index += direction
+          continue
+        }
+        nav.pending = entry
+        try {
+          if (entry.chatId) {
+            await window.slagent.openChat(entry.chatId, entry.projectId ?? undefined)
+          } else {
+            if (entry.projectId !== libraryRef.current.openProjectId && entry.projectId) await window.slagent.openProject(entry.projectId)
+            await window.slagent.newChat()
+          }
+          nav.index = index
+          focusComposer()
+          return
+        } catch {
+          nav.pending = null
+          nav.entries.splice(index, 1)
+          if (index < nav.index) nav.index -= 1
+          if (direction === -1) index -= 1
+        }
       }
     }
 
@@ -324,6 +408,16 @@ function AgentApp() {
   if (ready && configured && cwd && streaming) placeholder = "Queue a follow-up"
   if (ready && configured && cwd && question) placeholder = "Answer in your own words"
 
+  async function installUpdate() {
+    setInstallingUpdate(true)
+    try {
+      await window.slagent.installUpdate()
+    } catch (error) {
+      setInstallingUpdate(false)
+      toast.error(errorText(error))
+    }
+  }
+
   async function chooseFolder() {
     try {
       await window.slagent.chooseFolder()
@@ -347,8 +441,9 @@ function AgentApp() {
     }
   }
 
-  async function newChat() {
+  async function newChat(projectId?: string) {
     try {
+      if (projectId && projectId !== libraryRef.current.openProjectId) await window.slagent.openProject(projectId)
       await window.slagent.newChat()
     } catch (error) {
       toast.error(errorText(error))
@@ -394,7 +489,7 @@ function AgentApp() {
       id: "edit-last",
       label: "Edit last message",
       shortcut: `${mod}⇧E`,
-      disabled: streaming || !messages.some((message) => message.role === "user" && message.entryId),
+      disabled: streaming || transcriptPage.hasNewer || !messages.some((message) => message.role === "user" && message.entryId),
       run: () => {
         window.dispatchEvent(new Event(EDIT_LAST_EVENT))
       },
@@ -439,6 +534,18 @@ function AgentApp() {
         <span className="text-white/25">/</span>
         <ProjectMenu library={library} onOpen={(projectId) => void runLibrary(() => window.slagent.openProject(projectId))} onChoose={() => void chooseFolder()} />
         <div className="no-drag ml-auto flex items-center gap-1">
+          {updateVersion ? (
+            <Button
+              type="button"
+              size="sm"
+              className="mr-1 bg-blue-500 text-white hover:bg-blue-500/90"
+              title="Restart to install the update"
+              disabled={installingUpdate}
+              onClick={() => void installUpdate()}
+            >
+              Update available (v{updateVersion})
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
@@ -486,12 +593,12 @@ function AgentApp() {
         >
         <Sidebar
           library={library}
-          onNewChat={() => void newChat()}
+          onNewChat={(projectId) => void newChat(projectId).then(focusComposer)}
           onChooseFolder={() => void chooseFolder()}
           onOpenProject={(projectId) => void runLibrary(() => window.slagent.openProject(projectId))}
           onOpenChat={(chatId, projectId, messageId) => {
             setJumpTo(messageId ?? null)
-            void runLibrary(() => window.slagent.openChat(chatId, projectId))
+            void runLibrary(() => window.slagent.openChat(chatId, projectId, messageId ?? undefined))
           }}
           onPinProject={(projectId, pinned) => void runLibrary(() => window.slagent.pinProject(projectId, pinned))}
           onPinChat={(chatId, pinned) => void runLibrary(() => window.slagent.pinChat(chatId, pinned))}
@@ -524,6 +631,7 @@ function AgentApp() {
             <Transcript
               key={`transcript-${transcriptChatId ?? "draft"}`}
               messages={messages}
+              page={transcriptPage}
               notice={notice}
               configured={configured}
               cwd={cwd}
@@ -536,6 +644,8 @@ function AgentApp() {
               onEdit={(id, text) => window.slagent.editMessage(id, text)}
               jumpTo={jumpTo}
               onJumped={() => setJumpTo(null)}
+              replies={replyComments}
+              onReplies={setReplyComments}
             />
           )}
           <Composer
@@ -553,16 +663,21 @@ function AgentApp() {
             onCompact={() => window.slagent.compact()}
             comments={diffComments}
             onRemoveComment={(id) => setDiffComments((current) => current.filter((comment) => comment.id !== id))}
+            replies={replyComments}
+            onRemoveReply={(id) => setReplyComments((current) => current.filter((reply) => reply.id !== id))}
             onPrompt={async (request) => {
               // The prompt resolves when the run ends, so the comments are
               // cleared as soon as they are sent and put back if sending fails.
               const sent = request.comments ?? []
-              const ids = new Set(sent.map((comment) => comment.id))
+              const sentReplies = request.replies ?? []
+              const ids = new Set([...sent, ...sentReplies].map((comment) => comment.id))
               setDiffComments((current) => current.filter((comment) => !ids.has(comment.id)))
+              setReplyComments((current) => current.filter((reply) => !ids.has(reply.id)))
               try {
                 await window.slagent.prompt(request)
               } catch (error) {
                 setDiffComments((current) => [...sent, ...current])
+                setReplyComments((current) => [...sentReplies, ...current])
                 throw error
               }
             }}

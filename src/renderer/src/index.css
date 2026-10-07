@@ -159,6 +159,61 @@ html.light {
   }
 }
 
+/* Sidebar row "..." menu: the slot opens from zero width so the row's other
+   icons slide left, while the button slides in from the right edge. */
+.row-menu {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 180ms var(--ease-out);
+}
+
+.row-menu > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.row-menu-button {
+  opacity: 0;
+  transform: translateX(100%);
+  transition:
+    transform 180ms var(--ease-out),
+    opacity 180ms var(--ease-out);
+}
+
+.group:has(:focus-visible) > .row-menu,
+.row-menu:has([data-state="open"]) {
+  grid-template-columns: 1fr;
+}
+
+.group:has(:focus-visible) > .row-menu .row-menu-button,
+.row-menu-button[data-state="open"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .group:hover > .row-menu {
+    grid-template-columns: 1fr;
+  }
+
+  .group:hover > .row-menu .row-menu-button {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-menu {
+    transition: none;
+  }
+
+  .row-menu-button {
+    transform: none;
+    transition: opacity 150ms var(--ease-out);
+  }
+}
+
 .sidebar-slot[data-resizing],
 .sidebar-slot[data-resizing] > aside {
   transition: none;
@@ -334,6 +389,31 @@ body.resizing * {
   text-indent: -2.5rem;
 }
 
+/* Streamdown draws list markers inside the text box, so wrapped lines run back
+   under the bullet. Hang the markers outside instead, indented from the
+   paragraph edge, so every line of an item lines up with its first. */
+[data-streamdown="unordered-list"],
+[data-streamdown="ordered-list"] {
+  list-style-position: outside;
+  padding-left: 1.75em;
+}
+
+[data-streamdown="list-item"] {
+  padding-left: 0.25em;
+}
+
+[data-streamdown="list-item"]::marker {
+  color: var(--muted-foreground);
+}
+
+[data-streamdown="list-item"] [data-streamdown="unordered-list"] {
+  list-style-type: circle;
+}
+
+[data-streamdown="list-item"] [data-streamdown="ordered-list"] {
+  list-style-type: lower-roman;
+}
+
 [data-streamdown="code-block"] > div:has(> [data-streamdown="code-block-actions"]) {
   top: auto;
   right: 0.5rem;
@@ -351,6 +431,10 @@ body.resizing * {
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -374,5 +458,26 @@ body.resizing * {
   100% {
     background-color: transparent;
     box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+/* Text highlights cannot paint images, so a commented block outlines them. */
+.reply-highlight :is(img, svg:not(button svg), video) {
+  outline: 2px solid color-mix(in oklab, var(--color-amber-400) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* Words in a response with a pending reply comment. */
+::highlight(reply-comment) {
+  background-color: color-mix(in oklab, var(--color-amber-400) 28%, transparent);
+}
+
+.reply-pop {
+  animation: reply-pop 140ms ease-out;
+}
+
+@keyframes reply-pop {
+  from {
+    opacity: 0;
   }
 }

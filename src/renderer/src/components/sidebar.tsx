@@ -1,6 +1,14 @@
-import { EllipsisIcon, PinIcon, SearchIcon, XIcon } from "lucide-react"
+import { ChevronRightIcon, EllipsisIcon, PinIcon, SearchIcon, SquarePenIcon, XIcon } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { DONE_WINDOW_MS, type ChatSearchResult, type ChatStatus, type ChatSummary, type LibraryState, type ProjectSummary } from "@shared/types"
+import {
+  DONE_WINDOW_MS,
+  type ChatSearchResult,
+  type ChatStatus,
+  type ChatSummary,
+  type LibraryState,
+  type ProjectSummary,
+} from "@shared/types"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -27,7 +35,7 @@ function Sidebar({
   onRemoveProject,
 }: {
   library: LibraryState
-  onNewChat: () => void
+  onNewChat: (projectId?: string) => void
   onChooseFolder: () => void
   onOpenProject: (projectId: string) => void
   onOpenChat: (chatId: string, projectId?: string, messageId?: string | null) => void
@@ -48,6 +56,16 @@ function Sidebar({
   const chats = orderedChats(library.chats)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<ChatSearchResult[] | null>(null)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [showAll, setShowAll] = useState(false)
+  const openCollapsed = open ? collapsed[open.id] === true : false
+  const visibleChats = showAll ? chats : chats.slice(0, CHAT_LIMIT)
+  const hiddenCount = chats.length - visibleChats.length
+  const reduceMotion = useReducedMotion()
+  const rowTransition = reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.23, 1, 0.32, 1] as const }
+
+  // Collapse the long list again whenever another project opens.
+  useEffect(() => setShowAll(false), [library.openProjectId])
 
   useEffect(() => {
     if (!query.trim()) {
@@ -89,10 +107,7 @@ function Sidebar({
 
   return (
     <aside className="flex h-full min-w-0 flex-col overflow-hidden border-r border-white/10">
-      <div className="space-y-2 p-3">
-        <Button type="button" variant="outline" className="w-full" title={`New chat (${modKey()}N)`} disabled={!library.openProjectId} onClick={onNewChat}>
-          New chat
-        </Button>
+      <div className="p-3">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-white/40" />
           <Input
@@ -138,28 +153,81 @@ function Sidebar({
               <ProjectRow
                 project={open}
                 active
-                onOpen={() => onOpenProject(open.id)}
+                collapsed={openCollapsed}
+                onToggle={() =>
+                  setCollapsed((current) => ({
+                    ...current,
+                    [open.id]: !openCollapsed,
+                  }))
+                }
+                onOpen={() =>
+                  setCollapsed((current) => ({
+                    ...current,
+                    [open.id]: !openCollapsed,
+                  }))
+                }
+                onNewChat={() => onNewChat(open.id)}
                 onPin={() => onPinProject(open.id, !open.pinned)}
                 onRemove={() => onRemoveProject(open)}
               />
-              {chats.length === 0 ? <p className="px-2 py-1 text-sm text-white/40">No chats yet</p> : null}
-              {chats.map((chat) => (
-                <ChatRow
-                  key={chat.id}
-                  chat={chat}
-                  active={chat.id === library.openChatId}
-                  renaming={renamingId === chat.id}
-                  draft={draft}
-                  onDraft={setDraft}
-                  onOpen={() => onOpenChat(chat.id)}
-                  onPin={() => onPinChat(chat.id, !chat.pinned)}
-                  onRename={() => startRename(chat)}
-                  onSave={() => saveRename(chat.id)}
-                  onCancel={cancelRename}
-                  onDelete={() => onDeleteChat(chat)}
-                  onCopy={() => onCopyTranscript(chat)}
-                />
-              ))}
+              {openCollapsed ? null : (
+                <>
+                  {chats.length === 0 ? <p className="ml-3 px-2 py-1 text-sm text-white/40">No chats yet</p> : null}
+                  {/* Keyed by project so switching projects mounts the list without replaying the enter animation. */}
+                  <div key={open.id} className="relative">
+                    <AnimatePresence initial={false}>
+                      {visibleChats.map((chat) => (
+                        <motion.div
+                          key={chat.id}
+                          layout="position"
+                          className="overflow-hidden pb-1"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={rowTransition}
+                        >
+                          <ChatRow
+                            key={chat.id}
+                            chat={chat}
+                            active={chat.id === library.openChatId}
+                            renaming={renamingId === chat.id}
+                            draft={draft}
+                            onDraft={setDraft}
+                            onOpen={() => onOpenChat(chat.id)}
+                            onPin={() => onPinChat(chat.id, !chat.pinned)}
+                            onRename={() => startRename(chat)}
+                            onSave={() => saveRename(chat.id)}
+                            onCancel={cancelRename}
+                            onDelete={() => onDeleteChat(chat)}
+                            onCopy={() => onCopyTranscript(chat)}
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {hiddenCount > 0 ? (
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-background" />
+                    ) : null}
+                  </div>
+                  {hiddenCount > 0 ? (
+                    <button
+                      type="button"
+                      className="ml-3 px-2 py-1 text-xs text-white/40 transition-colors hover:text-white/70"
+                      onClick={() => setShowAll(true)}
+                    >
+                      Show {hiddenCount} more
+                    </button>
+                  ) : null}
+                  {showAll && chats.length > CHAT_LIMIT ? (
+                    <button
+                      type="button"
+                      className="ml-3 px-2 py-1 text-xs text-white/40 transition-colors hover:text-white/70"
+                      onClick={() => setShowAll(false)}
+                    >
+                      Show less
+                    </button>
+                  ) : null}
+                </>
+              )}
             </section>
           ) : (
             <div className="space-y-2 px-2">
@@ -171,13 +239,14 @@ function Sidebar({
           )}
           {pinned.length > 0 ? (
             <section className="space-y-1">
-              <h2 className="px-2 text-xs font-medium tracking-wide text-white/40 uppercase">Pinned</h2>
+              <h2 className="px-2 text-xs font-medium text-white/40">Pinned</h2>
               {pinned.map((project) => (
                 <ProjectRow
                   key={project.id}
                   project={project}
                   active={false}
                   onOpen={() => onOpenProject(project.id)}
+                  onNewChat={() => onNewChat(project.id)}
                   onPin={() => onPinProject(project.id, false)}
                   onRemove={() => onRemoveProject(project)}
                 />
@@ -230,25 +299,51 @@ function ProjectMenu({
 function ProjectRow({
   project,
   active,
+  collapsed,
+  onToggle,
   onOpen,
+  onNewChat,
   onPin,
   onRemove,
 }: {
   project: ProjectSummary
   active: boolean
+  collapsed?: boolean
+  onToggle?: () => void
   onOpen: () => void
+  onNewChat: () => void
   onPin: () => void
   onRemove: () => void
 }) {
   let pinLabel = "Pin"
   if (project.pinned) pinLabel = "Unpin"
   return (
-    <div className={cn("group flex w-full min-w-0 items-center overflow-hidden rounded-md", active && "bg-white/10")}>
-      <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm" onClick={onOpen}>
-        <StatusDot status={projectStatus(project)} />
-        <span className="truncate">{project.name}</span>
+    <div className="group flex w-full min-w-0 items-center overflow-hidden rounded-md">
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm"
+        aria-expanded={onToggle ? !collapsed : undefined}
+        onClick={onToggle ?? onOpen}
+      >
+        {onToggle ? (
+          <ChevronRightIcon className={cn("size-3 shrink-0 text-white/40 transition-transform duration-150", !collapsed && "rotate-90")} />
+        ) : (
+          <StatusDot status={projectStatus(project)} />
+        )}
+        <span className={cn("truncate", active ? "font-medium" : "text-white/80")}>{project.name}</span>
         {project.pinned && <PinIcon className="size-3 shrink-0 text-white/40" />}
       </button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className="shrink-0 text-white/50 hover:text-white"
+        title={`New chat in ${project.name}${active ? ` (${modKey()}N)` : ""}`}
+        aria-label={`New chat in ${project.name}`}
+        onClick={onNewChat}
+      >
+        <SquarePenIcon className="size-3.5" />
+      </Button>
       <RowMenu label={`${project.name} actions`}>
         <DropdownMenuItem onSelect={onPin}>{pinLabel}</DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onSelect={onRemove}>
@@ -424,22 +519,23 @@ function RowMenu({
   onOpenChange?: (open: boolean) => void
 }) {
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          className="mr-1 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-          aria-label={label}
-        >
-          <EllipsisIcon className="size-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
-    </DropdownMenu>
+    // The slot takes no width until the row is hovered, focused or the menu is open; see .row-menu in index.css.
+    <div className="row-menu">
+      <div>
+        <DropdownMenu open={open} onOpenChange={onOpenChange}>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="icon-xs" className="row-menu-button mr-1" aria-label={label}>
+              <EllipsisIcon className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">{children}</DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   )
 }
+
+const CHAT_LIMIT = 10
 
 function modKey(): string {
   if (window.slagent.platform === "darwin") return "⌘"

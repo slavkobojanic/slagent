@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 import type { ImageContent } from "@earendil-works/pi-ai"
-import type { DiffComment, PromptFile, PromptMention, PromptRequest, UserAttachment } from "../shared/types"
+import type { DiffComment, PromptFile, PromptMention, PromptRequest, ReplyComment, UserAttachment } from "../shared/types"
 import { attachmentKind, mimeForName, pdfText, readBytes } from "./files"
 
 export type PreparedPrompt = {
@@ -26,10 +26,11 @@ export function parsePrompt(input: unknown): PromptRequest {
   const mentions = parseMentions(record.mentions)
   const files = parseFiles(record.files)
   const comments = parseComments(record.comments)
-  if (!text.trim() && mentions.length === 0 && files.length === 0 && comments.length === 0) {
+  const replies = parseReplies(record.replies)
+  if (!text.trim() && mentions.length === 0 && files.length === 0 && comments.length === 0 && replies.length === 0) {
     throw new Error("Write a message first.")
   }
-  return { text, mentions, files, comments }
+  return { text, mentions, files, comments, replies }
 }
 
 export async function preparePrompt(
@@ -81,7 +82,7 @@ export async function preparePrompt(
   }
 
   return {
-    text: withCommand(withComments(request.text.trim(), request.comments ?? []), references),
+    text: withCommand(withReplies(withComments(request.text.trim(), request.comments ?? []), request.replies ?? []), references),
     images,
     attachments,
   }
@@ -93,6 +94,9 @@ export function queueDetail(request: PromptRequest): string {
   const comments = request.comments?.length ?? 0
   if (comments === 1) names.push("1 diff comment")
   if (comments > 1) names.push(`${comments} diff comments`)
+  const replies = request.replies?.length ?? 0
+  if (replies === 1) names.push("1 reply comment")
+  if (replies > 1) names.push(`${replies} reply comments`)
   return names.join(", ")
 }
 
@@ -125,6 +129,25 @@ function withComments(text: string, comments: DiffComment[]): string {
   }
   if (!text) return lines.join("\n")
   return `${text}\n\n${lines.join("\n")}`
+}
+
+// Comments on blocks of earlier responses, quoted ahead of the message like
+// an email reply.
+function withReplies(text: string, replies: ReplyComment[]): string {
+  if (replies.length === 0) return text
+  const lines = ["Comments on parts of your earlier responses:"]
+  for (const reply of replies) {
+    lines.push("")
+    for (const line of reply.block.trim().slice(0, 1500).split("\n")) lines.push(`> ${line}`.trimEnd())
+    lines.push("")
+    const quote = reply.quote.trim()
+    if (quote === reply.block.trim()) lines.push(reply.text.trim())
+    else lines.push(`On "${quote.slice(0, 500)}": ${reply.text.trim()}`)
+  }
+  if (!text) return lines.join("\n")
+  // A slash command only runs from the start of the prompt.
+  if (/^\/[^\s/]/.test(text)) return `${text}\n\n${lines.join("\n")}`
+  return `${lines.join("\n")}\n\n${text}`
 }
 
 // Pi only expands /skill:name, prompt templates and extension commands when the
@@ -184,6 +207,25 @@ function parseComments(value: unknown): DiffComment[] {
     })
   }
   return comments
+}
+
+function parseReplies(value: unknown): ReplyComment[] {
+  if (!Array.isArray(value)) return []
+  const replies: ReplyComment[] = []
+  for (const item of value.slice(0, 50)) {
+    if (typeof item !== "object" || item === null) continue
+    const record = item as Record<string, unknown>
+    if (typeof record.quote !== "string" || typeof record.text !== "string" || !record.text.trim()) continue
+    const quote = record.quote.slice(0, 4000)
+    replies.push({
+      id: typeof record.id === "string" ? record.id : randomUUID(),
+      messageId: typeof record.messageId === "string" ? record.messageId : "",
+      block: typeof record.block === "string" ? record.block.slice(0, 4000) : quote,
+      quote,
+      text: record.text.slice(0, 4000),
+    })
+  }
+  return replies
 }
 
 function parseMentions(value: unknown): PromptMention[] {

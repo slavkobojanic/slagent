@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { parseMarkdownIntoBlocks } from "streamdown"
 import { MessageResponse } from "@/components/ai-elements/message"
+import { CommentableResponse, ResponseBlock } from "@/components/response-comments"
 
 const PARAGRAPH_INTERVAL_MS = 220
 const wordFade = {
@@ -28,7 +29,7 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
-function FadingResponse({ text, streaming }: { text: string; streaming: boolean }) {
+function FadingResponse({ messageId, text, streaming }: { messageId: string; text: string; streaming: boolean }) {
   const blocks = parseMarkdownIntoBlocks(text)
   const blocksRef = useRef(blocks)
   blocksRef.current = blocks
@@ -69,7 +70,7 @@ function FadingResponse({ text, streaming }: { text: string; streaming: boolean 
     return () => window.clearTimeout(timer)
   }, [blocks.length])
 
-  if (reduceMotion.current) return <MessageResponse>{text}</MessageResponse>
+  if (reduceMotion.current) return <CommentableResponse messageId={messageId} text={text} />
 
   const visible = blocks.slice(0, shown)
   return (
@@ -79,14 +80,16 @@ function FadingResponse({ text, streaming }: { text: string; streaming: boolean 
         if (isCodeBlock(block)) blockClass = "reveal-block"
         return (
           <div key={index} className={blockClass}>
-            <MessageResponse
-              animated={wordFade}
-              className="h-auto"
-              isAnimating={streaming}
-              mode={streaming ? "streaming" : "static"}
-            >
-              {block}
-            </MessageResponse>
+            <ResponseBlock messageId={messageId} block={block} streaming={streaming}>
+              <MessageResponse
+                animated={wordFade}
+                className="h-auto"
+                isAnimating={streaming}
+                mode={streaming ? "streaming" : "static"}
+              >
+                {block}
+              </MessageResponse>
+            </ResponseBlock>
           </div>
         )
       })}

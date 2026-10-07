@@ -31,7 +31,7 @@ import type {
   TodoItem,
   SlashCommand,
   ToolMessage,
-  TranscriptState,
+  RuntimeTranscript,
   UserAttachment,
   UsageState,
   UserMessage,
@@ -249,7 +249,7 @@ export class ChatRuntime {
     this.titleGenerated = true
   }
 
-  transcript(): TranscriptState {
+  transcript(): RuntimeTranscript {
     return {
       messages: this.messages,
       // Includes the time before Pi starts the run, while the prompt is prepared
@@ -666,6 +666,7 @@ export class ChatRuntime {
       text: request.text.trim(),
       attachments,
       comments: request.comments?.length ? request.comments : undefined,
+      replies: request.replies?.length ? request.replies : undefined,
     }
     this.messages.push(message)
     this.pendingUserIds.push(message.id)

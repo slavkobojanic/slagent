@@ -1,5 +1,6 @@
-import { app, BrowserWindow, dialog } from "electron"
+import { app, BrowserWindow, ipcMain } from "electron"
 import updater from "electron-updater"
+import { channels } from "../shared/types"
 
 // electron-updater is CommonJS and exposes `autoUpdater` through a getter, so default-import
 // the module and destructure rather than relying on Node's named-export detection.
@@ -10,9 +11,22 @@ type Options = {
   prepareQuit: () => Promise<void>
 }
 
+const checkInterval = 4 * 60 * 60 * 1000
+
+// Version of the update that has finished downloading and is waiting for a restart.
+let readyVersion: string | null = null
 let restarting = false
 
 export function startUpdater({ prepareQuit }: Options): void {
+  // Registered even when updates are off so the renderer's calls always resolve.
+  ipcMain.handle(channels.updateStatus, () => readyVersion)
+  ipcMain.handle(channels.installUpdate, async () => {
+    if (!readyVersion || restarting) return
+    restarting = true
+    await prepareQuit()
+    autoUpdater.quitAndInstall()
+  })
+
   if (!app.isPackaged || process.env.SLAGENT_DISABLE_UPDATER) return
 
   autoUpdater.autoDownload = true
@@ -22,26 +36,13 @@ export function startUpdater({ prepareQuit }: Options): void {
     console.error("updater:", error)
   })
   autoUpdater.on("update-downloaded", (info) => {
-    void promptToRestart(info.version, prepareQuit)
+    readyVersion = info.version
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(channels.updateReady, info.version)
+    }
   })
 
-  void autoUpdater.checkForUpdates().catch((error) => console.error("updater:", error))
-}
-
-async function promptToRestart(version: string, prepareQuit: () => Promise<void>): Promise<void> {
-  if (restarting) return
-  const options = {
-    type: "info" as const,
-    buttons: ["Restart", "Later"],
-    defaultId: 0,
-    cancelId: 1,
-    message: `slagent ${version} is ready`,
-    detail: "Restart to apply the update. It will also install the next time you quit.",
-  }
-  const win = BrowserWindow.getAllWindows()[0]
-  const result = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options)
-  if (result.response !== 0) return
-  restarting = true
-  await prepareQuit()
-  autoUpdater.quitAndInstall()
+  const check = () => void autoUpdater.checkForUpdates().catch((error) => console.error("updater:", error))
+  check()
+  setInterval(check, checkInterval)
 }

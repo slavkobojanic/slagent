@@ -5,6 +5,7 @@ export const channels = {
   newChat: "agent:new-chat",
   openProject: "agent:open-project",
   openChat: "agent:open-chat",
+  pageTranscript: "agent:page-transcript",
   searchChats: "agent:search-chats",
   pinProject: "agent:pin-project",
   pinChat: "agent:pin-chat",
@@ -46,6 +47,9 @@ export const channels = {
   mcpSignIn: "mcp:sign-in",
   mcpSignOut: "mcp:sign-out",
   mcpSetEnabled: "mcp:set-enabled",
+  updateStatus: "update:status",
+  installUpdate: "update:install",
+  updateReady: "update:ready",
   cliStatus: "cli:status",
   cliInstall: "cli:install",
   cliUninstall: "cli:uninstall",
@@ -116,6 +120,7 @@ export type UserMessage = {
   entryId?: string
   checkpoint?: boolean
   comments?: DiffComment[]
+  replies?: ReplyComment[]
 }
 
 export type AssistantMessage = {
@@ -172,11 +177,26 @@ export type DiffComment = {
   text: string
 }
 
+// A comment on one block of an assistant response, or on words selected in
+// it, sent quoted like an email reply.
+export type ReplyComment = {
+  id: string
+  messageId: string
+  // The markdown of the block the comment sits on.
+  block: string
+  // The commented text: the whole block, or the words selected in it.
+  quote: string
+  // Where the selected words start in the block's rendered text.
+  at?: number
+  text: string
+}
+
 export type PromptRequest = {
   text: string
   mentions: PromptMention[]
   files: PromptFile[]
   comments?: DiffComment[]
+  replies?: ReplyComment[]
 }
 
 export type FileMatch = {
@@ -324,7 +344,8 @@ export type UsageTotals = {
   chats: number
 }
 
-export type TranscriptState = {
+// What a chat runtime reports; the host narrows `messages` to the visible window.
+export type RuntimeTranscript = {
   messages: ChatMessage[]
   streaming: boolean
   notice: string | null
@@ -336,6 +357,15 @@ export type TranscriptState = {
   question: QuestionRequest | null
   tasks: TaskInfo[]
 }
+
+export type TranscriptState = RuntimeTranscript & {
+  // Index of messages[0] within the whole chat.
+  windowStart: number
+  hasOlder: boolean
+  hasNewer: boolean
+}
+
+export type TranscriptPage = "older" | "newer" | "latest"
 
 export type Snapshot = TranscriptState & {
   revision: number
@@ -417,7 +447,9 @@ export type SlagentApi = {
   abort: () => Promise<void>
   newChat: () => Promise<void>
   openProject: (projectId: string) => Promise<void>
-  openChat: (chatId: string, projectId?: string) => Promise<void>
+  // messageId opens the chat scrolled to that message instead of the bottom.
+  openChat: (chatId: string, projectId?: string, messageId?: string) => Promise<void>
+  pageTranscript: (page: TranscriptPage) => Promise<void>
   searchChats: (query: string) => Promise<ChatSearchResult[]>
   pinProject: (projectId: string, pinned: boolean) => Promise<void>
   pinChat: (chatId: string, pinned: boolean) => Promise<void>
@@ -461,6 +493,10 @@ export type SlagentApi = {
   mcpSignOut: (name: string) => Promise<McpServerStatus[]>
   mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
   onEvent: (listener: (event: UiEvent) => void) => () => void
+  // Version of a downloaded update waiting for a restart, or null.
+  updateStatus: () => Promise<string | null>
+  installUpdate: () => Promise<void>
+  onUpdateReady: (listener: (version: string) => void) => () => void
   cliStatus: () => Promise<CliStatus>
   installCli: () => Promise<CliStatus>
   uninstallCli: () => Promise<CliStatus>

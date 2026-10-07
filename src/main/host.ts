@@ -27,6 +27,7 @@ import type {
   RewindResult,
   SlashCommand,
   Snapshot,
+  TranscriptPage,
   TranscriptState,
   UiEvent,
   UsageTotals,
@@ -45,6 +46,7 @@ import { readPrefs, writePrefs, type Prefs } from "./prefs"
 import { generateCommitMessage, generateTitle, TITLE_MODELS } from "./titles"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { importShellEnv } from "./shell-env"
+import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type TranscriptWindow } from "./transcript-window"
 
 const PROVIDER = "openrouter"
 const PREFERRED_MODELS = [
@@ -91,6 +93,8 @@ export class AgentHost {
   private startupError: string | null = null
   private revision = 0
   private tail: Promise<void> = Promise.resolve()
+  // The part of the open chat the renderer shows, reset whenever another chat opens.
+  private window: { chatId: string | null; bounds: TranscriptWindow } = { chatId: null, bounds: tailWindow }
 
   constructor(
     private readonly prefsPath: string,
@@ -140,6 +144,10 @@ export class AgentHost {
 
   async prompt(request: PromptRequest): Promise<void> {
     const runtime = await this.run(() => this.ensureRuntime())
+    if (this.windowBounds() !== tailWindow) {
+      this.window = { chatId: this.chatId, bounds: tailWindow }
+      this.publishTranscript()
+    }
     await runtime.prompt(request)
   }
 
@@ -170,7 +178,7 @@ export class AgentHost {
     await this.run(() => this.openProjectUnlocked(projectId))
   }
 
-  async openChat(chatId: string, projectId?: string): Promise<void> {
+  async openChat(chatId: string, projectId?: string, messageId?: string): Promise<void> {
     await this.run(async () => {
       const target = projectId ?? this.projectId
       if (!target) throw new Error("Choose a folder first.")
@@ -187,7 +195,23 @@ export class AgentHost {
       } else {
         await this.loadChat(target, chatId)
       }
+      let bounds = tailWindow
+      const runtime = this.openRuntime()
+      if (messageId && runtime) bounds = windowAround(runtime.messages, messageId) ?? tailWindow
+      this.window = { chatId, bounds }
       this.publishAll()
+    })
+  }
+
+  async pageTranscript(page: TranscriptPage): Promise<void> {
+    await this.run(async () => {
+      const runtime = this.openRuntime()
+      if (!runtime) return
+      let bounds = tailWindow
+      if (page === "older") bounds = olderWindow(runtime.messages, this.windowBounds())
+      if (page === "newer") bounds = newerWindow(runtime.messages, this.windowBounds())
+      this.window = { chatId: this.chatId, bounds }
+      this.publishTranscript()
     })
   }
 
@@ -990,9 +1014,18 @@ export class AgentHost {
         planProposal: null,
         question: null,
         tasks: [],
+        windowStart: 0,
+        hasOlder: false,
+        hasNewer: false,
       }
     }
-    return runtime.transcript()
+    const transcript = runtime.transcript()
+    return { ...transcript, ...sliceWindow(transcript.messages, this.windowBounds()) }
+  }
+
+  private windowBounds(): TranscriptWindow {
+    if (this.window.chatId !== this.chatId) return tailWindow
+    return this.window.bounds
   }
 
   private publishAll(): void {

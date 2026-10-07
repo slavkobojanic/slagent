@@ -9,7 +9,8 @@ const api: SlagentApi = {
   abort: () => ipcRenderer.invoke(channels.abort),
   newChat: () => ipcRenderer.invoke(channels.newChat),
   openProject: (projectId) => ipcRenderer.invoke(channels.openProject, projectId),
-  openChat: (chatId, projectId) => ipcRenderer.invoke(channels.openChat, chatId, projectId),
+  openChat: (chatId, projectId, messageId) => ipcRenderer.invoke(channels.openChat, chatId, projectId, messageId),
+  pageTranscript: (page) => ipcRenderer.invoke(channels.pageTranscript, page),
   searchChats: (query) => ipcRenderer.invoke(channels.searchChats, query),
   pinProject: (projectId, pinned) => ipcRenderer.invoke(channels.pinProject, projectId, pinned),
   pinChat: (chatId, pinned) => ipcRenderer.invoke(channels.pinChat, chatId, pinned),
@@ -65,6 +66,17 @@ const api: SlagentApi = {
     ipcRenderer.on(channels.event, wrapped)
     return () => {
       ipcRenderer.off(channels.event, wrapped)
+    }
+  },
+  updateStatus: () => ipcRenderer.invoke(channels.updateStatus),
+  installUpdate: () => ipcRenderer.invoke(channels.installUpdate),
+  onUpdateReady: (listener) => {
+    const wrapped = (_event: IpcRendererEvent, version: string) => {
+      listener(version)
+    }
+    ipcRenderer.on(channels.updateReady, wrapped)
+    return () => {
+      ipcRenderer.off(channels.updateReady, wrapped)
     }
   },
   cliStatus: () => ipcRenderer.invoke(channels.cliStatus),

@@ -1,10 +1,11 @@
 import type { DiffLineAnnotation, SelectedLineRange } from "@pierre/diffs/react"
 import { PatchDiff } from "@pierre/diffs/react"
 import { GitBranchIcon, RefreshCwIcon, SparklesIcon, XIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { DiffComment, DiffScope, GitStatus } from "@shared/types"
 import { Button } from "@/components/ui/button"
+import { CommentDraft } from "@/components/comment-draft"
 import { Textarea } from "@/components/ui/textarea"
 import { errorText, openPath } from "@/lib/format"
 import { type FileDiff, lineText, parseDiff } from "@/lib/diff"
@@ -289,54 +290,6 @@ function FileSection({
         }}
       />
     </section>
-  )
-}
-
-function CommentDraft({ onSave, onCancel }: { onSave: (text: string) => void; onCancel: () => void }) {
-  const [text, setText] = useState("")
-  const input = useRef<HTMLTextAreaElement | null>(null)
-
-  // Pierre slots the annotation in after React mounts it, which drops
-  // autoFocus, so focus is set once it is in place.
-  useEffect(() => {
-    let frame = window.requestAnimationFrame(() => {
-      frame = window.requestAnimationFrame(() => input.current?.focus())
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [])
-  function save() {
-    if (text.trim()) onSave(text.trim())
-  }
-  return (
-    <div className="mx-3 my-1.5 space-y-1.5 rounded-md border border-white/10 bg-secondary p-2 font-sans shadow-md">
-      <Textarea
-        ref={input}
-        value={text}
-        aria-label="Comment"
-        placeholder="Comment for the next message"
-        className="min-h-14 text-xs"
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault()
-            event.stopPropagation()
-            onCancel()
-          }
-          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault()
-            save()
-          }
-        }}
-      />
-      <div className="flex justify-end gap-1.5">
-        <Button type="button" variant="ghost" size="xs" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="button" size="xs" disabled={!text.trim()} onClick={save}>
-          Add comment
-        </Button>
-      </div>
-    </div>
   )
 }
 
