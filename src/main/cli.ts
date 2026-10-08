@@ -2,8 +2,7 @@ import { execFile } from "node:child_process"
 import { access, constants, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { ipcMain } from "electron"
-import { channels, type CliStatus } from "../shared/types"
+import type { CliStatus } from "../shared/types"
 
 // /usr/local/bin is on PATH by default on macOS (/etc/paths), so the command works
 // in any shell without editing a profile. It is root-owned on most machines, so
@@ -40,24 +39,22 @@ fi
 exec open -b ${BUNDLE_ID} "$(cd "$1" && pwd -P)"
 `
 
-export function registerCli(): void {
-  ipcMain.handle(channels.cliStatus, () => cliStatus())
-  ipcMain.handle(channels.cliInstall, async () => {
-    await install()
-    return cliStatus()
-  })
-  ipcMain.handle(channels.cliUninstall, async () => {
-    await uninstall()
-    return cliStatus()
-  })
-}
-
-async function cliStatus(): Promise<CliStatus> {
+export async function cliStatus(): Promise<CliStatus> {
   if (process.platform !== "darwin") return { path: CLI_PATH, state: "unsupported" }
   const current = await readFile(CLI_PATH, "utf8").catch(() => null)
   if (current === null) return { path: CLI_PATH, state: "missing" }
   if (!current.includes(MARKER)) return { path: CLI_PATH, state: "conflict" }
   return { path: CLI_PATH, state: current === SCRIPT ? "installed" : "outdated" }
+}
+
+export async function installCli(): Promise<CliStatus> {
+  await install()
+  return cliStatus()
+}
+
+export async function uninstallCli(): Promise<CliStatus> {
+  await uninstall()
+  return cliStatus()
 }
 
 async function install(): Promise<void> {

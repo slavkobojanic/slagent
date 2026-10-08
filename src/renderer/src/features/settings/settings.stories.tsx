@@ -19,6 +19,7 @@ const meta = {
     McpSettings: slot("McpSettings"),
     CliSettings: slot("CliSettings"),
     About: slot("About"),
+    ConnectSettings: slot("ConnectSettings"),
   },
 } satisfies Meta<typeof Settings>
 
@@ -28,6 +29,8 @@ type Story = StoryObj<typeof meta>
 export const General: Story = {}
 
 export const Personalisation: Story = { args: { tab: "personalisation" } }
+
+export const Connect: Story = { args: { tab: "connect" } }
 
 export const Mcp: Story = { args: { tab: "mcp" } }
 

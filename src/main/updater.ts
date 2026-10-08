@@ -1,6 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron"
+import { app, BrowserWindow, dialog } from "electron"
 import updater from "electron-updater"
-import { channels, type UpdateCheckResult } from "../shared/types"
+import type { UpdateCheckResult } from "../shared/types"
 import { appVersion } from "./version"
 
 // electron-updater is CommonJS and exposes `autoUpdater` through a getter, so default-import
@@ -10,6 +10,8 @@ const { autoUpdater } = updater
 type Options = {
   // Flush the agent session and stop helpers before the process is replaced by ShipIt.
   prepareQuit: () => Promise<void>
+  // A downloaded update waits for a restart; the websocket hub pushes it to clients.
+  onReady: (version: string) => void
 }
 
 const checkInterval = 10 * 60 * 1000
@@ -21,7 +23,8 @@ let prepare: (() => Promise<void>) | null = null
 
 const enabled = () => app.isPackaged && !process.env.SLAGENT_DISABLE_UPDATER
 
-async function install(): Promise<void> {
+// Installs the update that has finished downloading and is waiting for a restart.
+export async function installUpdate(): Promise<void> {
   if (!readyVersion || restarting || !prepare) return
   restarting = true
   await prepare()
@@ -68,7 +71,7 @@ export async function checkForUpdatesFromMenu(): Promise<void> {
       defaultId: 0,
       cancelId: 1,
     })
-    if (response === 0) await install()
+    if (response === 0) await installUpdate()
     return
   }
   if (result.status === "available") {
@@ -86,13 +89,15 @@ export async function checkForUpdatesFromMenu(): Promise<void> {
   await show({ type: "info", message: "You're up to date.", detail: `slagent ${result.version} is the latest version.` })
 }
 
-export function startUpdater({ prepareQuit }: Options): void {
+// The renderer reads both from the websocket; appVersion comes from ./version.
+export function updateStatus(): string | null {
+  return readyVersion
+}
+
+export { appVersion }
+
+export function startUpdater({ prepareQuit, onReady }: Options): void {
   prepare = prepareQuit
-  // Registered even when updates are off so the renderer's calls always resolve.
-  ipcMain.handle(channels.appVersion, () => appVersion)
-  ipcMain.handle(channels.updateStatus, () => readyVersion)
-  ipcMain.handle(channels.updateCheck, () => checkForUpdates())
-  ipcMain.handle(channels.installUpdate, install)
 
   if (!enabled()) return
 
@@ -104,9 +109,7 @@ export function startUpdater({ prepareQuit }: Options): void {
   })
   autoUpdater.on("update-downloaded", (info) => {
     readyVersion = info.version
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(channels.updateReady, info.version)
-    }
+    onReady(info.version)
   })
 
   const check = () => void autoUpdater.checkForUpdates().catch((error) => console.error("updater:", error))

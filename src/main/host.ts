@@ -35,6 +35,7 @@ import type {
   RewindResult,
   SkillDraft,
   SlashCommand,
+  ServerInfo,
   Snapshot,
   TranscriptPage,
   TranscriptState,
@@ -60,9 +61,7 @@ import { importShellEnv } from "./shell-env"
 import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type TranscriptWindow } from "./transcript-window"
 
 const PROVIDER = "openrouter"
-const TRANSCRIPT_PUBLISH_TIMER = "publish:transcript"
 const TRANSCRIPT_PUBLISH_MS = 33
-const GIT_PUBLISH_TIMER = "publish:git"
 const GIT_PUBLISH_MS = 200
 const PREFERRED_MODELS = [
   "anthropic/claude-sonnet-5.5",
@@ -71,13 +70,25 @@ const PREFERRED_MODELS = [
   "openai/gpt-5.4",
 ]
 
-type Emit = (event: UiEvent) => void
+type Emit = (clientId: string | null, event: UiEvent) => void
 
 type Runtime = ChatRuntime | ClaudeRuntime
 
+// Everything a connected client sees on its own: its open project and chat,
+// and where it has scrolled the transcript. Library, meta and settings are
+// global; every publish projects them through the client's session.
+type Session = {
+  clientId: string
+  projectId: string | null
+  chatId: string | null
+  cwd: string
+  window: { chatId: string | null; bounds: TranscriptWindow }
+}
+
 export type Notifier = {
-  // Whether the window is in front, so finished runs in the open chat are seen.
-  focused: () => boolean
+  // Whether a focused window is looking at this chat, so finished runs in it
+  // are seen and no notification is needed.
+  focused: (projectId: string, chatId: string) => boolean
   notify: (note: { title: string; body: string; projectId: string; chatId: string }) => void
   badge: (count: number) => void
 }
@@ -99,10 +110,12 @@ export class AgentHost {
   // Projects whose chats moved and still need the project file rewritten.
   private readonly dirtyProjects = new Set<string>()
   private readonly extensionCache = new Map<string, ExtensionCache>()
+  // One .git/HEAD watcher per session, for the branch label under its open chat.
+  private readonly gitWatchers = new Map<string, { watcher: FSWatcher; head: string }>()
   private prefs: Prefs = {}
   private personalisation: Personalisation = { ...EMPTY_PERSONALISATION }
-  private projectId: string | null = null
-  private chatId: string | null = null
+  private readonly sessions = new Map<string, Session>()
+  // The cwd of the last opened chat, saved to prefs and used for new terminals.
   private cwd = ""
   private agentDir = getAgentDir()
   private draftModelId: string | null = null
@@ -117,10 +130,6 @@ export class AgentHost {
   private startupError: string | null = null
   private revision = 0
   private tail: Promise<void> = Promise.resolve()
-  // The part of the open chat the renderer shows, reset whenever another chat opens.
-  private window: { chatId: string | null; bounds: TranscriptWindow } = { chatId: null, bounds: tailWindow }
-  private gitWatcher: FSWatcher | null = null
-  private gitWatchedHead: string | null = null
 
   constructor(
     private readonly prefsPath: string,
@@ -129,6 +138,7 @@ export class AgentHost {
     private readonly computer: ComputerUse,
     private readonly notifier: Notifier,
     private readonly getMcpServers: () => Record<string, McpServerConfig>,
+    private readonly getServerInfo: () => ServerInfo | null,
   ) {
     this.library = new Library(libraryRoot)
   }
@@ -138,12 +148,36 @@ export class AgentHost {
     return this.prefs.cwd ?? ""
   }
 
-  getSnapshot(): Snapshot {
+  // A connected client gets a session and, like every new window, starts on
+  // the last opened project.
+  attach(clientId: string): void {
+    const session: Session = { clientId, projectId: null, chatId: null, cwd: "", window: { chatId: null, bounds: tailWindow } }
+    this.sessions.set(clientId, session)
+    void this.run(async () => {
+      const initial = await this.initialProject()
+      if (initial) await this.openProjectUnlocked(session, initial.id)
+    }).catch((error) => console.error("initial project:", error))
+  }
+
+  detach(clientId: string): void {
+    this.closeSessionGitWatcher(clientId)
+    this.sessions.delete(clientId)
+  }
+
+  // Whether this client's window is looking at the chat, so a finished run in
+  // it is already on screen and needs no notification.
+  isViewedBy(clientId: string, projectId: string, chatId: string): boolean {
+    const session = this.sessions.get(clientId)
+    return Boolean(session && session.projectId === projectId && session.chatId === chatId)
+  }
+
+  getSnapshot(clientId: string): Snapshot {
+    const session = this.requireSession(clientId)
     return {
       revision: this.revision,
-      meta: this.buildMeta(),
-      library: this.libraryState(),
-      ...this.transcriptState(),
+      meta: this.buildMeta(session),
+      library: this.libraryState(session),
+      ...this.transcriptState(session),
     }
   }
 
@@ -162,40 +196,40 @@ export class AgentHost {
       this.models = this.catalog()
       this.openRouter = await this.readAuth()
       this.applyDraftModel()
-      const initial = await this.initialProject()
-      if (initial) await this.openProjectUnlocked(initial.id)
     } catch (error) {
       this.startupError = errorMessage(error)
     } finally {
       this.ready = true
-      this.publishAll()
+      this.publishMeta(null)
     }
   }
 
-  async prompt(request: PromptRequest): Promise<void> {
-    const runtime = await this.run(() => this.ensureRuntime())
-    if (this.windowBounds() !== tailWindow) {
-      this.window = { chatId: this.chatId, bounds: tailWindow }
-      this.publishTranscript()
+  async prompt(clientId: string, request: PromptRequest): Promise<void> {
+    const session = this.requireSession(clientId)
+    const runtime = await this.run(() => this.ensureRuntime(session))
+    if (this.windowBounds(session) !== tailWindow) {
+      session.window = { chatId: session.chatId, bounds: tailWindow }
+      this.publishTranscriptTo(session)
     }
     await runtime.prompt(request)
   }
 
-  async abort(): Promise<void> {
-    const runtime = this.openRuntime()
+  async abort(clientId: string): Promise<void> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) return
     await runtime.abort()
   }
 
   // Starts a draft in the target project, which becomes the active one when it is not already.
   // The draft is the project's last thread until a chat is opened in it.
-  async newChat(projectId?: string): Promise<void> {
+  async newChat(clientId: string, projectId?: string): Promise<void> {
+    const session = this.requireSession(clientId)
     await this.run(async () => {
-      const target = projectId ?? this.projectId
+      const target = projectId ?? session.projectId
       if (!target) throw new Error("Choose a folder first.")
       const project = this.library.project(target)
       if (!project) throw new Error("That project is gone.")
-      const switching = target !== this.projectId
+      const switching = target !== session.projectId
       if (switching) {
         if (project.mode === "chat") {
           await mkdir(project.path, { recursive: true })
@@ -207,43 +241,48 @@ export class AgentHost {
           }
         }
       }
-      this.projectId = target
+      session.projectId = target
+      session.cwd = project.path
       this.cwd = project.path
-      this.chatId = null
+      session.chatId = null
       await this.library.touchProject(target, null)
       if (switching) {
         await this.persistPrefs()
-        this.publishAll()
+        this.publishAllTo(session)
         return
       }
-      this.publishLibrary()
-      this.publishTranscript()
+      this.publishLibrary(null)
+      this.publishTranscriptTo(session)
     })
   }
 
-  async openFolder(folder: string): Promise<void> {
+  async openFolder(clientId: string, folder: string): Promise<void> {
+    const session = this.requireSession(clientId)
     await this.run(async () => {
       const project = await this.library.ensureProject(folder)
-      await this.openProjectUnlocked(project.id)
+      await this.openProjectUnlocked(session, project.id)
     })
   }
 
-  async createChatProject(): Promise<void> {
+  async createChatProject(clientId: string): Promise<void> {
+    const session = this.requireSession(clientId)
     await this.run(async () => {
       const project = await this.library.ensureChatProject()
-      await this.openProjectUnlocked(project.id)
+      await this.openProjectUnlocked(session, project.id)
     })
   }
 
-  async openProject(projectId: string): Promise<void> {
-    await this.run(() => this.openProjectUnlocked(projectId))
+  async openProject(clientId: string, projectId: string): Promise<void> {
+    const session = this.requireSession(clientId)
+    await this.run(() => this.openProjectUnlocked(session, projectId))
   }
 
-  async openChat(chatId: string, projectId?: string, messageId?: string): Promise<void> {
+  async openChat(clientId: string, chatId: string, projectId?: string, messageId?: string): Promise<void> {
+    const session = this.requireSession(clientId)
     await this.run(async () => {
-      const target = projectId ?? this.projectId
+      const target = projectId ?? session.projectId
       if (!target) throw new Error("Choose a folder first.")
-      if (target !== this.projectId) {
+      if (target !== session.projectId) {
         const project = this.library.project(target)
         if (!project) throw new Error("That project is gone.")
         try {
@@ -251,28 +290,29 @@ export class AgentHost {
         } catch {
           throw new Error("That folder is missing.")
         }
-        await this.loadChat(target, chatId)
+        await this.loadChat(session, target, chatId)
         await this.persistPrefs()
       } else {
-        await this.loadChat(target, chatId)
+        await this.loadChat(session, target, chatId)
       }
       let bounds = tailWindow
-      const runtime = this.openRuntime()
+      const runtime = this.sessionRuntime(session)
       if (messageId && runtime) bounds = windowAround(runtime.messages, messageId) ?? tailWindow
-      this.window = { chatId, bounds }
-      this.publishAll()
+      session.window = { chatId, bounds }
+      this.publishAllTo(session)
     })
   }
 
-  async pageTranscript(page: TranscriptPage): Promise<void> {
+  async pageTranscript(clientId: string, page: TranscriptPage): Promise<void> {
+    const session = this.requireSession(clientId)
     await this.run(async () => {
-      const runtime = this.openRuntime()
+      const runtime = this.sessionRuntime(session)
       if (!runtime) return
       let bounds = tailWindow
-      if (page === "older") bounds = olderWindow(runtime.messages, this.windowBounds())
-      if (page === "newer") bounds = newerWindow(runtime.messages, this.windowBounds())
-      this.window = { chatId: this.chatId, bounds }
-      this.publishTranscript()
+      if (page === "older") bounds = olderWindow(runtime.messages, this.windowBounds(session))
+      if (page === "newer") bounds = newerWindow(runtime.messages, this.windowBounds(session))
+      session.window = { chatId: session.chatId, bounds }
+      this.publishTranscriptTo(session)
     })
   }
 
@@ -280,25 +320,25 @@ export class AgentHost {
     return searchChats(this.library, query)
   }
 
-  async pinProject(projectId: string, pinned: boolean): Promise<void> {
+  async pinProject(_clientId: string, projectId: string, pinned: boolean): Promise<void> {
     await this.run(async () => {
       await this.library.setPinned(projectId, pinned)
-      this.publishLibrary()
+      this.publishLibrary(null)
     })
   }
 
-  async pinChat(chatId: string, pinned: boolean, projectId?: string): Promise<void> {
+  async pinChat(clientId: string, chatId: string, pinned: boolean, projectId?: string): Promise<void> {
     await this.run(async () => {
-      const target = projectId ?? this.projectId
+      const target = projectId ?? this.requireSession(clientId).projectId
       if (!target) return
       await this.library.setChatPinned(target, chatId, pinned)
-      this.publishLibrary()
+      this.publishLibrary(null)
     })
   }
 
-  async renameChat(chatId: string, title: string, projectId?: string): Promise<void> {
+  async renameChat(clientId: string, chatId: string, title: string, projectId?: string): Promise<void> {
     await this.run(async () => {
-      const target = projectId ?? this.projectId
+      const target = projectId ?? this.requireSession(clientId).projectId
       if (!target) return
       const next = title.trim()
       if (!next) throw new Error("Enter a name.")
@@ -308,30 +348,33 @@ export class AgentHost {
         named: true,
       })
       this.runtimeFor(target, chatId)?.lockTitle()
-      this.publishLibrary()
+      this.publishLibrary(null)
     })
   }
 
-  async readTranscript(chatId: string, projectId?: string): Promise<ChatMessage[]> {
-    const target = projectId ?? this.projectId
+  async readTranscript(clientId: string, chatId: string, projectId?: string): Promise<ChatMessage[]> {
+    const target = projectId ?? this.requireSession(clientId).projectId
     if (!target) throw new Error("Choose a folder first.")
     const live = this.runtimeFor(target, chatId)
     if (live) return live.messages
     return this.library.readTranscript(target, chatId)
   }
 
-  async deleteChat(chatId: string, projectId?: string): Promise<void> {
+  async deleteChat(clientId: string, chatId: string, projectId?: string): Promise<void> {
     await this.run(async () => {
-      const target = projectId ?? this.projectId
+      const target = projectId ?? this.requireSession(clientId).projectId
       if (!target) return
       await this.disposeChat(target, chatId)
       await this.library.deleteChat(target, chatId)
-      if (this.chatId === chatId) this.chatId = null
-      this.publishAll()
+      for (const other of this.sessions.values()) {
+        if (other.chatId === chatId) other.chatId = null
+      }
+      this.publishLibrary(null)
+      for (const other of this.sessions.values()) this.publishTranscriptTo(other)
     })
   }
 
-  async removeProject(projectId: string, typedName: string): Promise<void> {
+  async removeProject(_clientId: string, projectId: string, typedName: string): Promise<void> {
     await this.run(async () => {
       const project = this.library.project(projectId)
       if (!project) return
@@ -350,173 +393,182 @@ export class AgentHost {
       this.dirtyProjects.delete(projectId)
       await this.library.removeProject(projectId)
       this.extensionCache.delete(projectId)
-      if (this.projectId !== projectId) {
-        this.publishAll()
+      if (![...this.sessions.values()].some((session) => session.projectId === projectId)) {
+        this.publishLibrary(null)
         return
       }
-      this.projectId = null
-      this.chatId = null
-      this.cwd = ""
-      const next = this.latestProject()
-      if (!next) {
-        await this.persistPrefs()
-        this.publishAll()
-        return
+      for (const session of [...this.sessions.values()]) {
+        if (session.projectId !== projectId) continue
+        session.projectId = null
+        session.chatId = null
+        session.cwd = ""
+        session.window = { chatId: null, bounds: tailWindow }
+        const next = this.latestProject()
+        if (next) await this.openProjectUnlocked(session, next.id)
+        else this.publishAllTo(session)
       }
-      await this.openProjectUnlocked(next.id)
     })
   }
 
-  async searchFiles(query: string) {
-    if (!this.projectId) return []
-    const project = this.library.project(this.projectId)
-    if (!project) return []
-    return searchProjectFiles(project.path, query)
+  async searchFiles(clientId: string, query: string) {
+    const session = this.requireSession(clientId)
+    if (!session.cwd) return []
+    return searchProjectFiles(session.cwd, query)
   }
 
-  async listCommands(): Promise<SlashCommand[]> {
-    const runtime = this.openRuntime()
+  async listCommands(clientId: string): Promise<SlashCommand[]> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (runtime) return runtime.commands()
-    if (!this.cwd) return []
-    return draftCommands(this.cwd)
+    const session = this.requireSession(clientId)
+    if (!session.cwd) return []
+    return draftCommands(session.cwd)
   }
 
-  async setQueueMode(id: string, mode: QueueMode): Promise<void> {
-    const runtime = this.openRuntime()
+  async setQueueMode(clientId: string, id: string, mode: QueueMode): Promise<void> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) return
     await runtime.setQueueMode(id, mode)
   }
 
-  async editMessage(id: string, text: string): Promise<void> {
-    const runtime = this.openRuntime()
+  async editMessage(clientId: string, id: string, text: string): Promise<void> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) throw new Error("Open a chat first.")
     await runtime.editMessage(id, text)
   }
 
-  async setPlanMode(enabled: boolean): Promise<void> {
-    const runtime = this.openRuntime()
+  async setPlanMode(clientId: string, enabled: boolean): Promise<void> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) {
       this.draftPlanMode = enabled
-      this.publishTranscript()
+      for (const session of this.sessions.values()) this.publishTranscriptTo(session)
       return
     }
     runtime.setPlanMode(enabled)
   }
 
-  async approvePlan(): Promise<void> {
-    const runtime = this.openRuntime()
+  async approvePlan(clientId: string): Promise<void> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) throw new Error("Open a chat first.")
     await runtime.approvePlan()
   }
 
-  answerQuestion(id: string, reply: QuestionReply): void {
-    const runtime = this.openRuntime()
+  answerQuestion(clientId: string, id: string, reply: QuestionReply): void {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) throw new Error("Open a chat first.")
     runtime.answerQuestion(id, reply)
   }
 
-  async rewind(id: string, mode: RewindMode): Promise<RewindResult> {
-    const runtime = this.openRuntime()
+  async rewind(clientId: string, id: string, mode: RewindMode): Promise<RewindResult> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) throw new Error("Open a chat first.")
     return runtime.rewind(id, mode)
   }
 
-  async undoRewind(commit: string): Promise<void> {
-    const runtime = this.openRuntime()
+  async undoRewind(clientId: string, commit: string): Promise<void> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) throw new Error("Open a chat first.")
     await runtime.undoRewind(commit)
   }
 
-  gitStatus(): Promise<GitStatus> {
-    return gitStatus(this.requireCwd())
+  gitStatus(clientId: string): Promise<GitStatus> {
+    return gitStatus(this.requireCwd(clientId))
   }
 
-  async gitDiff(scope: DiffScope): Promise<string> {
-    if (scope === "turn") return (await this.openRuntime()?.turnDiff()) ?? ""
-    return gitDiff(this.requireCwd())
+  async gitDiff(clientId: string, scope: DiffScope): Promise<string> {
+    if (scope === "turn") return (await this.sessionRuntime(this.requireSession(clientId))?.turnDiff()) ?? ""
+    return gitDiff(this.requireCwd(clientId))
   }
 
-  async gitCommit(message: string): Promise<string> {
+  async gitCommit(clientId: string, message: string): Promise<string> {
     const text = message.trim()
     if (!text) throw new Error("Write a commit message.")
-    return gitCommit(this.requireCwd(), text)
+    return gitCommit(this.requireCwd(clientId), text)
   }
 
-  gitPush(): Promise<void> {
-    return gitPush(this.requireCwd())
+  gitPush(clientId: string): Promise<void> {
+    return gitPush(this.requireCwd(clientId))
   }
 
-  gitPullRequest(): Promise<string> {
-    return createPullRequest(this.requireCwd())
+  gitPullRequest(clientId: string): Promise<string> {
+    return createPullRequest(this.requireCwd(clientId))
   }
 
-  async gitCommitMessage(): Promise<string> {
-    const diff = await gitDiff(this.requireCwd())
+  async gitCommitMessage(clientId: string): Promise<string> {
+    const diff = await gitDiff(this.requireCwd(clientId))
     if (!diff.trim()) throw new Error("There are no changes to commit.")
     const runtime = this.modelRuntime
-    const model = this.titleModel(this.openRuntime()?.modelId ?? this.draftModelId ?? "")
+    const model = this.titleModel(this.sessionRuntime(this.requireSession(clientId))?.modelId ?? this.draftModelId ?? "")
     if (!runtime || !model) throw new Error("No model is available.")
     return generateCommitMessage(runtime, model, diff)
   }
 
   // The built-in "#create-skill" flow: a hidden call drafts the skill, a second call writes it.
-  async draftSkill(input: DraftSkillInput): Promise<SkillDraft> {
+  async draftSkill(clientId: string, input: DraftSkillInput): Promise<SkillDraft> {
     if (typeof input.userText !== "string" || input.userText.trim() === "" || typeof input.assistantText !== "string" || input.assistantText.trim() === "") {
       throw new Error("The skill is drafted from the last exchange.")
     }
     const runtime = this.modelRuntime
-    const model = this.titleModel(this.openRuntime()?.modelId ?? this.draftModelId ?? "")
+    const model = this.titleModel(this.sessionRuntime(this.requireSession(clientId))?.modelId ?? this.draftModelId ?? "")
     if (!runtime || !model) throw new Error("No model is available.")
     return draftSkill(runtime, model, input)
   }
 
-  async createSkill(input: CreateSkillInput): Promise<string> {
+  async createSkill(clientId: string, input: CreateSkillInput): Promise<string> {
     if (input.location !== "user" && input.location !== "project") throw new Error("Unknown location.")
-    if (input.location === "project" && !this.cwd) throw new Error("Choose a folder first.")
-    return createSkillFile(this.cwd, input)
+    const cwd = this.requireSession(clientId).cwd
+    if (input.location === "project" && !cwd) throw new Error("Choose a folder first.")
+    return createSkillFile(cwd, input)
   }
 
-  // The branch shows beneath the chat, so .git/HEAD is watched and any change publishes a git event.
-  private watchGit(): void {
-    const head = join(this.cwd, ".git", "HEAD")
-    if (this.gitWatchedHead === head) {
+  // The branch shows beneath the chat, so .git/HEAD is watched and any change publishes a git
+  // event to the session looking at that project.
+  private watchGit(session: Session): void {
+    const head = join(session.cwd, ".git", "HEAD")
+    const existing = this.gitWatchers.get(session.clientId)
+    if (existing && existing.head === head) {
       return
     }
-    this.gitWatcher?.close()
-    this.gitWatcher = null
-    this.gitWatchedHead = null
+    existing?.watcher.close()
+    this.gitWatchers.delete(session.clientId)
     try {
       const watcher = watch(head, { persistent: false }, () => {
-        if (this.timers.has(GIT_PUBLISH_TIMER)) return
+        const key = `git:${session.clientId}`
+        if (this.timers.has(key)) return
         this.timers.set(
-          GIT_PUBLISH_TIMER,
+          key,
           setTimeout(() => {
-            this.timers.delete(GIT_PUBLISH_TIMER)
-            this.emit({ type: "git", revision: this.revision })
+            this.timers.delete(key)
+            this.revision += 1
+            this.emit(session.clientId, { type: "git", revision: this.revision })
           }, GIT_PUBLISH_MS),
         )
       })
       watcher.once("error", () => {
         // The folder or repo can disappear while open; the label just keeps its last value.
       })
-      this.gitWatcher = watcher
-      this.gitWatchedHead = head
+      this.gitWatchers.set(session.clientId, { watcher, head })
     } catch {
       // Not a git repository: the branch line stays hidden.
     }
   }
 
-  private requireCwd(): string {
-    if (!this.cwd) throw new Error("Choose a folder first.")
-    return this.cwd
+  private closeSessionGitWatcher(clientId: string): void {
+    this.gitWatchers.get(clientId)?.watcher.close()
+    this.gitWatchers.delete(clientId)
   }
 
-  removeQueued(id: string): void {
-    this.openRuntime()?.removeQueued(id)
+  private requireCwd(clientId: string): string {
+    const session = this.requireSession(clientId)
+    if (!session.cwd) throw new Error("Choose a folder first.")
+    return session.cwd
   }
 
-  async compact(): Promise<void> {
-    const runtime = this.openRuntime()
+  removeQueued(clientId: string, id: string): void {
+    this.sessionRuntime(this.requireSession(clientId))?.removeQueued(id)
+  }
+
+  async compact(clientId: string): Promise<void> {
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     if (!runtime) return
     await runtime.compact()
   }
@@ -524,7 +576,7 @@ export class AgentHost {
   async setPersonalisation(value: Personalisation): Promise<void> {
     this.personalisation = parsePersonalisation(value)
     await this.persistPrefs()
-    this.publishMeta()
+    this.publishMeta(null)
   }
 
   async pickContextFiles(): Promise<PinnedFile[]> {
@@ -545,7 +597,7 @@ export class AgentHost {
     return files
   }
 
-  async setModel(modelId: string): Promise<ModelChange> {
+  async setModel(clientId: string, modelId: string): Promise<ModelChange> {
     const claude = claudeModel(modelId)
     let piModel: AgentModel | undefined
     if (!claude) {
@@ -559,25 +611,25 @@ export class AgentHost {
     this.draftModelId = option.id
     this.draftModelName = option.name
     await this.persistPrefs()
-    const runtime = this.openRuntime()
+    const runtime = this.sessionRuntime(this.requireSession(clientId))
     // A chat stays on the provider it started with, so switching providers
     // starts a new chat.
     if (runtime && runtime instanceof ClaudeRuntime !== Boolean(claude)) {
-      await this.newChat()
-      this.publishMeta()
+      await this.newChat(clientId)
+      this.publishMeta(null)
       return { applied: true }
     }
     if (!runtime) {
-      this.publishMeta()
+      this.publishMeta(null)
       return { applied: true }
     }
     const applied = runtime instanceof ClaudeRuntime ? await runtime.setModel(option.id) : await runtime.setModel(piModel!)
     if (applied) {
       await this.library.updateChat(runtime.projectId, runtime.chatId, { modelId: option.id })
-      this.publishMeta()
+      this.publishMeta(null)
       return { applied: true }
     }
-    this.publishMeta()
+    this.publishMeta(null)
     return { applied: false }
   }
 
@@ -585,7 +637,7 @@ export class AgentHost {
     if (!isTitleModel(modelId)) throw new Error("That model cannot name chats.")
     this.titleModelId = modelId
     await this.persistPrefs()
-    this.publishMeta()
+    this.publishMeta(null)
   }
 
   async setRouting(routing: ModelRouting): Promise<void> {
@@ -593,7 +645,7 @@ export class AgentHost {
     this.routing = routing
     await this.persistPrefs()
     this.applyRouting()
-    this.publishMeta()
+    this.publishMeta(null)
   }
 
   async setEffort(effort: EffortLevel): Promise<void> {
@@ -601,7 +653,7 @@ export class AgentHost {
     this.effort = effort
     await this.persistPrefs()
     this.applyEffort()
-    this.publishMeta()
+    this.publishMeta(null)
   }
 
   // An effort change reaches the open chats at once. A running chat holds the
@@ -630,14 +682,14 @@ export class AgentHost {
       })
     } catch (error) {
       this.openRouter = await this.readAuth()
-      this.publishMeta()
+      this.publishMeta(null)
       if (!this.openRouter.configured) throw error
     }
 
     this.models = this.catalog()
     this.openRouter = await this.readAuth()
     this.applyDraftModel()
-    this.publishMeta()
+    this.publishMeta(null)
   }
 
   async logoutOpenRouter(): Promise<void> {
@@ -645,7 +697,7 @@ export class AgentHost {
     if (!runtime) throw new Error("Pi is not ready.")
     await runtime.logout(PROVIDER, { signal: AbortSignal.timeout(20_000) })
     this.openRouter = await this.readAuth()
-    this.publishMeta()
+    this.publishMeta(null)
   }
 
   async flush(): Promise<void> {
@@ -666,16 +718,15 @@ export class AgentHost {
   }
 
   close(): void {
-    this.clearTimer(TRANSCRIPT_PUBLISH_TIMER)
-    this.gitWatcher?.close()
-    this.gitWatcher = null
-    this.clearTimer(GIT_PUBLISH_TIMER)
+    this.clearPublishTimers()
+    for (const entry of this.gitWatchers.values()) entry.watcher.close()
+    this.gitWatchers.clear()
     for (const runtime of this.runtimes.values()) runtime.dispose()
     this.runtimes.clear()
     this.messageCounts.clear()
   }
 
-  private async openProjectUnlocked(projectId: string): Promise<void> {
+  private async openProjectUnlocked(session: Session, projectId: string): Promise<void> {
     const project = this.library.project(projectId)
     if (!project) throw new Error("That project is gone.")
     if (project.mode === "chat") {
@@ -688,53 +739,55 @@ export class AgentHost {
         throw new Error("That folder is missing.")
       }
     }
-    this.projectId = project.id
+    session.projectId = project.id
+    session.cwd = project.path
     this.cwd = project.path
-    this.watchGit()
+    this.watchGit(session)
     await this.persistPrefs()
     const chatId = project.openChatId
     if (chatId && this.library.chat(project.id, chatId)) {
-      await this.loadChat(project.id, chatId)
+      await this.loadChat(session, project.id, chatId)
     } else {
-      this.chatId = null
+      session.chatId = null
       await this.library.touchProject(project.id, null)
     }
-    this.publishAll()
+    this.publishAllTo(session)
   }
 
-  private async ensureRuntime(): Promise<Runtime> {
-    if (!this.projectId) throw new Error("Choose a folder first.")
-    const modelId = this.chatId ? this.library.chat(this.projectId, this.chatId)?.modelId : this.draftModelId
+  private async ensureRuntime(session: Session): Promise<Runtime> {
+    if (!session.projectId) throw new Error("Choose a folder first.")
+    const modelId = session.chatId ? this.library.chat(session.projectId, session.chatId)?.modelId : this.draftModelId
     if (!isClaudeModel(modelId) && !this.openRouter.configured) throw new Error("Add an OpenRouter API key in settings.")
-    if (this.chatId) {
-      const existing = this.runtimeFor(this.projectId, this.chatId)
+    if (session.chatId) {
+      const existing = this.runtimeFor(session.projectId, session.chatId)
       if (existing) return existing
-      await this.loadChat(this.projectId, this.chatId)
-      const loaded = this.runtimeFor(this.projectId, this.chatId)
+      await this.loadChat(session, session.projectId, session.chatId)
+      const loaded = this.runtimeFor(session.projectId, session.chatId)
       if (!loaded) throw new Error("The session is not ready.")
       return loaded
     }
     let chatModelId = this.draftModelId
     if (!isClaudeModel(chatModelId)) chatModelId = this.selectModel(null)?.id ?? this.draftModelId
-    const chat = await this.library.createChat(this.projectId, chatModelId)
-    this.chatId = chat.id
-    await this.loadChat(this.projectId, chat.id)
-    const created = this.runtimeFor(this.projectId, chat.id)
+    const chat = await this.library.createChat(session.projectId, chatModelId)
+    session.chatId = chat.id
+    await this.loadChat(session, session.projectId, chat.id)
+    const created = this.runtimeFor(session.projectId, chat.id)
     if (!created) throw new Error("The session is not ready.")
     if (this.draftPlanMode) created.setPlanMode(true)
     this.draftPlanMode = false
-    this.publishLibrary()
+    this.publishLibrary(null)
     return created
   }
 
-  private async loadChat(projectId: string, chatId: string): Promise<void> {
+  private async loadChat(session: Session, projectId: string, chatId: string): Promise<void> {
     const project = this.library.project(projectId)
     const chat = this.library.chat(projectId, chatId)
     if (!project || !chat) throw new Error("That chat is gone.")
-    this.projectId = projectId
-    this.chatId = chatId
+    session.projectId = projectId
+    session.chatId = chatId
+    session.cwd = project.path
     this.cwd = project.path
-    this.watchGit()
+    this.watchGit(session)
     await this.library.touchProject(projectId, chatId)
     if (chat.unread) await this.library.updateChat(projectId, chatId, { unread: false })
     const existing = this.runtimeFor(projectId, chatId)
@@ -771,7 +824,7 @@ export class AgentHost {
       },
       onExtensions: (extensions, errors) => {
         this.extensionCache.set(projectId, { extensions, errors })
-        if (this.projectId === projectId) this.publishMeta()
+        this.publishMetaForProject(projectId)
       },
       onTitle: (title, generated) => this.handleChatTitle(projectId, chatId, title, generated),
       generateTitle: (user) => {
@@ -780,9 +833,7 @@ export class AgentHost {
         return generateTitle(runtimeModel, titleModel, user)
       },
       onModel: (modelId) => {
-        void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
-          if (this.projectId === projectId && this.chatId === chatId) this.publishMeta()
-        })
+        void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
       },
       onUsage: (usage) => {
         const stored = this.library.chat(projectId, chatId)
@@ -793,8 +844,8 @@ export class AgentHost {
         this.scheduleUsageSave(projectId)
       },
       onSettled: () => {
-        const open = this.projectId === projectId && this.chatId === chatId
-        if (!open || !this.notifier.focused()) {
+        const open = this.isViewed(projectId, chatId)
+        if (!open || !this.notifier.focused(projectId, chatId)) {
           let body = "Finished"
           if (runtime.waiting) body = "A plan is ready for review"
           else if (runtime.failed) body = "Stopped with an error"
@@ -804,7 +855,7 @@ export class AgentHost {
         if (!runtime.waiting && !runtime.failed) patch.finishedAt = Date.now()
         if (!open) patch.unread = true
         if (Object.keys(patch).length === 0) return
-        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
+        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary(null))
       },
       onTaskFinished: (task) => {
         let body = `${task.label} finished`
@@ -812,8 +863,8 @@ export class AgentHost {
         this.notify(projectId, chatId, body)
       },
       onQuestion: (request) => {
-        const open = this.projectId === projectId && this.chatId === chatId
-        if (open && this.notifier.focused()) return
+        const open = this.isViewed(projectId, chatId)
+        if (open && this.notifier.focused(projectId, chatId)) return
         const first = request.questions[0]?.question ?? "A question is waiting"
         this.notify(projectId, chatId, first)
       },
@@ -864,9 +915,7 @@ export class AgentHost {
         return generateTitle(runtimeModel, titleModel, user)
       },
       onModel: (modelId) => {
-        void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
-          if (this.projectId === projectId && this.chatId === chatId) this.publishMeta()
-        })
+        void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
       },
       onUsage: (usage) => {
         const stored = this.library.chat(projectId, chatId)
@@ -877,8 +926,8 @@ export class AgentHost {
         this.scheduleUsageSave(projectId)
       },
       onSettled: () => {
-        const open = this.projectId === projectId && this.chatId === chatId
-        if (!open || !this.notifier.focused()) {
+        const open = this.isViewed(projectId, chatId)
+        if (!open || !this.notifier.focused(projectId, chatId)) {
           let body = "Finished"
           if (runtime.waiting) body = "A plan is ready for review"
           else if (runtime.failed) body = "Stopped with an error"
@@ -888,11 +937,11 @@ export class AgentHost {
         if (!runtime.waiting && !runtime.failed) patch.finishedAt = Date.now()
         if (!open) patch.unread = true
         if (Object.keys(patch).length === 0) return
-        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
+        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary(null))
       },
       onQuestion: (request) => {
-        const open = this.projectId === projectId && this.chatId === chatId
-        if (open && this.notifier.focused()) return
+        const open = this.isViewed(projectId, chatId)
+        if (open && this.notifier.focused(projectId, chatId)) return
         const first = request.questions[0]?.question ?? "A question is waiting"
         this.notify(projectId, chatId, first)
       },
@@ -925,23 +974,27 @@ export class AgentHost {
   }
 
   private onRuntimeChange(runtime: Runtime, runningChanged: boolean): void {
-    if (this.touchOnNewMessages(runtime)) this.publishLibrary()
+    if (this.touchOnNewMessages(runtime)) this.publishLibrary(null)
     this.scheduleTranscript(runtime)
-    if (runningChanged) this.publishLibrary()
-    if (runtime.projectId !== this.projectId || runtime.chatId !== this.chatId) return
-    if (runningChanged) this.publishTranscript()
-    else this.publishTranscriptSoon()
+    if (runningChanged) this.publishLibrary(null)
+    if (runningChanged) {
+      for (const session of this.viewersOf(runtime.projectId, runtime.chatId)) this.publishTranscriptTo(session)
+    } else {
+      this.publishTranscriptSoonFor(runtime.projectId, runtime.chatId)
+    }
   }
 
   // Every streamed token changes the runtime, and each publish sends the whole transcript
-  // window. Coalescing to one publish per frame keeps long chats from flooding the renderer.
-  private publishTranscriptSoon(): void {
-    if (this.timers.has(TRANSCRIPT_PUBLISH_TIMER)) return
+  // window. Coalescing to one publish per frame per chat keeps long chats from flooding
+  // the clients watching them.
+  private publishTranscriptSoonFor(projectId: string, chatId: string): void {
+    const key = `publish:${projectId}:${chatId}`
+    if (this.timers.has(key)) return
     this.timers.set(
-      TRANSCRIPT_PUBLISH_TIMER,
+      key,
       setTimeout(() => {
-        this.timers.delete(TRANSCRIPT_PUBLISH_TIMER)
-        this.publishTranscript()
+        this.timers.delete(key)
+        for (const session of this.viewersOf(projectId, chatId)) this.publishTranscriptTo(session)
       }, TRANSCRIPT_PUBLISH_MS),
     )
   }
@@ -990,7 +1043,7 @@ export class AgentHost {
       key,
       setTimeout(() => {
         this.timers.delete(key)
-        void this.library.saveProject(projectId).then(() => this.publishMeta())
+        void this.library.saveProject(projectId).then(() => this.publishMeta(null))
       }, 1000),
     )
   }
@@ -1003,12 +1056,12 @@ export class AgentHost {
     this.notifier.notify({ title, body, projectId, chatId })
   }
 
-  async taskOutput(id: string): Promise<string> {
-    return this.openRuntime()?.taskOutput(id) ?? ""
+  async taskOutput(clientId: string, id: string): Promise<string> {
+    return this.sessionRuntime(this.requireSession(clientId))?.taskOutput(id) ?? ""
   }
 
-  async stopTask(id: string): Promise<void> {
-    this.openRuntime()?.stopTask(id)
+  async stopTask(clientId: string, id: string): Promise<void> {
+    this.sessionRuntime(this.requireSession(clientId))?.stopTask(id)
   }
 
   private usageTotals(): UsageTotals {
@@ -1066,11 +1119,6 @@ export class AgentHost {
       if (project.lastOpenedAt > latest.lastOpenedAt) latest = project
     }
     return latest
-  }
-
-  private openRuntime(): Runtime | null {
-    if (!this.projectId || !this.chatId) return null
-    return this.runtimeFor(this.projectId, this.chatId)
   }
 
   private runtimeFor(projectId: string, chatId: string): Runtime | null {
@@ -1176,19 +1224,19 @@ export class AgentHost {
     await writePrefs(this.prefsPath, this.prefs)
   }
 
-  private viewModel(): { id: string | null; name: string | null } {
-    const runtime = this.openRuntime()
+  private viewModel(session: Session): { id: string | null; name: string | null } {
+    const runtime = this.sessionRuntime(session)
     if (runtime) return { id: runtime.modelId, name: runtime.modelName }
     return { id: this.draftModelId, name: this.draftModelName }
   }
 
-  private buildMeta(): AppMeta {
-    const model = this.viewModel()
-    const cached = this.projectId ? this.extensionCache.get(this.projectId) : undefined
+  private buildMeta(session: Session): AppMeta {
+    const model = this.viewModel(session)
+    const cached = session.projectId ? this.extensionCache.get(session.projectId) : undefined
     return {
       ready: this.ready,
       error: this.startupError,
-      cwd: this.cwd,
+      cwd: session.cwd,
       agentDir: this.agentDir,
       modelId: model.id,
       modelName: model.name,
@@ -1203,6 +1251,7 @@ export class AgentHost {
       extensionErrors: cached?.errors ?? [],
       usageTotals: this.usageTotals(),
       personalisation: this.personalisation,
+      server: this.getServerInfo(),
     }
   }
 
@@ -1217,14 +1266,14 @@ export class AgentHost {
     void this.library.updateChat(projectId, chatId, patch).then(() => {
       const project = this.library.project(projectId)
       if (project?.mode === "chat" && project.name === "New chat" && title !== "New chat") {
-        void this.library.setProjectName(projectId, title).then(() => this.publishLibrary())
+        void this.library.setProjectName(projectId, title).then(() => this.publishLibrary(null))
       } else {
-        this.publishLibrary()
+        this.publishLibrary(null)
       }
     })
   }
 
-  private libraryState(): LibraryState {
+  private libraryState(session: Session): LibraryState {
     const projects: ProjectSummary[] = this.library.projects().map((project) => ({
       id: project.id,
       path: project.path,
@@ -1238,20 +1287,21 @@ export class AgentHost {
     }))
     let chats: ChatSummary[] = []
     const chatsByProject: Record<string, ChatSummary[]> = {}
+    if (session.projectId) {
+      const projectId = session.projectId
+      chats = this.library.projectChats(projectId).map((chat) => this.chatSummary(projectId, chat))
+    }
     for (const project of projects) {
-      if (project.id === this.projectId) {
-        chats = this.library.projectChats(project.id).map((chat) => this.chatSummary(project.id, chat))
-        continue
-      }
+      if (project.id === session.projectId) continue
       const chatsOfProject = this.library.projectChats(project.id)
       if (chatsOfProject.length > 0) chatsByProject[project.id] = chatsOfProject.map((chat) => this.chatSummary(project.id, chat))
     }
     return {
       projects,
-      openProjectId: this.projectId,
+      openProjectId: session.projectId,
       chats,
       chatsByProject,
-      openChatId: this.chatId,
+      openChatId: session.chatId,
     }
   }
 
@@ -1278,7 +1328,8 @@ export class AgentHost {
   }
 
   private projectAttention(projectId: string): boolean {
-    if (projectId === this.projectId) return false
+    const viewed = [...this.sessions.values()].some((session) => session.projectId === projectId)
+    if (viewed) return false
     for (const chat of this.library.projectChats(projectId)) {
       if (chat.unread) return true
       if (this.runtimeFor(projectId, chat.id)?.waiting) return true
@@ -1294,8 +1345,8 @@ export class AgentHost {
     return false
   }
 
-  private transcriptState(): TranscriptState {
-    const runtime = this.openRuntime()
+  private transcriptState(session: Session): TranscriptState {
+    const runtime = this.sessionRuntime(session)
     if (!runtime) {
       return {
         messages: [],
@@ -1314,45 +1365,99 @@ export class AgentHost {
       }
     }
     const transcript = runtime.transcript()
-    return { ...transcript, ...sliceWindow(transcript.messages, this.windowBounds()) }
+    return { ...transcript, ...sliceWindow(transcript.messages, this.windowBounds(session)) }
   }
 
-  private windowBounds(): TranscriptWindow {
-    if (this.window.chatId !== this.chatId) return tailWindow
-    return this.window.bounds
+  private windowBounds(session: Session): TranscriptWindow {
+    if (session.window.chatId !== session.chatId) return tailWindow
+    return session.window.bounds
   }
 
-  private publishAll(): void {
-    this.publishMeta()
-    this.publishLibrary()
-    this.publishTranscript()
+  private publishAllTo(session: Session): void {
+    this.publishMetaTo(session)
+    this.publishLibrary(null)
+    this.publishTranscriptTo(session)
   }
 
-  private publishMeta(): void {
+  private publishMetaTo(session: Session): void {
     this.revision += 1
-    this.emit({ type: "meta", revision: this.revision, meta: this.buildMeta() })
+    this.emit(session.clientId, { type: "meta", revision: this.revision, meta: this.buildMeta(session) })
   }
 
-  private publishLibrary(): void {
+  // A null clientId publishes to every session, each with its own projection.
+  private publishMeta(target: string | null): void {
+    for (const session of this.sessionsInScope(target)) this.publishMetaTo(session)
+  }
+
+  private publishMetaForProject(projectId: string): void {
+    for (const session of this.sessions.values()) {
+      if (session.projectId === projectId) this.publishMetaTo(session)
+    }
+  }
+
+  private publishMetaForChat(projectId: string, chatId: string): void {
+    for (const session of this.viewersOf(projectId, chatId)) this.publishMetaTo(session)
+  }
+
+  private publishLibrary(target: string | null): void {
     let unread = 0
     for (const project of this.library.projects()) {
       for (const chat of this.library.projectChats(project.id)) if (chat.unread) unread += 1
     }
     this.notifier.badge(unread)
-    this.revision += 1
-    this.emit({ type: "library", revision: this.revision, library: this.libraryState() })
+    for (const session of this.sessionsInScope(target)) {
+      this.revision += 1
+      this.emit(session.clientId, { type: "library", revision: this.revision, library: this.libraryState(session) })
+    }
   }
 
-  private publishTranscript(): void {
-    this.clearTimer(TRANSCRIPT_PUBLISH_TIMER)
+  private publishTranscriptTo(session: Session): void {
+    this.clearPublishTimers()
     this.revision += 1
-    this.emit({
+    this.emit(session.clientId, {
       type: "transcript",
       revision: this.revision,
-      projectId: this.projectId,
-      chatId: this.chatId,
-      ...this.transcriptState(),
+      projectId: session.projectId,
+      chatId: session.chatId,
+      ...this.transcriptState(session),
     })
+  }
+
+  private sessionsInScope(target: string | null): Session[] {
+    if (target === null) return [...this.sessions.values()]
+    const session = this.sessions.get(target)
+    return session ? [session] : []
+  }
+
+  private sessionRuntime(session: Session): Runtime | null {
+    if (!session.projectId || !session.chatId) return null
+    return this.runtimeFor(session.projectId, session.chatId)
+  }
+
+  private requireSession(clientId: string): Session {
+    const session = this.sessions.get(clientId)
+    if (!session) throw new Error("The client is not connected.")
+    return session
+  }
+
+  private viewersOf(projectId: string, chatId: string): Session[] {
+    const viewers: Session[] = []
+    for (const session of this.sessions.values()) {
+      if (session.projectId === projectId && session.chatId === chatId) viewers.push(session)
+    }
+    return viewers
+  }
+
+  private isViewed(projectId: string, chatId: string): boolean {
+    return this.viewersOf(projectId, chatId).length > 0
+  }
+
+  private clearPublishTimers(): void {
+    for (const [key, timer] of this.timers) {
+      if (!key.startsWith("publish:")) continue
+      clearTimeout(timer)
+      this.timers.delete(key)
+    }
   }
 
   private run<T>(task: () => Promise<T>): Promise<T> {

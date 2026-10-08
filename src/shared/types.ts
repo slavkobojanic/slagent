@@ -1,77 +1,31 @@
-export const channels = {
-  snapshot: "agent:snapshot",
-  prompt: "agent:prompt",
-  abort: "agent:abort",
-  newChat: "agent:new-chat",
-  openProject: "agent:open-project",
-  openChat: "agent:open-chat",
-  pageTranscript: "agent:page-transcript",
-  searchChats: "agent:search-chats",
-  pinProject: "agent:pin-project",
-  pinChat: "agent:pin-chat",
-  renameChat: "agent:rename-chat",
-  deleteChat: "agent:delete-chat",
-  readTranscript: "agent:read-transcript",
-  removeProject: "agent:remove-project",
-  searchFiles: "agent:search-files",
-  listCommands: "agent:list-commands",
-  draftSkill: "agent:draft-skill",
-  createSkill: "agent:create-skill",
-  chooseFolder: "agent:choose-folder",
-  createChatProject: "agent:create-chat-project",
-  setModel: "agent:set-model",
-  setTitleModel: "agent:set-title-model",
-  setRouting: "agent:set-routing",
-  setEffort: "agent:set-effort",
-  saveKey: "agent:save-key",
-  logout: "agent:logout",
-  openExternal: "agent:open-external",
-  openInEditor: "agent:open-in-editor",
-  readFile: "agent:read-file",
-  setQueueMode: "agent:set-queue-mode",
-  removeQueued: "agent:remove-queued",
-  editMessage: "agent:edit-message",
-  setPlanMode: "agent:set-plan-mode",
-  approvePlan: "agent:approve-plan",
-  answerQuestion: "agent:answer-question",
-  rewind: "agent:rewind",
-  taskOutput: "agent:task-output",
-  stopTask: "agent:stop-task",
-  gitStatus: "git:status",
-  gitDiff: "git:diff",
-  gitCommit: "git:commit",
-  gitPush: "git:push",
-  gitPullRequest: "git:pull-request",
-  gitCommitMessage: "git:commit-message",
-  undoRewind: "agent:undo-rewind",
-  compact: "agent:compact",
-  permissions: "computer:permissions",
-  requestAccessibility: "computer:request-accessibility",
-  requestScreenRecording: "computer:request-screen-recording",
-  openPermissionSettings: "computer:open-permission-settings",
-  mcpList: "mcp:list",
-  mcpSignIn: "mcp:sign-in",
-  mcpSignOut: "mcp:sign-out",
-  mcpSetEnabled: "mcp:set-enabled",
-  appVersion: "app:version",
-  updateStatus: "update:status",
-  updateCheck: "update:check",
-  installUpdate: "update:install",
-  updateReady: "update:ready",
-  cliStatus: "cli:status",
-  cliInstall: "cli:install",
-  cliUninstall: "cli:uninstall",
-  setPersonalisation: "agent:set-personalisation",
-  pickContextFiles: "agent:pick-context-files",
-  terminalCreate: "terminal:create",
-  terminalInput: "terminal:input",
-  terminalResize: "terminal:resize",
-  terminalClose: "terminal:close",
-  terminalEvent: "terminal:event",
-  appCloseRequest: "app:close-request",
-  appClose: "app:close",
-  event: "agent:event",
-} as const
+// Transport contract for the websocket server in the main process. Every client
+// (Electron window, the future mobile app) speaks it over one socket.
+export type WsCall = {
+  id: number
+  method: string
+  params?: unknown[]
+}
+
+export type WsReply =
+  | { id: number; ok: true; result?: unknown }
+  | { id: number; ok: false; message: string }
+
+// Fire-and-forget calls (terminal keystrokes) omit the id and expect no reply.
+export type WsClientMessage = WsCall | { method: string; params?: unknown[] }
+
+export type WsPush = { event: UiEvent } | { terminal: TerminalEvent } | { updateReady: string } | { closeRequest: true }
+
+export type WsServerMessage = WsReply | WsPush
+
+export type ServerInfo = {
+  // The address another device connects to, including the token.
+  url: string
+  host: string
+  port: number
+  token: string
+  // Whether the server is reachable on the Tailscale interface.
+  tailscale: boolean
+}
 
 // Global agent personalisation. Every field is optional: null or missing means
 // "no preference", so the agent keeps its own defaults.
@@ -199,6 +153,8 @@ export type AppMeta = {
   extensionErrors: string[]
   usageTotals: UsageTotals
   personalisation: Personalisation
+  // The websocket server other devices connect through, or null before it starts.
+  server: ServerInfo | null
 }
 
 export type AttachmentKind = "image" | "pdf" | "code" | "file"
@@ -672,6 +628,8 @@ export type SlagentApi = {
   mcpSignOut: (name: string) => Promise<McpServerStatus[]>
   mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
   onEvent: (listener: (event: UiEvent) => void) => () => void
+  // The socket dropped and came back; the caller re-fetches the snapshot.
+  onReconnect: (listener: () => void) => () => void
   appVersion: () => Promise<string>
   // Version of a downloaded update waiting for a restart, or null.
   updateStatus: () => Promise<string | null>

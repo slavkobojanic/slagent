@@ -32,6 +32,7 @@ export function makeMeta(cwd: string): AppMeta {
     extensions: [],
     extensionErrors: [],
     usageTotals: { tokens: 0, cost: 0, chats: 0 },
+    server: null,
     personalisation: { ...EMPTY_PERSONALISATION },
   }
 }

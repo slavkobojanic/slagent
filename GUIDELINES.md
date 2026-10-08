@@ -1,8 +1,8 @@
 # Renderer guidelines
 
-Store / presenter / component (SPC) rules for `src/renderer/src/`. Ported from the twitt web frontend (`web/GUIDELINES.md`) and adapted for an Electron app: state lives in the main process, transport is IPC, and styling is Tailwind plus shadcn.
+Store / presenter / component (SPC) rules for `src/renderer/src/`. Ported from the twitt web frontend (`web/GUIDELINES.md`) and adapted for an Electron app: state lives in the main process, transport is one websocket per window, and styling is Tailwind plus shadcn.
 
-Out of scope: `components/ui/**` (shadcn, CLI-managed) and `components/ai-elements/**` (vendored). Feature code consumes them and does not restyle them. Main process (`src/main`), preload and `src/shared/types.ts` are the IPC contract, not renderer code.
+Out of scope: `components/ui/**` (shadcn, CLI-managed) and `components/ai-elements/**` (vendored). Feature code consumes them and does not restyle them. Main process (`src/main`), preload and `src/shared/types.ts` are the transport contract, not renderer code.
 
 This file is the source of truth. Do not invent a different state, folder, styling, or data-flow pattern.
 
@@ -10,9 +10,10 @@ This file is the source of truth. Do not invent a different state, folder, styli
 
 - **The main process owns app state.** The library, transcripts, runs, usage, todos, tasks, and the open project or chat are authoritative in `src/main`. The renderer mirrors them through `UiEvent`s and the snapshot. Only `mirror/` writes mirrored fields.
 - **Server state is not optimistic.** A command calls a service and returns. The new state arrives as an event, and the mirror applies it. If the call throws, the presenter sets an `error` on its own store and leaves mirrored state alone.
+- **Each connection is a session.** The host keeps a per-client session (open project, open chat, transcript paging) and projects every event through it: the same `library` or `meta` change reaches each client shaped for what that client has open. Library, meta and settings are global; only the view is per-window.
 - **UI state is renderer-owned.** Sidebar and panel widths, dialog open flags, drafts, comment drafts, theme, and keyboard commands live in renderer stores.
 - **There is no router.** No `react-router`, no `navigate`, no `assign`, no URL. The open project and chat are mirrored `library` state.
-- **Transport is IPC.** `window.slagent` is read only in `ipc/`. One thin class, `API` in `ipc/api.ts`, wraps it. There are no per-domain services and no fakes.
+- **Transport is one websocket per client.** The main process runs a token-authed WS server (`src/main/server.ts`); the preload wraps it as `window.slagent`. State changes arrive as `UiEvent` pushes; every command is a call over the same socket. `window.slagent` is read only in `ipc/`. One thin class, `API` in `ipc/api.ts`, wraps it. There are no per-domain services and no fakes. External clients (the future mobile app) speak the same contract.
 - **Styling is Tailwind plus shadcn.** No CSS modules. Classes live on the view. `cn()` merges them.
 
 ## Layers
@@ -101,10 +102,13 @@ Comments record a non-obvious *why* (an ordering constraint, an Electron or brow
 
 ## IPC
 
+## Transport
+
 - `ipc/api.ts` exports `class API implements SlagentApi`. Method names match `SlagentApi` one to one. Its methods close over the bridge (no private field), so `createMockInstance<API>([...])` satisfies the type in tests.
 - The root calls `API.fromWindow(window)` once. A `null` result (no preload) renders the bridge-missing view and mounts nothing.
-- Store values are deep MobX observables (proxies), which the preload bridge cannot clone. `API` passes object arguments through `toJS`. A new IPC method that takes an object does the same.
-- Do not call `ipcRenderer`, `fetch`, or `window.slagent` anywhere else. A `check:spc` rule enforces it.
+- The preload bridge reconnects on its own and fires `onReconnect`; `MirrorPresenter` re-fetches the snapshot then. Calls made while offline reject; presenters put the error on their own store.
+- Store values are deep MobX observables (proxies), which cannot be cloned over the wire. `API` passes object arguments through `toJS`. A new method that takes an object does the same.
+- Do not call the bridge, `fetch`, or `window.slagent` anywhere else. A `check:spc` rule enforces it.
 - Anything the presenter needs from the browser (`window`, `document`, `navigator.clipboard`, `matchMedia`) is passed in as `window: Window` or a port. Presenters never touch globals directly.
 
 ## Logging
@@ -626,10 +630,10 @@ export function createApp(): ComponentType {
 
 - New feature → `src/renderer/src/features/<name>/` with an owning `create.tsx`.
 - Used by two features → `components/` or `state/`.
-- New IPC method → add it to `SlagentApi`, the preload, and `API` (with `toJS` for object arguments). Never call `window.slagent` from a feature.
+- New transport method → add it to `SlagentApi`, the preload, the host (or its router in `main/index.ts`), and `API` (with `toJS` for object arguments). Never call `window.slagent` from a feature.
 - New create → destructure exactly the deps it uses, by their shared names. No bags, no `Pick` of collaborators, one component returned.
 - Server state? Do not write it locally. Call `api` and wait for the event.
-- IPC call, DOM listener, clipboard, or timer? Presenter method (arrow), started and stopped in the presenter.
+- Transport call, DOM listener, clipboard, or timer? Presenter method (arrow), started and stopped in the presenter.
 - Own-store pure one-liner? The presenter may assign the field. Injected store? Call a method.
 - View takes a model when the owner would only unwrap fields. Formatted or derived values come as primitives from the owning store.
 - New presenter → trailing `log: Log` constructor parameter. `log.action` in intent handlers, `log.reaction` for reactions, `log.warn` on caught errors. Never `console`.

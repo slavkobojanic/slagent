@@ -1,17 +1,19 @@
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, protocol, shell } from "electron"
-import { channels, type CreateSkillInput, type DraftSkillInput, type EffortLevel, type ModelRouting, type Personalisation, type TerminalEvent } from "../shared/types"
-import { AgentHost, type Notifier } from "./host"
+import { randomUUID } from "node:crypto"
+import { app, BrowserWindow, dialog, nativeImage, net, Notification, protocol, shell } from "electron"
+import type { CreateSkillInput, DraftSkillInput, EffortLevel, ModelRouting, Personalisation, TerminalEvent } from "../shared/types"
+import { AgentHost } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
 import { McpManager } from "./mcp"
 import { openInEditor, readFileView } from "./editor"
 import { parsePrompt } from "./prompt"
 import { parseReply } from "./extensions/ask-user"
-import { startUpdater } from "./updater"
+import { startUpdater, installUpdate, updateStatus, checkForUpdates, appVersion } from "./updater"
 import { setApplicationMenu } from "./menu"
-import { registerCli } from "./cli"
+import { cliStatus, installCli, uninstallCli } from "./cli"
 import { TerminalManager } from "./terminal"
+import { startApiServer, type ApiServer } from "./server"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
@@ -19,6 +21,7 @@ let host: AgentHost | null = null
 let computer: ComputerUse | null = null
 let mcp: McpManager | null = null
 let terminal: TerminalManager | null = null
+let apiServer: ApiServer | null = null
 let quitting = false
 let started: Promise<void> | null = null
 // Windows the renderer's close confirmation has approved; a plain Cmd+W has to ask first.
@@ -26,6 +29,10 @@ const closeApproved = new WeakSet<BrowserWindow>()
 // Folders from the slagent command, Finder and the Dock icon arrive as open-file
 // events. The one that launches the app fires before ready, so it waits here.
 const pendingFolders: string[] = []
+// Each window passes a token in its socket URL, so menu items and notifications
+// can find the client of the window they should act on.
+const windowTokens = new Map<number, string>()
+const clientByToken = new Map<string, string>()
 
 app.on("open-file", (event, path) => {
   event.preventDefault()
@@ -50,16 +57,6 @@ const permissionSettings = {
   accessibility: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
   screen: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
 } as const
-
-function broadcast(event: unknown): void {
-  send(channels.event, event)
-}
-
-function send(channel: string, event: unknown): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channel, event)
-  }
-}
 
 function requireHost(): AgentHost {
   if (!host) throw new Error("Pi is not ready.")
@@ -94,6 +91,7 @@ function createWindow(): BrowserWindow {
   if (process.platform === "darwin") titleBarStyle = "hiddenInset"
 
   const icon = loadAppIcon()
+  const args = serverArguments()
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -110,8 +108,11 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      additionalArguments: args,
     },
   })
+
+  windowTokens.set(win.id, slagentArgument(args, "window"))
 
   win.once("ready-to-show", () => {
     win.show()
@@ -120,9 +121,11 @@ function createWindow(): BrowserWindow {
   win.webContents.on("preload-error", (_event, preloadPath, error) => {
     console.error("preload-error", preloadPath, error)
   })
+
   win.webContents.on("did-fail-load", (_event, code, description) => {
     console.error("did-fail-load", code, description)
   })
+
   win.webContents.on("console-message", (event) => {
     if (event.level !== "error") return
     console.error("renderer", event.message)
@@ -144,160 +147,281 @@ function createWindow(): BrowserWindow {
   win.on("close", (event) => {
     if (quitting || closeApproved.has(win)) return
     event.preventDefault()
-    win.webContents.send(channels.appCloseRequest)
+    const clientId = clientIdOfWindow(win)
+    if (clientId) apiServer?.hub.publishCloseRequest(clientId)
+  })
+
+  win.on("closed", () => {
+    windowTokens.delete(win.id)
   })
 
   return win
 }
 
-function registerIpc(): void {
-  ipcMain.handle(channels.snapshot, () => requireHost().getSnapshot())
-  ipcMain.handle(channels.appClose, (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender)
-    if (win !== null) {
-      closeApproved.add(win)
-      win.close()
-    }
-  })
-  ipcMain.handle(channels.setPersonalisation, (_event, value: unknown) => requireHost().setPersonalisation(value as Personalisation))
-  ipcMain.handle(channels.pickContextFiles, () => requireHost().pickContextFiles())
-  ipcMain.handle(channels.prompt, (_event, request: unknown) => requireHost().prompt(parsePrompt(request)))
-  ipcMain.handle(channels.abort, () => requireHost().abort())
-  ipcMain.handle(channels.newChat, (_event, projectId?: string) => requireHost().newChat(projectId))
-  ipcMain.handle(channels.openProject, (_event, projectId: string) => requireHost().openProject(projectId))
-  ipcMain.handle(channels.openChat, (_event, chatId: string, projectId?: string, messageId?: unknown) => {
-    return requireHost().openChat(chatId, projectId, typeof messageId === "string" ? messageId : undefined)
-  })
-  ipcMain.handle(channels.pageTranscript, (_event, page: unknown) => {
-    if (page !== "older" && page !== "newer" && page !== "latest") throw new Error("Unknown page.")
-    return requireHost().pageTranscript(page)
-  })
-  ipcMain.handle(channels.searchChats, (_event, query: string) => requireHost().searchChats(String(query ?? "")))
-  ipcMain.handle(channels.pinProject, (_event, projectId: string, pinned: boolean) => {
-    return requireHost().pinProject(projectId, pinned)
-  })
-  ipcMain.handle(channels.pinChat, (_event, chatId: string, pinned: boolean, projectId?: string) => {
-    return requireHost().pinChat(chatId, pinned, projectId)
-  })
-  ipcMain.handle(channels.renameChat, (_event, chatId: string, title: string, projectId?: string) => {
-    return requireHost().renameChat(chatId, title, projectId)
-  })
-  ipcMain.handle(channels.deleteChat, (_event, chatId: string, projectId?: string) => requireHost().deleteChat(chatId, projectId))
-  ipcMain.handle(channels.readTranscript, (_event, chatId: string, projectId?: string) => requireHost().readTranscript(chatId, projectId))
-  ipcMain.handle(channels.removeProject, (_event, projectId: string, typedName: string) => {
-    return requireHost().removeProject(projectId, typedName)
-  })
-  ipcMain.handle(channels.searchFiles, (_event, query: string) => requireHost().searchFiles(query))
-  ipcMain.handle(channels.listCommands, () => requireHost().listCommands())
-  ipcMain.handle(channels.draftSkill, (_event, input: DraftSkillInput) => requireHost().draftSkill(input))
-  ipcMain.handle(channels.createSkill, (_event, input: CreateSkillInput) => requireHost().createSkill(input))
-  ipcMain.handle(channels.setModel, (_event, modelId: string) => requireHost().setModel(modelId))
-  ipcMain.handle(channels.setTitleModel, (_event, modelId: string) => requireHost().setTitleModel(String(modelId ?? "")))
-  ipcMain.handle(channels.setRouting, (_event, routing: ModelRouting) => requireHost().setRouting(routing))
-  ipcMain.handle(channels.setEffort, (_event, effort: EffortLevel) => requireHost().setEffort(effort))
-  ipcMain.handle(channels.saveKey, (_event, apiKey: string) => requireHost().saveOpenRouterKey(apiKey))
-  ipcMain.handle(channels.logout, () => requireHost().logoutOpenRouter())
-  ipcMain.handle(channels.setQueueMode, (_event, id: string, mode: string) => {
-    if (mode !== "follow-up" && mode !== "steer") throw new Error("Unknown queue mode.")
-    return requireHost().setQueueMode(id, mode)
-  })
-  ipcMain.handle(channels.editMessage, (_event, id: string, text: string) => {
-    if (typeof text !== "string" || !text.trim()) throw new Error("Write a message first.")
-    return requireHost().editMessage(id, text)
-  })
-  ipcMain.handle(channels.setPlanMode, (_event, enabled: unknown) => requireHost().setPlanMode(enabled === true))
-  ipcMain.handle(channels.approvePlan, () => requireHost().approvePlan())
-  ipcMain.handle(channels.answerQuestion, (_event, id: unknown, reply: unknown) => {
-    if (typeof id !== "string") throw new Error("Unknown question.")
-    return requireHost().answerQuestion(id, parseReply(reply))
-  })
-  ipcMain.handle(channels.rewind, (_event, id: string, mode: unknown) => {
-    if (mode !== "both" && mode !== "chat" && mode !== "code") throw new Error("Unknown rewind.")
-    return requireHost().rewind(id, mode)
-  })
-  ipcMain.handle(channels.undoRewind, (_event, commit: unknown) => {
-    if (typeof commit !== "string" || !/^[0-9a-f]{7,64}$/.test(commit)) throw new Error("Unknown checkpoint.")
-    return requireHost().undoRewind(commit)
-  })
-  ipcMain.handle(channels.taskOutput, (_event, id: string) => requireHost().taskOutput(String(id)))
-  ipcMain.handle(channels.stopTask, (_event, id: string) => requireHost().stopTask(String(id)))
-  ipcMain.handle(channels.gitStatus, () => requireHost().gitStatus())
-  ipcMain.handle(channels.gitDiff, (_event, scope: unknown) => requireHost().gitDiff(scope === "turn" ? "turn" : "uncommitted"))
-  ipcMain.handle(channels.gitCommit, (_event, message: unknown) => requireHost().gitCommit(String(message ?? "")))
-  ipcMain.handle(channels.gitPush, () => requireHost().gitPush())
-  ipcMain.handle(channels.gitPullRequest, () => requireHost().gitPullRequest())
-  ipcMain.handle(channels.gitCommitMessage, () => requireHost().gitCommitMessage())
-  ipcMain.handle(channels.removeQueued, (_event, id: string) => {
-    requireHost().removeQueued(id)
-  })
-  ipcMain.handle(channels.compact, () => requireHost().compact())
-  ipcMain.handle(channels.openExternal, (_event, url: string) => {
-    const parsed = new URL(url)
-    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      throw new Error("Only web links can be opened.")
-    }
-    return shell.openExternal(parsed.toString())
-  })
-  ipcMain.handle(channels.openInEditor, (_event, path: unknown) => {
-    if (typeof path !== "string") return false
-    return openInEditor(requireHost().getCwd(), path)
-  })
-  ipcMain.handle(channels.readFile, (_event, path: unknown) => {
-    if (typeof path !== "string") return null
-    return readFileView(requireHost().getCwd(), path)
-  })
-  ipcMain.handle(channels.chooseFolder, async () => {
-    const current = requireHost()
-    const cwd = current.getCwd()
-    const result = await dialog.showOpenDialog({
-      title: "Choose a folder",
-      defaultPath: cwd || undefined,
-      properties: ["openDirectory", "createDirectory"],
-    })
-    const folder = result.filePaths[0]
-    if (result.canceled || !folder) return
-    await current.openFolder(folder)
-  })
-  ipcMain.handle(channels.createChatProject, () => requireHost().createChatProject())
-  ipcMain.handle(channels.permissions, () => requireComputer().permissions())
-  ipcMain.handle(channels.requestAccessibility, () => requireComputer().requestAccessibility())
-  ipcMain.handle(channels.requestScreenRecording, () => requireComputer().requestScreenRecording())
-  ipcMain.handle(channels.openPermissionSettings, (_event, pane: string) => {
-    if (pane !== "accessibility" && pane !== "screen") throw new Error("Unknown permission.")
-    return shell.openExternal(permissionSettings[pane])
-  })
-  ipcMain.handle(channels.mcpList, () => requireMcp().list())
-  ipcMain.handle(channels.mcpSignIn, (_event, name: unknown) => requireMcp().signIn(requireName(name)))
-  ipcMain.handle(channels.mcpSignOut, (_event, name: unknown) => requireMcp().signOut(requireName(name)))
-  ipcMain.handle(channels.mcpSetEnabled, (_event, name: unknown, enabled: unknown) => {
-    return requireMcp().setEnabled(requireName(name), enabled === true)
-  })
-  ipcMain.handle(channels.terminalCreate, () => requireTerminal().create())
-  // Keystrokes and drags are sent, not invoked: a shell echoes them faster than a round trip.
-  ipcMain.on(channels.terminalInput, (_event, id: unknown, data: unknown) => {
-    if (typeof id !== "string" || typeof data !== "string") return
-    terminal?.write(id, data)
-  })
-  ipcMain.on(channels.terminalResize, (_event, id: unknown, cols: unknown, rows: unknown) => {
-    if (typeof id !== "string" || typeof cols !== "number" || typeof rows !== "number") return
-    terminal?.resize(id, cols, rows)
-  })
-  ipcMain.on(channels.terminalClose, (_event, id: unknown) => {
-    if (typeof id !== "string") return
-    terminal?.close(id)
-  })
+// Connection details for the preload's websocket, passed as
+// --slagent-key=value switches: Chromium's switch parser keeps those whole.
+function serverArguments(): string[] {
+  const info = apiServer?.info
+  if (!info) return []
+  return [
+    `--slagent-port=${info.port}`,
+    `--slagent-token=${info.token}`,
+    `--slagent-client=${randomUUID()}`,
+    `--slagent-window=${randomUUID()}`,
+  ]
+}
+
+function slagentArgument(args: string[], key: string): string {
+  const found = args.find((arg) => arg.startsWith(`--slagent-${key}=`))
+  return found ? found.slice(`--slagent-${key}=`.length) : ""
+}
+
+function clientIdOfWindow(win: BrowserWindow | null): string | null {
+  if (!win) return null
+  const token = windowTokens.get(win.id)
+  return token ? clientByToken.get(token) ?? null : null
+}
+
+function windowOfClient(clientId: string): BrowserWindow | null {
+  for (const [winId, token] of windowTokens) {
+    if (clientByToken.get(token) === clientId) return BrowserWindow.fromId(winId) ?? null
+  }
+  return null
+}
+
+// Menu items and notifications act on the window the user is in.
+function focusedClientId(): string | null {
+  return clientIdOfWindow(BrowserWindow.getFocusedWindow())
+}
+
+function primaryClientId(): string | null {
+  return clientIdOfWindow(BrowserWindow.getAllWindows()[0] ?? null)
+}
+
+// A window that was just created needs a moment to open its socket.
+async function anyClientId(): Promise<string | null> {
+  for (let waited = 0; waited < 50; waited += 1) {
+    const clientId = focusedClientId() ?? primaryClientId()
+    if (clientId) return clientId
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+  return null
 }
 
 async function openFolderFromSystem(folder: string): Promise<void> {
   await started
-  let win = BrowserWindow.getAllWindows()[0]
-  if (!win) win = createWindow()
-  if (win.isMinimized()) win.restore()
-  win.show()
-  win.focus()
+  const clientId = await anyClientId()
+  if (!clientId) return
   await requireHost()
-    .openFolder(folder)
+    .openFolder(clientId, folder)
     .catch((error) => console.error("open folder:", error))
+}
+
+function str(value: unknown): string {
+  if (typeof value !== "string") throw new Error("Bad argument.")
+  return value
+}
+
+function optStr(value: unknown): string | undefined {
+  return typeof value === "string" && value ? value : undefined
+}
+
+// Every websocket call from a client lands here, with the caller's identity
+// first so the host can scope the call to that client's session.
+async function handleCall(clientId: string, method: string, params: unknown[]): Promise<unknown> {
+  const host = requireHost()
+  switch (method) {
+    case "getSnapshot":
+      return host.getSnapshot(clientId)
+    case "prompt":
+      return host.prompt(clientId, parsePrompt(params[0]))
+    case "abort":
+      return host.abort(clientId)
+    case "newChat":
+      return host.newChat(clientId, optStr(params[0]))
+    case "openProject":
+      return host.openProject(clientId, str(params[0]))
+    case "openChat":
+      return host.openChat(clientId, str(params[0]), optStr(params[1]), optStr(params[2]))
+    case "pageTranscript": {
+      const page = params[0]
+      if (page !== "older" && page !== "newer" && page !== "latest") throw new Error("Unknown page.")
+      return host.pageTranscript(clientId, page)
+    }
+    case "searchChats":
+      return host.searchChats(String(params[0] ?? ""))
+    case "pinProject":
+      return host.pinProject(clientId, str(params[0]), params[1] === true)
+    case "pinChat":
+      return host.pinChat(clientId, str(params[0]), params[1] === true, optStr(params[2]))
+    case "renameChat":
+      return host.renameChat(clientId, str(params[0]), str(params[1]), optStr(params[2]))
+    case "deleteChat":
+      return host.deleteChat(clientId, str(params[0]), optStr(params[1]))
+    case "readTranscript":
+      return host.readTranscript(clientId, str(params[0]), optStr(params[1]))
+    case "removeProject":
+      return host.removeProject(clientId, str(params[0]), str(params[1]))
+    case "searchFiles":
+      return host.searchFiles(clientId, String(params[0] ?? ""))
+    case "listCommands":
+      return host.listCommands(clientId)
+    case "draftSkill":
+      return host.draftSkill(clientId, params[0] as DraftSkillInput)
+    case "createSkill":
+      return host.createSkill(clientId, params[0] as CreateSkillInput)
+    case "createChatProject":
+      return host.createChatProject(clientId)
+    case "chooseFolder": {
+      const result = await dialog.showOpenDialog({
+        title: "Choose a folder",
+        defaultPath: host.getCwd() || undefined,
+        properties: ["openDirectory", "createDirectory"],
+      })
+      const folder = result.filePaths[0]
+      if (result.canceled || !folder) return
+      await host.openFolder(clientId, folder)
+      return
+    }
+    case "setModel":
+      return host.setModel(clientId, str(params[0]))
+    case "setTitleModel":
+      return host.setTitleModel(String(params[0] ?? ""))
+    case "setRouting":
+      return host.setRouting(params[0] as ModelRouting)
+    case "setEffort":
+      return host.setEffort(params[0] as EffortLevel)
+    case "saveOpenRouterKey":
+      return host.saveOpenRouterKey(str(params[0]))
+    case "logoutOpenRouter":
+      return host.logoutOpenRouter()
+    case "setQueueMode": {
+      const mode = params[1]
+      if (mode !== "follow-up" && mode !== "steer") throw new Error("Unknown queue mode.")
+      return host.setQueueMode(clientId, str(params[0]), mode)
+    }
+    case "editMessage": {
+      const text = params[1]
+      if (typeof text !== "string" || !text.trim()) throw new Error("Write a message first.")
+      return host.editMessage(clientId, str(params[0]), text)
+    }
+    case "setPlanMode":
+      return host.setPlanMode(clientId, params[0] === true)
+    case "approvePlan":
+      return host.approvePlan(clientId)
+    case "answerQuestion":
+      return host.answerQuestion(clientId, str(params[0]), parseReply(params[1]))
+    case "rewind": {
+      const mode = params[1]
+      if (mode !== "both" && mode !== "chat" && mode !== "code") throw new Error("Unknown rewind.")
+      return host.rewind(clientId, str(params[0]), mode)
+    }
+    case "undoRewind": {
+      const commit = params[0]
+      if (typeof commit !== "string" || !/^[0-9a-f]{7,64}$/.test(commit)) throw new Error("Unknown checkpoint.")
+      return host.undoRewind(clientId, commit)
+    }
+    case "taskOutput":
+      return host.taskOutput(clientId, str(params[0]))
+    case "stopTask":
+      return host.stopTask(clientId, str(params[0]))
+    case "gitStatus":
+      return host.gitStatus(clientId)
+    case "gitDiff":
+      return host.gitDiff(clientId, params[0] === "turn" ? "turn" : "uncommitted")
+    case "gitCommit":
+      return host.gitCommit(clientId, String(params[0] ?? ""))
+    case "gitPush":
+      return host.gitPush(clientId)
+    case "gitPullRequest":
+      return host.gitPullRequest(clientId)
+    case "gitCommitMessage":
+      return host.gitCommitMessage(clientId)
+    case "removeQueued":
+      host.removeQueued(clientId, str(params[0]))
+      return
+    case "compact":
+      return host.compact(clientId)
+    case "openExternal": {
+      const parsed = new URL(str(params[0]))
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        throw new Error("Only web links can be opened.")
+      }
+      return shell.openExternal(parsed.toString())
+    }
+    case "openInEditor":
+      return openInEditor(host.getCwd(), str(params[0]))
+    case "readFile":
+      return readFileView(host.getCwd(), str(params[0]))
+    case "getPermissions":
+      return requireComputer().permissions()
+    case "requestAccessibility":
+      return requireComputer().requestAccessibility()
+    case "requestScreenRecording":
+      return requireComputer().requestScreenRecording()
+    case "openPermissionSettings": {
+      const pane = str(params[0])
+      if (pane !== "accessibility" && pane !== "screen") throw new Error("Unknown permission.")
+      return shell.openExternal(permissionSettings[pane])
+    }
+    case "mcpList":
+      return requireMcp().list()
+    case "mcpSignIn":
+      return requireMcp().signIn(requireName(params[0]))
+    case "mcpSignOut":
+      return requireMcp().signOut(requireName(params[0]))
+    case "mcpSetEnabled":
+      return requireMcp().setEnabled(requireName(params[0]), params[1] === true)
+    case "terminalCreate":
+      return requireTerminal().create()
+    case "updateStatus":
+      return updateStatus()
+    case "updateCheck":
+      return checkForUpdates()
+    case "installUpdate":
+      return installUpdate()
+    case "appVersion":
+      return appVersion
+    case "closeApp": {
+      const win = windowOfClient(clientId)
+      if (win) {
+        closeApproved.add(win)
+        win.close()
+      }
+      return
+    }
+    case "cliStatus":
+      return cliStatus()
+    case "installCli":
+      return installCli()
+    case "uninstallCli":
+      return uninstallCli()
+    case "setPersonalisation":
+      return host.setPersonalisation(params[0] as Personalisation)
+    case "pickContextFiles":
+      return host.pickContextFiles()
+    default:
+      throw new Error(`Unknown method: ${method}`)
+  }
+}
+
+// Fire-and-forget calls: terminal keystrokes and drags.
+function handleCallSent(_clientId: string, method: string, params: unknown[]): void {
+  switch (method) {
+    case "writeTerminal":
+      if (typeof params[0] === "string" && typeof params[1] === "string") terminal?.write(params[0], params[1])
+      return
+    case "resizeTerminal":
+      if (typeof params[0] === "string" && typeof params[1] === "number" && typeof params[2] === "number") {
+        terminal?.resize(params[0], params[1], params[2])
+      }
+      return
+    case "closeTerminal":
+      if (typeof params[0] === "string") terminal?.close(params[0])
+      return
+    default:
+      return
+  }
 }
 
 function requireName(name: unknown): string {
@@ -317,13 +441,61 @@ app.whenReady().then(async () => {
     openUrl: (url) => shell.openExternal(url),
   })
   await mcp.start().catch((error) => console.error("mcp:", error))
-  terminal = new TerminalManager((event: TerminalEvent) => send(channels.terminalEvent, event), () => host?.getCwd() ?? "")
-  registerIpc()
-  registerCli()
-  setApplicationMenu()
-  host = new AgentHost(join(app.getPath("userData"), "settings.json"), libraryRoot, broadcast, computer, notifier, () =>
-    mcp?.serversForSession() ?? {},
+
+  host = new AgentHost(
+    join(app.getPath("userData"), "settings.json"),
+    libraryRoot,
+    (clientId, event) => apiServer?.hub.publish(clientId, event),
+    computer,
+    {
+      focused: (projectId, chatId) => {
+        const clientId = focusedClientId()
+        return Boolean(clientId && host?.isViewedBy(clientId, projectId, chatId))
+      },
+      notify: ({ title, body, projectId, chatId }) => {
+        if (!Notification.isSupported()) return
+        const note = new Notification({ title, body, silent: false })
+        note.on("click", () => {
+          void (async () => {
+            const clientId = await anyClientId()
+            if (!clientId) return
+            await host?.openChat(clientId, chatId, projectId).catch(() => undefined)
+          })()
+        })
+        note.show()
+      },
+      badge: (count) => {
+        if (process.platform !== "darwin") return
+        app.setBadgeCount(count)
+      },
+    },
+    () => mcp?.serversForSession() ?? {},
+    () => apiServer?.info ?? null,
   )
+
+  terminal = new TerminalManager((event: TerminalEvent) => apiServer?.hub.publishTerminal(event), () => host?.getCwd() ?? "")
+
+  try {
+    apiServer = await startApiServer({
+      statePath: join(app.getPath("userData"), "slagent-server.json"),
+      onCall: handleCall,
+      onCallSent: handleCallSent,
+      onClient: (clientId, windowToken) => {
+        if (windowToken) clientByToken.set(windowToken, clientId)
+        host?.attach(clientId)
+      },
+      onClientGone: (clientId) => {
+        host?.detach(clientId)
+        for (const [token, id] of clientByToken) {
+          if (id === clientId) clientByToken.delete(token)
+        }
+      },
+    })
+  } catch (error) {
+    console.error("api server:", error)
+  }
+
+  setApplicationMenu(() => createWindow())
   createWindow()
   started = host.start()
   for (const folder of pendingFolders.splice(0)) void openFolderFromSystem(folder)
@@ -334,7 +506,9 @@ app.whenReady().then(async () => {
       host?.close()
       computer?.stop()
       terminal?.stop()
+      apiServer?.close()
     },
+    onReady: (version) => apiServer?.hub.publishUpdateReady(version),
   })
 
   app.on("activate", () => {
@@ -357,30 +531,10 @@ app.on("before-quit", (event) => {
     host?.close()
     computer?.stop()
     terminal?.stop()
+    apiServer?.close()
     app.quit()
   })
 })
-
-const notifier: Notifier = {
-  focused: () => BrowserWindow.getAllWindows().some((win) => win.isFocused()),
-  notify: ({ title, body, projectId, chatId }) => {
-    if (!Notification.isSupported()) return
-    const note = new Notification({ title, body, silent: false })
-    note.on("click", () => {
-      let win = BrowserWindow.getAllWindows()[0]
-      if (!win) win = createWindow()
-      if (win.isMinimized()) win.restore()
-      win.show()
-      win.focus()
-      void host?.openChat(chatId, projectId).catch(() => undefined)
-    })
-    note.show()
-  },
-  badge: (count) => {
-    if (process.platform !== "darwin") return
-    app.setBadgeCount(count)
-  },
-}
 
 function serveAttachment(libraryRoot: string, request: Request): Promise<Response> {
   const url = new URL(request.url)
