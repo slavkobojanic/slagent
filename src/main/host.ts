@@ -19,6 +19,7 @@ import type {
   ChatStatus,
   ChatSummary,
   ExtensionInfo,
+  EffortLevel,
   LibraryState,
   ModelChange,
   ModelRouting,
@@ -49,7 +50,7 @@ import { ComputerGate } from "./computer-gate"
 import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
-import { parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
+import { parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
 import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
 import { createSkillFile, draftSkill } from "./skills-create"
@@ -105,6 +106,7 @@ export class AgentHost {
   private draftModelName: string | null = null
   private titleModelId = DEFAULT_TITLE_MODEL
   private routing: ModelRouting = "balance"
+  private effort: EffortLevel = "medium"
   private draftPlanMode = false
   private models: AppMeta["models"] = []
   private openRouter: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
@@ -146,6 +148,7 @@ export class AgentHost {
       this.draftModelId = this.prefs.modelId ?? null
       this.titleModelId = parseTitleModelId(this.prefs.titleModelId)
       this.routing = this.prefs.routing ?? "balance"
+      this.effort = parseEffort(this.prefs.effort)
       this.personalisation = this.prefs.personalisation ?? { ...EMPTY_PERSONALISATION }
       await this.library.load()
       void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
@@ -547,6 +550,23 @@ export class AgentHost {
     this.publishMeta()
   }
 
+  async setEffort(effort: EffortLevel): Promise<void> {
+    if (parseEffort(effort) !== effort) throw new Error("Unknown effort level.")
+    this.effort = effort
+    await this.persistPrefs()
+    this.applyEffort()
+    this.publishMeta()
+  }
+
+  // An effort change reaches the open chats at once. A running chat holds the
+  // level until its run ends, when the runtime applies the pending one.
+  private applyEffort(): void {
+    for (const runtime of this.runtimes.values()) {
+      if (runtime instanceof ChatRuntime) runtime.setEffort(this.effort)
+      else if (runtime instanceof ClaudeRuntime) runtime.setEffort(this.effort)
+    }
+  }
+
   async saveOpenRouterKey(apiKey: string): Promise<void> {
     const key = apiKey.trim()
     if (!key) throw new Error("Enter an API key.")
@@ -680,6 +700,7 @@ export class AgentHost {
       checkpointDir: this.library.checkpointDir(projectId),
       sessionFile: chat.sessionFile,
       model,
+      effort: this.effort,
       named: chat.named || chat.titleCustom,
       titleGenerated: chat.titleCustom || (chat.titleGenerated ?? chat.named),
       computer: this.computer,
@@ -771,6 +792,7 @@ export class AgentHost {
       cwd,
       sessionId: chat.claudeSessionId ?? null,
       modelId: chat.modelId ?? CLAUDE_MODELS[0]!.id,
+      effort: this.effort,
       named: chat.named || chat.titleCustom,
       titleGenerated: chat.titleCustom || (chat.titleGenerated ?? chat.named),
       onChange: (runningChanged) => {
@@ -1097,6 +1119,7 @@ export class AgentHost {
       modelId: this.draftModelId ?? undefined,
       titleModelId: this.titleModelId,
       routing: this.routing,
+      effort: this.effort,
       personalisation: this.personalisation,
     }
     await writePrefs(this.prefsPath, this.prefs)
@@ -1121,6 +1144,7 @@ export class AgentHost {
       modelProvider: model.id ? (isClaudeModel(model.id) ? "claude-code" : "openrouter") : null,
       models: this.models,
       routing: this.routing,
+      effort: this.effort,
       titleModelId: this.titleModelId,
       titleModels: TITLE_MODELS,
       openRouter: this.openRouter,

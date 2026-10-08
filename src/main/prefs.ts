@@ -6,6 +6,7 @@ import {
   PINNED_FILE_COUNT_LIMIT,
   PINNED_TOTAL_CHAR_LIMIT,
   type ModelRouting,
+  type EffortLevel,
   type Personalisation,
   type PinnedFile,
   type PersonalisationBranch,
@@ -21,6 +22,7 @@ export type Prefs = {
   modelId?: string
   titleModelId?: string
   routing?: ModelRouting
+  effort?: EffortLevel
   personalisation?: Personalisation
 }
 
@@ -29,6 +31,13 @@ const ROUTINGS: ModelRouting[] = ["speed", "cost", "balance"]
 // An unknown or missing value falls back to OpenRouter's own balance.
 export function parseRouting(value: unknown): ModelRouting {
   return ROUTINGS.includes(value as ModelRouting) ? (value as ModelRouting) : "balance"
+}
+
+export const EFFORT_LEVELS: EffortLevel[] = ["minimal", "low", "medium", "high", "xhigh", "max"]
+
+// An unknown or missing value falls back to medium.
+export function parseEffort(value: unknown): EffortLevel {
+  return EFFORT_LEVELS.includes(value as EffortLevel) ? (value as EffortLevel) : "medium"
 }
 
 const TONES: PersonalisationTone[] = ["direct", "friendly", "professional"]

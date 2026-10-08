@@ -21,6 +21,7 @@ import type {
   AssistantMessage,
   ChatMessage,
   ChatMention,
+  EffortLevel,
   ExtensionInfo,
   Personalisation,
   QueueMode,
@@ -110,6 +111,8 @@ export type ChatRuntimeOptions = {
   checkpointDir: string
   sessionFile: string | null
   model: AgentModel
+  // Reasoning effort for OpenRouter models, applied to the session.
+  effort: EffortLevel
   named: boolean
   titleGenerated: boolean
   computer: ComputerUse
@@ -205,6 +208,8 @@ export class ChatRuntime {
   private sessionToken: object | null = null
   private currentAssistantId: string | null = null
   private pendingModel: AgentModel | null = null
+  private pendingEffort: EffortLevel | null = null
+  private effort: EffortLevel
   private lastRunning = false
   private readonly options: ChatRuntimeOptions
 
@@ -214,6 +219,7 @@ export class ChatRuntime {
     this.chatId = options.chatId
     this.modelId = options.model.id
     this.modelName = options.model.name
+    this.effort = options.effort
     this.named = options.named
     this.titleGenerated = options.titleGenerated
     this.planProposal = options.planProposal ?? null
@@ -402,6 +408,7 @@ export class ChatRuntime {
     })
 
     this.session = session
+    this.session.setThinkingLevel(this.effort)
     this.refreshUsage()
     this.rememberExtensions(extensionsResult)
     const token = {}
@@ -608,6 +615,18 @@ export class ChatRuntime {
     this.modelName = model.name
     this.options.onModel(model.id)
     this.emit(false)
+    return true
+  }
+
+  // A level change reaches the session at once, unless a run is streaming;
+  // then it holds until the run ends.
+  setEffort(effort: EffortLevel): boolean {
+    if (this.streaming || this.sending || this.session?.isStreaming) {
+      this.pendingEffort = effort
+      return false
+    }
+    this.effort = effort
+    this.session?.setThinkingLevel(effort)
     return true
   }
 
@@ -867,6 +886,9 @@ export class ChatRuntime {
           this.emit(false)
         })
       }
+      const pendingEffort = this.pendingEffort
+      this.pendingEffort = null
+      if (pendingEffort) this.setEffort(pendingEffort)
       this.emit(true)
       this.scheduleFlush()
       this.options.onSettled()
