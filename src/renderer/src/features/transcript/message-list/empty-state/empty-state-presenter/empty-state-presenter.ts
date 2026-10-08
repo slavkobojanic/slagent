@@ -21,6 +21,16 @@ export class EmptyStatePresenter {
     }
   }
 
+  createChatProject = async () => {
+    this.log.action("create-chat-project")
+    try {
+      await this.api.createChatProject()
+    } catch (error) {
+      this.log.warn("create-chat-project-failed", { error })
+      toast.error(errorText(error))
+    }
+  }
+
   openSettings = () => {
     this.log.action("open-settings")
     this.overlayStore.setOpen("settings", true)

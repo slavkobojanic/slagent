@@ -5,7 +5,7 @@ import { ChooseFolder } from "@/features/library/sidebar/open-project/choose-fol
 const meta = {
   title: "Features/Library/ChooseFolder",
   component: ChooseFolder,
-  args: { onChooseFolder: fn() },
+  args: { onChooseFolder: fn(), onNewChat: fn() },
 } satisfies Meta<typeof ChooseFolder>
 
 export default meta

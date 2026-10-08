@@ -15,9 +15,10 @@ export type ProjectMenuProps = {
   projects: ProjectMenuItem[]
   onOpenProject: (projectId: string) => void
   onChooseFolder: () => void
+  onCreateChatProject: () => void
 }
 
-export function ProjectMenu({ label, path, projects, onOpenProject, onChooseFolder }: ProjectMenuProps) {
+export function ProjectMenu({ label, path, projects, onOpenProject, onChooseFolder, onCreateChatProject }: ProjectMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -36,6 +37,7 @@ export function ProjectMenu({ label, path, projects, onOpenProject, onChooseFold
         ))}
         {projects.length > 0 ? <DropdownMenuSeparator /> : null}
         <DropdownMenuItem onSelect={onChooseFolder}>Choose folder</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onCreateChatProject}>New chat project</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

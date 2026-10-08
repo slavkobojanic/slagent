@@ -6,18 +6,24 @@ export type EmptyStateProps = {
   cwd: string
   onConnect: () => void
   onChoose: () => void
+  onNewChat: () => void
 }
 
 // Asks for the first thing missing: a folder, then a connected model.
-export function EmptyState({ configured, cwd, onConnect, onChoose }: EmptyStateProps) {
+export function EmptyState({ configured, cwd, onConnect, onChoose, onNewChat }: EmptyStateProps) {
   if (!cwd) {
     return (
       <ConversationEmptyState>
         <h1 className="text-xl font-medium tracking-tight">Choose a folder</h1>
         <p className="max-w-md text-sm text-muted-foreground">A project is the folder the agent works in.</p>
-        <Button type="button" className="mt-2" onClick={onChoose}>
-          Choose folder
-        </Button>
+        <div className="mt-2 flex gap-2">
+          <Button type="button" onClick={onChoose}>
+            Choose folder
+          </Button>
+          <Button type="button" variant="outline" onClick={onNewChat}>
+            New chat
+          </Button>
+        </div>
       </ConversationEmptyState>
     )
   }

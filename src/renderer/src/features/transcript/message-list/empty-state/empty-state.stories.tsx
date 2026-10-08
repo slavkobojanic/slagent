@@ -5,7 +5,7 @@ import { EmptyState } from "@/features/transcript/message-list/empty-state/empty
 const meta = {
   title: "Features/Transcript/EmptyState",
   component: EmptyState,
-  args: { configured: true, cwd: "/work/slagent", onConnect: fn(), onChoose: fn() },
+  args: { configured: true, cwd: "/work/slagent", onConnect: fn(), onChoose: fn(), onNewChat: fn() },
 } satisfies Meta<typeof EmptyState>
 
 export default meta

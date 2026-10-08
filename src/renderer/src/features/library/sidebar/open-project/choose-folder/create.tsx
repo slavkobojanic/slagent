@@ -10,6 +10,11 @@ export function createChooseFolder({ api, commandRegistry, log }: { api: API; co
   presenter.start()
 
   return function ChooseFolderHost() {
-    return <ChooseFolder onChooseFolder={() => void presenter.handleChooseFolder()} />
+    return (
+      <ChooseFolder
+        onChooseFolder={() => void presenter.handleChooseFolder()}
+        onNewChat={() => void presenter.handleCreateChatProject()}
+      />
+    )
   }
 }
