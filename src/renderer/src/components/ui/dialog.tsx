@@ -1,7 +1,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
-import { useCallback, type ComponentProps, type ReactNode } from "react"
-import { createGenie } from "@/lib/genie"
+import type { ComponentProps, ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 function Dialog(props: ComponentProps<typeof DialogPrimitive.Root>) {
@@ -13,36 +12,11 @@ function DialogContent({
   children,
   hideClose,
   overlayClassName,
-  genieTo,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & {
   hideClose?: boolean
   overlayClassName?: string
-  /** Selector for the element the dialog warps out of and back into. Opts into the full genie warp. */
-  genieTo?: string
 }) {
-  const genieRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node || !genieTo) return
-      const genie = createGenie(node, () => document.querySelector(genieTo))
-      genie.open()
-      // Radix flips data-state on the same node when the dialog closes (and
-      // back, if it reopens before the exit finishes).
-      const observer = new MutationObserver(() => {
-        if (node.dataset.state === "closed") genie.close()
-        else genie.open()
-      })
-      observer.observe(node, { attributes: true, attributeFilter: ["data-state"] })
-      // StrictMode mounts twice in dev; without stopping, the first genie's
-      // strip layer stays up and double-exposes the warp.
-      return () => {
-        observer.disconnect()
-        genie.stop()
-      }
-    },
-    [genieTo],
-  )
-
   let overlay = "fixed inset-0 z-50 bg-black/70"
   if (overlayClassName) overlay = overlayClassName
   let close: ReactNode = <DialogClose />
@@ -57,9 +31,8 @@ function DialogContent({
         )}
       />
       <DialogPrimitive.Content
-        ref={genieRef}
         className={cn(
-          genieTo ? "dialog-genie-warp" : "dialog-genie",
+          "dialog-scale",
           "fixed left-1/2 top-1/2 z-50 w-[min(100%-2rem,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-white/15 bg-black p-5 text-white shadow-none",
           className,
         )}
