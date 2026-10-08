@@ -5,7 +5,10 @@ import { viewMarkup } from "@/test/view-markup"
 
 const beta: ProjectSummary = { id: "p2", path: "/work/p2", name: "Beta", pinned: true, pinnedAt: 1, lastOpenedAt: 0, running: false, attention: false }
 
+const noProject = { project: { id: "no-project", path: "", name: "No project", mode: "chat", pinned: false, pinnedAt: 0, lastOpenedAt: 0, running: false, attention: false } as ProjectSummary, status: "idle" as const }
+
 const base: OtherProjectsProps = {
+  noProject: null,
   others: [{ project: beta, status: "done" }],
   isCollapsed: () => false,
   onToggle: () => undefined,
@@ -41,5 +44,19 @@ describe("OtherProjects", () => {
 
   it("can render nothing when no other project exists", () => {
     expect(viewMarkup(<OtherProjects {...base} others={[]} />)).toBe("")
+  })
+
+  it("can render the No project group above the Projects heading", () => {
+    const html = viewMarkup(<OtherProjects {...base} noProject={noProject} />)
+
+    expect(html.indexOf("No project")).toBeLessThan(html.indexOf("Projects"))
+    expect(html).toContain('data-project="no-project"')
+  })
+
+  it("can render only the No project group, without the Projects heading", () => {
+    const html = viewMarkup(<OtherProjects {...base} others={[]} noProject={noProject} />)
+
+    expect(html).toContain("No project")
+    expect(html).not.toContain(">Projects<")
   })
 })

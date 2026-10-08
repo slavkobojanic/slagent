@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { ProjectSummary } from "@shared/types"
 import { OtherProjectsPresenter } from "@/features/library/sidebar/other-projects/other-projects-presenter/other-projects-presenter"
-import { OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
+import { NO_PROJECT_ID, OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import type { API } from "@/ipc/api"
 import { nullLog } from "@/log/log"
 import { LibraryStore } from "@/mirror/library-store/library-store"
@@ -49,6 +49,15 @@ describe("OtherProjectsPresenter", () => {
       await subject.handleNewChat(atlas)
 
       expect(api.newChat).toHaveBeenCalledWith("p1")
+    })
+
+    it("can create a chat project instead when the project is the fake No project group", async () => {
+      const { api, presenter: subject } = presenter(createMockInstance<API>(["newChat", "createChatProject"]))
+
+      await subject.handleNewChat({ ...atlas, id: NO_PROJECT_ID, name: "No project" })
+
+      expect(api.createChatProject).toHaveBeenCalled()
+      expect(api.newChat).not.toHaveBeenCalled()
     })
   })
 })

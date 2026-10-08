@@ -8,6 +8,7 @@ const meta = {
   title: "Features/Library/OtherProjects",
   component: OtherProjects,
   args: {
+    noProject: null,
     others: [
       { project: project({ id: "p2", name: "website", pinned: true }), status: "running" },
       { project: project({ id: "p3", name: "notes", pinned: true }), status: "done" },
@@ -27,4 +28,13 @@ export const Default: Story = {}
 
 export const Collapsed: Story = { args: { isCollapsed: ((): boolean => true) } }
 
-export const Empty: Story = { args: { others: [] } }
+export const NoProject: Story = {
+  args: {
+    noProject: {
+      project: project({ id: "no-project", name: "No project", mode: "chat", path: "", pinned: false }),
+      status: "idle",
+    },
+  },
+}
+
+export const Empty: Story = { args: { noProject: null, others: [] } }
