@@ -13,7 +13,6 @@ const meta = {
     others: [],
     isCollapsed: fn(() => false),
     onToggle: fn(),
-    onNewChat: fn(),
     ProjectRow: slot("ProjectRow"),
     ProjectChatList: slot("ProjectChatList"),
     OpenProject: slot("OpenProject"),

@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from "motion/react"
 import type { ComponentType } from "react"
 import type { ProjectSummary } from "@shared/types"
-import { NewChatRow } from "@/features/library/sidebar/new-chat-row"
 
 // Same feel as the chat rows entering a chat list (chat-list.tsx): fast, subtle, no bounce.
 const SECTION_TRANSITION = { duration: 0.22, ease: [0.23, 1, 0.32, 1] as const }
@@ -11,7 +10,6 @@ export type OpenProjectProps = {
   project: ProjectSummary | null
   collapsed: boolean
   onToggle: (project: ProjectSummary) => void
-  onNewChat: () => void
   ProjectRow: ComponentType<{
     project: ProjectSummary
     active: boolean
@@ -24,7 +22,7 @@ export type OpenProjectProps = {
 
 // The open project's section inside the unified project list: an active row, its draft row, and its
 // chats. The sidebar renders it in the project's alphabetical place, not in a section of its own.
-export function OpenProject({ project, collapsed, onToggle, onNewChat, ProjectRow, ChatList, reduceMotion }: OpenProjectProps) {
+export function OpenProject({ project, collapsed, onToggle, ProjectRow, ChatList, reduceMotion }: OpenProjectProps) {
   if (project === null) {
     return null
   }
@@ -42,7 +40,6 @@ export function OpenProject({ project, collapsed, onToggle, onNewChat, ProjectRo
             exit={{ height: 0, opacity: 0 }}
             transition={reduceMotion ? INSTANT_TRANSITION : SECTION_TRANSITION}
           >
-            <NewChatRow label="New chat" onNew={onNewChat} />
             <ChatList key={project.id} />
           </motion.div>
         )}

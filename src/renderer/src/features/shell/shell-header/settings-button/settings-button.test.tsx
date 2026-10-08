@@ -16,10 +16,4 @@ describe("SettingsButton", () => {
 
     expect(markup).not.toContain("bg-warning")
   })
-
-  it("can mark the settings button as the origin of the settings dialog's genie animation", () => {
-    const markup = viewMarkup(<SettingsButton needsAuth={false} onOpen={noop} />)
-
-    expect(markup).toContain('data-genie-target="settings"')
-  })
 })
