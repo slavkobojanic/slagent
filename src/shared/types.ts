@@ -52,7 +52,9 @@ export const channels = {
   mcpSignIn: "mcp:sign-in",
   mcpSignOut: "mcp:sign-out",
   mcpSetEnabled: "mcp:set-enabled",
+  appVersion: "app:version",
   updateStatus: "update:status",
+  updateCheck: "update:check",
   installUpdate: "update:install",
   updateReady: "update:ready",
   cliStatus: "cli:status",
@@ -221,6 +223,15 @@ export type AssistantMessage = {
   error: string | null
 }
 
+// Live state of one subagent run inside the subagent tool, streamed via the tool's details.
+export type SubagentRunState = {
+  agent: string
+  task: string
+  steps: string[]
+  state: string
+  error: string | null
+}
+
 export type ToolMessage = {
   id: string
   role: "tool"
@@ -232,6 +243,7 @@ export type ToolMessage = {
   running: boolean
   isError: boolean
   answers?: AnsweredQuestion[]
+  subagent?: SubagentRunState[]
 }
 
 export type ChatMessage = UserMessage | AssistantMessage | ToolMessage
@@ -574,6 +586,14 @@ export type TerminalEvent =
   | { type: "data"; id: string; data: string }
   | { type: "exit"; id: string; exitCode: number }
 
+// The outcome of an explicit check for updates from the renderer.
+export type UpdateCheckResult =
+  | { status: "disabled" }
+  | { status: "up-to-date"; version: string }
+  | { status: "available"; version: string }
+  | { status: "ready"; version: string }
+  | { status: "error"; message: string }
+
 export type SlagentApi = {
   platform: string
   systemVersion: string
@@ -635,8 +655,10 @@ export type SlagentApi = {
   mcpSignOut: (name: string) => Promise<McpServerStatus[]>
   mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
   onEvent: (listener: (event: UiEvent) => void) => () => void
+  appVersion: () => Promise<string>
   // Version of a downloaded update waiting for a restart, or null.
   updateStatus: () => Promise<string | null>
+  checkForUpdates: () => Promise<UpdateCheckResult>
   installUpdate: () => Promise<void>
   onUpdateReady: (listener: (version: string) => void) => () => void
   cliStatus: () => Promise<CliStatus>

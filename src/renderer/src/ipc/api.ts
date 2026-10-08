@@ -3,7 +3,7 @@ import type { SlagentApi } from "@shared/types"
 import type { Log } from "@/log/log"
 
 // Subscriptions and sync calls are not round trips, so they are not timed.
-const UNTIMED = ["platform", "systemVersion", "pathForFile", "onEvent", "onUpdateReady", "onTerminalEvent", "writeTerminal", "resizeTerminal", "closeTerminal"]
+const UNTIMED = ["platform", "systemVersion", "appVersion", "pathForFile", "onEvent", "onUpdateReady", "onTerminalEvent", "writeTerminal", "resizeTerminal", "closeTerminal"]
 
 // Methods close over the bridge instead of holding it in a private field, so a test mock satisfies the type.
 // Store values are MobX proxies, which the preload bridge cannot clone, so object arguments go through plain.
@@ -66,7 +66,9 @@ export class API implements SlagentApi {
   readonly mcpSignOut: SlagentApi["mcpSignOut"]
   readonly mcpSetEnabled: SlagentApi["mcpSetEnabled"]
   readonly onEvent: SlagentApi["onEvent"]
+  readonly appVersion: SlagentApi["appVersion"]
   readonly updateStatus: SlagentApi["updateStatus"]
+  readonly checkForUpdates: SlagentApi["checkForUpdates"]
   readonly installUpdate: SlagentApi["installUpdate"]
   readonly onUpdateReady: SlagentApi["onUpdateReady"]
   readonly cliStatus: SlagentApi["cliStatus"]
@@ -84,6 +86,7 @@ export class API implements SlagentApi {
     const bridge = timed(raw, log)
     this.platform = bridge.platform
     this.systemVersion = bridge.systemVersion
+    this.appVersion = () => bridge.appVersion()
     this.getSnapshot = () => bridge.getSnapshot()
     this.prompt = (request) => bridge.prompt(plain(request))
     this.abort = () => bridge.abort()
@@ -140,6 +143,7 @@ export class API implements SlagentApi {
     this.mcpSetEnabled = (name, enabled) => bridge.mcpSetEnabled(name, enabled)
     this.onEvent = (listener) => bridge.onEvent(listener)
     this.updateStatus = () => bridge.updateStatus()
+    this.checkForUpdates = () => bridge.checkForUpdates()
     this.installUpdate = () => bridge.installUpdate()
     this.onUpdateReady = (listener) => bridge.onUpdateReady(listener)
     this.cliStatus = () => bridge.cliStatus()
