@@ -107,12 +107,13 @@ export class AttachmentsPresenter {
     this.take()
   }
 
+  // Stopping parks the open attachments under their chat and keeps their previews alive, so
+  // they come back when the composer starts again for that chat.
   stop = () => {
-    for (const item of [...this.store.items, ...this.store.stashed()]) {
-      this.window.URL.revokeObjectURL(item.url)
+    if (this.key !== null) {
+      this.store.park(this.key, this.store.items)
     }
     this.store.setItems([])
-    this.store.replaceStash({})
     this.key = null
   }
 
