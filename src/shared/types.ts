@@ -520,6 +520,7 @@ export type UiEvent =
   | { type: "meta"; revision: number; meta: AppMeta }
   | { type: "library"; revision: number; library: LibraryState }
   | ({ type: "transcript"; revision: number; projectId: string | null; chatId: string | null } & TranscriptState)
+  | { type: "git"; revision: number }
 
 export type ComputerPermissions = {
   accessibility: boolean

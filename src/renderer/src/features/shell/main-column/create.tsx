@@ -8,6 +8,7 @@ import { MainColumn } from "./main-column"
 export function createMainColumn({
   Transcript,
   Composer,
+  BranchLine,
   PlanOverlay,
   metaStore,
   projectMenuStore,
@@ -15,6 +16,7 @@ export function createMainColumn({
 }: {
   Transcript: ComponentType
   Composer: ComponentType
+  BranchLine: ComponentType
   PlanOverlay: ComponentType
   metaStore: MetaStore
   projectMenuStore: ProjectMenuStore
@@ -28,6 +30,7 @@ export function createMainColumn({
         actionError={updateButtonStore.error ?? projectMenuStore.error}
         Transcript={Transcript}
         Composer={Composer}
+        BranchLine={BranchLine}
         PlanOverlay={PlanOverlay}
       />
     )

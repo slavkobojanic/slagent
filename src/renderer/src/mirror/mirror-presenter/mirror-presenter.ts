@@ -51,6 +51,10 @@ export class MirrorPresenter {
       return
     }
     this.log.debug(event.type, event)
+    if (event.type === "git") {
+      // Git status has no mirror state; the branch line listens for these itself.
+      return
+    }
     if (event.type === "library") {
       this.applyLibrary(event.revision, event.library)
       return

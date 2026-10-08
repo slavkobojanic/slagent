@@ -6,10 +6,11 @@ export type MainColumnProps = {
   actionError: string | null
   Transcript: ComponentType
   Composer: ComponentType
+  BranchLine: ComponentType
   PlanOverlay: ComponentType
 }
 
-export function MainColumn({ ready, metaError, actionError, Transcript, Composer, PlanOverlay }: MainColumnProps) {
+export function MainColumn({ ready, metaError, actionError, Transcript, Composer, BranchLine, PlanOverlay }: MainColumnProps) {
   return (
     <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       {metaError !== null ? <p className="border-b border-foreground/10 px-6 py-2 text-sm text-destructive">{metaError}</p> : null}
@@ -20,6 +21,7 @@ export function MainColumn({ ready, metaError, actionError, Transcript, Composer
       ) : null}
       {ready ? <Transcript /> : <div className="flex flex-1 items-center justify-center text-sm text-foreground/50">Starting</div>}
       <Composer />
+      <BranchLine />
       <PlanOverlay />
     </main>
   )

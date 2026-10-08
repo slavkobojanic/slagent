@@ -15,6 +15,7 @@ const base: MainColumnProps = {
   actionError: null,
   Transcript: slot("transcript"),
   Composer: slot("composer"),
+  BranchLine: slot("branch line"),
   PlanOverlay: slot("plan overlay"),
 }
 

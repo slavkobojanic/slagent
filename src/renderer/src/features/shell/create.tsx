@@ -15,6 +15,8 @@ import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 import type { PermissionsStore } from "@/state/permissions/permissions-store/permissions-store"
 import { ProjectMenuStore } from "@/features/shell/shell-header/project-menu/project-menu-store/project-menu-store"
 import { UpdateButtonStore } from "@/features/shell/shell-header/update-button/update-button-store/update-button-store"
+import { BranchLineStore } from "@/features/shell/branch-line/branch-line-store/branch-line-store"
+import { createBranchLine } from "@/features/shell/branch-line/create"
 import { createMainColumn } from "./main-column/create"
 import { createPanelFrame } from "./panel-frame/create"
 import { Shell } from "./shell"
@@ -89,7 +91,9 @@ export function createShell({
     log: log.child("shell-header"),
   })
   const SidebarFrame = createSidebarFrame({ Library, layoutStore })
-  const MainColumn = createMainColumn({ Transcript, Composer, PlanOverlay, metaStore, projectMenuStore, updateButtonStore })
+  const branchLineStore = new BranchLineStore()
+  const BranchLine = createBranchLine({ api, branchLineStore, metaStore, log })
+  const MainColumn = createMainColumn({ Transcript, Composer, PlanOverlay, BranchLine, metaStore, projectMenuStore, updateButtonStore })
   const PanelFrame = createPanelFrame({ Changes, metaStore, layoutStore, panelStore })
 
   return observer(function ShellHost() {
