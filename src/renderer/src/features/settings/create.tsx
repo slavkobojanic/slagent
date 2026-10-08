@@ -16,6 +16,7 @@ import { createOpenRouterKey } from "./openrouter-key/create"
 import { createPersonalisationSettings } from "./personalisation-settings/create"
 import { createProviderRouting } from "./provider-routing/create"
 import { createTitleModel } from "./title-model/create"
+import { createUsageSettings } from "./usage-settings/create"
 import { Settings } from "./settings"
 import { SettingsPresenter } from "./settings-presenter/settings-presenter"
 import { SettingsStore } from "./settings-store/settings-store"
@@ -56,6 +57,7 @@ export function createSettings({
   })
   const McpSettings = createMcpSettings({ api, metaStore, overlayStore, mcpStore, log: log.child("mcp-settings") })
   const CliSettings = createCliSettings({ api, overlayStore, settingsStore, log: log.child("cli-settings") })
+  const Usage = createUsageSettings({ api, log: log.child("usage-settings") })
   const About = createAbout({ api, log: log.child("about") })
   const ConnectSettings = createConnectSettings({ metaStore, log: log.child("connect-settings") })
 
@@ -75,6 +77,7 @@ export function createSettings({
         PersonalisationSettings={PersonalisationSettings}
         McpSettings={McpSettings}
         CliSettings={CliSettings}
+        Usage={Usage}
         About={About}
         ConnectSettings={ConnectSettings}
       />

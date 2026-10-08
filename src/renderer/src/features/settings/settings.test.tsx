@@ -30,6 +30,10 @@ function CliSection() {
   return <p>CLI section</p>
 }
 
+function UsageSection() {
+  return <p>Usage section</p>
+}
+
 function AboutSection() {
   return <p>About section</p>
 }
@@ -52,6 +56,7 @@ function renderDialog(overrides: Partial<SettingsProps> = {}) {
       PersonalisationSettings={PersonalisationSection}
       McpSettings={McpSection}
       CliSettings={CliSection}
+      Usage={UsageSection}
       About={AboutSection}
       ConnectSettings={ConnectSection}
       {...overrides}
@@ -103,6 +108,14 @@ describe("Settings", () => {
     expect(screen.getByText("CLI section")).not.toBeNull()
     expect(screen.queryByText("MCP section")).toBeNull()
     expect(activeTab()).toBe("CLI")
+  })
+
+  it("can show only the usage section when it is the active tab", () => {
+    renderDialog({ tab: "usage" })
+
+    expect(screen.getByText("Usage section")).not.toBeNull()
+    expect(screen.queryByText("About section")).toBeNull()
+    expect(activeTab()).toBe("Usage")
   })
 
   it("can show only the about section when it is the active tab", () => {
