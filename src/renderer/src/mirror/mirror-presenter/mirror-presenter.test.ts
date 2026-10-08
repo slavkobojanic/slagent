@@ -30,6 +30,7 @@ function metaState(modelName: string): AppMeta {
     extensions: [],
     extensionErrors: [],
     usageTotals: { tokens: 0, cost: 0, chats: 0 },
+    server: null,
     routing: "balance",
     effort: "medium",
     titleModelId: null,
@@ -74,13 +75,14 @@ function transcriptEvent(revision: number, chatId: string | null, projectId = "p
 }
 
 function setup() {
-  const app = createMockInstance<API>(["onEvent", "getSnapshot"])
+  const app = createMockInstance<API>(["onEvent", "onReconnect", "getSnapshot"])
   const dispose = vi.fn()
   let listener: Listener = () => undefined
   app.onEvent.mockImplementation((next: Listener) => {
     listener = next
     return dispose
   })
+  app.onReconnect.mockImplementation(() => vi.fn())
   const libraryStore = new LibraryStore()
   const metaStore = new MetaStore()
   const runStore = new RunStore()

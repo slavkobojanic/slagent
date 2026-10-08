@@ -34,6 +34,10 @@ function AboutSection() {
   return <p>About section</p>
 }
 
+function ConnectSection() {
+  return <p>Connect section</p>
+}
+
 function renderDialog(overrides: Partial<SettingsProps> = {}) {
   return render(
     <Settings
@@ -49,6 +53,7 @@ function renderDialog(overrides: Partial<SettingsProps> = {}) {
       McpSettings={McpSection}
       CliSettings={CliSection}
       About={AboutSection}
+      ConnectSettings={ConnectSection}
       {...overrides}
     />,
   )
@@ -106,5 +111,13 @@ describe("Settings", () => {
     expect(screen.getByText("About section")).not.toBeNull()
     expect(screen.queryByText("CLI section")).toBeNull()
     expect(activeTab()).toBe("About")
+  })
+
+  it("can show only the Connect section when it is the active tab", () => {
+    renderDialog({ tab: "connect" })
+
+    expect(screen.getByText("Connect section")).not.toBeNull()
+    expect(screen.queryByText("CLI section")).toBeNull()
+    expect(activeTab()).toBe("Connect")
   })
 })

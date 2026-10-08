@@ -71,6 +71,7 @@ export function meta(overrides: Partial<AppMeta> = {}): AppMeta {
     extensions: [],
     extensionErrors: [],
     usageTotals: { tokens: 15_500, cost: 0.42, chats: 3 },
+    server: null,
     personalisation: EMPTY_PERSONALISATION,
     ...overrides,
   }

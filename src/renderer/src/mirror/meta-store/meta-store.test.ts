@@ -16,6 +16,7 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
     extensions: [],
     extensionErrors: [],
     usageTotals: { tokens: 0, cost: 0, chats: 0 },
+    server: null,
     routing: "balance",
     effort: "medium",
     titleModelId: null,

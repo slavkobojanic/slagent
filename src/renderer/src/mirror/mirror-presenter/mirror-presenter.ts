@@ -9,6 +9,7 @@ type TranscriptEvent = Extract<UiEvent, { type: "transcript" }>
 
 export class MirrorPresenter {
   private subscription: (() => void) | null = null
+  private reconnectSubscription: (() => void) | null = null
   // Bumped by stop(), so a snapshot still in flight from before it is ignored.
   private token = 0
   private libraryRevision = 0
@@ -28,6 +29,24 @@ export class MirrorPresenter {
       return
     }
     this.subscription = this.api.onEvent(this.handleEvent)
+    this.reconnectSubscription = this.api.onReconnect(this.refetch)
+    this.fetch()
+  }
+
+  stop = () => {
+    this.subscription?.()
+    this.subscription = null
+    this.reconnectSubscription?.()
+    this.reconnectSubscription = null
+    this.token += 1
+  }
+
+  // The socket dropped and came back, so events were missed: re-fetch the snapshot.
+  private refetch = () => {
+    this.fetch()
+  }
+
+  private fetch = () => {
     const token = this.token
     const end = this.log.time("snapshot")
     void this.api.getSnapshot().then((snapshot) => {
@@ -38,12 +57,6 @@ export class MirrorPresenter {
       this.applySnapshot(snapshot)
       end({ revision: snapshot.revision })
     })
-  }
-
-  stop = () => {
-    this.subscription?.()
-    this.subscription = null
-    this.token += 1
   }
 
   private handleEvent = (event: UiEvent) => {
