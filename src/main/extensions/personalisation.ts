@@ -33,6 +33,9 @@ export function personalisationPrompt(p: Personalisation): string | null {
     )
   }
 
+  if (p.gitWorkflow === "main") lines.push("- Git workflow: work directly on main when possible; don't create branches unless asked.")
+  if (p.gitWorkflow === "branch") lines.push("- Git workflow: never work on main; create a new branch for every change before starting work and keep all commits there.")
+
   if (p.commitStyle === "conventional") lines.push('- Git commits: use conventional commit messages ("type(scope): summary", e.g. "fix(settings): persist personalisation").')
   if (p.commitStyle === "imperative") lines.push('- Git commits: write imperative messages with a short summary line, e.g. "Persist personalisation in prefs".')
   if (p.commitStyle === "free") lines.push("- Git commits: the user picks the message; write a clear one-line summary and let them edit it.")

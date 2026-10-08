@@ -27,6 +27,16 @@ describe("PersonalisationSettings", () => {
     expect(screen.getByText("Save bar")).not.toBeNull()
   })
 
+  it("groups the fields under headings with a git workflow option", () => {
+    render(<PersonalisationSettings {...props({ draft: { ...EMPTY_PERSONALISATION, gitWorkflow: "main" } })} />)
+
+    expect(screen.getByText("How it talks")).not.toBeNull()
+    expect(screen.getByText("Git")).not.toBeNull()
+    expect(screen.getByText("When work is done")).not.toBeNull()
+    expect(screen.getByText("Extra instructions")).not.toBeNull()
+    expect(screen.getByText("Where it works")).not.toBeNull()
+  })
+
   it("can show the draft notes in the notes field", () => {
     render(<PersonalisationSettings {...props({ draft: { ...EMPTY_PERSONALISATION, notes: "Use tabs." } })} />)
 

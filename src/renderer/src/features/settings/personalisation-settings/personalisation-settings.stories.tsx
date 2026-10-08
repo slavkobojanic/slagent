@@ -10,6 +10,7 @@ const draft: Personalisation = {
   brevity: "terse",
   branchNaming: "prefix",
   branchPrefix: "feat",
+  gitWorkflow: "branch",
   commitStyle: "conventional",
   emoji: false,
   checkBeforeFinish: true,
