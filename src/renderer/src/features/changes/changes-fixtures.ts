@@ -25,6 +25,7 @@ export function makeMeta(cwd: string): AppMeta {
     modelProvider: null,
     models: [],
     routing: "balance",
+    effort: "medium",
     titleModelId: null,
     titleModels: [],
     openRouter: { configured: true, source: null, type: "api_key", envKey: false },
