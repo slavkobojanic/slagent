@@ -201,7 +201,11 @@ export function subagentExtension(deps: SubagentDeps): ExtensionFactory {
         }))
 
         function progress() {
-          onUpdate?.({ content: [{ type: "text", text: runs.map(progressLine).join("\n\n") }], details: {} })
+          const states = runStates(runs)
+          onUpdate?.({
+            content: [{ type: "text", text: runs.map((run) => progressLine(run)).join("\n\n") }],
+            details: { runs: states },
+          })
         }
 
         await Promise.all(
@@ -229,7 +233,7 @@ export function subagentExtension(deps: SubagentDeps): ExtensionFactory {
           .join("\n\n")
         return {
           content: [{ type: "text", text }],
-          details: { runs: runs.map((run) => ({ agent: run.agent, task: run.task, steps: run.steps.length, error: run.error })) },
+          details: { runs: runStates(runs) },
           usage: sumUsage(runs.map((run) => run.usage)),
           isError: runs.every((run) => run.error !== null),
         }
@@ -283,11 +287,36 @@ async function runAgent(deps: SubagentDeps, agent: AgentConfig, run: Run, signal
   }
 }
 
+// Structured state for the transcript UI: every run with its full step list, so the
+// renderer can show what each subagent is doing live.
+export type SubagentRunState = {
+  agent: string
+  task: string
+  steps: string[]
+  state: string
+  error: string | null
+}
+
+function runStates(runs: Run[]): SubagentRunState[] {
+  return runs.map((run) => ({
+    agent: run.agent,
+    task: run.task,
+    steps: [...run.steps],
+    state: runState(run),
+    error: run.error,
+  }))
+}
+
+function runState(run: Run): string {
+  if (run.error) return `failed: ${run.error}`
+  if (run.text) return "done"
+  return run.steps.at(-1) ?? "starting"
+}
+
 function progressLine(run: Run): string {
-  let state = run.steps.at(-1) ?? "starting"
-  if (run.error) state = `failed: ${run.error}`
-  else if (run.text) state = "done"
-  return `[${run.agent}] ${run.task.split("\n")[0]?.slice(0, 80)}\n  ${run.steps.length} steps · ${state}`
+  const state = runState(run)
+  const recent = run.steps.slice(-3).map((step) => `    ${step}`).join("\n")
+  return `[${run.agent}] ${run.task.split("\n")[0]?.slice(0, 80)}\n  ${run.steps.length} steps · ${state}${recent ? `\n${recent}` : ""}`
 }
 
 function stepLabel(name: string, args: unknown): string {
