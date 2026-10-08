@@ -42,7 +42,8 @@ export function projectOfChat(library: LibraryState, chatId: string): string | u
   return undefined
 }
 
-// Pinned chats first, newest pin first. Then the rest, most recently updated first.
+// Pinned chats first, newest pin first. Then the rest, ordered by when the
+// user last sent a message (updatedAt is only bumped on user messages).
 export function orderedChats(chats: ChatSummary[]): ChatSummary[] {
   const pinned = chats.filter((chat) => chat.pinned).sort((left, right) => right.pinnedAt - left.pinnedAt)
   const rest = chats.filter((chat) => !chat.pinned).sort((left, right) => right.updatedAt - left.updatedAt)

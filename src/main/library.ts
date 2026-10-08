@@ -197,9 +197,9 @@ export class Library {
     await this.writeProject(projectId)
   }
 
-  // Bumps the chat in memory so the sidebar can order it by the latest
-  // message. The caller persists it with saveProject alongside the
-  // transcript write instead of touching the project file per message.
+  // Bumps the chat in memory so the sidebar can order it by the latest user
+  // message. The caller persists it with saveProject alongside the transcript
+  // write instead of touching the project file per message.
   touchChat(projectId: string, chatId: string, at: number): boolean {
     const chat = this.chat(projectId, chatId)
     if (!chat || at <= chat.updatedAt) return false
