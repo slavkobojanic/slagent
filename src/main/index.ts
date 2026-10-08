@@ -21,6 +21,8 @@ let mcp: McpManager | null = null
 let terminal: TerminalManager | null = null
 let quitting = false
 let started: Promise<void> | null = null
+// Windows the renderer's close confirmation has approved; a plain Cmd+W has to ask first.
+const closeApproved = new WeakSet<BrowserWindow>()
 // Folders from the slagent command, Finder and the Dock icon arrive as open-file
 // events. The one that launches the app fires before ready, so it waits here.
 const pendingFolders: string[] = []
@@ -137,11 +139,26 @@ function createWindow(): BrowserWindow {
     return { action: "deny" }
   })
 
+  // Cmd+W (and every other close) asks the renderer for a confirmation first.
+  // A real quit sets `quitting` before the close events fire, so it passes.
+  win.on("close", (event) => {
+    if (quitting || closeApproved.has(win)) return
+    event.preventDefault()
+    win.webContents.send(channels.appCloseRequest)
+  })
+
   return win
 }
 
 function registerIpc(): void {
   ipcMain.handle(channels.snapshot, () => requireHost().getSnapshot())
+  ipcMain.handle(channels.appClose, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win !== null) {
+      closeApproved.add(win)
+      win.close()
+    }
+  })
   ipcMain.handle(channels.setPersonalisation, (_event, value: unknown) => requireHost().setPersonalisation(value as Personalisation))
   ipcMain.handle(channels.pickContextFiles, () => requireHost().pickContextFiles())
   ipcMain.handle(channels.prompt, (_event, request: unknown) => requireHost().prompt(parsePrompt(request)))

@@ -68,6 +68,8 @@ export const channels = {
   terminalResize: "terminal:resize",
   terminalClose: "terminal:close",
   terminalEvent: "terminal:event",
+  appCloseRequest: "app:close-request",
+  appClose: "app:close",
   event: "agent:event",
 } as const
 
@@ -689,4 +691,7 @@ export type SlagentApi = {
   resizeTerminal: (id: string, cols: number, rows: number) => void
   closeTerminal: (id: string) => void
   onTerminalEvent: (listener: (event: TerminalEvent) => void) => () => void
+  // The main process asks before Cmd+W closes the window; closeApp confirms it.
+  onCloseRequest: (listener: () => void) => () => void
+  closeApp: () => Promise<void>
 }

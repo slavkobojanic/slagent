@@ -3,6 +3,8 @@ import { observer } from "mobx-react-lite"
 import { Toaster } from "sonner"
 import { BridgeMissing } from "@/components/bridge-missing"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { createAppClose } from "@/features/app-close/create"
+import { AppCloseStore } from "@/features/app-close/app-close-store/app-close-store"
 import { createChanges } from "@/features/changes/create"
 import { createComposer } from "@/features/composer/create"
 import { createCreateSkill } from "@/features/create-skill/create"
@@ -171,6 +173,8 @@ export function createApp(): ComponentType {
     commandRegistry,
     composerPort,
   })
+  const appCloseStore = new AppCloseStore()
+  const AppClose = createAppClose({ api, appCloseStore, log: log.child("app-close") })
   const Shell = createShell({
     Library,
     Settings,
@@ -209,6 +213,7 @@ export function createApp(): ComponentType {
         <TooltipProvider>
           <Shell />
           <PermissionsWizard />
+          <AppClose />
         </TooltipProvider>
         <Toaster theme={themeStore.resolved} toastOptions={TOAST_OPTIONS} />
         <LinkMenu />
