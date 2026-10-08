@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from "electron"
-import { channels, type SlagentApi, type UiEvent } from "../shared/types"
+import { channels, type SlagentApi, type TerminalEvent, type UiEvent } from "../shared/types"
 
 const api: SlagentApi = {
   platform: process.platform,
@@ -86,6 +86,19 @@ const api: SlagentApi = {
   uninstallCli: () => ipcRenderer.invoke(channels.cliUninstall),
   setPersonalisation: (value) => ipcRenderer.invoke(channels.setPersonalisation, value),
   pickContextFiles: () => ipcRenderer.invoke(channels.pickContextFiles),
+  createTerminal: () => ipcRenderer.invoke(channels.terminalCreate),
+  writeTerminal: (id, data) => ipcRenderer.send(channels.terminalInput, id, data),
+  resizeTerminal: (id, cols, rows) => ipcRenderer.send(channels.terminalResize, id, cols, rows),
+  closeTerminal: (id) => ipcRenderer.send(channels.terminalClose, id),
+  onTerminalEvent: (listener) => {
+    const wrapped = (_event: IpcRendererEvent, payload: TerminalEvent) => {
+      listener(payload)
+    }
+    ipcRenderer.on(channels.terminalEvent, wrapped)
+    return () => {
+      ipcRenderer.off(channels.terminalEvent, wrapped)
+    }
+  },
 }
 
 contextBridge.exposeInMainWorld("slagent", api)

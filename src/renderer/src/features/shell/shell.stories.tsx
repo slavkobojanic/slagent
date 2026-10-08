@@ -12,6 +12,7 @@ const meta = {
     SidebarFrame: fill("SidebarFrame"),
     MainColumn: fill("MainColumn"),
     PanelFrame: fill("PanelFrame"),
+    TerminalDrawer: fill("Terminal"),
     Settings: slot("Settings"),
     Models: slot("Models"),
   },

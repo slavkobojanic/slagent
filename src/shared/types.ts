@@ -57,6 +57,11 @@ export const channels = {
   cliUninstall: "cli:uninstall",
   setPersonalisation: "agent:set-personalisation",
   pickContextFiles: "agent:pick-context-files",
+  terminalCreate: "terminal:create",
+  terminalInput: "terminal:input",
+  terminalResize: "terminal:resize",
+  terminalClose: "terminal:close",
+  terminalEvent: "terminal:event",
   event: "agent:event",
 } as const
 
@@ -168,7 +173,7 @@ export type AppMeta = {
   modelName: string | null
   modelProvider: ModelProvider | null
   models: ModelOption[]
-  routing?: ModelRouting
+  routing: ModelRouting
   titleModelId: string | null
   titleModels: TitleModelOption[]
   openRouter: OpenRouterStatus
@@ -524,6 +529,18 @@ export type ModelChange = {
   applied: boolean
 }
 
+// A shell running in the built-in terminal. The title starts as the shell's name
+// and follows the OSC title escape sequence the shell writes.
+export type TerminalSession = {
+  id: string
+  title: string
+  cwd: string
+}
+
+export type TerminalEvent =
+  | { type: "data"; id: string; data: string }
+  | { type: "exit"; id: string; exitCode: number }
+
 export type SlagentApi = {
   platform: string
   systemVersion: string
@@ -590,4 +607,11 @@ export type SlagentApi = {
   setPersonalisation: (value: Personalisation) => Promise<void>
   // Opens a file picker and returns the picked text files with their contents.
   pickContextFiles: () => Promise<PinnedFile[]>
+  // Spawns a shell in the project folder and returns its session.
+  createTerminal: () => Promise<TerminalSession>
+  // Keystrokes and paste go to the shell without waiting for a reply.
+  writeTerminal: (id: string, data: string) => void
+  resizeTerminal: (id: string, cols: number, rows: number) => void
+  closeTerminal: (id: string) => void
+  onTerminalEvent: (listener: (event: TerminalEvent) => void) => () => void
 }

@@ -101,6 +101,15 @@ body.resizing * {
   cursor: col-resize !important;
 }
 
+body.resizing-row {
+  cursor: row-resize;
+  user-select: none;
+}
+
+body.resizing-row * {
+  cursor: row-resize !important;
+}
+
 /* Electron window drag regions. Tailwind has no utility for -webkit-app-region. */
 .drag {
   -webkit-app-region: drag;

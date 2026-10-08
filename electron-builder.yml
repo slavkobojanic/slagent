@@ -53,4 +53,8 @@ mac:
         LSHandlerRank: Alternate
         LSItemContentTypes:
           - public.folder
+# node-pty ships an N-API prebuild that Electron loads as is, so nothing needs
+# rebuilding. Its spawn-helper has to sit outside the archive to be executable.
 npmRebuild: false
+asarUnpack:
+  - "**/node-pty/**"

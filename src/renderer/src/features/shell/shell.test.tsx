@@ -15,6 +15,7 @@ const base: ShellProps = {
   SidebarFrame: slot("sidebar"),
   MainColumn: slot("main"),
   PanelFrame: slot("panel"),
+  TerminalDrawer: slot("terminal"),
   Settings: slot("settings dialog"),
   Models: slot("model dialog"),
 }
@@ -31,6 +32,13 @@ describe("Shell", () => {
     expect(markup.indexOf("header")).toBeLessThan(markup.indexOf("sidebar"))
     expect(markup.indexOf("sidebar")).toBeLessThan(markup.indexOf("main"))
     expect(markup.indexOf("main")).toBeLessThan(markup.indexOf("panel"))
+  })
+
+  it("can lay the terminal drawer out under the sidebar, the main column and the panel", () => {
+    const markup = viewMarkup(<Shell {...base} />)
+
+    expect(markup.indexOf("panel")).toBeLessThan(markup.indexOf("terminal"))
+    expect(markup.indexOf("terminal")).toBeLessThan(markup.indexOf("settings dialog"))
   })
 
   it("can render the settings and model dialogs", () => {

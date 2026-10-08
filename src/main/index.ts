@@ -1,7 +1,7 @@
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, protocol, shell } from "electron"
-import { channels, type ModelRouting, type Personalisation } from "../shared/types"
+import { channels, type ModelRouting, type Personalisation, type TerminalEvent } from "../shared/types"
 import { AgentHost, type Notifier } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
 import { McpManager } from "./mcp"
@@ -11,12 +11,14 @@ import { parseReply } from "./extensions/ask-user"
 import { startUpdater } from "./updater"
 import { setApplicationMenu } from "./menu"
 import { registerCli } from "./cli"
+import { TerminalManager } from "./terminal"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
 
 let host: AgentHost | null = null
 let computer: ComputerUse | null = null
 let mcp: McpManager | null = null
+let terminal: TerminalManager | null = null
 let quitting = false
 let started: Promise<void> | null = null
 // Folders from the slagent command, Finder and the Dock icon arrive as open-file
@@ -48,14 +50,23 @@ const permissionSettings = {
 } as const
 
 function broadcast(event: unknown): void {
+  send(channels.event, event)
+}
+
+function send(channel: string, event: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channels.event, event)
+    win.webContents.send(channel, event)
   }
 }
 
 function requireHost(): AgentHost {
   if (!host) throw new Error("Pi is not ready.")
   return host
+}
+
+function requireTerminal(): TerminalManager {
+  if (!terminal) throw new Error("The terminal is not ready.")
+  return terminal
 }
 
 function requireComputer(): ComputerUse {
@@ -240,6 +251,20 @@ function registerIpc(): void {
   ipcMain.handle(channels.mcpSetEnabled, (_event, name: unknown, enabled: unknown) => {
     return requireMcp().setEnabled(requireName(name), enabled === true)
   })
+  ipcMain.handle(channels.terminalCreate, () => requireTerminal().create())
+  // Keystrokes and drags are sent, not invoked: a shell echoes them faster than a round trip.
+  ipcMain.on(channels.terminalInput, (_event, id: unknown, data: unknown) => {
+    if (typeof id !== "string" || typeof data !== "string") return
+    terminal?.write(id, data)
+  })
+  ipcMain.on(channels.terminalResize, (_event, id: unknown, cols: unknown, rows: unknown) => {
+    if (typeof id !== "string" || typeof cols !== "number" || typeof rows !== "number") return
+    terminal?.resize(id, cols, rows)
+  })
+  ipcMain.on(channels.terminalClose, (_event, id: unknown) => {
+    if (typeof id !== "string") return
+    terminal?.close(id)
+  })
 }
 
 async function openFolderFromSystem(folder: string): Promise<void> {
@@ -271,6 +296,7 @@ app.whenReady().then(async () => {
     openUrl: (url) => shell.openExternal(url),
   })
   await mcp.start().catch((error) => console.error("mcp:", error))
+  terminal = new TerminalManager((event: TerminalEvent) => send(channels.terminalEvent, event), () => host?.getCwd() ?? "")
   registerIpc()
   registerCli()
   setApplicationMenu()
@@ -286,6 +312,7 @@ app.whenReady().then(async () => {
       await (host?.flush() ?? Promise.resolve())
       host?.close()
       computer?.stop()
+      terminal?.stop()
     },
   })
 
@@ -295,6 +322,8 @@ app.whenReady().then(async () => {
 })
 
 app.on("window-all-closed", () => {
+  // No window can show a shell, so none of them outlive it.
+  terminal?.stop()
   if (process.platform !== "darwin") app.quit()
 })
 
@@ -306,6 +335,7 @@ app.on("before-quit", (event) => {
   void pending.finally(() => {
     host?.close()
     computer?.stop()
+    terminal?.stop()
     app.quit()
   })
 })

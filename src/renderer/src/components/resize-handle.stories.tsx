@@ -20,4 +20,6 @@ export const Default: Story = {}
 
 export const DiffEdge: Story = { args: { edge: "diff" } }
 
+export const TerminalEdge: Story = { args: { edge: "terminal" } }
+
 export const Resizing: Story = { args: { resizing: true } }

@@ -29,6 +29,7 @@ export function createShell({
   Composer,
   Changes,
   PlanOverlay,
+  TerminalDrawer,
   api,
   libraryStore,
   metaStore,
@@ -50,6 +51,7 @@ export function createShell({
   Composer: ComponentType
   Changes: ComponentType
   PlanOverlay: ComponentType
+  TerminalDrawer: ComponentType
   api: API
   libraryStore: LibraryStore
   metaStore: MetaStore
@@ -96,6 +98,7 @@ export function createShell({
         SidebarFrame={SidebarFrame}
         MainColumn={MainColumn}
         PanelFrame={PanelFrame}
+        TerminalDrawer={TerminalDrawer}
         Settings={Settings}
         Models={Models}
       />

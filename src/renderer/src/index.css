@@ -72,6 +72,25 @@
   --border: color-mix(in srgb, var(--foreground) 14%, transparent);
   --input: color-mix(in srgb, var(--foreground) 14%, transparent);
   --ring: #ffffff;
+  /* The built-in terminal. xterm paints through a canvas and cannot resolve
+     var() or color-mix(), so these are read as computed colours instead. */
+  --terminal-selection: rgba(255, 255, 255, 0.22);
+  --terminal-black: #1c1c1e;
+  --terminal-red: #ff5c5c;
+  --terminal-green: #34d399;
+  --terminal-yellow: #fbbf24;
+  --terminal-blue: #3b82f6;
+  --terminal-magenta: #c084fc;
+  --terminal-cyan: #22d3ee;
+  --terminal-white: #d4d4d8;
+  --terminal-bright-black: #6b7280;
+  --terminal-bright-red: #ff8080;
+  --terminal-bright-green: #6ee7b7;
+  --terminal-bright-yellow: #fcd34d;
+  --terminal-bright-blue: #60a5fa;
+  --terminal-bright-magenta: #d8b4fe;
+  --terminal-bright-cyan: #67e8f9;
+  --terminal-bright-white: #ffffff;
 }
 
 /* Light is the dark theme inverted. The UI is written with white-on-black
@@ -101,6 +120,23 @@ html.light {
   --success: #047857;
   --warning: #b45309;
   --info: #1d4ed8;
+  --terminal-selection: rgba(0, 0, 0, 0.18);
+  --terminal-black: #24292f;
+  --terminal-red: #cf222e;
+  --terminal-green: #1a7f37;
+  --terminal-yellow: #9a6700;
+  --terminal-blue: #0969da;
+  --terminal-magenta: #8250df;
+  --terminal-cyan: #1b7c83;
+  --terminal-white: #6e7781;
+  --terminal-bright-black: #57606a;
+  --terminal-bright-red: #a40e26;
+  --terminal-bright-green: #0f5323;
+  --terminal-bright-yellow: #7a4b00;
+  --terminal-bright-blue: #0550ae;
+  --terminal-bright-magenta: #6639ba;
+  --terminal-bright-cyan: #0f6b74;
+  --terminal-bright-white: #24292f;
 }
 
 @layer base {

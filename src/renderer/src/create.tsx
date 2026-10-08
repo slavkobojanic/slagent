@@ -11,6 +11,7 @@ import { createPermissionsWizard } from "@/features/permissions-wizard/create"
 import { createPlanOverlay } from "@/features/transcript/plan-overlay/create"
 import { createSettings } from "@/features/settings/create"
 import { createShell } from "@/features/shell/create"
+import { createTerminal } from "@/features/terminal/create"
 import { createTranscript } from "@/features/transcript/create"
 import { API } from "@/ipc/api"
 import { createLog } from "@/log/log"
@@ -154,6 +155,15 @@ export function createApp(): ComponentType {
   })
   const PermissionsWizard = createPermissionsWizard({ log: log.child("permissions-wizard"), api, window, permissionsStore })
   const PlanOverlay = createPlanOverlay({ api, runStore, panelPresenter, composerPort, log: log.child("plan-overlay") })
+  const TerminalDrawer = createTerminal({
+    log: log.child("terminal"),
+    api,
+    window,
+    layoutStore,
+    layoutPresenter,
+    commandRegistry,
+    composerPort,
+  })
   const Shell = createShell({
     Library,
     Settings,
@@ -162,6 +172,7 @@ export function createApp(): ComponentType {
     Composer,
     Changes,
     PlanOverlay,
+    TerminalDrawer,
     log: log.child("shell"),
     api,
     libraryStore,

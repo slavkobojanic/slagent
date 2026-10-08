@@ -1,7 +1,7 @@
 import type { Log } from "@/log/log"
 import { LAYOUT_EDGES, type LayoutStore, type ResizeEdge } from "@/state/layout/layout-store/layout-store"
 
-type PressEvent = Pick<PointerEvent, "button" | "clientX" | "preventDefault">
+type PressEvent = Pick<PointerEvent, "button" | "clientX" | "clientY" | "preventDefault">
 
 export class LayoutPresenter {
   private drag: { edge: ResizeEdge; detach: () => void } | null = null
@@ -20,6 +20,7 @@ export class LayoutPresenter {
     this.started = true
     this.restore("sidebar")
     this.restore("diff")
+    this.restore("terminal")
     this.window.addEventListener("resize", this.handleViewportResize)
   }
 
@@ -49,16 +50,17 @@ export class LayoutPresenter {
     event.preventDefault()
     this.endDrag()
 
+    const spec = LAYOUT_EDGES[edge]
     const target = this.window
-    const startX = event.clientX
-    const startWidth = edge === "sidebar" ? this.store.sidebarWidth : this.store.diffWidth
+    const startPosition = this.positionOf(edge, event)
+    const startSize = this.store.sizeOf(edge)
     const move = (next: PointerEvent) => {
-      this.store.setWidth(edge, this.clamp(edge, startWidth + (next.clientX - startX) * LAYOUT_EDGES[edge].direction))
+      this.store.setSize(edge, this.clamp(edge, startSize + (this.positionOf(edge, next) - startPosition) * spec.direction))
     }
     target.addEventListener("pointermove", move)
     target.addEventListener("pointerup", this.endDrag)
     target.addEventListener("pointercancel", this.endDrag)
-    target.document.body.classList.add("resizing")
+    target.document.body.classList.add(spec.axis === "y" ? "resizing-row" : "resizing")
     this.store.setResizing(edge)
     this.drag = {
       edge,
@@ -71,12 +73,12 @@ export class LayoutPresenter {
   }
 
   handleResizeReset = (edge: ResizeEdge) => {
-    this.log.action("reset-width", { edge })
-    this.store.setWidth(edge, this.clamp(edge, LAYOUT_EDGES[edge].fallback))
+    this.log.action("reset-size", { edge })
+    this.store.setSize(edge, this.clamp(edge, LAYOUT_EDGES[edge].fallback))
     try {
       this.window.localStorage.removeItem(LAYOUT_EDGES[edge].storageKey)
     } catch {
-      // Width is a convenience; storage may be unavailable.
+      // Size is a convenience; storage may be unavailable.
     }
   }
 
@@ -87,14 +89,14 @@ export class LayoutPresenter {
     const { edge, detach } = this.drag
     detach()
     this.drag = null
-    this.window.document.body.classList.remove("resizing")
+    this.window.document.body.classList.remove("resizing", "resizing-row")
     this.store.setResizing(null)
     this.persist(edge)
-    this.log.action("resize", { edge, width: edge === "sidebar" ? this.store.sidebarWidth : this.store.diffWidth })
+    this.log.action("resize", { edge, size: this.store.sizeOf(edge) })
   }
 
   private restore = (edge: ResizeEdge) => {
-    this.store.setWidth(edge, this.clamp(edge, this.readStored(edge)))
+    this.store.setSize(edge, this.clamp(edge, this.readStored(edge)))
   }
 
   private readStored = (edge: ResizeEdge): number => {
@@ -105,29 +107,43 @@ export class LayoutPresenter {
         return value
       }
     } catch {
-      // Width is a convenience; storage may be unavailable.
+      // Size is a convenience; storage may be unavailable.
     }
     return spec.fallback
   }
 
   private persist = (edge: ResizeEdge) => {
-    const width = edge === "sidebar" ? this.store.sidebarWidth : this.store.diffWidth
     try {
-      this.window.localStorage.setItem(LAYOUT_EDGES[edge].storageKey, String(width))
+      this.window.localStorage.setItem(LAYOUT_EDGES[edge].storageKey, String(this.store.sizeOf(edge)))
     } catch {
-      // Not persisted, but the width still applies for this session.
+      // Not persisted, but the size still applies for this session.
     }
   }
 
   private clamp = (edge: ResizeEdge, value: number): number => {
     const spec = LAYOUT_EDGES[edge]
-    const max = spec.max(this.window.innerWidth)
+    const max = spec.max(this.viewportOf(edge))
     return Math.round(Math.min(Math.max(value, spec.min), Math.max(spec.min, max)))
+  }
+
+  private positionOf = (edge: ResizeEdge, event: Pick<PointerEvent, "clientX" | "clientY">): number => {
+    if (LAYOUT_EDGES[edge].axis === "y") {
+      return event.clientY
+    }
+    return event.clientX
+  }
+
+  private viewportOf = (edge: ResizeEdge): number => {
+    if (LAYOUT_EDGES[edge].axis === "y") {
+      return this.window.innerHeight
+    }
+    return this.window.innerWidth
   }
 
   // The bounds depend on the window, so a shrinking window pulls an over-wide pane back in.
   private handleViewportResize = () => {
-    this.store.setWidth("sidebar", this.clamp("sidebar", this.store.sidebarWidth))
-    this.store.setWidth("diff", this.clamp("diff", this.store.diffWidth))
+    this.store.setSize("sidebar", this.clamp("sidebar", this.store.sidebarWidth))
+    this.store.setSize("diff", this.clamp("diff", this.store.diffWidth))
+    this.store.setSize("terminal", this.clamp("terminal", this.store.terminalHeight))
   }
 }

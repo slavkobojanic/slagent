@@ -5,17 +5,19 @@ import { nullLog } from "@/log/log"
 
 const SIDEBAR_KEY = "slagent:sidebar-width"
 const CHANGES_KEY = "slagent:changes-width"
+const TERMINAL_KEY = "slagent:terminal-height"
 
-function setViewport(width: number) {
+function setViewport(width: number, height = 768) {
   Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: width })
+  Object.defineProperty(window, "innerHeight", { configurable: true, writable: true, value: height })
 }
 
-function press(clientX: number, button = 0) {
-  return new MouseEvent("pointerdown", { button, clientX, cancelable: true })
+function press(clientX: number, button = 0, clientY = 0) {
+  return new MouseEvent("pointerdown", { button, clientX, clientY, cancelable: true })
 }
 
-function move(clientX: number) {
-  window.dispatchEvent(new MouseEvent("pointermove", { clientX }))
+function move(clientX: number, clientY = 0) {
+  window.dispatchEvent(new MouseEvent("pointermove", { clientX, clientY }))
 }
 
 function release() {
@@ -72,6 +74,23 @@ describe("LayoutPresenter", () => {
 
       expect(store.diffWidth).toBe(400)
     })
+
+    it("can restore the terminal height from its own key", () => {
+      window.localStorage.setItem(TERMINAL_KEY, "360")
+
+      presenter.start()
+
+      expect(store.terminalHeight).toBe(360)
+    })
+
+    it("can clamp a stored terminal height to the room left above it", () => {
+      setViewport(1200, 600)
+      window.localStorage.setItem(TERMINAL_KEY, "900")
+
+      presenter.start()
+
+      expect(store.terminalHeight).toBe(360)
+    })
   })
 
   describe("handleResizeStart", () => {
@@ -110,6 +129,47 @@ describe("LayoutPresenter", () => {
       move(250)
 
       expect(store.diffWidth).toBe(610)
+    })
+
+    it("can grow the terminal as the pointer moves up", () => {
+      presenter.start()
+
+      presenter.handleResizeStart("terminal", press(0, 0, 500))
+      move(0, 440)
+
+      expect(store.terminalHeight).toBe(348)
+    })
+
+    it("can clamp the terminal height when dragged below its minimum", () => {
+      presenter.start()
+
+      presenter.handleResizeStart("terminal", press(0, 0, 500))
+      move(0, 900)
+
+      expect(store.terminalHeight).toBe(120)
+    })
+
+    it("can mark the row as resizing while the terminal drag runs", () => {
+      presenter.start()
+
+      presenter.handleResizeStart("terminal", press(0, 0, 500))
+      expect(store.resizing).toBe("terminal")
+      expect(document.body.classList.contains("resizing-row")).toBe(true)
+
+      release()
+
+      expect(store.resizing).toBeNull()
+      expect(document.body.classList.contains("resizing-row")).toBe(false)
+    })
+
+    it("can persist the terminal height under its key when the drag ends", () => {
+      presenter.start()
+
+      presenter.handleResizeStart("terminal", press(0, 0, 500))
+      move(0, 440)
+      release()
+
+      expect(window.localStorage.getItem(TERMINAL_KEY)).toBe("348")
     })
 
     it("can mark the edge as resizing and the body while dragging, then clear both on pointer up", () => {
@@ -170,6 +230,18 @@ describe("LayoutPresenter", () => {
       expect(store.sidebarWidth).toBe(256)
       expect(window.localStorage.getItem(SIDEBAR_KEY)).toBeNull()
     })
+
+    it("can restore the default terminal height and forget the stored one", () => {
+      presenter.start()
+      presenter.handleResizeStart("terminal", press(0, 0, 500))
+      move(0, 440)
+      release()
+
+      presenter.handleResizeReset("terminal")
+
+      expect(store.terminalHeight).toBe(288)
+      expect(window.localStorage.getItem(TERMINAL_KEY)).toBeNull()
+    })
   })
 
   describe("toggleSidebar", () => {
@@ -191,6 +263,17 @@ describe("LayoutPresenter", () => {
       window.dispatchEvent(new Event("resize"))
 
       expect(store.sidebarWidth).toBe(240)
+    })
+
+    it("can pull the terminal back inside a shorter window", () => {
+      setViewport(1200, 900)
+      window.localStorage.setItem(TERMINAL_KEY, "600")
+      presenter.start()
+
+      setViewport(1200, 600)
+      window.dispatchEvent(new Event("resize"))
+
+      expect(store.terminalHeight).toBe(360)
     })
   })
 

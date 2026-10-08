@@ -64,7 +64,7 @@ export class ChangesPresenter {
     this.panelPresenter.selectTab("changes")
   }
 
-  handleResizeStart = (event: Pick<PointerEvent, "button" | "clientX" | "preventDefault">) => {
+  handleResizeStart = (event: Pick<PointerEvent, "button" | "clientX" | "clientY" | "preventDefault">) => {
     this.layoutPresenter.handleResizeStart("diff", event)
   }
 

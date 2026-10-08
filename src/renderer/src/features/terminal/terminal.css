@@ -1,0 +1,60 @@
+@import "@xterm/xterm/css/xterm.css";
+
+/* xterm builds its own scroll container inside the surface, and the drawer
+   collapses on a grid row, so both need rules Tailwind has no utility for. */
+.terminal-slot {
+  display: grid;
+  grid-template-rows: var(--terminal-height, 18rem);
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  transition: grid-template-rows 250ms var(--ease-drawer);
+}
+
+/* A fixed length rather than 0fr, which would still keep the section's
+   min-content height and never hand the rows back to the transcript. */
+.terminal-slot[data-closed] {
+  grid-template-rows: 0rem;
+}
+
+.terminal-slot[data-resizing] {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-slot {
+    transition: none;
+  }
+}
+
+.terminal-tabs {
+  scrollbar-width: none;
+}
+
+.terminal-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.terminal-surface {
+  padding: 0.5rem 0.25rem 0.5rem 0.75rem;
+}
+
+.terminal-surface .xterm {
+  height: 100%;
+}
+
+.terminal-surface .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent) transparent;
+}
+
+.terminal-surface .xterm-viewport::-webkit-scrollbar {
+  width: 0.625rem;
+}
+
+.terminal-surface .xterm-viewport::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+  background-color: color-mix(in srgb, var(--foreground) 25%, transparent);
+}
