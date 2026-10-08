@@ -18,6 +18,7 @@ export const channels = {
   draftSkill: "agent:draft-skill",
   createSkill: "agent:create-skill",
   chooseFolder: "agent:choose-folder",
+  createChatProject: "agent:create-chat-project",
   setModel: "agent:set-model",
   setTitleModel: "agent:set-title-model",
   setRouting: "agent:set-routing",
@@ -345,10 +346,17 @@ export type SlashCommand = {
   kind: SlashCommandKind
 }
 
+// "chat" projects are conversations without a picked folder: the app manages
+// their cwd under the library root and the agent gets a chat-like prompt.
+// Absent mode (older records) means "code".
+export type ProjectMode = "chat" | "code"
+
 export type ProjectSummary = {
   id: string
   path: string
   name: string
+  // Absent means "code" (older snapshots).
+  mode?: ProjectMode
   pinned: boolean
   pinnedAt: number
   lastOpenedAt: number
@@ -620,6 +628,7 @@ export type SlagentApi = {
   createSkill: (input: CreateSkillInput) => Promise<string>
   pathForFile: (file: File) => string
   chooseFolder: () => Promise<void>
+  createChatProject: () => Promise<void>
   setModel: (modelId: string) => Promise<ModelChange>
   setTitleModel: (modelId: string) => Promise<void>
   setRouting: (routing: ModelRouting) => Promise<void>
