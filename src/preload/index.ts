@@ -105,6 +105,14 @@ const api: SlagentApi = {
       ipcRenderer.off(channels.terminalEvent, wrapped)
     }
   },
+  onCloseRequest: (listener) => {
+    const wrapped = () => listener()
+    ipcRenderer.on(channels.appCloseRequest, wrapped)
+    return () => {
+      ipcRenderer.off(channels.appCloseRequest, wrapped)
+    }
+  },
+  closeApp: () => ipcRenderer.invoke(channels.appClose),
 }
 
 contextBridge.exposeInMainWorld("slagent", api)
