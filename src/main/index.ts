@@ -146,7 +146,7 @@ function registerIpc(): void {
   ipcMain.handle(channels.pickContextFiles, () => requireHost().pickContextFiles())
   ipcMain.handle(channels.prompt, (_event, request: unknown) => requireHost().prompt(parsePrompt(request)))
   ipcMain.handle(channels.abort, () => requireHost().abort())
-  ipcMain.handle(channels.newChat, () => requireHost().newChat())
+  ipcMain.handle(channels.newChat, (_event, projectId?: string) => requireHost().newChat(projectId))
   ipcMain.handle(channels.openProject, (_event, projectId: string) => requireHost().openProject(projectId))
   ipcMain.handle(channels.openChat, (_event, chatId: string, projectId?: string, messageId?: unknown) => {
     return requireHost().openChat(chatId, projectId, typeof messageId === "string" ? messageId : undefined)

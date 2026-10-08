@@ -11,6 +11,7 @@ const base: OpenProjectProps = {
   project: atlas,
   collapsed: false,
   onToggle: noop,
+  onNewChat: noop,
   ProjectRow: ({ project, active, collapsed }) => <div data-slot="project-row" data-active={active} data-collapsed={collapsed}>{project.name}</div>,
   ChatList: () => <div data-slot="chat-list" />,
   ChooseFolder: () => <div data-slot="choose-folder" />,
@@ -23,11 +24,12 @@ describe("OpenProject", () => {
     expect(html).toBe('<div data-slot="choose-folder"></div>')
   })
 
-  it("can show the open project's row as active, then its chats", () => {
+  it("can show the open project's row as active, then the draft row and its chats", () => {
     const html = viewMarkup(<OpenProject {...base} />)
 
     expect(html).toContain('data-active="true"')
     expect(html).toContain("Atlas")
+    expect(html).toContain("New chat")
     expect(html).toContain('data-slot="chat-list"')
   })
 
@@ -36,5 +38,6 @@ describe("OpenProject", () => {
 
     expect(html).toContain('data-collapsed="true"')
     expect(html).not.toContain('data-slot="chat-list"')
+    expect(html).not.toContain("New chat")
   })
 })

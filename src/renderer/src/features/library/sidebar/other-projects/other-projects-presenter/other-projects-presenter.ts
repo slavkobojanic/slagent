@@ -1,5 +1,7 @@
 import type { ProjectSummary } from "@shared/types"
+import { toastFailure } from "@/features/library/toast-failure"
 import type { OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
+import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 
 const REDUCE_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
@@ -11,6 +13,7 @@ export class OtherProjectsPresenter {
 
   constructor(
     private readonly store: OtherProjectsStore,
+    private readonly api: API,
     private readonly window: Window,
     private readonly log: Log,
   ) {}
@@ -51,6 +54,11 @@ export class OtherProjectsPresenter {
   handleShowLess = (projectId: string) => {
     this.log.action("show-fewer-chats", { projectId })
     this.store.setShowAll(projectId, false)
+  }
+
+  handleNewChat = (project: ProjectSummary) => {
+    this.log.action("new-chat", { projectId: project.id })
+    return toastFailure(() => this.api.newChat(project.id))
   }
 
   private handleMotionChange = (event: MediaQueryListEvent) => {

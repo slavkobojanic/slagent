@@ -84,7 +84,7 @@ export class API implements SlagentApi {
     this.getSnapshot = () => bridge.getSnapshot()
     this.prompt = (request) => bridge.prompt(plain(request))
     this.abort = () => bridge.abort()
-    this.newChat = () => bridge.newChat()
+    this.newChat = (projectId) => bridge.newChat(projectId)
     this.openProject = (projectId) => bridge.openProject(projectId)
     this.openChat = (chatId, projectId, messageId) => bridge.openChat(chatId, projectId, messageId)
     this.pageTranscript = (page) => bridge.pageTranscript(plain(page))

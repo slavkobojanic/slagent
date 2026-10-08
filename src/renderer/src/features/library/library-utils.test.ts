@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ChatSummary, LibraryState, ProjectSummary } from "@shared/types"
-import { isDraftBecomingChat, libraryContext, orderedChats, samePlace } from "@/features/library/library-utils"
+import { chatOf, isDraftBecomingChat, libraryContext, orderedChats, projectOfChat, samePlace } from "@/features/library/library-utils"
 import { projectStatus, sortedProjects } from "@/lib/projects"
 
 function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
@@ -66,6 +66,46 @@ describe("isDraftBecomingChat", () => {
 
   it("can be false when the next place is still a draft", () => {
     expect(isDraftBecomingChat(draft([]), { projectId: "p1", chatId: null })).toBe(false)
+  })
+})
+
+describe("chatOf", () => {
+  it("can find a chat of the open project", () => {
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1")], chatsByProject: {}, openChatId: "c1" }
+
+    expect(chatOf(library, "c1")?.id).toBe("c1")
+  })
+
+  it("can find a chat of a project that is not open", () => {
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c2")] }, openChatId: "c2" }
+
+    expect(chatOf(library, "c2")?.id).toBe("c2")
+  })
+
+  it("can return undefined for a chat the library does not list", () => {
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null }
+
+    expect(chatOf(library, "gone")).toBeUndefined()
+  })
+})
+
+describe("projectOfChat", () => {
+  it("can name the open project for its own chats", () => {
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1")], chatsByProject: {}, openChatId: "c1" }
+
+    expect(projectOfChat(library, "c1")).toBe("p1")
+  })
+
+  it("can name a project that is not open", () => {
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c2")] }, openChatId: null }
+
+    expect(projectOfChat(library, "c2")).toBe("p2")
+  })
+
+  it("can return undefined for a chat the library does not list", () => {
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null }
+
+    expect(projectOfChat(library, "gone")).toBeUndefined()
   })
 })
 

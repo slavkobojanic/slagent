@@ -210,7 +210,7 @@ describe("NavHistoryPresenter", () => {
       expect(store.index).toBe(1)
     })
 
-    it("can open a draft by opening its project and starting a new chat", async () => {
+    it("can open a draft by starting a new chat in its project", async () => {
       store.record(place("p2", "c1"))
       store.record(place("p1", null))
       store.moveTo(0)
@@ -218,8 +218,7 @@ describe("NavHistoryPresenter", () => {
 
       await presenter.forward()
 
-      expect(api.openProject).toHaveBeenCalledWith("p1")
-      expect(api.newChat).toHaveBeenCalledTimes(1)
+      expect(api.newChat).toHaveBeenCalledWith("p1")
       expect(store.index).toBe(1)
     })
   })

@@ -9,6 +9,7 @@ const base: OtherProjectsProps = {
   others: [{ project: beta, status: "done" }],
   isCollapsed: () => false,
   onToggle: () => undefined,
+  onNewChat: () => undefined,
   ProjectRow: ({ project, status, active, collapsed }) => (
     <div data-active={active} data-status={status} data-collapsed={collapsed}>
       {project.name}
@@ -18,13 +19,14 @@ const base: OtherProjectsProps = {
 }
 
 describe("OtherProjects", () => {
-  it("can list projects under a heading, each expanded with its chat list", () => {
+  it("can list projects under a heading, each expanded with its draft row and chat list", () => {
     const html = viewMarkup(<OtherProjects {...base} />)
 
     expect(html).toContain("Projects")
     expect(html).toContain("Beta")
     expect(html).toContain('data-active="false"')
     expect(html).toContain('data-status="done"')
+    expect(html).toContain("New chat")
     expect(html).toContain('data-slot="chat-list"')
     expect(html).toContain('data-project="p2"')
   })
@@ -34,6 +36,7 @@ describe("OtherProjects", () => {
 
     expect(html).toContain('data-collapsed="true"')
     expect(html).not.toContain('data-slot="chat-list"')
+    expect(html).not.toContain("New chat")
   })
 
   it("can render nothing when no other project exists", () => {

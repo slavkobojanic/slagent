@@ -42,7 +42,7 @@ export function createOpenProject({
   log: Log
 }): ComponentType {
   const store = new OpenProjectStore(libraryStore)
-  const presenter = new OpenProjectPresenter(store, log)
+  const presenter = new OpenProjectPresenter(store, api, log)
 
   const ChooseFolder = createChooseFolder({ api, commandRegistry, log: log.child("choose-folder") })
   const ChatList = createChatList({
@@ -62,6 +62,7 @@ export function createOpenProject({
         project={store.project}
         collapsed={store.collapsed}
         onToggle={presenter.handleToggle}
+        onNewChat={presenter.handleNewChat}
         ProjectRow={ProjectRow}
         ChatList={ChatList}
         ChooseFolder={ChooseFolder}

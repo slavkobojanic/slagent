@@ -2,17 +2,19 @@ import { describe, expect, it } from "vitest"
 import type { ProjectSummary } from "@shared/types"
 import { OtherProjectsPresenter } from "@/features/library/sidebar/other-projects/other-projects-presenter/other-projects-presenter"
 import { OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
+import type { API } from "@/ipc/api"
 import { nullLog } from "@/log/log"
 import { LibraryStore } from "@/mirror/library-store/library-store"
+import { createMockInstance } from "@/test/create-mock-instance"
 
 const atlas: ProjectSummary = { id: "p1", path: "/work/p1", name: "Atlas", pinned: true, pinnedAt: 1, lastOpenedAt: 0, running: false, attention: false }
 
 // jsdom has no matchMedia. The stub pretends the reduced-motion setting is off.
 const matchMedia = () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }) as unknown as MediaQueryList
 
-function presenter() {
+function presenter(api = createMockInstance<API>(["newChat"])) {
   const store = new OtherProjectsStore(new LibraryStore())
-  return { store, presenter: new OtherProjectsPresenter(store, { matchMedia } as unknown as Window, nullLog()) }
+  return { store, api, presenter: new OtherProjectsPresenter(store, api, { matchMedia } as unknown as Window, nullLog()) }
 }
 
 describe("OtherProjectsPresenter", () => {
@@ -37,6 +39,16 @@ describe("OtherProjectsPresenter", () => {
 
       subject.handleShowLess("p1")
       expect(store.isShowingAll("p1")).toBe(false)
+    })
+  })
+
+  describe("handleNewChat", () => {
+    it("can start a draft in the project, naming it", async () => {
+      const { api, presenter: subject } = presenter()
+
+      await subject.handleNewChat(atlas)
+
+      expect(api.newChat).toHaveBeenCalledWith("p1")
     })
   })
 })
