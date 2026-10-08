@@ -16,7 +16,7 @@ describe("AppClose", () => {
   it("can blur the app behind the question", () => {
     const { container } = render(<AppClose open busy={false} onCancel={noop} onConfirm={noop} />)
 
-    expect(container.ownerDocument.querySelector(".backdrop-blur-xl")).not.toBeNull()
+    expect(container.ownerDocument.querySelector(".backdrop-blur-md")).not.toBeNull()
   })
 
   it("can show nothing when closed", () => {

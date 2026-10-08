@@ -19,7 +19,7 @@ export function AppClose({ open, busy, onCancel, onConfirm }: AppCloseProps) {
       }}
     >
       {/* The blur is the point: the app behind the question goes soft while it asks. */}
-      <DialogContent overlayClassName="fixed inset-0 z-50 bg-background/25 backdrop-blur-xl">
+      <DialogContent overlayClassName="fixed inset-0 z-50 bg-background/25 backdrop-blur-md">
         <DialogHeader>
           <DialogTitle>Close the window?</DialogTitle>
           <DialogDescription>The window closes and the app keeps running in the dock.</DialogDescription>
