@@ -19,7 +19,6 @@ const summary: ProjectSummary = {
 
 const base: ProjectRowProps = {
   project: summary,
-  status: "idle",
   active: true,
   collapsed: false,
   modKey: "⌘",
@@ -49,10 +48,9 @@ describe("ProjectRow", () => {
     expect(rowButtonTag(html)).toContain('aria-expanded="false"')
   })
 
-  it("can show a pinned project with its status dot and no shortcut hint", () => {
-    const html = viewMarkup(<ProjectRow {...base} active={false} status="done" project={{ ...summary, pinned: true }} />)
+  it("can show a pinned project with no shortcut hint", () => {
+    const html = viewMarkup(<ProjectRow {...base} active={false} project={{ ...summary, pinned: true }} />)
 
-    expect(html).toContain('aria-label="Finished"')
     expect(html).toContain('title="New chat in Atlas"')
   })
 

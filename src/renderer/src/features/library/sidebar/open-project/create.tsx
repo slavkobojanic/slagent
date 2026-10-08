@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
-import type { ChatStatus, ProjectSummary } from "@shared/types"
+import type { ProjectSummary } from "@shared/types"
 import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import type { API } from "@/ipc/api"
@@ -33,7 +33,6 @@ export function createOpenProject({
   chatSwitchPresenter: ChatSwitchPresenter
   ProjectRow: ComponentType<{
     project: ProjectSummary
-    status: ChatStatus
     active: boolean
     collapsed: boolean
     onSelect: (project: ProjectSummary) => void

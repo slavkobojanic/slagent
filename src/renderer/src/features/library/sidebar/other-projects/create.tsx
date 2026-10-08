@@ -1,11 +1,10 @@
 import { observer } from "mobx-react-lite"
 import { useCallback } from "react"
 import type { ComponentType } from "react"
-import type { ChatStatus, ProjectSummary } from "@shared/types"
+import type { ProjectSummary } from "@shared/types"
 import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import { orderedChats } from "@/features/library/library-utils"
-import { projectStatus } from "@/lib/projects"
 import { ChatList } from "@/features/library/sidebar/open-project/chat-list/chat-list"
 import { ChatListFooter } from "@/features/library/sidebar/open-project/chat-list/chat-list-footer/chat-list-footer"
 import { visibleChats } from "@/features/library/sidebar/open-project/chat-list/chat-list-utils"
@@ -34,7 +33,6 @@ export function createOtherProjects({
   chatSwitchPresenter: ChatSwitchPresenter
   ProjectRow: ComponentType<{
     project: ProjectSummary
-    status: ChatStatus
     active: boolean
     collapsed: boolean
     onSelect: (project: ProjectSummary) => void
@@ -81,7 +79,7 @@ export function createOtherProjects({
   return observer(function OtherProjectsHost() {
     return (
       <OtherProjects
-        noProject={store.noProject ? { project: store.noProject, status: projectStatus(store.noProject), active: false } : null}
+        noProject={store.noProject ? { project: store.noProject, active: false } : null}
         others={store.others}
         isCollapsed={(projectId) => store.isCollapsed(projectId)}
         onToggle={presenter.handleToggle}
