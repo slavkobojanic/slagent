@@ -32,6 +32,7 @@ export function createProjectMenu({
         projects={sortedProjects(library.projects).map((item) => ({ id: item.id, name: item.name, status: projectStatus(item) }))}
         onOpenProject={presenter.openProject}
         onChooseFolder={presenter.chooseFolder}
+        onCreateChatProject={presenter.createChatProject}
       />
     )
   })

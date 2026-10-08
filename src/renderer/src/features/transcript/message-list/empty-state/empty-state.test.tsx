@@ -5,7 +5,7 @@ import { viewMarkup } from "@/test/view-markup"
 const noop = () => undefined
 
 function props(overrides: Partial<EmptyStateProps> = {}): EmptyStateProps {
-  return { configured: true, cwd: "/work/app", onConnect: noop, onChoose: noop, ...overrides }
+  return { configured: true, cwd: "/work/app", onConnect: noop, onChoose: noop, onNewChat: noop, ...overrides }
 }
 
 describe("EmptyState", () => {
@@ -14,6 +14,7 @@ describe("EmptyState", () => {
 
     expect(markup).toContain("Choose a folder")
     expect(markup).toContain("Choose folder")
+    expect(markup).toContain("New chat")
   })
 
   it("asks for a model connection when the folder has none", () => {

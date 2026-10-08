@@ -27,6 +27,7 @@ export function createEmptyState({
         cwd={metaStore.meta?.cwd ?? ""}
         onConnect={presenter.openSettings}
         onChoose={presenter.chooseFolder}
+        onNewChat={presenter.createChatProject}
       />
     )
   })

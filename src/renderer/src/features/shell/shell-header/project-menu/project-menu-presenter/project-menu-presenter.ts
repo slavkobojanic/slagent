@@ -31,4 +31,15 @@ export class ProjectMenuPresenter {
       this.store.setError(errorText(error))
     }
   }
+
+  createChatProject = async () => {
+    this.log.action("create-chat-project")
+    this.store.setError(null)
+    try {
+      await this.api.createChatProject()
+    } catch (error) {
+      this.log.warn("create-chat-project-failed", { error })
+      this.store.setError(errorText(error))
+    }
+  }
 }
