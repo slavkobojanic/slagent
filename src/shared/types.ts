@@ -76,6 +76,8 @@ export const channels = {
 export type PersonalisationTone = "direct" | "friendly" | "professional"
 export type PersonalisationBrevity = "terse" | "balanced" | "detailed"
 export type PersonalisationBranch = "descriptive" | "prefix"
+// Where the agent works: directly on main, or on a new branch for every change.
+export type PersonalisationGitWorkflow = "main" | "branch"
 export type PersonalisationCommit = "conventional" | "imperative" | "free"
 export type PersonalisationExplanation = "minimal" | "normal" | "educational"
 // When the agent commits: only after a yes, only when told to, or on its own
@@ -100,6 +102,8 @@ export type Personalisation = {
   branchNaming: PersonalisationBranch | null
   // Branch prefix, used with branchNaming: "prefix" (e.g. "feat" for feat/fix-x).
   branchPrefix: string | null
+  // Work directly on main, or create a new branch for changes before starting work.
+  gitWorkflow: PersonalisationGitWorkflow | null
   commitStyle: PersonalisationCommit | null
   emoji: boolean | null
   // Reply language, or null to match the user's messages.
@@ -119,6 +123,7 @@ export const EMPTY_PERSONALISATION: Personalisation = {
   brevity: null,
   branchNaming: null,
   branchPrefix: null,
+  gitWorkflow: null,
   commitStyle: null,
   emoji: null,
   language: null,

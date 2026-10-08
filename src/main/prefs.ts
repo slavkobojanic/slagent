@@ -11,6 +11,7 @@ import {
   type PinnedFile,
   type PersonalisationBranch,
   type PersonalisationBrevity,
+  type PersonalisationGitWorkflow,
   type PersonalisationCommit,
   type PersonalisationCommitStrategy,
   type PersonalisationExplanation,
@@ -43,6 +44,7 @@ export function parseEffort(value: unknown): EffortLevel {
 const TONES: PersonalisationTone[] = ["direct", "friendly", "professional"]
 const BREVITIES: PersonalisationBrevity[] = ["terse", "balanced", "detailed"]
 const BRANCHES: PersonalisationBranch[] = ["descriptive", "prefix"]
+const GIT_WORKFLOWS: PersonalisationGitWorkflow[] = ["main", "branch"]
 const COMMITS: PersonalisationCommit[] = ["conventional", "imperative", "free"]
 const EXPLANATIONS: PersonalisationExplanation[] = ["minimal", "normal", "educational"]
 const COMMIT_STRATEGIES: PersonalisationCommitStrategy[] = ["ask", "when-asked", "at-end", "as-you-go"]
@@ -90,6 +92,7 @@ export function parsePersonalisation(input: unknown): Personalisation {
     brevity: pick("brevity", BREVITIES),
     branchNaming: pick("branchNaming", BRANCHES),
     branchPrefix: text("branchPrefix", 40),
+    gitWorkflow: pick("gitWorkflow", GIT_WORKFLOWS),
     commitStyle: pick("commitStyle", COMMITS),
     emoji: flag("emoji"),
     language: text("language", 60),
