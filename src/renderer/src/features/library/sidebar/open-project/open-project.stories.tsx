@@ -11,7 +11,6 @@ const meta = {
     project: project(),
     collapsed: false,
     onToggle: fn(),
-    onNewChat: fn(),
     ProjectRow: slot("ProjectRow"),
     ChatList: slot("ChatList"),
     reduceMotion: false,

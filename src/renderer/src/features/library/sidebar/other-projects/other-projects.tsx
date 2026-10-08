@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from "motion/react"
 import { observer } from "mobx-react-lite"
 import type { ComponentType } from "react"
 import type { ProjectSummary } from "@shared/types"
-import { NewChatRow } from "@/features/library/sidebar/new-chat-row"
 
 // Same feel as the chat rows entering a chat list (chat-list.tsx): fast, subtle, no bounce.
 const SECTION_TRANSITION = { duration: 0.22, ease: [0.23, 1, 0.32, 1] as const }
@@ -16,7 +15,6 @@ export type OtherProjectsProps = {
   others: OtherProjectItem[]
   isCollapsed: (projectId: string) => boolean
   onToggle: (project: ProjectSummary) => void
-  onNewChat: (project: ProjectSummary) => void
   ProjectRow: ComponentType<{
     project: ProjectSummary
     active: boolean
@@ -33,7 +31,7 @@ export type OtherProjectsProps = {
 // collapse on click; opening a chat or starting a new one switches the project.
 // Observed because the collapse reads (`isCollapsed`) happen right here, not in the host above:
 // without tracking, toggling a row's chevron would update the store but never re-render.
-export const OtherProjects = observer(function OtherProjects({ noProject, others, isCollapsed, onToggle, onNewChat, ProjectRow, ProjectChatList, OpenProject, reduceMotion }: OtherProjectsProps) {
+export const OtherProjects = observer(function OtherProjects({ noProject, others, isCollapsed, onToggle, ProjectRow, ProjectChatList, OpenProject, reduceMotion }: OtherProjectsProps) {
   const renderProject = ({ project, active }: OtherProjectItem) => {
     // The open project renders its own section, active and expanded, with its chat list.
     if (active) {
@@ -53,8 +51,6 @@ export const OtherProjects = observer(function OtherProjects({ noProject, others
               exit={{ height: 0, opacity: 0 }}
               transition={reduceMotion ? INSTANT_TRANSITION : SECTION_TRANSITION}
             >
-              <NewChatRow label="New chat" onNew={() => onNewChat(project)} />
-              {/* Keyed by project so expanding one section mounts its list without replaying the others. */}
               <ProjectChatList key={project.id} projectId={project.id} />
             </motion.div>
           )}
