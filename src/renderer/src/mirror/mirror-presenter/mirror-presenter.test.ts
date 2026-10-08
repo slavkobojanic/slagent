@@ -13,7 +13,7 @@ type Listener = (event: UiEvent) => void
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
 
 function libraryState(openChatId: string | null, openProjectId = "p1"): LibraryState {
-  return { projects: [], openProjectId, chats: [], openChatId }
+  return { projects: [], openProjectId, chats: [], chatsByProject: {}, openChatId }
 }
 
 function metaState(modelName: string): AppMeta {

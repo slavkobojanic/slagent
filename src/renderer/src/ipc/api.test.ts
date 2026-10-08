@@ -76,7 +76,7 @@ describe("API", () => {
       await api.deleteChat("c1")
 
       expect(String(debug.mock.calls[0][0])).toContain("ipc:time %cdeleteChat")
-      expect(debug.mock.calls[0].at(-1)).toEqual({ args: ["c1"], ok: true })
+      expect(debug.mock.calls[0].at(-1)).toEqual({ args: ["c1", undefined], ok: true })
     })
   })
 })

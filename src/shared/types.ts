@@ -345,7 +345,10 @@ export type ChatSearchResult = {
 export type LibraryState = {
   projects: ProjectSummary[]
   openProjectId: string | null
+  // The open project's chats. Other projects keep theirs in chatsByProject, so the
+  // sidebar can show several projects at once.
   chats: ChatSummary[]
+  chatsByProject: Record<string, ChatSummary[]>
   openChatId: string | null
 }
 
@@ -554,10 +557,11 @@ export type SlagentApi = {
   pageTranscript: (page: TranscriptPage) => Promise<void>
   searchChats: (query: string) => Promise<ChatSearchResult[]>
   pinProject: (projectId: string, pinned: boolean) => Promise<void>
-  pinChat: (chatId: string, pinned: boolean) => Promise<void>
-  renameChat: (chatId: string, title: string) => Promise<void>
-  deleteChat: (chatId: string) => Promise<void>
-  readTranscript: (chatId: string) => Promise<ChatMessage[]>
+  // projectId names the chat's project; it falls back to the open project.
+  pinChat: (chatId: string, pinned: boolean, projectId?: string) => Promise<void>
+  renameChat: (chatId: string, title: string, projectId?: string) => Promise<void>
+  deleteChat: (chatId: string, projectId?: string) => Promise<void>
+  readTranscript: (chatId: string, projectId?: string) => Promise<ChatMessage[]>
   removeProject: (projectId: string, typedName: string) => Promise<void>
   searchFiles: (query: string) => Promise<FileMatch[]>
   listCommands: () => Promise<SlashCommand[]>

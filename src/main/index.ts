@@ -159,14 +159,14 @@ function registerIpc(): void {
   ipcMain.handle(channels.pinProject, (_event, projectId: string, pinned: boolean) => {
     return requireHost().pinProject(projectId, pinned)
   })
-  ipcMain.handle(channels.pinChat, (_event, chatId: string, pinned: boolean) => {
-    return requireHost().pinChat(chatId, pinned)
+  ipcMain.handle(channels.pinChat, (_event, chatId: string, pinned: boolean, projectId?: string) => {
+    return requireHost().pinChat(chatId, pinned, projectId)
   })
-  ipcMain.handle(channels.renameChat, (_event, chatId: string, title: string) => {
-    return requireHost().renameChat(chatId, title)
+  ipcMain.handle(channels.renameChat, (_event, chatId: string, title: string, projectId?: string) => {
+    return requireHost().renameChat(chatId, title, projectId)
   })
-  ipcMain.handle(channels.deleteChat, (_event, chatId: string) => requireHost().deleteChat(chatId))
-  ipcMain.handle(channels.readTranscript, (_event, chatId: string) => requireHost().readTranscript(chatId))
+  ipcMain.handle(channels.deleteChat, (_event, chatId: string, projectId?: string) => requireHost().deleteChat(chatId, projectId))
+  ipcMain.handle(channels.readTranscript, (_event, chatId: string, projectId?: string) => requireHost().readTranscript(chatId, projectId))
   ipcMain.handle(channels.removeProject, (_event, projectId: string, typedName: string) => {
     return requireHost().removeProject(projectId, typedName)
   })

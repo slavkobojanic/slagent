@@ -10,7 +10,7 @@ describe("LibraryStore", () => {
     it("can read the project from the library that was set", () => {
       const store = new LibraryStore()
 
-      store.setLibrary({ projects: [], openProjectId: "p2", chats: [], openChatId: null })
+      store.setLibrary({ projects: [], openProjectId: "p2", chats: [], chatsByProject: {}, openChatId: null })
 
       expect(store.openProjectId).toBe("p2")
     })
@@ -24,7 +24,7 @@ describe("LibraryStore", () => {
     it("can read the chat from the library that was set", () => {
       const store = new LibraryStore()
 
-      store.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c7" })
+      store.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c7" })
 
       expect(store.openChatId).toBe("c7")
     })
