@@ -10,7 +10,7 @@ export type PlanOverlayProps = {
 // A scrim over the chat column only: the right panel stays readable with the full plan.
 export function PlanOverlay({ approving, onAccept, onRevise, onCancel }: PlanOverlayProps) {
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/25 backdrop-blur-xl" aria-label="Plan ready">
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/25 backdrop-blur-md" aria-label="Plan ready">
       <div className="flex items-center gap-2 rounded-lg border border-border bg-background/90 p-2 shadow-lg">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel

@@ -14,7 +14,7 @@ export function PermissionsWizard({ open, step, AccessibilityStep, ScreenStep }:
     <Dialog open={open} onOpenChange={() => undefined}>
       <DialogContent
         hideClose
-        overlayClassName="fixed inset-0 z-50 bg-background/25 backdrop-blur-xl"
+        overlayClassName="fixed inset-0 z-50 bg-background/25 backdrop-blur-md"
         onEscapeKeyDown={keepOpen}
         onPointerDownOutside={keepOpen}
         onInteractOutside={keepOpen}
