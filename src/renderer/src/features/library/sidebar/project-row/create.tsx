@@ -3,6 +3,7 @@ import type { ChatStatus, ProjectSummary } from "@shared/types"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import type { API } from "@/ipc/api"
 import { modKey } from "@/lib/format"
+import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
@@ -50,7 +51,7 @@ export function createProjectRow({
         modKey={mod}
         onSelect={onSelect}
         onNewChat={presenter.handleNewChat}
-        menu={<ProjectRowMenu project={project} onPin={presenter.handlePin} onRemove={presenter.handleRemove} />}
+        menu={project.id === NO_PROJECT_ID ? null : <ProjectRowMenu project={project} onPin={presenter.handlePin} onRemove={presenter.handleRemove} />}
       />
     )
   }

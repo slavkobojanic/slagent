@@ -2,6 +2,7 @@ import { ChevronRightIcon, PinIcon, SquarePenIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import type { ChatStatus, ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
+import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import { StatusDot } from "@/features/library/sidebar/status-dot/status-dot"
 import { cn } from "@/lib/utils"
 
@@ -15,7 +16,8 @@ export type ProjectRowProps = {
   modKey: string
   onSelect: (project: ProjectSummary) => void
   onNewChat: (project: ProjectSummary) => void
-  menu: ReactNode
+  // Absent for the fake "No project" row, which has nothing to pin or remove.
+  menu?: ReactNode
 }
 
 export function ProjectRow({ project, status, active, collapsed, modKey, onSelect, onNewChat, menu }: ProjectRowProps) {
@@ -37,13 +39,13 @@ export function ProjectRow({ project, status, active, collapsed, modKey, onSelec
         variant="ghost"
         size="icon-xs"
         className="shrink-0 text-foreground/50 hover:text-foreground"
-        title={`New chat in ${project.name}${active ? ` (${modKey}N)` : ""}`}
-        aria-label={`New chat in ${project.name}`}
+        title={project.id === NO_PROJECT_ID ? "New chat" : `New chat in ${project.name}${active ? ` (${modKey}N)` : ""}`}
+        aria-label={project.id === NO_PROJECT_ID ? "New chat" : `New chat in ${project.name}`}
         onClick={() => onNewChat(project)}
       >
         <SquarePenIcon className="size-3.5" />
       </Button>
-      {menu}
+      {menu ?? null}
     </div>
   )
 }
