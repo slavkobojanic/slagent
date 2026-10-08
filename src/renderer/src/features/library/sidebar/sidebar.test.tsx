@@ -27,7 +27,7 @@ const base: SidebarProps = {
   searching: false,
   SearchBox: slot("search-box"),
   SearchResults: slot("search-results"),
-  OpenProject: slot("open-project"),
+  ChooseFolder: slot("choose-folder"),
   OtherProjects: slot("other-projects"),
   ResizeHandle: slot("resize-handle"),
 }
@@ -41,18 +41,19 @@ describe("Sidebar", () => {
     expect(html).toContain('data-slot="resize-handle"')
   })
 
-  it("can show the open project, then the other projects, while not searching", () => {
+  it("can show the folder prompt above the unified project list, while not searching", () => {
     const html = viewMarkup(<Sidebar {...base} />)
 
-    expect(html).toContain('data-slot="open-project"')
+    expect(html).toContain('data-slot="choose-folder"')
     expect(html).not.toContain('data-slot="search-results"')
-    expect(html.indexOf('data-slot="open-project"')).toBeLessThan(html.indexOf('data-slot="other-projects"'))
+    expect(html.indexOf('data-slot="choose-folder"')).toBeLessThan(html.indexOf('data-slot="other-projects"'))
   })
 
-  it("can list search results in place of the open project", () => {
+  it("can list search results in place of the project list", () => {
     const html = viewMarkup(<Sidebar {...base} searching />)
 
     expect(html).toContain('data-slot="search-results"')
-    expect(html).not.toContain('data-slot="open-project"')
+    expect(html).not.toContain('data-slot="choose-folder"')
+    expect(html).not.toContain('data-slot="other-projects"')
   })
 })

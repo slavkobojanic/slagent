@@ -15,12 +15,13 @@ export type OpenProjectProps = {
     onSelect: (project: ProjectSummary) => void
   }>
   ChatList: ComponentType
-  ChooseFolder: ComponentType
 }
 
-export function OpenProject({ project, collapsed, onToggle, onNewChat, ProjectRow, ChatList, ChooseFolder }: OpenProjectProps) {
+// The open project's section inside the unified project list: an active row, its draft row, and its
+// chats. The sidebar renders it in the project's alphabetical place, not in a section of its own.
+export function OpenProject({ project, collapsed, onToggle, onNewChat, ProjectRow, ChatList }: OpenProjectProps) {
   if (project === null) {
-    return <ChooseFolder />
+    return null
   }
   return (
     <section className="space-y-1">

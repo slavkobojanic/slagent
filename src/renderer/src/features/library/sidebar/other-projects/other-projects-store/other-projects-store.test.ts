@@ -13,7 +13,7 @@ function chat(id: string): ChatSummary {
 
 describe("OtherProjectsStore", () => {
   describe("others", () => {
-    it("can list every code project other than the open one, alphabetical so nothing shuffles", () => {
+    it("can list every code project, the open one included, alphabetical so nothing shuffles", () => {
       const libraryStore = new LibraryStore()
       libraryStore.setLibrary({
         projects: [
@@ -29,7 +29,21 @@ describe("OtherProjectsStore", () => {
         openChatId: null,
       })
 
-      expect(new OtherProjectsStore(libraryStore).others.map((item) => item.project.id)).toEqual(["apple", "mango", "mango2", "zebra"])
+      expect(new OtherProjectsStore(libraryStore).others.map((item) => item.project.id)).toEqual(["apple", "mango", "mango2", "open", "zebra"])
+    })
+
+    it("can mark the open project active and the rest not", () => {
+      const libraryStore = new LibraryStore()
+      libraryStore.setLibrary({
+        projects: [project("p1"), project("p2")],
+        openProjectId: "p2",
+        chats: [],
+        chatsByProject: {},
+        openChatId: null,
+      })
+
+      const others = new OtherProjectsStore(libraryStore).others
+      expect(others.map((item) => item.active)).toEqual([false, true])
     })
 
     it("can leave chat projects out, they belong to the No project group", () => {
@@ -54,26 +68,26 @@ describe("OtherProjectsStore", () => {
   })
 
   describe("noProject", () => {
-    it("can aggregate the chats of every chat project that is not open, including older records without a mode", () => {
+    it("can aggregate the chats of every chat project, the open one included, including older records without a mode", () => {
       const libraryStore = new LibraryStore()
       libraryStore.setLibrary({
         projects: [project("c1", { mode: "chat" }), project("c2", { mode: "chat" }), project("open-chat", { mode: "chat" }), project("p1")],
         openProjectId: "open-chat",
-        chats: [],
-        chatsByProject: { c1: [chat("a")], c2: [chat("b")], "open-chat": [chat("c")] },
+        chats: [chat("c")],
+        chatsByProject: { c1: [chat("a")], c2: [chat("b")] },
         openChatId: null,
       })
 
       const store = new OtherProjectsStore(libraryStore)
       expect(store.noProject?.id).toBe(NO_PROJECT_ID)
-      expect(store.chatsOf(NO_PROJECT_ID)).toEqual([chat("a"), chat("b")])
+      expect(store.chatsOf(NO_PROJECT_ID)).toEqual([chat("a"), chat("b"), chat("c")])
     })
 
-    it("can be absent when no chat project exists or the only one is open", () => {
+    it("can be absent when no chat project exists", () => {
       const libraryStore = new LibraryStore()
       libraryStore.setLibrary({
-        projects: [project("c1", { mode: "chat" }), project("p1")],
-        openProjectId: "c1",
+        projects: [project("p1")],
+        openProjectId: "p1",
         chats: [],
         chatsByProject: {},
         openChatId: null,
@@ -86,12 +100,20 @@ describe("OtherProjectsStore", () => {
   })
 
   describe("chatsOf", () => {
-    it("can read the project's chats from the library", () => {
+    it("can read the project's chats from the library, the open project's from `chats`", () => {
       const libraryStore = new LibraryStore()
-      libraryStore.setLibrary({ projects: [], openProjectId: null, chats: [], chatsByProject: { p1: [chat("c1")] }, openChatId: null })
+      libraryStore.setLibrary({
+        projects: [project("p1"), project("p2")],
+        openProjectId: "p2",
+        chats: [chat("c2")],
+        chatsByProject: { p1: [chat("c1")] },
+        openChatId: null,
+      })
 
-      expect(new OtherProjectsStore(libraryStore).chatsOf("p1")).toEqual([chat("c1")])
-      expect(new OtherProjectsStore(libraryStore).chatsOf("p2")).toEqual([])
+      const store = new OtherProjectsStore(libraryStore)
+      expect(store.chatsOf("p1")).toEqual([chat("c1")])
+      expect(store.chatsOf("p2")).toEqual([chat("c2")])
+      expect(store.chatsOf("p3")).toEqual([])
     })
   })
 

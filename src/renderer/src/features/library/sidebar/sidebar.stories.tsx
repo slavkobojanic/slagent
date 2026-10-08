@@ -10,7 +10,7 @@ const meta = {
     searching: false,
     SearchBox: slot("SearchBox"),
     SearchResults: slot("SearchResults"),
-    OpenProject: slot("OpenProject"),
+    ChooseFolder: slot("ChooseFolder"),
     OtherProjects: slot("OtherProjects"),
     ResizeHandle: slot("ResizeHandle"),
   },

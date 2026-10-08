@@ -14,7 +14,6 @@ const meta = {
     onNewChat: fn(),
     ProjectRow: slot("ProjectRow"),
     ChatList: slot("ChatList"),
-    ChooseFolder: slot("ChooseFolder"),
   },
 } satisfies Meta<typeof OpenProject>
 

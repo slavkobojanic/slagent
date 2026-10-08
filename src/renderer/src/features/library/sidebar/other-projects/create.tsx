@@ -24,6 +24,7 @@ export function createOtherProjects({
   chatDeletionStore,
   chatSwitchPresenter,
   ProjectRow,
+  OpenProject,
   log,
 }: {
   api: API
@@ -38,6 +39,8 @@ export function createOtherProjects({
     collapsed: boolean
     onSelect: (project: ProjectSummary) => void
   }>
+  // The open project's section, rendered in its alphabetical place in the list.
+  OpenProject: ComponentType
   log: Log
 }): ComponentType {
   const store = new OtherProjectsStore(libraryStore)
@@ -78,13 +81,14 @@ export function createOtherProjects({
   return observer(function OtherProjectsHost() {
     return (
       <OtherProjects
-        noProject={store.noProject ? { project: store.noProject, status: projectStatus(store.noProject) } : null}
+        noProject={store.noProject ? { project: store.noProject, status: projectStatus(store.noProject), active: false } : null}
         others={store.others}
         isCollapsed={(projectId) => store.isCollapsed(projectId)}
         onToggle={presenter.handleToggle}
         onNewChat={presenter.handleNewChat}
         ProjectRow={ProjectRow}
         ProjectChatList={ProjectChatList}
+        OpenProject={OpenProject}
       />
     )
   })

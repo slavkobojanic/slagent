@@ -3,7 +3,7 @@ import type { ChatStatus, ChatSummary, ProjectSummary } from "@shared/types"
 import { projectStatus } from "@/lib/projects"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 
-export type OtherProject = { project: ProjectSummary; status: ChatStatus }
+export type OtherProject = { project: ProjectSummary; status: ChatStatus; active: boolean }
 
 // The id of the fake "No project" group that stands in for chats without a picked folder: every
 // "chat" project contributes its chats to this one row at the top of the sidebar.
@@ -18,8 +18,8 @@ export class OtherProjectsStore {
     makeAutoObservable(this)
   }
 
-  // The fake "No project" project that aggregates the chats of every "chat" project, except the
-  // open one: its chats already show in the open-project section at the top of the sidebar.
+  // The fake "No project" project that aggregates the chats of every "chat" project, the open one
+  // included: the sidebar has no separate open-project section.
   get noProject(): ProjectSummary | null {
     const chats = this.chatsOf(NO_PROJECT_ID)
     if (this.chatProjects().length === 0) return null
@@ -36,26 +36,35 @@ export class OtherProjectsStore {
     }
   }
 
-  // Every code project other than the open one, alphabetical so rows never shuffle as projects are
-  // opened or pinned. "Chat" projects live in the "No project" group instead.
+  // Every code project, alphabetical so rows never shuffle as projects are opened or pinned. The
+  // open one carries `active` and keeps its expanded chat list; "chat" projects live in the "No
+  // project" group instead.
   get others(): OtherProject[] {
     const { projects, openProjectId } = this.libraryStore.library
     return projects
-      .filter((project) => project.id !== openProjectId && (project.mode ?? "code") === "code")
+      .filter((project) => (project.mode ?? "code") === "code")
       .sort((left, right) => left.name.localeCompare(right.name))
-      .map((project) => ({ project, status: projectStatus(project) }))
+      .map((project) => ({ project, status: projectStatus(project), active: project.id === openProjectId }))
   }
 
   chatsOf(projectId: string): ChatSummary[] {
     if (projectId === NO_PROJECT_ID) {
-      return this.chatProjects().flatMap((project) => this.libraryStore.library.chatsByProject[project.id] ?? [])
+      return this.chatProjects().flatMap((project) => this.chatsOfProject(project.id))
     }
-    return this.libraryStore.library.chatsByProject[projectId] ?? []
+    return this.chatsOfProject(projectId)
   }
 
   private chatProjects(): ProjectSummary[] {
-    const { projects, openProjectId } = this.libraryStore.library
-    return projects.filter((project) => (project.mode ?? "code") === "chat" && project.id !== openProjectId)
+    return this.libraryStore.library.projects.filter((project) => (project.mode ?? "code") === "chat")
+  }
+
+  // The open project's chats live in `chats`; the other projects' in `chatsByProject`.
+  private chatsOfProject(projectId: string): ChatSummary[] {
+    const library = this.libraryStore.library
+    if (projectId === library.openProjectId) {
+      return library.chats
+    }
+    return library.chatsByProject[projectId] ?? []
   }
 
   isCollapsed(projectId: string): boolean {

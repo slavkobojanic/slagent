@@ -9,7 +9,6 @@ import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import { createChatList } from "./chat-list/create"
-import { createChooseFolder } from "./choose-folder/create"
 import { OpenProject } from "./open-project"
 import { OpenProjectPresenter } from "./open-project-presenter/open-project-presenter"
 import { OpenProjectStore } from "./open-project-store/open-project-store"
@@ -44,7 +43,6 @@ export function createOpenProject({
   const store = new OpenProjectStore(libraryStore)
   const presenter = new OpenProjectPresenter(store, api, log)
 
-  const ChooseFolder = createChooseFolder({ api, commandRegistry, log: log.child("choose-folder") })
   const ChatList = createChatList({
     api,
     window,
@@ -65,7 +63,6 @@ export function createOpenProject({
         onNewChat={presenter.handleNewChat}
         ProjectRow={ProjectRow}
         ChatList={ChatList}
-        ChooseFolder={ChooseFolder}
       />
     )
   })

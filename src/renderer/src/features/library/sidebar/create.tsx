@@ -15,6 +15,7 @@ import { ChatSearchPresenter } from "./chat-search/chat-search-presenter/chat-se
 import { ChatSearchStore } from "./chat-search/chat-search-store/chat-search-store"
 import { createSearchBox } from "./chat-search/search-box/create"
 import { createSearchResults } from "./chat-search/search-results/create"
+import { createChooseFolder } from "./open-project/choose-folder/create"
 import { createOpenProject } from "./open-project/create"
 import { createOtherProjects } from "./other-projects/create"
 import { createProjectRow } from "./project-row/create"
@@ -76,7 +77,16 @@ export function createSidebar({
     chatDeletionStore,
     chatSwitchPresenter,
     ProjectRow,
+    OpenProject,
     log: log.child("other-projects"),
+  })
+  // The folder prompt shows only while no project is open.
+  const ChooseFolderPrompt = createChooseFolder({ api, commandRegistry, log: log.child("choose-folder") })
+  const ChooseFolder = observer(function ChooseFolderHost() {
+    if (libraryStore.library.openProjectId !== null) {
+      return null
+    }
+    return <ChooseFolderPrompt />
   })
 
   const chatSearchStore = new ChatSearchStore()
@@ -102,7 +112,7 @@ export function createSidebar({
         searching={chatSearchStore.searching}
         SearchBox={SearchBox}
         SearchResults={SearchResults}
-        OpenProject={OpenProject}
+        ChooseFolder={ChooseFolder}
         OtherProjects={OtherProjects}
         ResizeHandle={ResizeHandle}
       />

@@ -5,11 +5,11 @@ import { viewMarkup } from "@/test/view-markup"
 
 const beta: ProjectSummary = { id: "p2", path: "/work/p2", name: "Beta", pinned: true, pinnedAt: 1, lastOpenedAt: 0, running: false, attention: false }
 
-const noProject = { project: { id: "no-project", path: "", name: "No project", mode: "chat", pinned: false, pinnedAt: 0, lastOpenedAt: 0, running: false, attention: false } as ProjectSummary, status: "idle" as const }
+const noProject = { project: { id: "no-project", path: "", name: "No project", mode: "chat", pinned: false, pinnedAt: 0, lastOpenedAt: 0, running: false, attention: false } as ProjectSummary, status: "idle" as const, active: false }
 
 const base: OtherProjectsProps = {
   noProject: null,
-  others: [{ project: beta, status: "done" }],
+  others: [{ project: beta, status: "done", active: false }],
   isCollapsed: () => false,
   onToggle: () => undefined,
   onNewChat: () => undefined,
@@ -19,6 +19,7 @@ const base: OtherProjectsProps = {
     </div>
   ),
   ProjectChatList: ({ projectId }) => <div data-slot="chat-list" data-project={projectId} />,
+  OpenProject: () => <div data-slot="open-project" />,
 }
 
 describe("OtherProjects", () => {
@@ -34,6 +35,13 @@ describe("OtherProjects", () => {
     expect(html).toContain('data-project="p2"')
   })
 
+  it("can render the open project's section in its alphabetical place, without a chat list row", () => {
+    const html = viewMarkup(<OtherProjects {...base} others={[{ project: beta, status: "done", active: true }]} />)
+
+    expect(html).toContain('data-slot="open-project"')
+    expect(html).not.toContain('data-project="p2"')
+  })
+
   it("can leave out a collapsed project's chat list", () => {
     const html = viewMarkup(<OtherProjects {...base} isCollapsed={() => true} />)
 
@@ -42,7 +50,7 @@ describe("OtherProjects", () => {
     expect(html).not.toContain("New chat")
   })
 
-  it("can render nothing when no other project exists", () => {
+  it("can render nothing when no project exists", () => {
     expect(viewMarkup(<OtherProjects {...base} others={[]} />)).toBe("")
   })
 
