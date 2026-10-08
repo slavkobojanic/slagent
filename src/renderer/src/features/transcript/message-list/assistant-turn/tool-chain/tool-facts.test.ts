@@ -88,6 +88,21 @@ describe("toolLabel", () => {
   it("can show the tool's own label for anything else", () => {
     expect(toolLabel(tool({ name: "grep", label: "grep foo" }))).toEqual({ kind: "text", text: "grep foo" })
   })
+
+  it("can name the agent a subagent task was handed to", () => {
+    expect(toolLabel(tool({ name: "subagent", args: JSON.stringify({ agent: "explore", task: "Find uses of foo" }) })))
+      .toEqual({ kind: "text", text: "subagent: explore" })
+  })
+
+  it("can name every agent of a parallel subagent call", () => {
+    const args = JSON.stringify({ tasks: [{ agent: "explore", task: "A" }, { agent: "general", task: "B" }] })
+
+    expect(toolLabel(tool({ name: "subagent", args }))).toEqual({ kind: "text", text: "subagent: 2 tasks to explore, general" })
+  })
+
+  it("can fall back to the label when subagent arguments do not parse", () => {
+    expect(toolLabel(tool({ name: "subagent", args: "{", label: "subagent" }))).toEqual({ kind: "text", text: "subagent" })
+  })
 })
 
 describe("toolOutputKind", () => {
@@ -103,6 +118,16 @@ describe("toolOutputKind", () => {
 
   it("can show the plain output for a question with no answers yet", () => {
     expect(toolOutputKind(tool({ name: "ask_user" }))).toBe("output")
+  })
+
+  it("can show a subagent call with run state as its runs", () => {
+    const runs = [{ agent: "explore", task: "A", steps: [], state: "starting", error: null }]
+
+    expect(toolOutputKind(tool({ name: "subagent", subagent: runs }))).toBe("subagent")
+  })
+
+  it("can show a subagent call with no run state as plain output", () => {
+    expect(toolOutputKind(tool({ name: "subagent" }))).toBe("output")
   })
 })
 
@@ -123,6 +148,16 @@ describe("toolStepOutput", () => {
     const step = toolStepOutput(tool({ name: "read", images: ["data:a"], output: "text", isError: true }))
 
     expect(step).toEqual({ kind: "output", images: ["data:a"], output: "text", isError: true })
+  })
+
+  it("can give a subagent call its runs", () => {
+    const runs = [{ agent: "explore", task: "A", steps: ["read a.ts"], state: "done", error: null }]
+
+    expect(toolStepOutput(tool({ name: "subagent", subagent: runs, running: true }))).toEqual({
+      kind: "subagent",
+      runs,
+      running: true,
+    })
   })
 })
 

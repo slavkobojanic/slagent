@@ -18,3 +18,40 @@ export const Answers: Story = { args: { output: { kind: "answers", answers: [ans
 export const Plain: Story = {
   args: { output: { kind: "output", images: [], output: "export type AppMeta = {...}", isError: false } },
 }
+
+const runs = [
+  {
+    agent: "explore",
+    task: "Find where the settings panel is rendered",
+    steps: ["grep SettingsPanel", "read settings-panel.tsx", "grep settings-store"],
+    state: "done",
+    error: null,
+  },
+  {
+    agent: "general",
+    task: "Add the About page",
+    steps: ["write about-page.tsx", "edit routes.ts"],
+    state: "edit routes.ts",
+    error: null,
+  },
+]
+
+export const SubagentRunsRunning: Story = {
+  args: { output: { kind: "subagent", runs, running: true } },
+}
+
+export const SubagentRunsDone: Story = {
+  args: {
+    output: {
+      kind: "subagent",
+      runs: [...runs.slice(0, 1), { ...runs[1], steps: [...runs[1].steps, "edit routes.ts"], state: "done" }],
+      running: false,
+    },
+  },
+}
+
+export const SubagentRunsFailed: Story = {
+  args: {
+    output: { kind: "subagent", runs: [{ ...runs[0], error: "No agent named scout." }], running: false },
+  },
+}
