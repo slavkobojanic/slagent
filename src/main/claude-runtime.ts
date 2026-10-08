@@ -13,6 +13,7 @@ import {
 import type {
   AssistantMessage,
   ChatMessage,
+  EffortLevel,
   ModelOption,
   Personalisation,
   PromptRequest,
@@ -114,6 +115,8 @@ export type ClaudeRuntimeOptions = {
   cwd: string
   sessionId: string | null
   modelId: string
+  // Reasoning effort for Claude models, passed to the SDK as effortLevel.
+  effort: EffortLevel
   named: boolean
   titleGenerated: boolean
   onChange: (runningChanged: boolean) => void
@@ -168,6 +171,8 @@ export class ClaudeRuntime {
   private streamed = new Set<string>()
   private lastRunning = false
   private disposed = false
+  private effort: EffortLevel
+  private pendingEffort: EffortLevel | null = null
   private readonly options: ClaudeRuntimeOptions
 
   constructor(options: ClaudeRuntimeOptions) {
@@ -177,6 +182,7 @@ export class ClaudeRuntime {
     this.planProposal = options.planProposal ?? null
     this.modelId = options.modelId
     this.modelName = claudeModel(options.modelId)?.name ?? options.modelId
+    this.effort = options.effort
     this.named = options.named
     this.titleGenerated = options.titleGenerated
     this.sessionId = options.sessionId
@@ -302,6 +308,26 @@ export class ClaudeRuntime {
     return true
   }
 
+  // The flag layer applies between turns. While a run streams, hold the level
+  // until the next turn starts, where ensureSession applies it.
+  setEffort(effort: EffortLevel): void {
+    if (this.running) {
+      this.pendingEffort = effort
+      return
+    }
+    void this.applyEffort(effort)
+  }
+
+  private async applyEffort(effort: EffortLevel): Promise<void> {
+    this.effort = effort
+    if (!this.session) return
+    try {
+      await this.session.applyFlagSettings({ effortLevel: claudeEffort(effort) })
+    } catch {
+      // The next session creation passes the level as a query option.
+    }
+  }
+
   setPlanMode(enabled: boolean): void {
     if (this.running) throw new Error("Wait for the run to finish.")
     this.planEnabled = enabled
@@ -370,6 +396,9 @@ export class ClaudeRuntime {
     this.sending = true
     this.setProposal(null)
     this.setNotice(null)
+    const pendingEffort = this.pendingEffort
+    this.pendingEffort = null
+    if (pendingEffort) await this.applyEffort(pendingEffort)
     // Todo lists belong to the turn that created them; drop the previous
     // turn's list so a finished list doesn't linger over the new ask.
     this.todos = []
@@ -413,6 +442,7 @@ export class ClaudeRuntime {
       options: {
         cwd: this.options.cwd,
         model: sdkModel(this.modelId),
+        effort: claudeEffort(this.effort),
         resume: this.sessionId ?? undefined,
         abortController,
         includePartialMessages: true,
@@ -885,6 +915,11 @@ class InputQueue implements AsyncIterable<SDKUserMessage> {
 
 function sdkModel(modelId: string): string {
   return modelId.startsWith(CLAUDE_PREFIX) ? modelId.slice(CLAUDE_PREFIX.length) : modelId
+}
+
+// The SDK has no minimal level; the closest is low.
+function claudeEffort(effort: EffortLevel): "low" | "medium" | "high" | "xhigh" | "max" {
+  return effort === "minimal" ? "low" : effort
 }
 
 function userMessage(prepared: PreparedPrompt): SDKUserMessage {
