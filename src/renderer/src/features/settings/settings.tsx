@@ -1,5 +1,5 @@
 import type { ComponentType } from "react"
-import { Info, Plug, Radio, Settings2, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react"
+import { BarChart3, Info, Plug, Radio, Settings2, Sparkles, SquareTerminal, type LucideIcon } from "lucide-react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import type { SettingsTab } from "@/features/settings/settings-tab"
 
@@ -15,6 +15,7 @@ export type SettingsProps = {
   PersonalisationSettings: ComponentType
   McpSettings: ComponentType
   CliSettings: ComponentType
+  Usage: ComponentType
   About: ComponentType
   ConnectSettings: ComponentType
 }
@@ -25,6 +26,7 @@ const TABS: { value: SettingsTab; label: string; icon: LucideIcon }[] = [
   { value: "connect", label: "Connect", icon: Radio },
   { value: "mcp", label: "MCP", icon: Plug },
   { value: "cli", label: "CLI", icon: SquareTerminal },
+  { value: "usage", label: "Usage", icon: BarChart3 },
   { value: "about", label: "About", icon: Info },
 ]
 
@@ -40,6 +42,7 @@ export function Settings({
   PersonalisationSettings,
   McpSettings,
   CliSettings,
+  Usage,
   About,
   ConnectSettings,
 }: SettingsProps) {
@@ -80,6 +83,7 @@ export function Settings({
             {tab === "personalisation" ? <PersonalisationSettings /> : null}
             {tab === "mcp" ? <McpSettings /> : null}
             {tab === "cli" ? <CliSettings /> : null}
+            {tab === "usage" ? <Usage /> : null}
             {tab === "about" ? <About /> : null}
             {tab === "connect" ? <ConnectSettings /> : null}
           </div>

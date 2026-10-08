@@ -18,6 +18,7 @@ const meta = {
     PersonalisationSettings: slot("PersonalisationSettings"),
     McpSettings: slot("McpSettings"),
     CliSettings: slot("CliSettings"),
+    Usage: slot("Usage"),
     About: slot("About"),
     ConnectSettings: slot("ConnectSettings"),
   },
@@ -35,5 +36,7 @@ export const Connect: Story = { args: { tab: "connect" } }
 export const Mcp: Story = { args: { tab: "mcp" } }
 
 export const Cli: Story = { args: { tab: "cli" } }
+
+export const Usage: Story = { args: { tab: "usage" } }
 
 export const Closed: Story = { args: { open: false } }
