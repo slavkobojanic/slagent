@@ -1,9 +1,8 @@
 import { makeAutoObservable } from "mobx"
-import type { ChatStatus, ChatSummary, ProjectSummary } from "@shared/types"
-import { projectStatus } from "@/lib/projects"
+import type { ChatSummary, ProjectSummary } from "@shared/types"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 
-export type OtherProject = { project: ProjectSummary; status: ChatStatus; active: boolean }
+export type OtherProject = { project: ProjectSummary; active: boolean }
 
 // The id of the fake "No project" group that stands in for chats without a picked folder: every
 // "chat" project contributes its chats to this one row at the top of the sidebar.
@@ -44,7 +43,7 @@ export class OtherProjectsStore {
     return projects
       .filter((project) => (project.mode ?? "code") === "code")
       .sort((left, right) => left.name.localeCompare(right.name))
-      .map((project) => ({ project, status: projectStatus(project), active: project.id === openProjectId }))
+      .map((project) => ({ project, active: project.id === openProjectId }))
   }
 
   chatsOf(projectId: string): ChatSummary[] {

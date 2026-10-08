@@ -1,16 +1,13 @@
 import { ChevronRightIcon, PinIcon, SquarePenIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import type { ChatStatus, ProjectSummary } from "@shared/types"
+import type { ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
-import { StatusDot } from "@/features/library/sidebar/status-dot/status-dot"
 import { cn } from "@/lib/utils"
 
 export type ProjectRowProps = {
   project: ProjectSummary
-  // The open project's row is bold and carries no dot. Every row is a toggle for its chat list;
-  // a project that is not open shows its status dot next to the chevron.
-  status: ChatStatus
+  // The open project's row is bold. Every row is a toggle for its chat list.
   active: boolean
   collapsed: boolean
   modKey: string
@@ -20,7 +17,7 @@ export type ProjectRowProps = {
   menu?: ReactNode
 }
 
-export function ProjectRow({ project, status, active, collapsed, modKey, onSelect, onNewChat, menu }: ProjectRowProps) {
+export function ProjectRow({ project, active, collapsed, modKey, onSelect, onNewChat, menu }: ProjectRowProps) {
   return (
     <div className="group flex w-full min-w-0 items-center overflow-hidden rounded-md">
       <button
@@ -30,7 +27,6 @@ export function ProjectRow({ project, status, active, collapsed, modKey, onSelec
         onClick={() => onSelect(project)}
       >
         <ChevronRightIcon className={cn("size-3 shrink-0 text-foreground/40 transition-transform duration-150", !collapsed && "rotate-90")} />
-        {!active ? <StatusDot status={status} /> : null}
         <span className={cn("truncate", active ? "font-medium" : "text-foreground/80")}>{project.name}</span>
         {project.pinned ? <PinIcon className="size-3 shrink-0 text-foreground/40" /> : null}
       </button>

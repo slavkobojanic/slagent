@@ -59,12 +59,6 @@ describe("OtherProjectsStore", () => {
       expect(new OtherProjectsStore(libraryStore).others.map((item) => item.project.id)).toEqual(["code"])
     })
 
-    it("can carry each project's status", () => {
-      const libraryStore = new LibraryStore()
-      libraryStore.setLibrary({ projects: [project("p1", { running: true })], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null })
-
-      expect(new OtherProjectsStore(libraryStore).others[0]?.status).toBe("running")
-    })
   })
 
   describe("noProject", () => {

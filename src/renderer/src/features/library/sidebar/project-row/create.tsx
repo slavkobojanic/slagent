@@ -1,5 +1,5 @@
 import type { ComponentType } from "react"
-import type { ChatStatus, ProjectSummary } from "@shared/types"
+import type { ProjectSummary } from "@shared/types"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import type { API } from "@/ipc/api"
 import { modKey } from "@/lib/format"
@@ -14,7 +14,6 @@ import { ProjectRowPresenter } from "./project-row-presenter/project-row-present
 
 type ProjectRowHostProps = {
   project: ProjectSummary
-  status: ChatStatus
   active: boolean
   collapsed: boolean
   onSelect: (project: ProjectSummary) => void
@@ -41,11 +40,10 @@ export function createProjectRow({
   presenter.start()
   const mod = modKey(api.platform)
 
-  return function ProjectRowHost({ project, status, active, collapsed, onSelect }: ProjectRowHostProps) {
+  return function ProjectRowHost({ project, active, collapsed, onSelect }: ProjectRowHostProps) {
     return (
       <ProjectRow
         project={project}
-        status={status}
         active={active}
         collapsed={collapsed}
         modKey={mod}
