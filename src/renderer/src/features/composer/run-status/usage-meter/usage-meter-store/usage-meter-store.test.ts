@@ -32,6 +32,7 @@ function metaWith(usageTotals: UsageTotals): AppMeta {
     extensionErrors: [],
     usageTotals,
     routing: "balance",
+    effort: "medium",
     titleModelId: null,
     titleModels: [],
     personalisation: EMPTY_PERSONALISATION,

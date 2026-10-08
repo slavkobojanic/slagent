@@ -61,6 +61,7 @@ export function meta(overrides: Partial<AppMeta> = {}): AppMeta {
     modelProvider: "openrouter",
     models: [model()],
     routing: "balance",
+    effort: "medium",
     titleModelId: "deepseek/deepseek-v4-flash-0731",
     titleModels: [
       { id: "deepseek/deepseek-v4-flash-0731", name: "DeepSeek V4 Flash (0731)" },

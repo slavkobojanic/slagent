@@ -34,6 +34,7 @@ export class API implements SlagentApi {
   readonly setModel: SlagentApi["setModel"]
   readonly setTitleModel: SlagentApi["setTitleModel"]
   readonly setRouting: SlagentApi["setRouting"]
+  readonly setEffort: SlagentApi["setEffort"]
   readonly saveOpenRouterKey: SlagentApi["saveOpenRouterKey"]
   readonly logoutOpenRouter: SlagentApi["logoutOpenRouter"]
   readonly openExternal: SlagentApi["openExternal"]
@@ -106,6 +107,7 @@ export class API implements SlagentApi {
     this.setModel = (modelId) => bridge.setModel(modelId)
     this.setTitleModel = (modelId) => bridge.setTitleModel(modelId)
     this.setRouting = (routing) => bridge.setRouting(routing)
+    this.setEffort = (effort) => bridge.setEffort(effort)
     this.saveOpenRouterKey = (apiKey) => bridge.saveOpenRouterKey(apiKey)
     this.logoutOpenRouter = () => bridge.logoutOpenRouter()
     this.openExternal = (url) => bridge.openExternal(url)
