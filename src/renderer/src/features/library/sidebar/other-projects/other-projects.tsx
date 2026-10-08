@@ -2,7 +2,7 @@ import type { ComponentType } from "react"
 import type { ChatStatus, ProjectSummary } from "@shared/types"
 import { NewChatRow } from "@/features/library/sidebar/new-chat-row"
 
-export type OtherProjectItem = { project: ProjectSummary; status: ChatStatus }
+export type OtherProjectItem = { project: ProjectSummary; status: ChatStatus; active: boolean }
 
 export type OtherProjectsProps = {
   // The fake "No project" group that stands in for chats without a picked folder.
@@ -19,12 +19,18 @@ export type OtherProjectsProps = {
     onSelect: (project: ProjectSummary) => void
   }>
   ProjectChatList: ComponentType<{ projectId: string }>
+  // The open project's section: an active row with its draft row and keyboard-navigable chat list.
+  OpenProject: ComponentType
 }
 
 // "No project" first, then every code project under a Projects heading, alphabetically. Rows
 // collapse on click; opening a chat or starting a new one switches the project.
-export function OtherProjects({ noProject, others, isCollapsed, onToggle, onNewChat, ProjectRow, ProjectChatList }: OtherProjectsProps) {
-  const renderProject = ({ project, status }: OtherProjectItem) => {
+export function OtherProjects({ noProject, others, isCollapsed, onToggle, onNewChat, ProjectRow, ProjectChatList, OpenProject }: OtherProjectsProps) {
+  const renderProject = ({ project, status, active }: OtherProjectItem) => {
+    // The open project renders its own section, active and expanded, with its chat list.
+    if (active) {
+      return <OpenProject key={project.id} />
+    }
     const collapsed = isCollapsed(project.id)
     return (
       <div key={project.id} className="space-y-1">

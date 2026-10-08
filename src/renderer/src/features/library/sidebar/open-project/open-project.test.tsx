@@ -14,14 +14,11 @@ const base: OpenProjectProps = {
   onNewChat: noop,
   ProjectRow: ({ project, active, collapsed }) => <div data-slot="project-row" data-active={active} data-collapsed={collapsed}>{project.name}</div>,
   ChatList: () => <div data-slot="chat-list" />,
-  ChooseFolder: () => <div data-slot="choose-folder" />,
 }
 
 describe("OpenProject", () => {
-  it("can ask for a folder when no project is open", () => {
-    const html = viewMarkup(<OpenProject {...base} project={null} />)
-
-    expect(html).toBe('<div data-slot="choose-folder"></div>')
+  it("can render nothing when no project is open", () => {
+    expect(viewMarkup(<OpenProject {...base} project={null} />)).toBe("")
   })
 
   it("can show the open project's row as active, then the draft row and its chats", () => {
