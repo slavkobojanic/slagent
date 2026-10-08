@@ -9,7 +9,11 @@ A desktop coding agent for macOS, built on [Pi](https://github.com/earendil-work
 
 ## Install
 
-Download the latest `slagent-*-mac.zip` from [Releases](https://github.com/slavkobojanic/slagent/releases), unzip it and move `slagent.app` to `~/Applications` (the Applications folder in your home folder, not the system one). Builds are signed and notarized, and the app updates itself from new releases.
+```bash
+curl -fsSL https://raw.githubusercontent.com/slavkobojanic/slagent/main/scripts/install.sh | sh
+```
+
+This installs the latest release to `~/Applications/slagent.app`, replacing any older copy. To install by hand instead, download the latest `slagent-*-mac.zip` from [Releases](https://github.com/slavkobojanic/slagent/releases), unzip it and move `slagent.app` to `~/Applications` (the Applications folder in your home folder, not the system one). Builds are signed and notarized, and the app updates itself from new releases.
 
 slagent currently ships for Apple Silicon Macs only.
 
