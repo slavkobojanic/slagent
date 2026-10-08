@@ -344,7 +344,7 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 
 async function writeJson(file: string, value: unknown): Promise<void> {
   await mkdir(dirname(file), { recursive: true })
-  const temp = `${file}.${process.pid}.tmp`
+  const temp = `${file}.${randomUUID()}.tmp`
   await writeFile(temp, `${JSON.stringify(value)}\n`)
   await rename(temp, file)
 }
