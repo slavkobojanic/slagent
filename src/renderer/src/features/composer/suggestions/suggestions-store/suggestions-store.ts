@@ -1,8 +1,9 @@
 import { makeAutoObservable } from "mobx"
 import type { ChatMention, ChatSearchResult, FileMatch, PromptMention, SlashCommand } from "@shared/types"
+import { BUILT_IN_COMMANDS } from "@/features/composer/builtins"
 import { filterCommands, kindLabel, type Trigger } from "@/features/composer/prompt-text"
 
-export type Triggers = { mention: Trigger | null; chatMention: Trigger | null; slash: Trigger | null }
+export type Triggers = { mention: Trigger | null; chatMention: Trigger | null; slash: Trigger | null; hash?: Trigger | null }
 
 export type SuggestionItem = { key: string; label: string; detail: string }
 
@@ -20,6 +21,7 @@ export class SuggestionsStore {
   mention: Trigger | null = null
   chatMention: Trigger | null = null
   slash: Trigger | null = null
+  hash: Trigger | null = null
   fileMatches: FileMatch[] = []
   chatMatches: ChatSearchResult[] = []
   commands: SlashCommand[] = []
@@ -33,7 +35,16 @@ export class SuggestionsStore {
     if (this.slash === null) {
       return []
     }
-    return filterCommands(this.commands, this.slash.query)
+    // Built-ins only ever show behind their own "#" prefix.
+    const withoutBuiltins = this.commands.filter((command) => command.kind !== "builtin")
+    return filterCommands(withoutBuiltins, this.slash.query)
+  }
+
+  get builtinMatches(): SlashCommand[] {
+    if (this.hash === null) {
+      return []
+    }
+    return filterCommands(BUILT_IN_COMMANDS, this.hash.query)
   }
 
   // One menu at a time: @file, then $chat, then slash commands.
@@ -75,6 +86,21 @@ export class SuggestionsStore {
         })),
       }
     }
+    if (this.hash !== null) {
+      if (this.builtinMatches.length === 0) {
+        return null
+      }
+      return {
+        kind: "command",
+        title: null,
+        empty: null,
+        items: this.builtinMatches.map((command) => ({
+          key: command.insert,
+          label: command.insert,
+          detail: command.description || kindLabel(command.kind),
+        })),
+      }
+    }
     return null
   }
 
@@ -86,6 +112,7 @@ export class SuggestionsStore {
     this.mention = triggers.mention
     this.chatMention = triggers.chatMention
     this.slash = triggers.slash
+    this.hash = triggers.hash ?? null
     this.active = 0
   }
 
@@ -93,6 +120,7 @@ export class SuggestionsStore {
     this.mention = null
     this.chatMention = null
     this.slash = null
+    this.hash = null
   }
 
   closeMention() {
@@ -105,6 +133,10 @@ export class SuggestionsStore {
 
   closeSlash() {
     this.slash = null
+  }
+
+  closeHash() {
+    this.hash = null
   }
 
   setActive(index: number) {
@@ -143,6 +175,7 @@ export class SuggestionsStore {
     this.chatMentions = []
     this.chatMention = null
     this.slash = null
+    this.hash = null
   }
 
   resetForChat() {

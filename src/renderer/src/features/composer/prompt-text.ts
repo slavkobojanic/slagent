@@ -49,6 +49,17 @@ export function slashAt(value: string, cursor: number): Trigger | null {
   return triggerAt(before, slash)
 }
 
+// An open "#" built-in command: the same shape as "/", but it only ever matches
+// the commands the app itself provides, and it never reaches the model.
+export function hashAt(value: string, cursor: number): Trigger | null {
+  const before = value.slice(0, cursor)
+  const hash = before.lastIndexOf("#")
+  if (hash < 0) {
+    return null
+  }
+  return triggerAt(before, hash)
+}
+
 // Commands whose name starts with the query come first, then those that contain it. At most 50.
 export function filterCommands(commands: SlashCommand[], query: string): SlashCommand[] {
   const needle = query.toLowerCase()
@@ -71,6 +82,9 @@ export function kindLabel(kind: SlashCommandKind): string {
   }
   if (kind === "prompt") {
     return "Prompt template"
+  }
+  if (kind === "builtin") {
+    return "Built-in"
   }
   return "Command"
 }

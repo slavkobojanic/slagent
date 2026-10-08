@@ -30,6 +30,7 @@ export function createShell({
   Changes,
   PlanOverlay,
   TerminalDrawer,
+  CreateSkill,
   api,
   libraryStore,
   metaStore,
@@ -52,6 +53,7 @@ export function createShell({
   Changes: ComponentType
   PlanOverlay: ComponentType
   TerminalDrawer: ComponentType
+  CreateSkill: ComponentType
   api: API
   libraryStore: LibraryStore
   metaStore: MetaStore
@@ -101,6 +103,7 @@ export function createShell({
         TerminalDrawer={TerminalDrawer}
         Settings={Settings}
         Models={Models}
+        CreateSkill={CreateSkill}
       />
     )
   })

@@ -1,5 +1,6 @@
 import { toast } from "sonner"
-import type { PromptFile, PromptRequest } from "@shared/types"
+import type { PromptFile, PromptRequest, SlashCommand } from "@shared/types"
+import { builtinAtStart } from "@/features/composer/builtins"
 import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
 import type { Log, LogData } from "@/log/log"
@@ -29,6 +30,9 @@ export type SubmitEventLike = { preventDefault: () => void }
 
 type EndTimer = (more?: LogData) => void
 
+// A built-in command runs in the app: it gets the text typed after it as guidance.
+export type BuiltinRunner = (command: SlashCommand, guidance: string) => void
+
 export class ComposerPresenter {
   private attached = false
   private disposers: Array<() => void> = []
@@ -46,6 +50,7 @@ export class ComposerPresenter {
     private readonly composerPort: ComposerPort,
     private readonly window: Window,
     private readonly log: Log,
+    private readonly onBuiltin?: BuiltinRunner,
   ) {}
 
   // A dialog or menu keeps the focus, so mounting only takes it when none is open.
@@ -299,6 +304,19 @@ export class ComposerPresenter {
     const sentText = this.suggestionsPresenter.hoistCommand(text)
     const draftKey = this.store.draftKey
     const chatId = this.store.chatId
+    // A built-in never reaches the model: the box resets like a send, and the app runs it.
+    const builtin = builtinAtStart(sentText)
+    if (builtin !== null) {
+      this.store.setText("")
+      this.store.setCaret(0)
+      this.saveDraft(draftKey, "")
+      this.promptHistoryPresenter.remember(text)
+      this.promptHistoryPresenter.reset()
+      this.suggestionsPresenter.reset()
+      this.log.action("run-builtin", { command: builtin.command.insert, guidance: builtin.rest })
+      this.onBuiltin?.(builtin.command, builtin.rest)
+      return
+    }
     // A prompt sent mid-run is queued, so its first token is not the next output.
     const queued = this.store.streaming
     const endFirstToken = this.log.time("first-token", { chatId })

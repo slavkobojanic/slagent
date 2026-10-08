@@ -9,9 +9,10 @@ export type ShellProps = {
   TerminalDrawer: ComponentType
   Settings: ComponentType
   Models: ComponentType
+  CreateSkill: ComponentType
 }
 
-export function Shell({ inert, Header, SidebarFrame, MainColumn, PanelFrame, TerminalDrawer, Settings, Models }: ShellProps) {
+export function Shell({ inert, Header, SidebarFrame, MainColumn, PanelFrame, TerminalDrawer, Settings, Models, CreateSkill }: ShellProps) {
   return (
     <div className="flex h-full flex-col bg-background text-foreground" inert={inert}>
       <Header />
@@ -23,6 +24,7 @@ export function Shell({ inert, Header, SidebarFrame, MainColumn, PanelFrame, Ter
       <TerminalDrawer />
       <Settings />
       <Models />
+      <CreateSkill />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { BridgeMissing } from "@/components/bridge-missing"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { createChanges } from "@/features/changes/create"
 import { createComposer } from "@/features/composer/create"
+import { createCreateSkill } from "@/features/create-skill/create"
 import { createLinkMenu } from "@/features/link-menu/create"
 import { createLibrary } from "@/features/library/create"
 import { createModels } from "@/features/models/create"
@@ -95,6 +96,7 @@ export function createApp(): ComponentType {
     composerPort,
     jumpPort,
   })
+  const CreateSkill = createCreateSkill({ log: log.child("create-skill"), api, runStore, overlayStore })
   const Composer = createComposer({
     log: log.child("composer"),
     api,
@@ -106,6 +108,7 @@ export function createApp(): ComponentType {
     reviewPresenter,
     commandRegistry,
     composerPort,
+    onBuiltin: CreateSkill.openBuiltin,
   })
   const Changes = createChanges({
     log: log.child("changes"),
@@ -177,6 +180,7 @@ export function createApp(): ComponentType {
     Changes,
     PlanOverlay,
     TerminalDrawer,
+    CreateSkill: CreateSkill.CreateSkill,
     log: log.child("shell"),
     api,
     libraryStore,

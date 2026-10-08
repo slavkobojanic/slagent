@@ -184,6 +184,40 @@ describe("SuggestionsPresenter", () => {
     })
   })
 
+  describe("built-in commands", () => {
+    it("can list the built-ins behind the # trigger without loading anything", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: null, hash: { query: "", start: 0 } })
+
+      expect(store.menu?.items.map((item) => item.label)).toEqual(["#create-skill"])
+    })
+
+    it("can filter the built-ins by the query", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: null, hash: { query: "cre", start: 0 } })
+
+      expect(store.menu?.items.map((item) => item.label)).toEqual(["#create-skill"])
+
+      store.setTriggers({ mention: null, chatMention: null, slash: null, hash: { query: "nope", start: 0 } })
+
+      expect(store.menu).toBeNull()
+    })
+
+    it("can keep the built-ins out of the slash menu", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "cre", start: 0 }, hash: null })
+
+      expect(store.menu).toBeNull()
+    })
+
+    it("can insert the chosen built-in and close the menu", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: null, hash: { query: "cre", start: 0 } })
+      const apply = vi.fn()
+
+      presenter.choose(0, "#cre", 4, apply)
+
+      expect(apply).toHaveBeenCalledWith("#create-skill ", 14)
+      expect(store.hash).toBeNull()
+    })
+  })
+
   describe("history search", () => {
     it("can close the menus when the history search opens", () => {
       presenter.start()
