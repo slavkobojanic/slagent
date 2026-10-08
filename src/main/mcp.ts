@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { getAgentDir, VERSION, type McpServerConfig } from "@earendil-works/pi-coding-agent"
@@ -306,7 +307,7 @@ function resolveValue(value: string): string {
 
 async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
-  const temp = `${path}.${process.pid}.tmp`
+  const temp = `${path}.${randomUUID()}.tmp`
   await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 })
   await rename(temp, path)
 }
