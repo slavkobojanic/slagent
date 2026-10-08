@@ -35,4 +35,9 @@ export class ChooseFolderPresenter {
     this.log.action("choose-folder")
     return toastFailure(() => this.api.chooseFolder())
   }
+
+  handleCreateChatProject = () => {
+    this.log.action("create-chat-project")
+    return toastFailure(() => this.api.createChatProject())
+  }
 }

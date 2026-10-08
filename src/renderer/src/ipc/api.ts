@@ -31,6 +31,7 @@ export class API implements SlagentApi {
   readonly createSkill: SlagentApi["createSkill"]
   readonly pathForFile: SlagentApi["pathForFile"]
   readonly chooseFolder: SlagentApi["chooseFolder"]
+  readonly createChatProject: SlagentApi["createChatProject"]
   readonly setModel: SlagentApi["setModel"]
   readonly setTitleModel: SlagentApi["setTitleModel"]
   readonly setRouting: SlagentApi["setRouting"]
@@ -107,6 +108,7 @@ export class API implements SlagentApi {
     this.createSkill = (input) => bridge.createSkill(plain(input))
     this.pathForFile = (file) => bridge.pathForFile(file)
     this.chooseFolder = () => bridge.chooseFolder()
+    this.createChatProject = () => bridge.createChatProject()
     this.setModel = (modelId) => bridge.setModel(modelId)
     this.setTitleModel = (modelId) => bridge.setTitleModel(modelId)
     this.setRouting = (routing) => bridge.setRouting(routing)
