@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { watch, type FSWatcher } from "node:fs"
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import { basename, join } from "node:path"
 import { dialog } from "electron"
@@ -61,6 +62,8 @@ import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type T
 const PROVIDER = "openrouter"
 const TRANSCRIPT_PUBLISH_TIMER = "publish:transcript"
 const TRANSCRIPT_PUBLISH_MS = 33
+const GIT_PUBLISH_TIMER = "publish:git"
+const GIT_PUBLISH_MS = 200
 const PREFERRED_MODELS = [
   "anthropic/claude-sonnet-5.5",
   "anthropic/claude-sonnet-5",
@@ -116,6 +119,8 @@ export class AgentHost {
   private tail: Promise<void> = Promise.resolve()
   // The part of the open chat the renderer shows, reset whenever another chat opens.
   private window: { chatId: string | null; bounds: TranscriptWindow } = { chatId: null, bounds: tailWindow }
+  private gitWatcher: FSWatcher | null = null
+  private gitWatchedHead: string | null = null
 
   constructor(
     private readonly prefsPath: string,
@@ -471,6 +476,36 @@ export class AgentHost {
     return createSkillFile(this.cwd, input)
   }
 
+  // The branch shows beneath the chat, so .git/HEAD is watched and any change publishes a git event.
+  private watchGit(): void {
+    const head = join(this.cwd, ".git", "HEAD")
+    if (this.gitWatchedHead === head) {
+      return
+    }
+    this.gitWatcher?.close()
+    this.gitWatcher = null
+    this.gitWatchedHead = null
+    try {
+      const watcher = watch(head, { persistent: false }, () => {
+        if (this.timers.has(GIT_PUBLISH_TIMER)) return
+        this.timers.set(
+          GIT_PUBLISH_TIMER,
+          setTimeout(() => {
+            this.timers.delete(GIT_PUBLISH_TIMER)
+            this.emit({ type: "git", revision: this.revision })
+          }, GIT_PUBLISH_MS),
+        )
+      })
+      watcher.once("error", () => {
+        // The folder or repo can disappear while open; the label just keeps its last value.
+      })
+      this.gitWatcher = watcher
+      this.gitWatchedHead = head
+    } catch {
+      // Not a git repository: the branch line stays hidden.
+    }
+  }
+
   private requireCwd(): string {
     if (!this.cwd) throw new Error("Choose a folder first.")
     return this.cwd
@@ -632,6 +667,9 @@ export class AgentHost {
 
   close(): void {
     this.clearTimer(TRANSCRIPT_PUBLISH_TIMER)
+    this.gitWatcher?.close()
+    this.gitWatcher = null
+    this.clearTimer(GIT_PUBLISH_TIMER)
     for (const runtime of this.runtimes.values()) runtime.dispose()
     this.runtimes.clear()
     this.messageCounts.clear()
@@ -652,6 +690,7 @@ export class AgentHost {
     }
     this.projectId = project.id
     this.cwd = project.path
+    this.watchGit()
     await this.persistPrefs()
     const chatId = project.openChatId
     if (chatId && this.library.chat(project.id, chatId)) {
@@ -695,6 +734,7 @@ export class AgentHost {
     this.projectId = projectId
     this.chatId = chatId
     this.cwd = project.path
+    this.watchGit()
     await this.library.touchProject(projectId, chatId)
     if (chat.unread) await this.library.updateChat(projectId, chatId, { unread: false })
     const existing = this.runtimeFor(projectId, chatId)
