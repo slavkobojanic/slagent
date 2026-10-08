@@ -41,6 +41,10 @@ export class ChatListPresenter {
         },
       ),
     )
+    // Only the open project's list owns the numbered shortcuts, because the palette hints at them.
+    if (this.store.projectId !== undefined) {
+      return
+    }
     for (let position = 1; position <= NUMBERED_CHATS; position += 1) {
       this.disposers.push(
         this.commandRegistry.register({

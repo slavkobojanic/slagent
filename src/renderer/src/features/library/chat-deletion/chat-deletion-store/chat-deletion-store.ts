@@ -3,6 +3,8 @@ import type { ChatSummary } from "@shared/types"
 
 export class ChatDeletionStore {
   target: ChatSummary | null = null
+  // The chat's project, so a chat of a project that is not open can be deleted too.
+  projectId: string | undefined = undefined
   busy = false
 
   constructor() {
@@ -20,8 +22,9 @@ export class ChatDeletionStore {
     return true
   }
 
-  setTarget(chat: ChatSummary | null) {
+  setTarget(chat: ChatSummary | null, projectId?: string) {
     this.target = chat
+    this.projectId = projectId
   }
 
   setBusy(value: boolean) {

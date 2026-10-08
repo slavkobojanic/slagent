@@ -1,11 +1,13 @@
 import { toast } from "sonner"
 import type { ChatSummary } from "@shared/types"
+import { projectOfChat } from "@/features/library/library-utils"
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import type { ChatRenameStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-rename/chat-rename-store/chat-rename-store"
 import type { ChatRowMenuStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-store/chat-row-menu-store"
 import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
+import type { LibraryStore } from "@/mirror/library-store/library-store"
 import { errorText, formatTranscript } from "@/lib/format"
 
 export class ChatRowMenuPresenter {
@@ -13,6 +15,7 @@ export class ChatRowMenuPresenter {
     private readonly store: ChatRowMenuStore,
     private readonly api: API,
     private readonly window: Window,
+    private readonly libraryStore: LibraryStore,
     private readonly chatRenameStore: ChatRenameStore,
     private readonly chatDeletionStore: ChatDeletionStore,
     private readonly log: Log,
@@ -30,8 +33,9 @@ export class ChatRowMenuPresenter {
   }
 
   handlePin = (chat: ChatSummary) => {
-    this.log.action(chat.pinned ? "unpin-chat" : "pin-chat", { chatId: chat.id })
-    return toastFailure(() => this.api.pinChat(chat.id, !chat.pinned))
+    const projectId = projectOfChat(this.libraryStore.library, chat.id)
+    this.log.action(chat.pinned ? "unpin-chat" : "pin-chat", { chatId: chat.id, projectId })
+    return toastFailure(() => this.api.pinChat(chat.id, !chat.pinned, projectId))
   }
 
   handleRename = (chat: ChatSummary) => {
@@ -41,13 +45,14 @@ export class ChatRowMenuPresenter {
 
   handleDelete = (chat: ChatSummary) => {
     this.log.action("ask-delete-chat", { chatId: chat.id, title: chat.title })
-    this.chatDeletionStore.setTarget(chat)
+    this.chatDeletionStore.setTarget(chat, projectOfChat(this.libraryStore.library, chat.id))
   }
 
   handleCopy = async (chat: ChatSummary) => {
-    this.log.action("copy-transcript", { chatId: chat.id })
+    const projectId = projectOfChat(this.libraryStore.library, chat.id)
+    this.log.action("copy-transcript", { chatId: chat.id, projectId })
     try {
-      const stored = await this.api.readTranscript(chat.id)
+      const stored = await this.api.readTranscript(chat.id, projectId)
       const text = formatTranscript(chat.title, stored)
       if (text === "") {
         toast.error("This chat is empty.")

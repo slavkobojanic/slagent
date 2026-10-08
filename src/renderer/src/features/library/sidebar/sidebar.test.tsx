@@ -28,7 +28,7 @@ const base: SidebarProps = {
   SearchBox: slot("search-box"),
   SearchResults: slot("search-results"),
   OpenProject: slot("open-project"),
-  PinnedProjects: slot("pinned-projects"),
+  OtherProjects: slot("other-projects"),
   ResizeHandle: slot("resize-handle"),
 }
 
@@ -41,12 +41,12 @@ describe("Sidebar", () => {
     expect(html).toContain('data-slot="resize-handle"')
   })
 
-  it("can show the open project, then the pinned projects, while not searching", () => {
+  it("can show the open project, then the other projects, while not searching", () => {
     const html = viewMarkup(<Sidebar {...base} />)
 
     expect(html).toContain('data-slot="open-project"')
     expect(html).not.toContain('data-slot="search-results"')
-    expect(html.indexOf('data-slot="open-project"')).toBeLessThan(html.indexOf('data-slot="pinned-projects"'))
+    expect(html.indexOf('data-slot="open-project"')).toBeLessThan(html.indexOf('data-slot="other-projects"'))
   })
 
   it("can list search results in place of the open project", () => {

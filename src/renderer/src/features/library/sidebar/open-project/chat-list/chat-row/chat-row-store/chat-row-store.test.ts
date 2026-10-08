@@ -23,7 +23,7 @@ describe("ChatRowStore", () => {
   describe("isActive", () => {
     it("can tell the open chat apart from the others", () => {
       const libraryStore = new LibraryStore()
-      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c1" })
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1" })
       const store = new ChatRowStore(libraryStore)
 
       expect(store.isActive(chat("c1"))).toBe(true)

@@ -4,6 +4,7 @@ import { ChatRenamePresenter } from "@/features/library/sidebar/open-project/cha
 import { ChatRenameStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-rename/chat-rename-store/chat-rename-store"
 import type { API } from "@/ipc/api"
 import { nullLog } from "@/log/log"
+import { LibraryStore } from "@/mirror/library-store/library-store"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
@@ -15,13 +16,15 @@ function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
 describe("ChatRenamePresenter", () => {
   let store: ChatRenameStore
   let api: MockInstance<API>
+  let libraryStore: LibraryStore
   let presenter: ChatRenamePresenter
 
   beforeEach(() => {
     store = new ChatRenameStore()
     api = createMockInstance<API>(["renameChat"])
     api.renameChat.mockResolvedValue(undefined)
-    presenter = new ChatRenamePresenter(store, api, nullLog())
+    libraryStore = new LibraryStore()
+    presenter = new ChatRenamePresenter(store, api, libraryStore, nullLog())
   })
 
   describe("handleSave", () => {
@@ -31,7 +34,7 @@ describe("ChatRenamePresenter", () => {
 
       presenter.handleSave(chat("c1"))
 
-      expect(api.renameChat).toHaveBeenCalledWith("c1", "Launch plan")
+      expect(api.renameChat).toHaveBeenCalledWith("c1", "Launch plan", undefined)
       expect(store.renamingId).toBeNull()
     })
 
@@ -84,7 +87,7 @@ describe("ChatRenamePresenter", () => {
 
       presenter.handleSave(chat("c1"))
 
-      expect(api.renameChat).toHaveBeenCalledWith("c1", "New")
+      expect(api.renameChat).toHaveBeenCalledWith("c1", "New", undefined)
     })
   })
 })

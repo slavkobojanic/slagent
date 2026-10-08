@@ -107,7 +107,7 @@ async function flush() {
 function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
   const mirror = { library: new LibraryStore(), meta: new MetaStore(), run: new RunStore() }
   mirror.meta.setMeta(meta)
-  mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c1" })
+  mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1" })
   const review = new ReviewStore()
   const reviewPresenter = new ReviewPresenter(review, nullLog())
   const store = new ComposerStore(mirror.library, mirror.meta, mirror.run)
@@ -509,7 +509,7 @@ describe("ComposerPresenter", () => {
     it("can save the text as the draft of the chat it was sent from when that chat is no longer open", async () => {
       const { mirror, store, review, reviewPresenter, api, presenter } = harness()
       api.prompt.mockImplementation(async () => {
-        mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c2" })
+        mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c2" })
         throw new Error("boom")
       })
       store.setText("retry me")
@@ -864,7 +864,7 @@ describe("ComposerPresenter", () => {
       store.replaceDrafts({ "p1:c2": "other chat" })
       suggestions.setCommands([command])
 
-      mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c2" })
+      mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c2" })
 
       expect(store.text).toBe("other chat")
       expect(attachments.follow).toHaveBeenCalledWith("p1:c2")

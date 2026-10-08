@@ -1,21 +1,35 @@
 import { observer } from "mobx-react-lite"
+import { useCallback } from "react"
 import type { ComponentType } from "react"
 import type { ChatStatus, ProjectSummary } from "@shared/types"
+import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
+import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
+import { orderedChats } from "@/features/library/library-utils"
+import { ChatList } from "@/features/library/sidebar/open-project/chat-list/chat-list"
+import { ChatListFooter } from "@/features/library/sidebar/open-project/chat-list/chat-list-footer/chat-list-footer"
+import { visibleChats } from "@/features/library/sidebar/open-project/chat-list/chat-list-utils"
+import { createChatRow } from "@/features/library/sidebar/open-project/chat-list/chat-row/create"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
-import { PinnedProjects } from "./pinned-projects"
-import { PinnedProjectsPresenter } from "./pinned-projects-presenter/pinned-projects-presenter"
-import { PinnedProjectsStore } from "./pinned-projects-store/pinned-projects-store"
+import { OtherProjects } from "./other-projects"
+import { OtherProjectsPresenter } from "./other-projects-presenter/other-projects-presenter"
+import { OtherProjectsStore } from "./other-projects-store/other-projects-store"
 
-export function createPinnedProjects({
+export function createOtherProjects({
   api,
+  window,
   libraryStore,
+  chatDeletionStore,
+  chatSwitchPresenter,
   ProjectRow,
   log,
 }: {
   api: API
+  window: Window
   libraryStore: LibraryStore
+  chatDeletionStore: ChatDeletionStore
+  chatSwitchPresenter: ChatSwitchPresenter
   ProjectRow: ComponentType<{
     project: ProjectSummary
     status: ChatStatus
@@ -25,10 +39,50 @@ export function createPinnedProjects({
   }>
   log: Log
 }): ComponentType {
-  const store = new PinnedProjectsStore(libraryStore)
-  const presenter = new PinnedProjectsPresenter(api, log)
+  const store = new OtherProjectsStore(libraryStore)
+  const presenter = new OtherProjectsPresenter(store, window, log)
+  presenter.start()
 
-  return observer(function PinnedProjectsHost() {
-    return <PinnedProjects pinned={store.pinned} onOpen={presenter.handleOpen} ProjectRow={ProjectRow} />
+  // One chat row component serves every project: the row resolves the chat's own project on open.
+  const ChatRow = createChatRow({ api, window, libraryStore, chatDeletionStore, chatSwitchPresenter, log: log.child("other-project-chat-row") })
+
+  const ProjectChatList = observer(function ProjectChatListHost({ projectId }: { projectId: string }) {
+    // The chat summaries of a project that is not open arrive in `chatsByProject`.
+    const chats = orderedChats(store.chatsOf(projectId))
+    const showingAll = store.isShowingAll(projectId)
+    const visible = visibleChats(chats, showingAll)
+    const Footer = useCallback(
+      () => (
+        <ChatListFooter
+          hiddenCount={chats.length - visible.length}
+          canShowLess={showingAll && chats.length > visible.length}
+          onShowAll={() => presenter.handleShowAll(projectId)}
+          onShowLess={() => presenter.handleShowLess(projectId)}
+        />
+      ),
+      [chats.length, visible.length, showingAll, projectId, presenter],
+    )
+    return (
+      <ChatList
+        chats={visible}
+        empty={chats.length === 0}
+        hasHidden={chats.length > visible.length}
+        reduceMotion={store.reduceMotion}
+        ChatRow={ChatRow}
+        Footer={Footer}
+      />
+    )
+  })
+
+  return observer(function OtherProjectsHost() {
+    return (
+      <OtherProjects
+        others={store.others}
+        isCollapsed={(projectId) => store.isCollapsed(projectId)}
+        onToggle={presenter.handleToggle}
+        ProjectRow={ProjectRow}
+        ProjectChatList={ProjectChatList}
+      />
+    )
   })
 }

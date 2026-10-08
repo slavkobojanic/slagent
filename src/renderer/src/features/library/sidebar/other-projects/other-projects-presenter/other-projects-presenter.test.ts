@@ -1,33 +1,42 @@
-import { describe, expect, it, vi } from "vitest"
-import { toast } from "sonner"
+import { describe, expect, it } from "vitest"
 import type { ProjectSummary } from "@shared/types"
-import { PinnedProjectsPresenter } from "@/features/library/sidebar/pinned-projects/pinned-projects-presenter/pinned-projects-presenter"
-import type { API } from "@/ipc/api"
+import { OtherProjectsPresenter } from "@/features/library/sidebar/other-projects/other-projects-presenter/other-projects-presenter"
+import { OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import { nullLog } from "@/log/log"
-import { createMockInstance } from "@/test/create-mock-instance"
-
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
+import { LibraryStore } from "@/mirror/library-store/library-store"
 
 const atlas: ProjectSummary = { id: "p1", path: "/work/p1", name: "Atlas", pinned: true, pinnedAt: 1, lastOpenedAt: 0, running: false, attention: false }
 
-describe("PinnedProjectsPresenter", () => {
-  describe("handleOpen", () => {
-    it("can open a project by its id", async () => {
-      const api = createMockInstance<API>(["openProject"])
-      api.openProject.mockResolvedValue(undefined)
+// jsdom has no matchMedia. The stub pretends the reduced-motion setting is off.
+const matchMedia = () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }) as unknown as MediaQueryList
 
-      await new PinnedProjectsPresenter(api, nullLog()).handleOpen(atlas)
+function presenter() {
+  const store = new OtherProjectsStore(new LibraryStore())
+  return { store, presenter: new OtherProjectsPresenter(store, { matchMedia } as unknown as Window, nullLog()) }
+}
 
-      expect(api.openProject).toHaveBeenCalledWith("p1")
+describe("OtherProjectsPresenter", () => {
+  describe("handleToggle", () => {
+    it("can collapse and re-expand a project's chat list", () => {
+      const { store, presenter: subject } = presenter()
+
+      subject.handleToggle(atlas)
+      expect(store.isCollapsed("p1")).toBe(true)
+
+      subject.handleToggle(atlas)
+      expect(store.isCollapsed("p1")).toBe(false)
     })
+  })
 
-    it("can show a toast when the project cannot be opened", async () => {
-      const api = createMockInstance<API>(["openProject"])
-      api.openProject.mockRejectedValue(new Error("Folder is gone"))
+  describe("show all", () => {
+    it("can show and hide a project's hidden chats", () => {
+      const { store, presenter: subject } = presenter()
 
-      await new PinnedProjectsPresenter(api, nullLog()).handleOpen(atlas)
+      subject.handleShowAll("p1")
+      expect(store.isShowingAll("p1")).toBe(true)
 
-      expect(toast.error).toHaveBeenCalledWith("Folder is gone")
+      subject.handleShowLess("p1")
+      expect(store.isShowingAll("p1")).toBe(false)
     })
   })
 })

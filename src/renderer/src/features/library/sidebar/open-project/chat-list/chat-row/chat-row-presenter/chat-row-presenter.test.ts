@@ -20,8 +20,8 @@ function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
   return { id, title: id, pinned: false, pinnedAt: 0, updatedAt: 0, running: false, status: "idle", finishedAt: null, ...overrides }
 }
 
-function libraryState(chats: ChatSummary[] = []): LibraryState {
-  return { projects: [], openProjectId: "p1", chats, openChatId: null }
+function libraryState(chats: ChatSummary[] = [], chatsByProject: LibraryState["chatsByProject"] = {}): LibraryState {
+  return { projects: [], openProjectId: "p1", chats, chatsByProject, openChatId: null }
 }
 
 describe("ChatRowPresenter", () => {
@@ -54,10 +54,26 @@ describe("ChatRowPresenter", () => {
   })
 
   describe("handleOpen", () => {
-    it("can open a chat by its id", async () => {
+    it("can open a chat of the open project by its id", async () => {
+      libraryStore.setLibrary(libraryState([chat("c1")]))
+
       await presenter.handleOpen(chat("c1"))
 
-      expect(api.openChat).toHaveBeenCalledWith("c1")
+      expect(api.openChat).toHaveBeenCalledWith("c1", "p1")
+    })
+
+    it("can open a chat the library does not list, without naming a project", async () => {
+      await presenter.handleOpen(chat("c1"))
+
+      expect(api.openChat).toHaveBeenCalledWith("c1", undefined)
+    })
+
+    it("can open a chat of a project that is not open, naming its project", async () => {
+      libraryStore.setLibrary(libraryState([], { p2: [chat("c2")] }))
+
+      await presenter.handleOpen(chat("c2"))
+
+      expect(api.openChat).toHaveBeenCalledWith("c2", "p2")
     })
   })
 
