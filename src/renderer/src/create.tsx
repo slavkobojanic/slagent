@@ -5,6 +5,7 @@ import { BridgeMissing } from "@/components/bridge-missing"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { createChanges } from "@/features/changes/create"
 import { createComposer } from "@/features/composer/create"
+import { createLinkMenu } from "@/features/link-menu/create"
 import { createLibrary } from "@/features/library/create"
 import { createModels } from "@/features/models/create"
 import { createPermissionsWizard } from "@/features/permissions-wizard/create"
@@ -26,6 +27,7 @@ import { KeyboardPresenter } from "@/state/keyboard/keyboard-presenter/keyboard-
 import { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
 import { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import { LinkPresenter } from "@/state/link/link-presenter/link-presenter"
+import { LinkStore } from "@/state/link/link-store/link-store"
 import { McpStore } from "@/state/mcp/mcp-store/mcp-store"
 import { NavLogPresenter } from "@/state/nav-log/nav-log-presenter/nav-log-presenter"
 import { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
@@ -71,7 +73,9 @@ export function createApp(): ComponentType {
   const mcpStore = new McpStore()
   const commandRegistry = new CommandRegistry()
   const keyboardPresenter = new KeyboardPresenter(commandRegistry, window, permissionsStore, log.child("keyboard"))
-  const linkPresenter = new LinkPresenter(window, panelPresenter, api, log.child("link"))
+  const linkStore = new LinkStore()
+  const linkPresenter = new LinkPresenter(linkStore, window, panelPresenter, api, log.child("link"))
+  const LinkMenu = createLinkMenu({ store: linkStore, presenter: linkPresenter })
   const composerPort = new ComposerPort()
   const jumpPort = new JumpPort()
   const navLogPresenter = new NavLogPresenter(libraryStore, panelStore, overlayStore, log.child("nav"))
@@ -203,6 +207,7 @@ export function createApp(): ComponentType {
           <PermissionsWizard />
         </TooltipProvider>
         <Toaster theme={themeStore.resolved} toastOptions={TOAST_OPTIONS} />
+        <LinkMenu />
       </>
     )
   })
