@@ -122,7 +122,7 @@ export type ClaudeRuntimeOptions = {
   onChange: (runningChanged: boolean) => void
   onSession: (sessionId: string) => void
   onTitle: (title: string, generated: boolean) => void
-  generateTitle: (user: string, assistant: string) => Promise<string | null>
+  generateTitle: (user: string) => Promise<string | null>
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
@@ -691,7 +691,6 @@ export class ClaudeRuntime {
     this.finishStreamingMessages()
     this.emit(true)
     this.options.onSettled()
-    void this.autoTitle()
     queueMicrotask(() => void this.flushFollowUp())
   }
 
@@ -803,6 +802,7 @@ export class ClaudeRuntime {
     }
     this.messages.push(message)
     this.markFirstMessage()
+    void this.autoTitle()
     return message
   }
 
@@ -813,17 +813,14 @@ export class ClaudeRuntime {
     this.named = true
   }
 
+  // Names the chat from the first user message, as soon as it is sent.
   private async autoTitle(): Promise<void> {
     if (this.titleGenerated) return
     this.titleGenerated = true
     const user = this.messages.find((message) => message.role === "user")
     if (!user || user.role !== "user" || !user.text) return
-    let assistant = ""
-    for (const message of this.messages) {
-      if (message.role === "assistant" && message.text) assistant = message.text
-    }
     try {
-      const title = await this.options.generateTitle(user.text, assistant)
+      const title = await this.options.generateTitle(user.text)
       if (!title || this.disposed) return
       this.options.onTitle(title, true)
     } catch {
