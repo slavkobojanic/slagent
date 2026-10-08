@@ -22,4 +22,10 @@ describe("openChatOf", () => {
   it("can return null when the open chat is not in the list", () => {
     expect(openChatOf(library({ openChatId: "gone" }))).toBeNull()
   })
+
+  it("can find the open chat in a project that is not open", () => {
+    const other = chat({ id: "c2", title: "Other project chat" })
+
+    expect(openChatOf(library({ openChatId: "c2", chats: [], chatsByProject: { p2: [other] } }))?.title).toBe("Other project chat")
+  })
 })

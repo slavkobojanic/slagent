@@ -175,11 +175,31 @@ export class AgentHost {
     await runtime.abort()
   }
 
-  async newChat(): Promise<void> {
+  // Starts a draft in the target project, which becomes the active one when it is not already.
+  // The draft is the project's last thread until a chat is opened in it.
+  async newChat(projectId?: string): Promise<void> {
     await this.run(async () => {
-      if (!this.projectId) throw new Error("Choose a folder first.")
+      const target = projectId ?? this.projectId
+      if (!target) throw new Error("Choose a folder first.")
+      const project = this.library.project(target)
+      if (!project) throw new Error("That project is gone.")
+      const switching = target !== this.projectId
+      if (switching) {
+        try {
+          await assertDirectory(project.path)
+        } catch {
+          throw new Error("That folder is missing.")
+        }
+      }
+      this.projectId = target
+      this.cwd = project.path
       this.chatId = null
-      await this.library.rememberChat(this.projectId, null)
+      await this.library.touchProject(target, null)
+      if (switching) {
+        await this.persistPrefs()
+        this.publishAll()
+        return
+      }
       this.publishLibrary()
       this.publishTranscript()
     })
