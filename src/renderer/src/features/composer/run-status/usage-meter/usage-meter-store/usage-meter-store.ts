@@ -1,4 +1,5 @@
 import { makeAutoObservable } from "mobx"
+import { formatCost, formatTokens } from "@/lib/format"
 import type { UsageState, UsageTotals } from "@shared/types"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
@@ -97,19 +98,3 @@ function allChatsLabel(totals: UsageTotals | null): string | null {
   return `All chats: ${formatTokens(totals.tokens)} tokens · ${formatCost(totals.cost)}`
 }
 
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) {
-    return `${(tokens / 1_000_000).toFixed(1)}M`
-  }
-  if (tokens >= 1000) {
-    return `${Math.round(tokens / 1000)}k`
-  }
-  return String(tokens)
-}
-
-function formatCost(cost: number): string {
-  if (cost > 0 && cost < 0.01) {
-    return "<$0.01"
-  }
-  return `$${cost.toFixed(2)}`
-}

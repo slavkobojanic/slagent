@@ -35,6 +35,7 @@ import { answered, parseQuestions } from "./extensions/ask-user"
 import { personalisationPrompt } from "./extensions/personalisation"
 import { errorMessage, formatValue, toolLabel, truncate } from "./format"
 import { preparePrompt, type PreparedPrompt, queueDetail } from "./prompt"
+import type { ClaudeModelUsage } from "./usage-ledger"
 
 // Chats on these models run the user's own Claude Code install through the
 // Agent SDK, so they sign in with whatever login Claude Code has: a Claude
@@ -128,6 +129,8 @@ export type ClaudeRuntimeOptions = {
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
+  // The running per-model total of each result, for the usage log's deltas.
+  onModelUsage: (modelUsage: Record<string, ClaudeModelUsage>, costed: boolean) => void
   onQuestion: (request: QuestionRequest) => void
   // Keeps a proposed plan across restarts, so a crash shows it again.
   planProposal?: string | null
@@ -681,6 +684,12 @@ export class ClaudeRuntime {
 
   private onResult(message: Extract<SDKMessage, { type: "result" }>): void {
     this.readUsage(message)
+    try {
+      // A subscription isn't billed per token, so its cost estimate is not a cost.
+      this.options.onModelUsage(message.modelUsage ?? {}, !this.subscription)
+    } catch (error) {
+      console.error("usage record:", error)
+    }
     if (message.is_error) {
       const detail = "errors" in message && message.errors?.length ? message.errors.join("\n") : null
       const text = detail ?? ("result" in message && message.result ? message.result : "Claude Code stopped with an error.")

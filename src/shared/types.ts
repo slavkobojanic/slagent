@@ -450,6 +450,43 @@ export type UsageTotals = {
   chats: number
 }
 
+export type UsageDay = {
+  // Local date, YYYY-MM-DD.
+  day: string
+  tokens: number
+  cost: number
+}
+
+export type UsageCumulative = {
+  day: string
+  // Running lifetime cost up to and including this day.
+  cost: number
+}
+
+export type UsageModelStats = {
+  model: string
+  provider: string
+  input: number
+  output: number
+  cacheRead: number
+  cacheWrite: number
+  cost: number
+  turns: number
+}
+
+export type UsageStats = {
+  // The last 365 local days that have rows.
+  days: UsageDay[]
+  // Lifetime cumulative spend, one point per active day.
+  cumulative: UsageCumulative[]
+  totalTokens: number
+  totalCost: number
+  totalTurns: number
+  models: UsageModelStats[]
+  // True while the one-shot backfill is still importing history.
+  importing: boolean
+}
+
 // What a chat runtime reports; the host narrows `messages` to the visible window.
 export type RuntimeTranscript = {
   messages: ChatMessage[]
@@ -627,6 +664,7 @@ export type SlagentApi = {
   mcpSignIn: (name: string) => Promise<McpServerStatus[]>
   mcpSignOut: (name: string) => Promise<McpServerStatus[]>
   mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
+  usageStats: () => Promise<UsageStats>
   onEvent: (listener: (event: UiEvent) => void) => () => void
   // The socket dropped and came back; the caller re-fetches the snapshot.
   onReconnect: (listener: () => void) => () => void

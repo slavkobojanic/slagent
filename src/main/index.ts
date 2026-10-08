@@ -372,6 +372,8 @@ async function handleCall(clientId: string, method: string, params: unknown[]): 
       return requireMcp().signOut(requireName(params[0]))
     case "mcpSetEnabled":
       return requireMcp().setEnabled(requireName(params[0]), params[1] === true)
+    case "usageStats":
+      return host.usageStats()
     case "terminalCreate":
       return requireTerminal().create()
     case "updateStatus":

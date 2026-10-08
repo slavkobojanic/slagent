@@ -40,6 +40,7 @@ import type {
   TranscriptPage,
   TranscriptState,
   UiEvent,
+  UsageStats,
   UsageTotals,
 } from "../shared/types"
 import { DONE_WINDOW_MS, EMPTY_PERSONALISATION } from "../shared/types"
@@ -58,6 +59,8 @@ import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel
 import { createSkillFile, draftSkill } from "./skills-create"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { importShellEnv } from "./shell-env"
+import { runUsageBackfill } from "./usage-backfill"
+import { UsageLedger } from "./usage-ledger"
 import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type TranscriptWindow } from "./transcript-window"
 
 const PROVIDER = "openrouter"
@@ -101,6 +104,7 @@ type ExtensionCache = {
 export class AgentHost {
   private modelRuntime: ModelRuntime | null = null
   private readonly library: Library
+  private readonly usage: UsageLedger
   private readonly gate = new ComputerGate()
   private readonly runtimes = new Map<string, Runtime>()
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -141,6 +145,7 @@ export class AgentHost {
     private readonly getServerInfo: () => ServerInfo | null,
   ) {
     this.library = new Library(libraryRoot)
+    this.usage = new UsageLedger(join(libraryRoot, "usage.db"))
   }
 
   getCwd(): string {
@@ -190,6 +195,7 @@ export class AgentHost {
       this.effort = parseEffort(this.prefs.effort)
       this.personalisation = this.prefs.personalisation ?? { ...EMPTY_PERSONALISATION }
       await this.library.load()
+      void runUsageBackfill({ ledger: this.usage, library: this.library }).catch((error) => console.error("usage backfill:", error))
       void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
       await importShellEnv("OPENROUTER_API_KEY")
       this.modelRuntime = await ModelRuntimeClass.create({ refreshOnCreate: false })
@@ -843,6 +849,9 @@ export class AgentHost {
         stored.cost = usage.cost
         this.scheduleUsageSave(projectId)
       },
+      onUsageRecord: (record) => {
+        this.usage.recordLive(chatId, projectId, record)
+      },
       onSettled: () => {
         const open = this.isViewed(projectId, chatId)
         if (!open || !this.notifier.focused(projectId, chatId)) {
@@ -924,6 +933,9 @@ export class AgentHost {
         stored.tokens = usage.totalTokens
         stored.cost = usage.cost
         this.scheduleUsageSave(projectId)
+      },
+      onModelUsage: (modelUsage, costed) => {
+        this.usage.recordClaude(chatId, projectId, Date.now(), modelUsage, costed)
       },
       onSettled: () => {
         const open = this.isViewed(projectId, chatId)
@@ -1062,6 +1074,10 @@ export class AgentHost {
 
   async stopTask(clientId: string, id: string): Promise<void> {
     this.sessionRuntime(this.requireSession(clientId))?.stopTask(id)
+  }
+
+  async usageStats(): Promise<UsageStats> {
+    return this.usage.stats()
   }
 
   private usageTotals(): UsageTotals {
