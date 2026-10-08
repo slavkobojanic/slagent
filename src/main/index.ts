@@ -241,6 +241,7 @@ function registerIpc(): void {
     if (result.canceled || !folder) return
     await current.openFolder(folder)
   })
+  ipcMain.handle(channels.createChatProject, () => requireHost().createChatProject())
   ipcMain.handle(channels.permissions, () => requireComputer().permissions())
   ipcMain.handle(channels.requestAccessibility, () => requireComputer().requestAccessibility())
   ipcMain.handle(channels.requestScreenRecording, () => requireComputer().requestScreenRecording())

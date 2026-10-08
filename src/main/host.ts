@@ -192,10 +192,14 @@ export class AgentHost {
       if (!project) throw new Error("That project is gone.")
       const switching = target !== this.projectId
       if (switching) {
-        try {
-          await assertDirectory(project.path)
-        } catch {
-          throw new Error("That folder is missing.")
+        if (project.mode === "chat") {
+          await mkdir(project.path, { recursive: true })
+        } else {
+          try {
+            await assertDirectory(project.path)
+          } catch {
+            throw new Error("That folder is missing.")
+          }
         }
       }
       this.projectId = target
@@ -215,6 +219,13 @@ export class AgentHost {
   async openFolder(folder: string): Promise<void> {
     await this.run(async () => {
       const project = await this.library.ensureProject(folder)
+      await this.openProjectUnlocked(project.id)
+    })
+  }
+
+  async createChatProject(): Promise<void> {
+    await this.run(async () => {
+      const project = await this.library.ensureChatProject()
       await this.openProjectUnlocked(project.id)
     })
   }
@@ -629,10 +640,15 @@ export class AgentHost {
   private async openProjectUnlocked(projectId: string): Promise<void> {
     const project = this.library.project(projectId)
     if (!project) throw new Error("That project is gone.")
-    try {
-      await assertDirectory(project.path)
-    } catch {
-      throw new Error("That folder is missing.")
+    if (project.mode === "chat") {
+      // Chat projects own their directory; recreate it if it went missing.
+      await mkdir(project.path, { recursive: true })
+    } else {
+      try {
+        await assertDirectory(project.path)
+      } catch {
+        throw new Error("That folder is missing.")
+      }
     }
     this.projectId = project.id
     this.cwd = project.path
@@ -684,7 +700,7 @@ export class AgentHost {
     const existing = this.runtimeFor(projectId, chatId)
     if (existing) return
     if (isClaudeModel(chat.modelId)) {
-      await this.loadClaudeChat(project.path, projectId, chat)
+      await this.loadClaudeChat(project.path, projectId, chat, project.mode)
       return
     }
     const runtimeModel = this.modelRuntime
@@ -696,6 +712,7 @@ export class AgentHost {
       projectId,
       chatId,
       cwd: project.path,
+      mode: project.mode,
       sessionDir: this.library.sessionDir(projectId),
       checkpointDir: this.library.checkpointDir(projectId),
       sessionFile: chat.sessionFile,
@@ -716,13 +733,7 @@ export class AgentHost {
         this.extensionCache.set(projectId, { extensions, errors })
         if (this.projectId === projectId) this.publishMeta()
       },
-      onTitle: (title, generated) => {
-        const current = this.library.chat(projectId, chatId)
-        if (generated && current?.titleCustom) return
-        const patch: Partial<StoredChat> = { title, named: true, updatedAt: Date.now() }
-        if (generated) patch.titleGenerated = true
-        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
-      },
+      onTitle: (title, generated) => this.handleChatTitle(projectId, chatId, title, generated),
       generateTitle: (user) => {
         const titleModel = this.titleModel()
         if (!titleModel) return Promise.resolve(null)
@@ -783,13 +794,14 @@ export class AgentHost {
     }
   }
 
-  private async loadClaudeChat(cwd: string, projectId: string, chat: StoredChat): Promise<void> {
+  private async loadClaudeChat(cwd: string, projectId: string, chat: StoredChat, mode?: "chat"): Promise<void> {
     const chatId = chat.id
     const messages = await this.library.readTranscript(projectId, chatId)
     const runtime: ClaudeRuntime = new ClaudeRuntime({
       projectId,
       chatId,
       cwd,
+      mode,
       sessionId: chat.claudeSessionId ?? null,
       modelId: chat.modelId ?? CLAUDE_MODELS[0]!.id,
       effort: this.effort,
@@ -801,13 +813,7 @@ export class AgentHost {
       onSession: (sessionId) => {
         void this.library.updateChat(projectId, chatId, { claudeSessionId: sessionId })
       },
-      onTitle: (title, generated) => {
-        const current = this.library.chat(projectId, chatId)
-        if (generated && current?.titleCustom) return
-        const patch: Partial<StoredChat> = { title, named: true, updatedAt: Date.now() }
-        if (generated) patch.titleGenerated = true
-        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
-      },
+      onTitle: (title, generated) => this.handleChatTitle(projectId, chatId, title, generated),
       personalisation: () => this.personalisation,
       // Titles come from a small OpenRouter model, so without a key the
       // first line of the message stays as the title.
@@ -1160,11 +1166,30 @@ export class AgentHost {
     }
   }
 
+  // Shared by both runtimes: stores the generated chat title and, for chat
+  // projects, names the project from the first generated title (the same small
+  // model call names both, so no extra request is made).
+  private handleChatTitle(projectId: string, chatId: string, title: string, generated: boolean): void {
+    const current = this.library.chat(projectId, chatId)
+    if (generated && current?.titleCustom) return
+    const patch: Partial<StoredChat> = { title, named: true, updatedAt: Date.now() }
+    if (generated) patch.titleGenerated = true
+    void this.library.updateChat(projectId, chatId, patch).then(() => {
+      const project = this.library.project(projectId)
+      if (project?.mode === "chat" && project.name === "New chat" && title !== "New chat") {
+        void this.library.setProjectName(projectId, title).then(() => this.publishLibrary())
+      } else {
+        this.publishLibrary()
+      }
+    })
+  }
+
   private libraryState(): LibraryState {
     const projects: ProjectSummary[] = this.library.projects().map((project) => ({
       id: project.id,
       path: project.path,
       name: project.name,
+      mode: project.mode ?? "code",
       pinned: project.pinned,
       pinnedAt: project.pinnedAt,
       lastOpenedAt: project.lastOpenedAt,

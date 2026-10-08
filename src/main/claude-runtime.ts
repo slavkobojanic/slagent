@@ -30,6 +30,7 @@ import type {
   UserAttachment,
   UserMessage,
 } from "../shared/types"
+import { CHAT_SYSTEM_PROMPT } from "./chat-prompt"
 import { answered, parseQuestions } from "./extensions/ask-user"
 import { personalisationPrompt } from "./extensions/personalisation"
 import { errorMessage, formatValue, toolLabel, truncate } from "./format"
@@ -113,6 +114,7 @@ export type ClaudeRuntimeOptions = {
   projectId: string
   chatId: string
   cwd: string
+  mode?: "chat"
   sessionId: string | null
   modelId: string
   // Reasoning effort for Claude models, passed to the SDK as effortLevel.
@@ -449,8 +451,12 @@ export class ClaudeRuntime {
         permissionMode: this.planEnabled ? "plan" : "default",
         canUseTool: this.canUseTool,
         // Render fresh on every request, so a recreated process picks up the
-        // current personalisation even though the conversation resumes.
-        systemPrompt: { type: "preset", preset: "claude_code", append: append ?? undefined, snapshot: false },
+        // current personalisation even though the conversation resumes. Chat
+        // projects replace the coding preset with the conversational prompt;
+        // a plain string replaces the preset outright.
+        systemPrompt: this.options.mode === "chat"
+          ? CHAT_SYSTEM_PROMPT + (append ? `\n\n${append}` : "")
+          : { type: "preset", preset: "claude_code", append: append ?? undefined, snapshot: false },
         settingSources: ["user", "project", "local"],
         env: claudeEnv(),
         ...(executable ? { pathToClaudeCodeExecutable: executable } : {}),

@@ -31,6 +31,7 @@ const api: SlagentApi = {
     }
   },
   chooseFolder: () => ipcRenderer.invoke(channels.chooseFolder),
+  createChatProject: () => ipcRenderer.invoke(channels.createChatProject),
   setModel: (modelId) => ipcRenderer.invoke(channels.setModel, modelId),
   setTitleModel: (modelId) => ipcRenderer.invoke(channels.setTitleModel, modelId),
   setRouting: (routing) => ipcRenderer.invoke(channels.setRouting, routing),
