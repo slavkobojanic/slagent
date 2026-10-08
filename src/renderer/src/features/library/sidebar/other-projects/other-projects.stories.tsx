@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { fn } from "storybook/test"
-import type { OtherProjectsProps } from "@/features/library/sidebar/other-projects/other-projects"
 import { OtherProjects } from "@/features/library/sidebar/other-projects/other-projects"
 import { project } from "@/storybook/sample"
 import { slot } from "@/storybook/slots"
