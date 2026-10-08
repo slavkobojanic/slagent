@@ -10,6 +10,7 @@ function props(overrides: Partial<ToolChainProps> = {}): ToolChainProps {
       { id: "t1", icon: TerminalIcon, label: "Ran command", active: false, error: false, output: <span>step body</span> },
       { id: "t2", icon: TerminalIcon, label: "Running command", active: true, error: false, output: null },
     ],
+    defaultOpen: true,
     ...overrides,
   }
 }
@@ -21,6 +22,13 @@ describe("ToolChain", () => {
     expect(markup).toContain("Tools")
     expect(markup).toContain("Ran command")
     expect(markup).toContain("Running command")
+  })
+
+  it("collapses the steps when it starts closed", () => {
+    const markup = viewMarkup(<ToolChain {...props({ defaultOpen: false })} />)
+
+    expect(markup).toContain("Tools")
+    expect(markup).not.toContain("Ran command")
   })
 
   it("shows a failed step in the destructive colour", () => {
@@ -57,7 +65,7 @@ describe("ToolChain", () => {
   it("re-opens a finished step's output when you click it", () => {
     const view = render(<ToolChain {...props()} />)
 
-    fireEvent.click(view.container.querySelector(".cursor-pointer")!)
+    fireEvent.click(view.getByText("Ran command"))
 
     expect(view.container.innerHTML).toContain("step body")
   })

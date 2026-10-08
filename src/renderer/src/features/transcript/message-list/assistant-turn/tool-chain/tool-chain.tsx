@@ -15,11 +15,14 @@ export type ToolStepProps = {
 
 export type ToolChainProps = {
   steps: ToolStepProps[]
+  // Only read on mount: a turn that is still running opens so its progress shows, and a
+  // finished turn starts collapsed.
+  defaultOpen: boolean
 }
 
-export function ToolChain({ steps }: ToolChainProps) {
+export function ToolChain({ steps, defaultOpen }: ToolChainProps) {
   return (
-    <ChainOfThought defaultOpen>
+    <ChainOfThought defaultOpen={defaultOpen}>
       <ChainOfThoughtHeader>Tools</ChainOfThoughtHeader>
       <ChainOfThoughtContent>
         {steps.map((step) => (

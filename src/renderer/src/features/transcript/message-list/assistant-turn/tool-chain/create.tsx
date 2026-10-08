@@ -20,6 +20,6 @@ export function createToolChain({ panelPresenter }: { panelPresenter: PanelPrese
       error: tool.isError,
       output: <ToolStepOutput output={toolStepOutput(tool)} />,
     }))
-    return <ToolChain steps={steps} />
+    return <ToolChain steps={steps} defaultOpen={tools.some((tool) => tool.running)} />
   })
 }

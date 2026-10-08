@@ -11,6 +11,7 @@ const meta = {
       { id: "s2", icon: SearchIcon, label: "Searched files", active: false, error: false, output: null },
       { id: "s3", icon: FileTextIcon, label: "Read types.ts", active: true, error: false, output: "export type AppMeta = {...}" },
     ],
+    defaultOpen: true,
   },
 } satisfies Meta<typeof ToolChain>
 
@@ -24,3 +25,5 @@ export const Failed: Story = {
     steps: [{ id: "s1", icon: TerminalIcon, label: "Command failed", active: false, error: true, output: "Error: 1 test failed" }],
   },
 }
+
+export const Collapsed: Story = { args: { defaultOpen: false } }
