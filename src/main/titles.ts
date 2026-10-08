@@ -32,18 +32,19 @@ export function parseTitleModelId(value: unknown): string {
 
 const SYSTEM = [
   "You name chat threads in a coding app.",
-  "Reply with a title of 3 to 6 words that says what the user wants done.",
+  "You see only the user's first message.",
+  "Reply with a title of 3 to 7 words that names the concrete thing the message is about:",
+  "the feature, file, component or problem it mentions, in the user's own terms.",
+  "Never use generic words like conversation, discussion, request, question or help.",
   "Use sentence case. No quotes, no trailing punctuation, no emoji.",
 ].join(" ")
 
-export async function generateTitle(runtime: ModelRuntime, model: Model, user: string, assistant: string): Promise<string | null> {
-  const excerpt = [`User: ${user.slice(0, 2000)}`]
-  if (assistant) excerpt.push(`Assistant: ${assistant.slice(0, 1000)}`)
+export async function generateTitle(runtime: ModelRuntime, model: Model, user: string): Promise<string | null> {
   const reply = await runtime.completeSimple(
     model,
     {
       systemPrompt: SYSTEM,
-      messages: [{ role: "user", content: excerpt.join("\n\n"), timestamp: Date.now() }],
+      messages: [{ role: "user", content: `First message:\n\n${user.slice(0, 2000)}`, timestamp: Date.now() }],
     },
     { maxTokens: 400, signal: AbortSignal.timeout(20_000) },
   )
