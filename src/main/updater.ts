@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron"
 import updater from "electron-updater"
 import { channels, type UpdateCheckResult } from "../shared/types"
+import { appVersion } from "./version"
 
 // electron-updater is CommonJS and exposes `autoUpdater` through a getter, so default-import
 // the module and destructure rather than relying on Node's named-export detection.
@@ -40,7 +41,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
     if (result?.isUpdateAvailable) {
       return { status: "available", version: result.updateInfo.version }
     }
-    return { status: "up-to-date", version: app.getVersion() }
+    return { status: "up-to-date", version: appVersion }
   } catch (error) {
     console.error("updater:", error)
     return { status: "error", message: error instanceof Error ? error.message : String(error) }
@@ -88,7 +89,7 @@ export async function checkForUpdatesFromMenu(): Promise<void> {
 export function startUpdater({ prepareQuit }: Options): void {
   prepare = prepareQuit
   // Registered even when updates are off so the renderer's calls always resolve.
-  ipcMain.handle(channels.appVersion, () => app.getVersion())
+  ipcMain.handle(channels.appVersion, () => appVersion)
   ipcMain.handle(channels.updateStatus, () => readyVersion)
   ipcMain.handle(channels.updateCheck, () => checkForUpdates())
   ipcMain.handle(channels.installUpdate, install)

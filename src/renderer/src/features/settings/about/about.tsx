@@ -34,8 +34,8 @@ export function About({ version, checking, result, readyVersion, installing, err
     <div className="space-y-4">
       <h2 className="text-sm font-medium">About</h2>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-white/60">
-          slagent {version !== null ? <span className="font-mono text-white/80">{version}</span> : null}
+        <p className="text-base font-medium text-white">
+          slagent {version !== null ? <span className="font-mono text-white/70">{version}</span> : null}
         </p>
         {readyVersion !== null ? (
           <span className="inline-flex items-center gap-1.5 text-xs text-white/70">
