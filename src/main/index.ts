@@ -1,7 +1,7 @@
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, protocol, shell } from "electron"
-import { channels, type Personalisation } from "../shared/types"
+import { channels, type ModelRouting, type Personalisation } from "../shared/types"
 import { AgentHost, type Notifier } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
 import { McpManager } from "./mcp"
@@ -162,6 +162,7 @@ function registerIpc(): void {
   ipcMain.handle(channels.searchFiles, (_event, query: string) => requireHost().searchFiles(query))
   ipcMain.handle(channels.listCommands, () => requireHost().listCommands())
   ipcMain.handle(channels.setModel, (_event, modelId: string) => requireHost().setModel(modelId))
+  ipcMain.handle(channels.setRouting, (_event, routing: ModelRouting) => requireHost().setRouting(routing))
   ipcMain.handle(channels.saveKey, (_event, apiKey: string) => requireHost().saveOpenRouterKey(apiKey))
   ipcMain.handle(channels.logout, () => requireHost().logoutOpenRouter())
   ipcMain.handle(channels.setQueueMode, (_event, id: string, mode: string) => {

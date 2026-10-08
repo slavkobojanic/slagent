@@ -12,6 +12,7 @@ import { createCliSettings } from "./cli-settings/create"
 import { createMcpSettings } from "./mcp-settings/create"
 import { createOpenRouterKey } from "./openrouter-key/create"
 import { createPersonalisationSettings } from "./personalisation-settings/create"
+import { createProviderRouting } from "./provider-routing/create"
 import { Settings } from "./settings"
 import { SettingsPresenter } from "./settings-presenter/settings-presenter"
 import { SettingsStore } from "./settings-store/settings-store"
@@ -41,6 +42,7 @@ export function createSettings({
 
   const ThemePicker = createThemePicker({ themeStore, themePresenter })
   const OpenRouterKey = createOpenRouterKey({ api, metaStore, overlayStore, settingsStore, log: log.child("openrouter-key") })
+  const ProviderRouting = createProviderRouting({ api, metaStore, log: log.child("provider-routing") })
   const PersonalisationSettings = createPersonalisationSettings({
     api,
     metaStore,
@@ -62,6 +64,7 @@ export function createSettings({
         onOpenChange={presenter.handleOpenChange}
         ThemePicker={ThemePicker}
         OpenRouterKey={OpenRouterKey}
+        ProviderRouting={ProviderRouting}
         PersonalisationSettings={PersonalisationSettings}
         McpSettings={McpSettings}
         CliSettings={CliSettings}

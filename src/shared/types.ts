@@ -17,6 +17,7 @@ export const channels = {
   listCommands: "agent:list-commands",
   chooseFolder: "agent:choose-folder",
   setModel: "agent:set-model",
+  setRouting: "agent:set-routing",
   saveKey: "agent:save-key",
   logout: "agent:logout",
   openExternal: "agent:open-external",
@@ -118,6 +119,9 @@ export const EMPTY_PERSONALISATION: Personalisation = {
 
 export type ModelProvider = "openrouter" | "claude-code"
 
+// Which OpenRouter providers to favour when several serve the same model.
+export type ModelRouting = "speed" | "cost" | "balance"
+
 export type ModelOption = {
   id: string
   name: string
@@ -156,6 +160,7 @@ export type AppMeta = {
   modelName: string | null
   modelProvider: ModelProvider | null
   models: ModelOption[]
+  routing?: ModelRouting
   openRouter: OpenRouterStatus
   extensions: ExtensionInfo[]
   extensionErrors: string[]
@@ -532,6 +537,7 @@ export type SlagentApi = {
   pathForFile: (file: File) => string
   chooseFolder: () => Promise<void>
   setModel: (modelId: string) => Promise<ModelChange>
+  setRouting: (routing: ModelRouting) => Promise<void>
   saveOpenRouterKey: (apiKey: string) => Promise<void>
   logoutOpenRouter: () => Promise<void>
   openExternal: (url: string) => Promise<void>

@@ -30,6 +30,7 @@ export class API implements SlagentApi {
   readonly pathForFile: SlagentApi["pathForFile"]
   readonly chooseFolder: SlagentApi["chooseFolder"]
   readonly setModel: SlagentApi["setModel"]
+  readonly setRouting: SlagentApi["setRouting"]
   readonly saveOpenRouterKey: SlagentApi["saveOpenRouterKey"]
   readonly logoutOpenRouter: SlagentApi["logoutOpenRouter"]
   readonly openExternal: SlagentApi["openExternal"]
@@ -93,6 +94,7 @@ export class API implements SlagentApi {
     this.pathForFile = (file) => bridge.pathForFile(file)
     this.chooseFolder = () => bridge.chooseFolder()
     this.setModel = (modelId) => bridge.setModel(modelId)
+    this.setRouting = (routing) => bridge.setRouting(routing)
     this.saveOpenRouterKey = (apiKey) => bridge.saveOpenRouterKey(apiKey)
     this.logoutOpenRouter = () => bridge.logoutOpenRouter()
     this.openExternal = (url) => bridge.openExternal(url)

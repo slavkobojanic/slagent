@@ -5,6 +5,7 @@ import {
   PINNED_FILE_CHAR_LIMIT,
   PINNED_FILE_COUNT_LIMIT,
   PINNED_TOTAL_CHAR_LIMIT,
+  type ModelRouting,
   type Personalisation,
   type PinnedFile,
   type PersonalisationBranch,
@@ -18,7 +19,15 @@ import {
 export type Prefs = {
   cwd?: string
   modelId?: string
+  routing?: ModelRouting
   personalisation?: Personalisation
+}
+
+const ROUTINGS: ModelRouting[] = ["speed", "cost", "balance"]
+
+// An unknown or missing value falls back to OpenRouter's own balance.
+export function parseRouting(value: unknown): ModelRouting {
+  return ROUTINGS.includes(value as ModelRouting) ? (value as ModelRouting) : "balance"
 }
 
 const TONES: PersonalisationTone[] = ["direct", "friendly", "professional"]
@@ -99,6 +108,7 @@ export async function readPrefs(file: string): Promise<Prefs> {
     const prefs: Prefs = {}
     if (typeof record.cwd === "string") prefs.cwd = record.cwd
     if (typeof record.modelId === "string") prefs.modelId = record.modelId
+    if (typeof record.routing === "string") prefs.routing = parseRouting(record.routing)
     if (typeof record.personalisation === "object" && record.personalisation !== null) {
       prefs.personalisation = parsePersonalisation(record.personalisation)
     }

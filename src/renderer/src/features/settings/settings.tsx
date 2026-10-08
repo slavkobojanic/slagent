@@ -10,6 +10,7 @@ export type SettingsProps = {
   onOpenChange: (open: boolean) => void
   ThemePicker: ComponentType
   OpenRouterKey: ComponentType
+  ProviderRouting: ComponentType
   PersonalisationSettings: ComponentType
   McpSettings: ComponentType
   CliSettings: ComponentType
@@ -29,6 +30,7 @@ export function Settings({
   onOpenChange,
   ThemePicker,
   OpenRouterKey,
+  ProviderRouting,
   PersonalisationSettings,
   McpSettings,
   CliSettings,
@@ -61,6 +63,7 @@ export function Settings({
               <div className="space-y-6">
                 <ThemePicker />
                 <OpenRouterKey />
+                <ProviderRouting />
               </div>
             ) : null}
             {tab === "personalisation" ? <PersonalisationSettings /> : null}

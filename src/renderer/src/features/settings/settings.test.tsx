@@ -24,6 +24,10 @@ function KeySection() {
   return <p>OpenRouter section</p>
 }
 
+function ProviderSection() {
+  return <p>Provider section</p>
+}
+
 function PersonalisationSection() {
   return <p>Personalisation section</p>
 }
@@ -45,6 +49,7 @@ function renderDialog(overrides: Partial<SettingsProps> = {}) {
       onOpenChange={() => undefined}
       ThemePicker={ThemeSection}
       OpenRouterKey={KeySection}
+      ProviderRouting={ProviderSection}
       PersonalisationSettings={PersonalisationSection}
       McpSettings={McpSection}
       CliSettings={CliSection}
@@ -70,6 +75,7 @@ describe("Settings", () => {
 
     expect(screen.getByText("Theme section")).not.toBeNull()
     expect(screen.getByText("OpenRouter section")).not.toBeNull()
+    expect(screen.getByText("Provider section")).not.toBeNull()
     expect(screen.queryByText("MCP section")).toBeNull()
     expect(activeTab()).toBe("General")
   })

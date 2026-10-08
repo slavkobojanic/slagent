@@ -29,6 +29,7 @@ const api: SlagentApi = {
   },
   chooseFolder: () => ipcRenderer.invoke(channels.chooseFolder),
   setModel: (modelId) => ipcRenderer.invoke(channels.setModel, modelId),
+  setRouting: (routing) => ipcRenderer.invoke(channels.setRouting, routing),
   saveOpenRouterKey: (apiKey) => ipcRenderer.invoke(channels.saveKey, apiKey),
   logoutOpenRouter: () => ipcRenderer.invoke(channels.logout),
   openExternal: (url) => ipcRenderer.invoke(channels.openExternal, url),

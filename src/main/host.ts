@@ -19,6 +19,7 @@ import type {
   ExtensionInfo,
   LibraryState,
   ModelChange,
+  ModelRouting,
   OpenRouterStatus,
   Personalisation,
   PinnedFile,
@@ -45,7 +46,8 @@ import { ComputerGate } from "./computer-gate"
 import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
-import { parsePersonalisation, readPrefs, writePrefs, type Prefs } from "./prefs"
+import { parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
+import { routeModel } from "./routing"
 import { generateCommitMessage, generateTitle, TITLE_MODELS } from "./titles"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { importShellEnv } from "./shell-env"
@@ -95,6 +97,7 @@ export class AgentHost {
   private agentDir = getAgentDir()
   private draftModelId: string | null = null
   private draftModelName: string | null = null
+  private routing: ModelRouting = "balance"
   private draftPlanMode = false
   private models: AppMeta["models"] = []
   private openRouter: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
@@ -134,6 +137,7 @@ export class AgentHost {
     try {
       this.prefs = await readPrefs(this.prefsPath)
       this.draftModelId = this.prefs.modelId ?? null
+      this.routing = this.prefs.routing ?? "balance"
       this.personalisation = this.prefs.personalisation ?? { ...EMPTY_PERSONALISATION }
       await this.library.load()
       void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
@@ -449,8 +453,9 @@ export class AgentHost {
     if (!claude) {
       const runtimeModel = this.modelRuntime
       if (!runtimeModel) throw new Error("Pi is not ready.")
-      piModel = runtimeModel.getModel(PROVIDER, modelId)
-      if (!piModel || piModel.id.includes(":batch")) throw new Error("That model is not available.")
+      const found = runtimeModel.getModel(PROVIDER, modelId)
+      if (!found || found.id.includes(":batch")) throw new Error("That model is not available.")
+      piModel = routeModel(found, this.routing)
     }
     const option = claude ?? piModel!
     this.draftModelId = option.id
@@ -476,6 +481,14 @@ export class AgentHost {
     }
     this.publishMeta()
     return { applied: false }
+  }
+
+  async setRouting(routing: ModelRouting): Promise<void> {
+    if (parseRouting(routing) !== routing) throw new Error("Unknown routing preference.")
+    this.routing = routing
+    await this.persistPrefs()
+    this.applyRouting()
+    this.publishMeta()
   }
 
   async saveOpenRouterKey(apiKey: string): Promise<void> {
@@ -938,11 +951,25 @@ export class AgentHost {
     for (const id of ids) {
       if (!id) continue
       const model = runtime.getModel(PROVIDER, id)
-      if (model && !model.id.includes(":batch")) return model
+      if (model && !model.id.includes(":batch")) return routeModel(model, this.routing)
     }
     const first = this.models[0]
     if (!first) return undefined
-    return runtime.getModel(PROVIDER, first.id)
+    const model = runtime.getModel(PROVIDER, first.id)
+    return model ? routeModel(model, this.routing) : undefined
+  }
+
+  // A routing change reaches the open chats at once. A running chat holds the
+  // model until the run ends, when ChatRuntime applies the pending one.
+  private applyRouting(): void {
+    const runtime = this.modelRuntime
+    if (!runtime) return
+    for (const chat of this.runtimes.values()) {
+      if (!(chat instanceof ChatRuntime)) continue
+      const model = runtime.getModel(PROVIDER, chat.modelId)
+      if (!model) continue
+      void chat.setModel(routeModel(model, this.routing))
+    }
   }
 
   private titleModel(fallbackId: string): AgentModel | undefined {
@@ -950,7 +977,7 @@ export class AgentHost {
     if (!runtime) return undefined
     for (const id of [...TITLE_MODELS, fallbackId]) {
       const model = runtime.getModel(PROVIDER, id)
-      if (model) return model
+      if (model) return routeModel(model, this.routing)
     }
     return undefined
   }
@@ -992,6 +1019,7 @@ export class AgentHost {
     this.prefs = {
       cwd: this.cwd || undefined,
       modelId: this.draftModelId ?? undefined,
+      routing: this.routing,
       personalisation: this.personalisation,
     }
     await writePrefs(this.prefsPath, this.prefs)
@@ -1015,6 +1043,7 @@ export class AgentHost {
       modelName: model.name,
       modelProvider: model.id ? (isClaudeModel(model.id) ? "claude-code" : "openrouter") : null,
       models: this.models,
+      routing: this.routing,
       openRouter: this.openRouter,
       extensions: cached?.extensions ?? [],
       extensionErrors: cached?.errors ?? [],
