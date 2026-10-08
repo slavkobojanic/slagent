@@ -900,11 +900,16 @@ export class AgentHost {
     )
   }
 
-  // The sidebar orders chats by updatedAt, so every message the runtime
-  // appends moves that chat up. The first change after a runtime opens is
-  // only the loaded transcript, so it just sets the baseline.
+  // The sidebar orders chats by when the user last sent a message, so only
+  // user messages bump updatedAt. Bumping on every appended message would let
+  // the assistant turns of concurrently running chats fight over the top slot.
+  // The first change after a runtime opens is only the loaded transcript, so
+  // it just sets the baseline.
   private touchOnNewMessages(runtime: Runtime): boolean {
-    const count = runtime.messages.length
+    const count = runtime.messages.reduce(
+      (total, message) => (message.role === "user" ? total + 1 : total),
+      0,
+    )
     const baseline = this.messageCounts.get(runtime.key)
     this.messageCounts.set(runtime.key, count)
     if (baseline === undefined || count <= baseline) return false
