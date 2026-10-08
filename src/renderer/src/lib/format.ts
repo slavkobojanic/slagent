@@ -34,6 +34,23 @@ export function formatContext(tokens: number): string {
   return `${Math.round(tokens / 1000)}k context`
 }
 
+export function formatTokens(tokens: number): string {
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toFixed(1)}M`
+  }
+  if (tokens >= 1000) {
+    return `${Math.round(tokens / 1000)}k`
+  }
+  return String(tokens)
+}
+
+export function formatCost(cost: number): string {
+  if (cost > 0 && cost < 0.01) {
+    return "<$0.01"
+  }
+  return `$${cost.toFixed(2)}`
+}
+
 export function openRouterLabel(status: OpenRouterStatus): string {
   if (!status.configured) return "Not connected"
   if (status.source === "OAuth") return "Signed in"

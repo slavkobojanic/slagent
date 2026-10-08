@@ -16,7 +16,7 @@ import {
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent"
-import type { ImageContent } from "@earendil-works/pi-ai"
+import type { AssistantMessage as PiAssistantMessage, ImageContent } from "@earendil-works/pi-ai"
 import type {
   AssistantMessage,
   ChatMessage,
@@ -58,6 +58,7 @@ import { todoExtension } from "./extensions/todo"
 import { chatHistoryExtension } from "./extensions/chat-history"
 import { preparePrompt, queueDetail } from "./prompt"
 import type { Library } from "./library"
+import type { UsageRecord } from "./usage-ledger"
 
 // Pi treats the tools list as an allowlist, so tools from slagent's own
 // extensions are named here too.
@@ -135,6 +136,8 @@ export type ChatRuntimeOptions = {
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
+  // One row per completed assistant message, for the append-only usage log.
+  onUsageRecord: (record: UsageRecord) => void
   onTaskFinished: (task: TaskInfo) => void
   onQuestion: (request: QuestionRequest) => void
   // Keeps a proposed plan across restarts, so a crash shows it again.
@@ -304,6 +307,27 @@ export class ChatRuntime {
   private refreshUsage(): void {
     this.usageState = this.readUsage()
     if (this.usageState) this.options.onUsage(this.usageState)
+  }
+
+  // One append-only row per assistant message, keyed so a rewrite cannot store it twice.
+  private recordUsage(message: PiAssistantMessage): void {
+    const usage = message.usage
+    if (!usage || usage.totalTokens === 0) return
+    try {
+      this.options.onUsageRecord({
+        ts: message.timestamp,
+        model: message.model,
+        provider: message.provider,
+        input: usage.input,
+        output: usage.output,
+        cacheRead: usage.cacheRead,
+        cacheWrite: usage.cacheWrite,
+        cost: usage.cost?.total ?? 0,
+        key: `pi:${this.chatId}:${message.responseId ?? message.timestamp}`,
+      })
+    } catch (error) {
+      console.error("usage record:", error)
+    }
   }
 
   private readUsage(): UsageState | null {
@@ -822,6 +846,7 @@ export class ChatRuntime {
       bubble.streaming = false
       bubble.error = event.message.errorMessage ?? null
       this.currentAssistantId = null
+      this.recordUsage(event.message)
       // Pi saves the message, and its usage, right after this event.
       queueMicrotask(() => {
         this.refreshUsage()

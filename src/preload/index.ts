@@ -1,5 +1,5 @@
 import { contextBridge, webUtils } from "electron"
-import type { SlagentApi, TerminalEvent, UiEvent, WsClientMessage, WsServerMessage } from "../shared/types"
+import type { SlagentApi, TerminalEvent, UiEvent, UsageStats, WsClientMessage, WsServerMessage } from "../shared/types"
 
 // Connection details arrive from the main process as --slagent-key=value switches
 // at the end of the sandboxed preload's argv.
@@ -169,6 +169,7 @@ const api: SlagentApi = {
   mcpSignIn: (name) => bridge.call<Result<"mcpSignIn">>("mcpSignIn", name),
   mcpSignOut: (name) => bridge.call<Result<"mcpSignOut">>("mcpSignOut", name),
   mcpSetEnabled: (name, enabled) => bridge.call<Result<"mcpSetEnabled">>("mcpSetEnabled", name, enabled),
+  usageStats: () => bridge.call<UsageStats>("usageStats"),
   onEvent: (listener) => {
     bridge.eventListeners.add(listener)
     return () => bridge.eventListeners.delete(listener)
