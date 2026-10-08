@@ -244,41 +244,45 @@ export class AgentHost {
     })
   }
 
-  async pinChat(chatId: string, pinned: boolean): Promise<void> {
+  async pinChat(chatId: string, pinned: boolean, projectId?: string): Promise<void> {
     await this.run(async () => {
-      if (!this.projectId) return
-      await this.library.setChatPinned(this.projectId, chatId, pinned)
+      const target = projectId ?? this.projectId
+      if (!target) return
+      await this.library.setChatPinned(target, chatId, pinned)
       this.publishLibrary()
     })
   }
 
-  async renameChat(chatId: string, title: string): Promise<void> {
+  async renameChat(chatId: string, title: string, projectId?: string): Promise<void> {
     await this.run(async () => {
-      if (!this.projectId) return
+      const target = projectId ?? this.projectId
+      if (!target) return
       const next = title.trim()
       if (!next) throw new Error("Enter a name.")
-      await this.library.updateChat(this.projectId, chatId, {
+      await this.library.updateChat(target, chatId, {
         title: next.slice(0, 80),
         titleCustom: true,
         named: true,
       })
-      this.runtimeFor(this.projectId, chatId)?.lockTitle()
+      this.runtimeFor(target, chatId)?.lockTitle()
       this.publishLibrary()
     })
   }
 
-  async readTranscript(chatId: string): Promise<ChatMessage[]> {
-    if (!this.projectId) throw new Error("Choose a folder first.")
-    const live = this.runtimeFor(this.projectId, chatId)
+  async readTranscript(chatId: string, projectId?: string): Promise<ChatMessage[]> {
+    const target = projectId ?? this.projectId
+    if (!target) throw new Error("Choose a folder first.")
+    const live = this.runtimeFor(target, chatId)
     if (live) return live.messages
-    return this.library.readTranscript(this.projectId, chatId)
+    return this.library.readTranscript(target, chatId)
   }
 
-  async deleteChat(chatId: string): Promise<void> {
+  async deleteChat(chatId: string, projectId?: string): Promise<void> {
     await this.run(async () => {
-      if (!this.projectId) return
-      await this.disposeChat(this.projectId, chatId)
-      await this.library.deleteChat(this.projectId, chatId)
+      const target = projectId ?? this.projectId
+      if (!target) return
+      await this.disposeChat(target, chatId)
+      await this.library.deleteChat(target, chatId)
       if (this.chatId === chatId) this.chatId = null
       this.publishAll()
     })
@@ -1098,17 +1102,26 @@ export class AgentHost {
       attention: this.projectAttention(project.id),
     }))
     let chats: ChatSummary[] = []
-    if (this.projectId) chats = this.library.projectChats(this.projectId).map((chat) => this.chatSummary(chat))
+    const chatsByProject: Record<string, ChatSummary[]> = {}
+    for (const project of projects) {
+      if (project.id === this.projectId) {
+        chats = this.library.projectChats(project.id).map((chat) => this.chatSummary(project.id, chat))
+        continue
+      }
+      const chatsOfProject = this.library.projectChats(project.id)
+      if (chatsOfProject.length > 0) chatsByProject[project.id] = chatsOfProject.map((chat) => this.chatSummary(project.id, chat))
+    }
     return {
       projects,
       openProjectId: this.projectId,
       chats,
+      chatsByProject,
       openChatId: this.chatId,
     }
   }
 
-  private chatSummary(chat: StoredChat): ChatSummary {
-    const runtime = this.projectId ? this.runtimeFor(this.projectId, chat.id) : null
+  private chatSummary(projectId: string, chat: StoredChat): ChatSummary {
+    const runtime = this.runtimeFor(projectId, chat.id)
     return {
       id: chat.id,
       title: chat.title,
