@@ -1,4 +1,4 @@
-import type { AnsweredQuestion, ToolMessage } from "@shared/types"
+import type { AnsweredQuestion, SubagentRunState, ToolMessage } from "@shared/types"
 import {
   BotIcon,
   FileTextIcon,
@@ -90,6 +90,9 @@ export function toolLabel(tool: ToolMessage): StepLabel {
   if (tool.name === "ask_user") {
     return { kind: "text", text: questionLabel(tool) }
   }
+  if (tool.name === "subagent") {
+    return { kind: "text", text: subagentLabel(tool) }
+  }
   const path = toolPath(tool)
   if (path === null) {
     return { kind: "text", text: tool.label }
@@ -107,6 +110,28 @@ function bashLabel(tool: ToolMessage): string {
   return "Ran command"
 }
 
+function subagentLabel(tool: ToolMessage): string {
+  try {
+    const args = JSON.parse(tool.args) as { agent?: unknown; task?: unknown; tasks?: unknown[] }
+    const agents = new Set<string>()
+    let tasks = 0
+    if (typeof args.agent === "string" && args.agent) agents.add(args.agent)
+    if (typeof args.task === "string" && args.task) tasks += 1
+    if (Array.isArray(args.tasks)) {
+      for (const item of args.tasks) {
+        const agent = (item as { agent?: unknown } | null)?.agent
+        if (typeof agent === "string" && agent) agents.add(agent)
+      }
+      tasks += args.tasks.length
+    }
+    if (tasks === 0) return tool.label
+    const names = [...agents].join(", ")
+    return tasks > 1 ? `subagent: ${tasks} tasks to ${names}` : `subagent: ${names}`
+  } catch {
+    return tool.label
+  }
+}
+
 function questionLabel(tool: ToolMessage): string {
   if (tool.running) {
     return "Waiting for your answer"
@@ -120,12 +145,14 @@ function questionLabel(tool: ToolMessage): string {
   return "Asked questions"
 }
 
-// Which body a step shows: the bash terminal, the answers to a question, or the plain output.
-export type ToolOutputKind = "bash" | "answers" | "output"
+// Which body a step shows: the bash terminal, the answers to a question, the live subagent
+// runs, or the plain output.
+export type ToolOutputKind = "bash" | "answers" | "subagent" | "output"
 
 export type StepOutput =
   | { kind: "bash"; command: string; output: string; running: boolean; isError: boolean }
   | { kind: "answers"; answers: AnsweredQuestion[] }
+  | { kind: "subagent"; runs: SubagentRunState[]; running: boolean }
   | { kind: "output"; images: string[]; output: string; isError: boolean }
 
 export function toolOutputKind(tool: ToolMessage): ToolOutputKind {
@@ -134,6 +161,9 @@ export function toolOutputKind(tool: ToolMessage): ToolOutputKind {
   }
   if (tool.name === "ask_user" && tool.answers?.length) {
     return "answers"
+  }
+  if (tool.name === "subagent" && tool.subagent?.length) {
+    return "subagent"
   }
   return "output"
 }
@@ -145,6 +175,9 @@ export function toolStepOutput(tool: ToolMessage): StepOutput {
   }
   if (kind === "answers") {
     return { kind, answers: tool.answers ?? [] }
+  }
+  if (kind === "subagent") {
+    return { kind, runs: tool.subagent ?? [], running: tool.running }
   }
   return { kind, images: tool.images ?? [], output: tool.output, isError: tool.isError }
 }

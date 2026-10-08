@@ -28,6 +28,7 @@ import type {
   PromptRequest,
   QuestionReply,
   QuestionRequest,
+  SubagentRunState,
   TaskInfo,
   RewindMode,
   RewindResult,
@@ -839,6 +840,7 @@ export class ChatRuntime {
       const tool = this.findTool(event.toolCallId)
       if (!tool) return
       tool.output = toolResultText(event.partialResult)
+      this.captureSubagentRuns(tool, event.partialResult)
       this.emit(false)
       return
     }
@@ -853,6 +855,7 @@ export class ChatRuntime {
         const details = (event.result as { details?: AskUserDetails } | undefined)?.details
         if (details && Array.isArray(details.answers)) tool.answers = details.answers
       }
+      this.captureSubagentRuns(tool, event.result)
       const images = toolResultImages(event.result)
       if (images.length > 0) void this.attachImages(tool, images)
       this.emit(false)
@@ -943,6 +946,16 @@ export class ChatRuntime {
     const message = this.messages.find((item) => item.id === id)
     if (!message || message.role !== "tool") return null
     return message
+  }
+
+  // The subagent tool streams each run's steps in its details, so the transcript can show what
+  // every subagent is doing. Anything else is ignored.
+  private captureSubagentRuns(tool: ToolMessage, result: unknown): void {
+    const details = (result as { details?: unknown } | undefined)?.details
+    if (!details || typeof details !== "object") return
+    const runs = (details as { runs?: unknown }).runs
+    if (!Array.isArray(runs) || runs.length === 0) return
+    tool.subagent = runs as SubagentRunState[]
   }
 
   private finishStreamingMessages(): void {
