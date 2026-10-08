@@ -9,6 +9,8 @@ export type StoredProject = {
   id: string
   path: string
   name: string
+  // Absent means "code". Chat projects keep their cwd inside the library root.
+  mode?: "chat"
   pinned: boolean
   pinnedAt: number
   lastOpenedAt: number
@@ -139,6 +141,35 @@ export class Library {
     return project
   }
 
+  // Chat projects have no folder on disk the user picked: the app owns a
+  // directory under the library root as their cwd.
+  async ensureChatProject(): Promise<StoredProject> {
+    const project: StoredProject = {
+      id: randomUUID(),
+      path: "",
+      name: "New chat",
+      mode: "chat",
+      pinned: false,
+      pinnedAt: 0,
+      lastOpenedAt: Date.now(),
+      openChatId: null,
+    }
+    project.path = this.chatProjectDir(project.id)
+    await mkdir(project.path, { recursive: true })
+    this.index.projects.push(project)
+    this.chats.set(project.id, [])
+    await this.writeIndex()
+    await this.writeProject(project.id)
+    return project
+  }
+
+  async setProjectName(id: string, name: string): Promise<void> {
+    const project = this.project(id)
+    if (!project) return
+    project.name = name
+    await this.writeIndex()
+  }
+
   async touchProject(id: string, openChatId: string | null): Promise<void> {
     const project = this.project(id)
     if (!project) return
@@ -240,7 +271,13 @@ export class Library {
   async removeProject(id: string): Promise<void> {
     const project = this.project(id)
     if (!project) return
-    await deleteProjectFolder(project.path)
+    if (project.mode === "chat") {
+      // The cwd lives inside the library root; just drop it. The app-owned
+      // projectDir (sessions, chats, transcripts) is removed below as usual.
+      await rm(project.path, { recursive: true, force: true })
+    } else {
+      await deleteProjectFolder(project.path)
+    }
     this.index.projects = this.index.projects.filter((item) => item.id !== id)
     this.chats.delete(id)
     if (this.index.openProjectId === id) this.index.openProjectId = null
@@ -280,6 +317,10 @@ export class Library {
 
   private projectDir(projectId: string): string {
     return join(this.root, "projects", projectId)
+  }
+
+  private chatProjectDir(projectId: string): string {
+    return join(this.root, "chat", projectId)
   }
 
   private projectFile(projectId: string): string {
