@@ -10,6 +10,7 @@ export type SettingsProps = {
   onOpenChange: (open: boolean) => void
   ThemePicker: ComponentType
   OpenRouterKey: ComponentType
+  TitleModel: ComponentType
   ProviderRouting: ComponentType
   PersonalisationSettings: ComponentType
   McpSettings: ComponentType
@@ -30,6 +31,7 @@ export function Settings({
   onOpenChange,
   ThemePicker,
   OpenRouterKey,
+  TitleModel,
   ProviderRouting,
   PersonalisationSettings,
   McpSettings,
@@ -63,6 +65,7 @@ export function Settings({
               <div className="space-y-6">
                 <ThemePicker />
                 <OpenRouterKey />
+                <TitleModel />
                 <ProviderRouting />
               </div>
             ) : null}

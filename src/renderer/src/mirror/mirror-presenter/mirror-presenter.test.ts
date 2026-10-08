@@ -30,6 +30,9 @@ function metaState(modelName: string): AppMeta {
     extensions: [],
     extensionErrors: [],
     usageTotals: { tokens: 0, cost: 0, chats: 0 },
+    routing: "balance",
+    titleModelId: null,
+    titleModels: [],
     personalisation: EMPTY_PERSONALISATION,
   }
 }

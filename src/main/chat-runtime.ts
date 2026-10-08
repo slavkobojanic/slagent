@@ -705,7 +705,7 @@ export class ChatRuntime {
     }
     this.messages.push(message)
     this.pendingUserIds.push(message.id)
-    this.markTitle(message.text, attachments)
+    this.markFirstMessage()
     return message
   }
 
@@ -734,20 +734,14 @@ export class ChatRuntime {
     })
   }
 
-  private markTitle(text: string, attachments: UserAttachment[]): void {
+  // The first user message only flips the flag. The title itself comes from the
+  // naming model, so a chat stays "New chat" until that model replies.
+  private markFirstMessage(): void {
     if (this.named) return
     this.named = true
-    let title = text.split("\n")[0]?.trim() ?? ""
-    if (!title) {
-      const first = attachments[0]
-      if (first) title = first.name
-    }
-    if (!title) title = "New chat"
-    this.options.onTitle(title.slice(0, 80), false)
   }
 
-  // Replaces the first-line placeholder with a short generated title once the
-  // first exchange has settled.
+  // Names the chat once the first exchange has settled.
   private async autoTitle(): Promise<void> {
     if (this.titleGenerated) return
     this.titleGenerated = true
@@ -763,7 +757,7 @@ export class ChatRuntime {
       this.session?.setSessionName(title)
       this.options.onTitle(title, true)
     } catch {
-      // The first-line title stays.
+      // The chat keeps its placeholder title.
     }
   }
 

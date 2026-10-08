@@ -24,6 +24,10 @@ function KeySection() {
   return <p>OpenRouter section</p>
 }
 
+function TitleSection() {
+  return <p>Title section</p>
+}
+
 function ProviderSection() {
   return <p>Provider section</p>
 }
@@ -49,6 +53,7 @@ function renderDialog(overrides: Partial<SettingsProps> = {}) {
       onOpenChange={() => undefined}
       ThemePicker={ThemeSection}
       OpenRouterKey={KeySection}
+      TitleModel={TitleSection}
       ProviderRouting={ProviderSection}
       PersonalisationSettings={PersonalisationSection}
       McpSettings={McpSection}

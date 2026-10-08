@@ -19,6 +19,7 @@ import {
 export type Prefs = {
   cwd?: string
   modelId?: string
+  titleModelId?: string
   routing?: ModelRouting
   personalisation?: Personalisation
 }
@@ -108,6 +109,7 @@ export async function readPrefs(file: string): Promise<Prefs> {
     const prefs: Prefs = {}
     if (typeof record.cwd === "string") prefs.cwd = record.cwd
     if (typeof record.modelId === "string") prefs.modelId = record.modelId
+    if (typeof record.titleModelId === "string") prefs.titleModelId = record.titleModelId
     if (typeof record.routing === "string") prefs.routing = parseRouting(record.routing)
     if (typeof record.personalisation === "object" && record.personalisation !== null) {
       prefs.personalisation = parsePersonalisation(record.personalisation)

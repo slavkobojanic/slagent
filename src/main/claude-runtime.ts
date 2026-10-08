@@ -772,17 +772,15 @@ export class ClaudeRuntime {
       replies: request.replies?.length ? request.replies : undefined,
     }
     this.messages.push(message)
-    this.markTitle(message.text, attachments)
+    this.markFirstMessage()
     return message
   }
 
-  private markTitle(text: string, attachments: UserAttachment[]): void {
+  // The first user message only flips the flag. The title itself comes from the
+  // naming model, so a chat stays "New chat" until that model replies.
+  private markFirstMessage(): void {
     if (this.named) return
     this.named = true
-    let title = text.split("\n")[0]?.trim() ?? ""
-    if (!title) title = attachments[0]?.name ?? ""
-    if (!title) title = "New chat"
-    this.options.onTitle(title.slice(0, 80), false)
   }
 
   private async autoTitle(): Promise<void> {
@@ -799,7 +797,7 @@ export class ClaudeRuntime {
       if (!title || this.disposed) return
       this.options.onTitle(title, true)
     } catch {
-      // The first-line title stays.
+      // The chat keeps its placeholder title.
     }
   }
 

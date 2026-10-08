@@ -48,7 +48,7 @@ import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
 import { parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
 import { routeModel } from "./routing"
-import { generateCommitMessage, generateTitle, TITLE_MODELS } from "./titles"
+import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { importShellEnv } from "./shell-env"
 import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type TranscriptWindow } from "./transcript-window"
@@ -97,6 +97,7 @@ export class AgentHost {
   private agentDir = getAgentDir()
   private draftModelId: string | null = null
   private draftModelName: string | null = null
+  private titleModelId = DEFAULT_TITLE_MODEL
   private routing: ModelRouting = "balance"
   private draftPlanMode = false
   private models: AppMeta["models"] = []
@@ -137,6 +138,7 @@ export class AgentHost {
     try {
       this.prefs = await readPrefs(this.prefsPath)
       this.draftModelId = this.prefs.modelId ?? null
+      this.titleModelId = parseTitleModelId(this.prefs.titleModelId)
       this.routing = this.prefs.routing ?? "balance"
       this.personalisation = this.prefs.personalisation ?? { ...EMPTY_PERSONALISATION }
       await this.library.load()
@@ -483,6 +485,13 @@ export class AgentHost {
     return { applied: false }
   }
 
+  async setTitleModel(modelId: string): Promise<void> {
+    if (!isTitleModel(modelId)) throw new Error("That model cannot name chats.")
+    this.titleModelId = modelId
+    await this.persistPrefs()
+    this.publishMeta()
+  }
+
   async setRouting(routing: ModelRouting): Promise<void> {
     if (parseRouting(routing) !== routing) throw new Error("Unknown routing preference.")
     this.routing = routing
@@ -646,7 +655,7 @@ export class AgentHost {
         void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
       },
       generateTitle: (user, assistant) => {
-        const titleModel = this.titleModel(runtime.modelId)
+        const titleModel = this.titleModel()
         if (!titleModel) return Promise.resolve(null)
         return generateTitle(runtimeModel, titleModel, user, assistant)
       },
@@ -734,7 +743,7 @@ export class AgentHost {
       // first line of the message stays as the title.
       generateTitle: (user, assistant) => {
         const runtimeModel = this.modelRuntime
-        const titleModel = this.titleModel("")
+        const titleModel = this.titleModel()
         if (!runtimeModel || !titleModel || !this.openRouter.configured) return Promise.resolve(null)
         return generateTitle(runtimeModel, titleModel, user, assistant)
       },
@@ -972,10 +981,14 @@ export class AgentHost {
     }
   }
 
-  private titleModel(fallbackId: string): AgentModel | undefined {
+  // The configured naming model first, then the rest of the cheap list. A
+  // fallback id is only passed by callers that may spend the chat's own model
+  // (commit messages); naming passes none, so it stays cheap.
+  private titleModel(fallbackId = ""): AgentModel | undefined {
     const runtime = this.modelRuntime
     if (!runtime) return undefined
-    for (const id of [...TITLE_MODELS, fallbackId]) {
+    for (const id of [this.titleModelId, ...TITLE_MODELS.map((model) => model.id), fallbackId]) {
+      if (!id) continue
       const model = runtime.getModel(PROVIDER, id)
       if (model) return routeModel(model, this.routing)
     }
@@ -1019,6 +1032,7 @@ export class AgentHost {
     this.prefs = {
       cwd: this.cwd || undefined,
       modelId: this.draftModelId ?? undefined,
+      titleModelId: this.titleModelId,
       routing: this.routing,
       personalisation: this.personalisation,
     }
@@ -1044,6 +1058,8 @@ export class AgentHost {
       modelProvider: model.id ? (isClaudeModel(model.id) ? "claude-code" : "openrouter") : null,
       models: this.models,
       routing: this.routing,
+      titleModelId: this.titleModelId,
+      titleModels: TITLE_MODELS,
       openRouter: this.openRouter,
       extensions: cached?.extensions ?? [],
       extensionErrors: cached?.errors ?? [],

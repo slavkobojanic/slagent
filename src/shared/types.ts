@@ -17,6 +17,7 @@ export const channels = {
   listCommands: "agent:list-commands",
   chooseFolder: "agent:choose-folder",
   setModel: "agent:set-model",
+  setTitleModel: "agent:set-title-model",
   setRouting: "agent:set-routing",
   saveKey: "agent:save-key",
   logout: "agent:logout",
@@ -130,6 +131,13 @@ export type ModelOption = {
   provider: ModelProvider
 }
 
+// A small, cheap model offered for naming chats. Naming never runs on the
+// chat's own model, so this list is curated rather than taken from the catalog.
+export type TitleModelOption = {
+  id: string
+  name: string
+}
+
 export type OpenRouterStatus = {
   configured: boolean
   source: string | null
@@ -161,6 +169,8 @@ export type AppMeta = {
   modelProvider: ModelProvider | null
   models: ModelOption[]
   routing?: ModelRouting
+  titleModelId: string | null
+  titleModels: TitleModelOption[]
   openRouter: OpenRouterStatus
   extensions: ExtensionInfo[]
   extensionErrors: string[]
@@ -537,6 +547,7 @@ export type SlagentApi = {
   pathForFile: (file: File) => string
   chooseFolder: () => Promise<void>
   setModel: (modelId: string) => Promise<ModelChange>
+  setTitleModel: (modelId: string) => Promise<void>
   setRouting: (routing: ModelRouting) => Promise<void>
   saveOpenRouterKey: (apiKey: string) => Promise<void>
   logoutOpenRouter: () => Promise<void>

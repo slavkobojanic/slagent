@@ -1,15 +1,34 @@
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent"
+import type { TitleModelOption } from "../shared/types"
 
 type Model = NonNullable<ReturnType<ModelRuntime["getModel"]>>
 
-// Small, fast models tried first for naming chats. The chat's own model is the
-// fallback, so a title still appears when none of these are available.
-export const TITLE_MODELS = [
-  "google/gemini-3.5-flash-lite",
-  "google/gemini-2.5-flash-lite",
-  "openai/gpt-5.4-mini",
-  "anthropic/claude-haiku-4.5",
+// Small and cheap models offered for naming chats, cheapest first. The first is
+// the default. They all run through OpenRouter, so naming a chat never spends
+// the chat's own model, which may be an expensive one.
+export const TITLE_MODELS: TitleModelOption[] = [
+  { id: "deepseek/deepseek-v4-flash-0731", name: "DeepSeek V4 Flash (0731)" },
+  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash" },
+  { id: "google/gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite" },
+  { id: "google/gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite" },
+  { id: "openai/gpt-5.4-mini", name: "GPT-5.4 mini" },
+  { id: "anthropic/claude-haiku-4.5", name: "Claude Haiku 4.5" },
+  { id: "mistralai/ministral-8b-2512", name: "Ministral 8B" },
+  { id: "minimax/minimax-m2.7", name: "MiniMax M2.7" },
 ]
+
+export const DEFAULT_TITLE_MODEL = TITLE_MODELS[0]!.id
+
+export function isTitleModel(id: string): boolean {
+  return TITLE_MODELS.some((model) => model.id === id)
+}
+
+// An unknown or missing stored value falls back to the default, so an old
+// preference never leaves naming without a model.
+export function parseTitleModelId(value: unknown): string {
+  if (typeof value === "string" && isTitleModel(value)) return value
+  return DEFAULT_TITLE_MODEL
+}
 
 const SYSTEM = [
   "You name chat threads in a coding app.",
