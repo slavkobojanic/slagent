@@ -4,6 +4,7 @@ import { channels, type SlagentApi, type TerminalEvent, type UiEvent } from "../
 const api: SlagentApi = {
   platform: process.platform,
   systemVersion: process.getSystemVersion(),
+  appVersion: () => ipcRenderer.invoke(channels.appVersion),
   getSnapshot: () => ipcRenderer.invoke(channels.snapshot),
   prompt: (request) => ipcRenderer.invoke(channels.prompt, request),
   abort: () => ipcRenderer.invoke(channels.abort),
@@ -73,6 +74,7 @@ const api: SlagentApi = {
     }
   },
   updateStatus: () => ipcRenderer.invoke(channels.updateStatus),
+  checkForUpdates: () => ipcRenderer.invoke(channels.updateCheck),
   installUpdate: () => ipcRenderer.invoke(channels.installUpdate),
   onUpdateReady: (listener) => {
     const wrapped = (_event: IpcRendererEvent, version: string) => {
