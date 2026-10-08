@@ -175,6 +175,7 @@ export class ComposerPresenter {
     this.store.replaceDrafts(this.loadDrafts())
     this.promptHistoryPresenter.start()
     this.restoreDraft()
+    this.attachmentsPresenter.follow(this.store.draftKey)
     this.disposers = [
       this.log.reaction("draft-key", () => this.store.draftKey, this.switchChat),
       this.composerPort.attach({ focus: this.focus, fill: this.fill }),
