@@ -44,6 +44,10 @@ function CliSection() {
   return <p>CLI section</p>
 }
 
+function AboutSection() {
+  return <p>About section</p>
+}
+
 function renderDialog(overrides: Partial<SettingsProps> = {}) {
   return render(
     <Settings
@@ -58,6 +62,7 @@ function renderDialog(overrides: Partial<SettingsProps> = {}) {
       PersonalisationSettings={PersonalisationSection}
       McpSettings={McpSection}
       CliSettings={CliSection}
+      About={AboutSection}
       {...overrides}
     />,
   )
@@ -107,5 +112,13 @@ describe("Settings", () => {
     expect(screen.getByText("CLI section")).not.toBeNull()
     expect(screen.queryByText("MCP section")).toBeNull()
     expect(activeTab()).toBe("CLI")
+  })
+
+  it("can show only the about section when it is the active tab", () => {
+    renderDialog({ tab: "about" })
+
+    expect(screen.getByText("About section")).not.toBeNull()
+    expect(screen.queryByText("CLI section")).toBeNull()
+    expect(activeTab()).toBe("About")
   })
 })
