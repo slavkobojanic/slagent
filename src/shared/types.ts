@@ -550,7 +550,8 @@ export type SlagentApi = {
   getSnapshot: () => Promise<Snapshot>
   prompt: (request: PromptRequest) => Promise<void>
   abort: () => Promise<void>
-  newChat: () => Promise<void>
+  // Starts a draft in the project; the project becomes the active one when it is not already.
+  newChat: (projectId?: string) => Promise<void>
   openProject: (projectId: string) => Promise<void>
   // messageId opens the chat scrolled to that message instead of the bottom.
   openChat: (chatId: string, projectId?: string, messageId?: string) => Promise<void>

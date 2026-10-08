@@ -102,22 +102,20 @@ describe("ProjectRowPresenter", () => {
   })
 
   describe("handleNewChat", () => {
-    it("can open the project first when it is not the open one", async () => {
+    it("can start a draft in another project in one call, naming the project", async () => {
       libraryStore.setLibrary(libraryState({ openProjectId: "p1" }))
 
       await presenter.handleNewChat(project("p2"))
 
-      expect(api.openProject).toHaveBeenCalledWith("p2")
-      expect(api.newChat).toHaveBeenCalledTimes(1)
+      expect(api.newChat).toHaveBeenCalledWith("p2")
     })
 
-    it("can start a draft in the open project without opening it again", async () => {
+    it("can start a draft in the open project", async () => {
       libraryStore.setLibrary(libraryState({ openProjectId: "p1" }))
 
       await presenter.handleNewChat(project("p1"))
 
-      expect(api.openProject).not.toHaveBeenCalled()
-      expect(api.newChat).toHaveBeenCalledTimes(1)
+      expect(api.newChat).toHaveBeenCalledWith("p1")
     })
 
     it("can focus the composer once the draft starts", async () => {

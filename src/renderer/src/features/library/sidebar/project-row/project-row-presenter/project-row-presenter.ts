@@ -59,12 +59,7 @@ export class ProjectRowPresenter {
 
   // The composer gets focus even when the draft fails to start, so the user can type straight away.
   private newChat = async (projectId?: string) => {
-    await toastFailure(async () => {
-      if (projectId !== undefined && projectId !== this.libraryStore.openProjectId) {
-        await this.api.openProject(projectId)
-      }
-      await this.api.newChat()
-    })
+    await toastFailure(() => this.api.newChat(projectId))
     this.window.requestAnimationFrame(() => {
       this.composerPort.focus()
     })
