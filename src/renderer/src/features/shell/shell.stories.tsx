@@ -15,6 +15,7 @@ const meta = {
     TerminalDrawer: fill("Terminal"),
     Settings: slot("Settings"),
     Models: slot("Models"),
+    CreateSkill: slot("CreateSkill"),
   },
 } satisfies Meta<typeof Shell>
 
