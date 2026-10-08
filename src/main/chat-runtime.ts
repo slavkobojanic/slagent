@@ -53,6 +53,7 @@ import { discoverAgents, subagentExtension } from "./extensions/subagents"
 import { ASK_USER, askUser, type AskUserDetails } from "./extensions/ask-user"
 import { personalisationExtension } from "./extensions/personalisation"
 import { planMode, type PlanModeControl } from "./extensions/plan-mode"
+import { CHAT_SYSTEM_PROMPT, CHAT_TOOLS } from "./chat-prompt"
 import { todoExtension } from "./extensions/todo"
 import { chatHistoryExtension } from "./extensions/chat-history"
 import { preparePrompt, queueDetail } from "./prompt"
@@ -112,6 +113,8 @@ export type ChatRuntimeOptions = {
   checkpointDir: string
   sessionFile: string | null
   model: AgentModel
+  // Chat projects get a conversational prompt and read-only tools.
+  mode?: "chat"
   // Reasoning effort for OpenRouter models, applied to the session.
   effort: EffortLevel
   named: boolean
@@ -343,7 +346,8 @@ export class ChatRuntime {
   async open(): Promise<string | null> {
     await mkdir(this.options.sessionDir, { recursive: true })
     const sessionManager = this.sessionManager()
-    let toolNames = CODING_TOOLS
+    const chatMode = this.options.mode === "chat"
+    let toolNames = chatMode ? CHAT_TOOLS : CODING_TOOLS
     let customTools: ReturnType<typeof computerTools> = []
     // Tool-providing extensions are replaceable: a Pi package that registers a
     // tool with the same name, such as pi-subagents, is used instead.
@@ -381,7 +385,7 @@ export class ChatRuntime {
       { name: "slagent-mcp-servers", hidden: true, factory: mcpServersExtension(this.options.mcpServers ?? {}) },
       { name: "slagent-mcp", hidden: true, factory: createMcpExtension() },
     ]
-    if (process.platform === "darwin") {
+    if (process.platform === "darwin" && !chatMode) {
       toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]
       customTools = computerTools(this.options.computer, this.options.gate)
       extensionFactories.push(focusGuard)
@@ -394,6 +398,14 @@ export class ChatRuntime {
       agentDir,
       settingsManager,
       extensionFactories,
+      ...(chatMode
+        ? {
+            // Chat projects replace the coding prompt entirely and skip the
+            // project context files (AGENTS.md and friends) of their scratch cwd.
+            systemPrompt: CHAT_SYSTEM_PROMPT,
+            noContextFiles: true,
+          }
+        : {}),
     })
     await resourceLoader.reload()
 
