@@ -15,7 +15,6 @@ export function SettingsButton({ needsAuth, onOpen }: SettingsButtonProps) {
       size="icon"
       className="relative"
       aria-label="Settings"
-      data-genie-target="settings"
       onClick={onOpen}
     >
       <Settings className="size-4" />

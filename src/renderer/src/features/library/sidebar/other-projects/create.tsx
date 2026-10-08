@@ -42,7 +42,7 @@ export function createOtherProjects({
   log: Log
 }): ComponentType {
   const store = new OtherProjectsStore(libraryStore)
-  const presenter = new OtherProjectsPresenter(store, api, window, log)
+  const presenter = new OtherProjectsPresenter(store, window, log)
   presenter.start()
 
   // One chat row component serves every project: the row resolves the chat's own project on open.
@@ -83,7 +83,6 @@ export function createOtherProjects({
         others={store.others}
         isCollapsed={(projectId) => store.isCollapsed(projectId)}
         onToggle={presenter.handleToggle}
-        onNewChat={presenter.handleNewChat}
         ProjectRow={ProjectRow}
         ProjectChatList={ProjectChatList}
         OpenProject={OpenProject}

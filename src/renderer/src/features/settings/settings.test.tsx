@@ -1,20 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { Settings, type SettingsProps } from "@/features/settings/settings"
-
-// The genie warp checks prefers-reduced-motion. With reduced motion it skips building the
-// warp strips, which need real layout that jsdom does not have.
-beforeEach(() => {
-  Object.defineProperty(window, "matchMedia", {
-    configurable: true,
-    writable: true,
-    value: vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
-  })
-})
-
-afterEach(() => {
-  Reflect.deleteProperty(window, "matchMedia")
-})
 
 function ThemeSection() {
   return <p>Theme section</p>

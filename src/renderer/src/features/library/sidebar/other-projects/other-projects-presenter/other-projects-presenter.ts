@@ -1,7 +1,5 @@
 import type { ProjectSummary } from "@shared/types"
-import { toastFailure } from "@/features/library/toast-failure"
-import { NO_PROJECT_ID, type OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
-import type { API } from "@/ipc/api"
+import type { OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import type { Log } from "@/log/log"
 
 const REDUCE_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
@@ -13,7 +11,6 @@ export class OtherProjectsPresenter {
 
   constructor(
     private readonly store: OtherProjectsStore,
-    private readonly api: API,
     private readonly window: Window,
     private readonly log: Log,
   ) {}
@@ -54,15 +51,6 @@ export class OtherProjectsPresenter {
   handleShowLess = (projectId: string) => {
     this.log.action("show-fewer-chats", { projectId })
     this.store.setShowAll(projectId, false)
-  }
-
-  handleNewChat = (project: ProjectSummary) => {
-    this.log.action("new-chat", { projectId: project.id })
-    if (project.id === NO_PROJECT_ID) {
-      // The fake group has no project to add a chat to: start a new "chat" project instead.
-      return toastFailure(() => this.api.createChatProject())
-    }
-    return toastFailure(() => this.api.newChat(project.id))
   }
 
   private handleMotionChange = (event: MediaQueryListEvent) => {
