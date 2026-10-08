@@ -33,10 +33,19 @@ export function parseTitleModelId(value: unknown): string {
 const SYSTEM = [
   "You name chat threads in a coding app.",
   "You see only the user's first message.",
-  "Reply with a title of 3 to 7 words that names the concrete thing the message is about:",
-  "the feature, file, component or problem it mentions, in the user's own terms.",
+  "Reply with a title of 3 to 7 words that names the concrete thing the message is about,",
+  "in a human readable way: what a person would say it's about, not a file path or a tag.",
   "Never use generic words like conversation, discussion, request, question or help.",
   "Use sentence case. No quotes, no trailing punctuation, no emoji.",
+  "Examples:",
+  "First message: My docker container keeps exiting after a few seconds, the logs just say code 137. What's happening?",
+  "Title: Docker container exits with code 137",
+  "First message: The submit button on the checkout page is invisible on mobile but works fine on desktop. Can you look into it?",
+  "Title: Invisible checkout button on mobile",
+  "First message: I keep going back and forth between Postgres and SQLite for a small side project with maybe 100 users. Which one would you pick?",
+  "Title: Postgres vs SQLite for a side project",
+  "First message: Can you explain how CSS grid areas work? I keep messing up the template definition.",
+  "Title: Understanding CSS grid areas",
 ].join(" ")
 
 export async function generateTitle(runtime: ModelRuntime, model: Model, user: string): Promise<string | null> {
