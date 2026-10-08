@@ -20,6 +20,7 @@ const base: OtherProjectsProps = {
   ),
   ProjectChatList: ({ projectId }) => <div data-slot="chat-list" data-project={projectId} />,
   OpenProject: () => <div data-slot="open-project" />,
+  reduceMotion: true,
 }
 
 describe("OtherProjects", () => {

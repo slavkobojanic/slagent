@@ -17,6 +17,7 @@ const meta = {
     ProjectRow: slot("ProjectRow"),
     ProjectChatList: slot("ProjectChatList"),
     OpenProject: slot("OpenProject"),
+    reduceMotion: false,
   },
 } satisfies Meta<typeof OtherProjects>
 

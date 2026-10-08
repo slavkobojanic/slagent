@@ -14,6 +14,7 @@ const base: OpenProjectProps = {
   onNewChat: noop,
   ProjectRow: ({ project, active, collapsed }) => <div data-slot="project-row" data-active={active} data-collapsed={collapsed}>{project.name}</div>,
   ChatList: () => <div data-slot="chat-list" />,
+  reduceMotion: true,
 }
 
 describe("OpenProject", () => {
