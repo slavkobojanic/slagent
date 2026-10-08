@@ -16,7 +16,7 @@ import { ChatSearchStore } from "./chat-search/chat-search-store/chat-search-sto
 import { createSearchBox } from "./chat-search/search-box/create"
 import { createSearchResults } from "./chat-search/search-results/create"
 import { createOpenProject } from "./open-project/create"
-import { createPinnedProjects } from "./pinned-projects/create"
+import { createOtherProjects } from "./other-projects/create"
 import { createProjectRow } from "./project-row/create"
 import { Sidebar } from "./sidebar"
 import { createSidebarResize } from "./sidebar-resize/create"
@@ -69,7 +69,15 @@ export function createSidebar({
     ProjectRow,
     log: log.child("open-project"),
   })
-  const PinnedProjects = createPinnedProjects({ api, libraryStore, ProjectRow, log: log.child("pinned-projects") })
+  const OtherProjects = createOtherProjects({
+    api,
+    window,
+    libraryStore,
+    chatDeletionStore,
+    chatSwitchPresenter,
+    ProjectRow,
+    log: log.child("other-projects"),
+  })
 
   const chatSearchStore = new ChatSearchStore()
   const chatSearchPresenter = new ChatSearchPresenter(
@@ -95,7 +103,7 @@ export function createSidebar({
         SearchBox={SearchBox}
         SearchResults={SearchResults}
         OpenProject={OpenProject}
-        PinnedProjects={PinnedProjects}
+        OtherProjects={OtherProjects}
         ResizeHandle={ResizeHandle}
       />
     )

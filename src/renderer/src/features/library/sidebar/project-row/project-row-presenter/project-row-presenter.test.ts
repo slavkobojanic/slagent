@@ -19,7 +19,7 @@ function project(id: string, overrides: Partial<ProjectSummary> = {}): ProjectSu
 }
 
 function libraryState(overrides: Partial<LibraryState> = {}): LibraryState {
-  return { projects: [], openProjectId: null, chats: [], openChatId: null, ...overrides }
+  return { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, ...overrides }
 }
 
 function commandNamed(registry: CommandRegistry, id: string): Command {

@@ -7,7 +7,7 @@ function project(overrides: Partial<ProjectSummary> = {}): ProjectSummary {
 }
 
 function library(overrides: Partial<LibraryState> = {}): LibraryState {
-  return { projects: [project()], openProjectId: "p1", chats: [], openChatId: null, ...overrides }
+  return { projects: [project()], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null, ...overrides }
 }
 
 describe("openProjectOf", () => {

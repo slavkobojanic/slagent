@@ -54,6 +54,11 @@ describe("ProjectRow", () => {
 
     expect(html).toContain('aria-label="Finished"')
     expect(html).toContain('title="New chat in Atlas"')
-    expect(rowButtonTag(html)).not.toContain("aria-expanded")
+  })
+
+  it("can show a project that is not open as an expandable row too", () => {
+    const html = viewMarkup(<ProjectRow {...base} active={false} collapsed />)
+
+    expect(rowButtonTag(html)).toContain('aria-expanded="false"')
   })
 })

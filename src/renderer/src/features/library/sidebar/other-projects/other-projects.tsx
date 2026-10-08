@@ -1,9 +1,10 @@
 import type { ComponentType } from "react"
 import type { ChatStatus, ProjectSummary } from "@shared/types"
 
-export type PinnedProjectsProps = {
-  pinned: { project: ProjectSummary; status: ChatStatus }[]
-  onOpen: (project: ProjectSummary) => void
+export type OtherProjectsProps = {
+  others: { project: ProjectSummary; status: ChatStatus }[]
+  isCollapsed: (projectId: string) => boolean
+  onToggle: (project: ProjectSummary) => void
   ProjectRow: ComponentType<{
     project: ProjectSummary
     status: ChatStatus
@@ -11,18 +12,30 @@ export type PinnedProjectsProps = {
     collapsed: boolean
     onSelect: (project: ProjectSummary) => void
   }>
+  ProjectChatList: ComponentType<{ projectId: string }>
 }
 
-export function PinnedProjects({ pinned, onOpen, ProjectRow }: PinnedProjectsProps) {
-  if (pinned.length === 0) {
+// Every project other than the open one, each an expandable section with its chats. Rows collapse
+// on click; opening a chat or starting a new one switches the project.
+export function OtherProjects({ others, isCollapsed, onToggle, ProjectRow, ProjectChatList }: OtherProjectsProps) {
+  if (others.length === 0) {
     return null
   }
   return (
     <section className="space-y-1">
-      <h2 className="px-2 text-xs font-medium text-foreground/40">Pinned</h2>
-      {pinned.map(({ project, status }) => (
-        <ProjectRow key={project.id} project={project} status={status} active={false} collapsed={false} onSelect={onOpen} />
-      ))}
+      <h2 className="px-2 text-xs font-medium text-foreground/40">Projects</h2>
+      {others.map(({ project, status }) => {
+        const collapsed = isCollapsed(project.id)
+        return (
+          <div key={project.id} className="space-y-1">
+            <ProjectRow project={project} status={status} active={false} collapsed={collapsed} onSelect={onToggle} />
+            {collapsed ? null : (
+              // Keyed by project so expanding one section mounts its list without replaying the others.
+              <ProjectChatList key={project.id} projectId={project.id} />
+            )}
+          </div>
+        )
+      })}
     </section>
   )
 }

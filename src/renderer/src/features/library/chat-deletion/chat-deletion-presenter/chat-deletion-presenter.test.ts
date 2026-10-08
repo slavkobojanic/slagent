@@ -58,7 +58,7 @@ describe("ChatDeletionPresenter", () => {
 
       await presenter.handleConfirm()
 
-      expect(api.deleteChat).toHaveBeenCalledWith("c1")
+      expect(api.deleteChat).toHaveBeenCalledWith("c1", undefined)
       expect(store.target).toBeNull()
       expect(store.busy).toBe(false)
     })
