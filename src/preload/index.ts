@@ -12,6 +12,7 @@ function readArgument(key: string): string {
 const port = readArgument("port")
 const token = readArgument("token")
 const clientId = readArgument("client")
+const windowToken = readArgument("window")
 
 // The awaited result of a SlagentApi method, keyed by its name.
 type Result<M extends keyof SlagentApi> = Awaited<ReturnType<Extract<SlagentApi[M], (...args: never[]) => unknown>>>
@@ -30,7 +31,7 @@ class Bridge {
   private retry: ReturnType<typeof setTimeout> | null = null
 
   connect(): void {
-    const url = `ws://127.0.0.1:${port}?token=${encodeURIComponent(token)}&client=${encodeURIComponent(clientId)}`
+    const url = `ws://127.0.0.1:${port}?token=${encodeURIComponent(token)}&client=${encodeURIComponent(clientId)}&window=${encodeURIComponent(windowToken)}`
     const socket = new WebSocket(url)
     this.socket = socket
     socket.onopen = () => {
