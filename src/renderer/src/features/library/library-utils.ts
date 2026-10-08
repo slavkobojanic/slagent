@@ -24,6 +24,12 @@ export function isDraftBecomingChat(previous: LibraryContext, next: Place): bool
   return !previous.chatIds.has(next.chatId)
 }
 
+// The chat with the id, wherever it lives: the open project's `chats` or another project's list in
+// `chatsByProject`.
+export function chatOf(library: LibraryState, chatId: string): ChatSummary | undefined {
+  return library.chats.find((chat) => chat.id === chatId) ?? Object.values(library.chatsByProject).flat().find((chat) => chat.id === chatId)
+}
+
 // The project a chat belongs to, or undefined when the library does not list it. The open
 // project's chats live in `chats`; the other projects' in `chatsByProject`.
 export function projectOfChat(library: LibraryState, chatId: string): string | undefined {

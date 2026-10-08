@@ -130,10 +130,7 @@ export class NavHistoryPresenter {
       await this.chatSwitchPresenter.openChat(place.chatId, place.projectId ?? undefined)
       return
     }
-    if (place.projectId !== null && place.projectId !== this.libraryStore.openProjectId) {
-      await this.api.openProject(place.projectId)
-    }
-    await this.api.newChat()
+    await this.api.newChat(place.projectId ?? undefined)
   }
 
   private here = (): Place => ({ projectId: this.libraryStore.openProjectId, chatId: this.libraryStore.openChatId })
