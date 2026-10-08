@@ -4,9 +4,14 @@ import type { LibraryStore } from "@/mirror/library-store/library-store"
 
 export class OpenProjectStore {
   collapsedIds: Record<string, boolean> = {}
+  reduceMotion = false
 
   constructor(private readonly libraryStore: LibraryStore) {
     makeAutoObservable(this)
+  }
+
+  setReduceMotion(value: boolean) {
+    this.reduceMotion = value
   }
 
   get project(): ProjectSummary | null {

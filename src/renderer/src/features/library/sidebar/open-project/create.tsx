@@ -40,7 +40,8 @@ export function createOpenProject({
   log: Log
 }): ComponentType {
   const store = new OpenProjectStore(libraryStore)
-  const presenter = new OpenProjectPresenter(store, api, log)
+  const presenter = new OpenProjectPresenter(store, api, window, log)
+  presenter.start()
 
   const ChatList = createChatList({
     api,
@@ -62,6 +63,7 @@ export function createOpenProject({
         onNewChat={presenter.handleNewChat}
         ProjectRow={ProjectRow}
         ChatList={ChatList}
+        reduceMotion={store.reduceMotion}
       />
     )
   })

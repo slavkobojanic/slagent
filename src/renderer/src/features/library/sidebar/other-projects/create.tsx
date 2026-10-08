@@ -87,6 +87,7 @@ export function createOtherProjects({
         ProjectRow={ProjectRow}
         ProjectChatList={ProjectChatList}
         OpenProject={OpenProject}
+        reduceMotion={store.reduceMotion}
       />
     )
   })
