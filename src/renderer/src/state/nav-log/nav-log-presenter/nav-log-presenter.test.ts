@@ -25,7 +25,7 @@ describe("NavLogPresenter", () => {
   describe("start", () => {
     it("can log the chat move when the open chat changes", () => {
       const { presenter, library, lines } = setup()
-      library({ projects: [project], openProjectId: "p1", chats: [chat("c1", "First"), chat("c2", "Second")], openChatId: "c1" })
+      library({ projects: [project], openProjectId: "p1", chats: [chat("c1", "First"), chat("c2", "Second")], chatsByProject: {}, openChatId: "c1" })
       presenter.start()
 
       library({ openChatId: "c2" })
@@ -36,7 +36,7 @@ describe("NavLogPresenter", () => {
 
     it("can stay quiet when the open chat is only renamed", () => {
       const { presenter, library, lines } = setup()
-      library({ chats: [chat("c1", "First")], openChatId: "c1" })
+      library({ chats: [chat("c1", "First")], chatsByProject: {}, openChatId: "c1" })
       presenter.start()
 
       library({ chats: [chat("c1", "Renamed")] })
