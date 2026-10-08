@@ -1,0 +1,6 @@
+allowBuilds:
+  '@google/genai': false
+  electron-winstaller: false
+  esbuild: true
+  node-pty: true
+  protobufjs: false
