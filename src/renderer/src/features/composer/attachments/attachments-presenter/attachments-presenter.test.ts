@@ -248,13 +248,42 @@ describe("AttachmentsPresenter", () => {
     })
   })
 
-  describe("stop", () => {
-    it("can release every preview when stopped", () => {
+  describe("follow and stop", () => {
+    it("can park the open attachments when stopped and adopt them again for the same chat", () => {
+      presenter.follow("p1:c1")
       presenter.handleDrop(dropOf(["Files"], [textFile("a.txt")]))
 
       presenter.stop()
 
-      expect(urls.revokeObjectURL).toHaveBeenCalledTimes(1)
+      expect(store.items).toEqual([])
+      expect(urls.revokeObjectURL).not.toHaveBeenCalled()
+
+      presenter.follow("p1:c1")
+
+      expect(store.items.map((item) => item.name)).toEqual(["a.txt"])
+      expect(store.items[0]?.url).toBe("blob:preview")
+    })
+
+    it("can keep the parked attachments of one chat while another chat is open", () => {
+      presenter.follow("p1:c1")
+      presenter.handleDrop(dropOf(["Files"], [textFile("a.txt")]))
+      presenter.follow("p1:c2")
+
+      expect(store.items).toEqual([])
+
+      presenter.follow("p1:c1")
+
+      expect(store.items.map((item) => item.name)).toEqual(["a.txt"])
+    })
+
+    it("can drop the parked attachments of a chat that was sent", () => {
+      presenter.follow("p1:c1")
+      presenter.handleDrop(dropOf(["Files"], [textFile("a.txt")]))
+      presenter.follow("p1:c2")
+
+      presenter.forget("p1:c1")
+      presenter.follow("p1:c1")
+
       expect(store.items).toEqual([])
     })
   })

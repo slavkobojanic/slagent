@@ -105,6 +105,10 @@ async function flush() {
   }
 }
 
+function textFile(name: string): File {
+  return new File(["hi"], name, { type: "text/plain" })
+}
+
 function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
   const mirror = { library: new LibraryStore(), meta: new MetaStore(), run: new RunStore() }
   mirror.meta.setMeta(meta)
@@ -113,7 +117,8 @@ function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
   const reviewPresenter = new ReviewPresenter(review, nullLog())
   const store = new ComposerStore(mirror.library, mirror.meta, mirror.run)
   const api = createMockInstance<API>(["prompt", "abort", "setPlanMode", "pathForFile"])
-  const attachments = new AttachmentsPresenter(new AttachmentsStore(), api, window, nullLog())
+  const attachmentStore = new AttachmentsStore()
+  const attachments = new AttachmentsPresenter(attachmentStore, api, window, nullLog())
   vi.spyOn(attachments, "removeLast")
   vi.spyOn(attachments, "follow")
   vi.spyOn(attachments, "stop")
@@ -127,7 +132,7 @@ function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
   const suggestionsPresenter = new SuggestionsPresenter(suggestions, history, api, window, nullLog())
   const onBuiltin = vi.fn()
   const presenter = new ComposerPresenter(store, new PromptHistoryPresenter(history, window, nullLog()), suggestionsPresenter, attachments, reviewPresenter, api, commands, port, window, log, onBuiltin)
-  return { mirror, review, reviewPresenter, store, history, suggestions, suggestionsPresenter, attachments, api, commands, port, presenter, onBuiltin }
+  return { mirror, review, reviewPresenter, store, history, suggestions, suggestionsPresenter, attachments, attachmentStore, api, commands, port, presenter, onBuiltin }
 }
 
 // A real logger that prints only timings, on a clock the test moves by hand.
@@ -852,6 +857,18 @@ describe("ComposerPresenter", () => {
       presenter.start()
 
       expect(commands.commands.map((item) => item.id)).toEqual(["composer.abort", "composer.focus"])
+    })
+
+    it("can bring back the chat's parked attachments when started", () => {
+      const { attachmentStore, attachments, presenter } = harness()
+      // Attach to the open chat, then the composer goes away and starts again for the same chat.
+      attachments.follow("p1:c1")
+      attachments.handleFileChange({ currentTarget: { files: [textFile("a.txt")], value: "" } })
+      attachments.stop()
+
+      presenter.start()
+
+      expect(attachmentStore.items.map((item) => item.name)).toEqual(["a.txt"])
     })
 
     it("can remove its commands and release the attachments when stopped", () => {
