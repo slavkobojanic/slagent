@@ -8,6 +8,7 @@ import type { McpStore } from "@/state/mcp/mcp-store/mcp-store"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import type { ThemePresenter } from "@/state/theme/theme-presenter/theme-presenter"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
+import { createAbout } from "./about/create"
 import { createCliSettings } from "./cli-settings/create"
 import { createMcpSettings } from "./mcp-settings/create"
 import { createOpenRouterKey } from "./openrouter-key/create"
@@ -54,6 +55,7 @@ export function createSettings({
   })
   const McpSettings = createMcpSettings({ api, metaStore, overlayStore, mcpStore, log: log.child("mcp-settings") })
   const CliSettings = createCliSettings({ api, overlayStore, settingsStore, log: log.child("cli-settings") })
+  const About = createAbout({ api, log: log.child("about") })
 
   presenter.start()
 
@@ -71,6 +73,7 @@ export function createSettings({
         PersonalisationSettings={PersonalisationSettings}
         McpSettings={McpSettings}
         CliSettings={CliSettings}
+        About={About}
       />
     )
   })
