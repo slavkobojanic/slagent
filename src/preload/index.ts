@@ -33,6 +33,7 @@ const api: SlagentApi = {
   setModel: (modelId) => ipcRenderer.invoke(channels.setModel, modelId),
   setTitleModel: (modelId) => ipcRenderer.invoke(channels.setTitleModel, modelId),
   setRouting: (routing) => ipcRenderer.invoke(channels.setRouting, routing),
+  setEffort: (effort) => ipcRenderer.invoke(channels.setEffort, effort),
   saveOpenRouterKey: (apiKey) => ipcRenderer.invoke(channels.saveKey, apiKey),
   logoutOpenRouter: () => ipcRenderer.invoke(channels.logout),
   openExternal: (url) => ipcRenderer.invoke(channels.openExternal, url),

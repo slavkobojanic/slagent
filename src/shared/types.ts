@@ -21,6 +21,7 @@ export const channels = {
   setModel: "agent:set-model",
   setTitleModel: "agent:set-title-model",
   setRouting: "agent:set-routing",
+  setEffort: "agent:set-effort",
   saveKey: "agent:save-key",
   logout: "agent:logout",
   openExternal: "agent:open-external",
@@ -130,6 +131,10 @@ export type ModelProvider = "openrouter" | "claude-code"
 // Which OpenRouter providers to favour when several serve the same model.
 export type ModelRouting = "speed" | "cost" | "balance"
 
+// How hard the model reasons. Matches pi's ThinkingLevel, which OpenRouter
+// models map to reasoning effort and Claude models to the SDK's effortLevel.
+export type EffortLevel = "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+
 export type ModelOption = {
   id: string
   name: string
@@ -176,6 +181,7 @@ export type AppMeta = {
   modelProvider: ModelProvider | null
   models: ModelOption[]
   routing: ModelRouting
+  effort: EffortLevel
   titleModelId: string | null
   titleModels: TitleModelOption[]
   openRouter: OpenRouterStatus
@@ -597,6 +603,7 @@ export type SlagentApi = {
   setModel: (modelId: string) => Promise<ModelChange>
   setTitleModel: (modelId: string) => Promise<void>
   setRouting: (routing: ModelRouting) => Promise<void>
+  setEffort: (effort: EffortLevel) => Promise<void>
   saveOpenRouterKey: (apiKey: string) => Promise<void>
   logoutOpenRouter: () => Promise<void>
   openExternal: (url: string) => Promise<void>
