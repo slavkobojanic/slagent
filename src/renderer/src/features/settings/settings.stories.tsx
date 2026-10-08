@@ -18,6 +18,7 @@ const meta = {
     PersonalisationSettings: slot("PersonalisationSettings"),
     McpSettings: slot("McpSettings"),
     CliSettings: slot("CliSettings"),
+    About: slot("About"),
   },
 } satisfies Meta<typeof Settings>
 

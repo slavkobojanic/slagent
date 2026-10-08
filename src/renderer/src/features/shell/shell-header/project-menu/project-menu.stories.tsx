@@ -14,6 +14,7 @@ const meta = {
     ],
     onOpenProject: fn(),
     onChooseFolder: fn(),
+    onCreateChatProject: fn(),
   },
 } satisfies Meta<typeof ProjectMenu>
 

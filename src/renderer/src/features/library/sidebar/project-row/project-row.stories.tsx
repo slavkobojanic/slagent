@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import { fn } from "storybook/test"
 import { ProjectRow } from "@/features/library/sidebar/project-row/project-row"
 import { project } from "@/storybook/sample"
-import { slot } from "@/storybook/slots"
 
 const meta = {
   title: "Features/Library/ProjectRow",
@@ -14,7 +13,7 @@ const meta = {
     modKey: "⌘",
     onSelect: fn(),
     onNewChat: fn(),
-    menu: slot("ProjectRowMenu"),
+    menu: <div data-slot="ProjectRowMenu" />,
   },
 } satisfies Meta<typeof ProjectRow>
 

@@ -14,6 +14,7 @@ const meta = {
     PlanToggle: slot("PlanToggle"),
     SubmitButton: slot("SubmitButton"),
     UsageMeter: slot("UsageMeter"),
+    EffortSwitcher: slot("EffortSwitcher"),
     onSubmit: fn(),
     onDragOver: fn(),
     onDrop: fn(),
