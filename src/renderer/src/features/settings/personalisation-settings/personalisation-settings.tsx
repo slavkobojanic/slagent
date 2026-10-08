@@ -1,5 +1,5 @@
-import type { ComponentType } from "react"
-import type { Personalisation, PersonalisationBranch, PersonalisationBrevity, PersonalisationCommit, PersonalisationCommitStrategy, PersonalisationExplanation, PersonalisationTone } from "@shared/types"
+import type { ComponentType, ReactNode } from "react"
+import type { Personalisation, PersonalisationBranch, PersonalisationBrevity, PersonalisationCommit, PersonalisationCommitStrategy, PersonalisationExplanation, PersonalisationGitWorkflow, PersonalisationTone } from "@shared/types"
 import { PINNED_FILE_CHAR_LIMIT, PINNED_TOTAL_CHAR_LIMIT } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,7 +27,8 @@ export function PersonalisationSettings({ draft, onPatch, onPickFiles, onRemoveF
             Changes apply from your next message.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+
+        <Group title="How it talks" description="Tone, detail and language of every reply.">
           <Field label="Tone">
             <ChoiceSelect
               value={draft.tone}
@@ -71,6 +72,26 @@ export function PersonalisationSettings({ draft, onPatch, onPickFiles, onRemoveF
               ]}
             />
           </Field>
+          <Field label="Reply language">
+            <Input
+              value={draft.language ?? ""}
+              placeholder="Auto — match your messages"
+              onChange={(event) => onPatch({ language: event.target.value })}
+            />
+          </Field>
+        </Group>
+
+        <Group title="Git" description="Where work happens, and how branches and commits are named.">
+          <Field label="Where it works">
+            <ChoiceSelect
+              value={draft.gitWorkflow}
+              onValueChange={(gitWorkflow) => onPatch({ gitWorkflow: choice<PersonalisationGitWorkflow>(gitWorkflow) })}
+              options={[
+                { value: "main", label: "Prefer working on main" },
+                { value: "branch", label: "Prefer working on a branch" },
+              ]}
+            />
+          </Field>
           <Field label="Branch names">
             <ChoiceSelect
               value={draft.branchNaming}
@@ -79,24 +100,6 @@ export function PersonalisationSettings({ draft, onPatch, onPickFiles, onRemoveF
                 { value: "descriptive", label: "Kebab-case description" },
                 { value: "prefix", label: "Type prefix" },
               ]}
-            />
-          </Field>
-          <Field label="Commit messages">
-            <ChoiceSelect
-              value={draft.commitStyle}
-              onValueChange={(commitStyle) => onPatch({ commitStyle: choice<PersonalisationCommit>(commitStyle) })}
-              options={[
-                { value: "conventional", label: "Conventional commits" },
-                { value: "imperative", label: "Imperative summary" },
-                { value: "free", label: "Keep it simple" },
-              ]}
-            />
-          </Field>
-          <Field label="Reply language">
-            <Input
-              value={draft.language ?? ""}
-              placeholder="Auto — match your messages"
-              onChange={(event) => onPatch({ language: event.target.value })}
             />
           </Field>
           {draft.branchNaming === "prefix" ? (
@@ -109,16 +112,20 @@ export function PersonalisationSettings({ draft, onPatch, onPickFiles, onRemoveF
               />
             </Field>
           ) : null}
-          <Field label="Before finishing a turn">
+          <Field label="Commit messages">
             <ChoiceSelect
-              value={tri(draft.checkBeforeFinish)}
-              onValueChange={(check) => onPatch({ checkBeforeFinish: triValue(check) })}
+              value={draft.commitStyle}
+              onValueChange={(commitStyle) => onPatch({ commitStyle: choice<PersonalisationCommit>(commitStyle) })}
               options={[
-                { value: "yes", label: "Typecheck and test" },
-                { value: "no", label: "Just finish" },
+                { value: "conventional", label: "Conventional commits" },
+                { value: "imperative", label: "Imperative summary" },
+                { value: "free", label: "Keep it simple" },
               ]}
             />
           </Field>
+        </Group>
+
+        <Group title="When work is done" description="How the agent wraps up a turn.">
           <Field label="Committing and pushing">
             <ChoiceSelect
               value={draft.commitStrategy}
@@ -131,18 +138,44 @@ export function PersonalisationSettings({ draft, onPatch, onPickFiles, onRemoveF
               ]}
             />
           </Field>
-        </div>
-        <Field label="Anything else">
-          <Textarea
-            value={draft.notes ?? ""}
-            rows={4}
-            placeholder="Extra instructions for the agent — conventions, pet peeves, context it should always have…"
-            onChange={(event) => onPatch({ notes: event.target.value })}
-          />
-        </Field>
-        <PinnedFilesField draft={draft} onPickFiles={onPickFiles} onRemoveFile={onRemoveFile} />
+          <Field label="Before finishing a turn">
+            <ChoiceSelect
+              value={tri(draft.checkBeforeFinish)}
+              onValueChange={(check) => onPatch({ checkBeforeFinish: triValue(check) })}
+              options={[
+                { value: "yes", label: "Typecheck and test" },
+                { value: "no", label: "Just finish" },
+              ]}
+            />
+          </Field>
+        </Group>
+
+        <Group title="Extra instructions" description="Anything else the agent should always know.">
+          <Field label="Anything else">
+            <Textarea
+              value={draft.notes ?? ""}
+              rows={4}
+              placeholder="Extra instructions for the agent — conventions, pet peeves, context it should always have…"
+              onChange={(event) => onPatch({ notes: event.target.value })}
+            />
+          </Field>
+          <PinnedFilesField draft={draft} onPickFiles={onPickFiles} onRemoveFile={onRemoveFile} />
+        </Group>
+
         <SaveBar />
       </section>
+    </div>
+  )
+}
+
+function Group({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-xs font-medium text-white/70">{title}</h3>
+        <p className="text-xs text-white/50">{description}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">{children}</div>
     </div>
   )
 }
