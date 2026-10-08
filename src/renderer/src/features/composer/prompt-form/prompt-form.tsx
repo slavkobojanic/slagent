@@ -8,12 +8,13 @@ export type PromptFormProps = {
   PlanToggle: ComponentType
   SubmitButton: ComponentType
   UsageMeter: ComponentType
+  EffortSwitcher: ComponentType
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onDragOver: (event: DragEvent<HTMLFormElement>) => void
   onDrop: (event: DragEvent<HTMLFormElement>) => void
 }
 
-export function PromptForm({ Attachments, PromptTextarea, AttachButton, PlanToggle, SubmitButton, UsageMeter, onSubmit, onDragOver, onDrop }: PromptFormProps) {
+export function PromptForm({ Attachments, PromptTextarea, AttachButton, PlanToggle, SubmitButton, UsageMeter, EffortSwitcher, onSubmit, onDragOver, onDrop }: PromptFormProps) {
   return (
     <PromptInput onSubmit={onSubmit} onDragOver={onDragOver} onDrop={onDrop}>
       <Attachments />
@@ -27,6 +28,7 @@ export function PromptForm({ Attachments, PromptTextarea, AttachButton, PlanTogg
         </PromptInputTools>
         <div className="flex items-center gap-1">
           <UsageMeter />
+          <EffortSwitcher />
           <SubmitButton />
         </div>
       </PromptInputFooter>

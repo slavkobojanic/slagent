@@ -34,6 +34,7 @@ const meta: AppMeta = {
   extensionErrors: [],
   usageTotals: { tokens: 0, cost: 0, chats: 0 },
   routing: "balance",
+  effort: "medium",
   titleModelId: null,
   titleModels: [],
   personalisation: EMPTY_PERSONALISATION,
