@@ -1,5 +1,5 @@
 import type { UsageSettingsStore } from "@/features/settings/usage-settings/usage-settings-store/usage-settings-store"
-import type { UsageSortKey } from "@/features/settings/usage-settings/usage-settings-store/usage-settings-store"
+import type { UsageSortKey } from "@/features/settings/usage-settings/usage-grid"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 
