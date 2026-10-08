@@ -13,7 +13,7 @@ describe("PlanOverlay", () => {
     const markup = viewMarkup(<PlanOverlay {...props()} />)
 
     expect(markup).toContain('aria-label="Plan ready"')
-    expect(markup).toContain("backdrop-blur-xl")
+    expect(markup).toContain("backdrop-blur-md")
     expect(markup).toContain(">Cancel</button>")
     expect(markup).toContain(">Revise</button>")
     expect(markup).toMatch(/<button[^>]*>Accept and build<\/button>/)

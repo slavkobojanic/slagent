@@ -3,7 +3,7 @@ import type { SlagentApi } from "@shared/types"
 import type { Log } from "@/log/log"
 
 // Subscriptions and sync calls are not round trips, so they are not timed.
-const UNTIMED = ["platform", "systemVersion", "appVersion", "pathForFile", "onEvent", "onUpdateReady", "onTerminalEvent", "writeTerminal", "resizeTerminal", "closeTerminal"]
+const UNTIMED = ["platform", "systemVersion", "appVersion", "pathForFile", "onEvent", "onUpdateReady", "onTerminalEvent", "writeTerminal", "resizeTerminal", "closeTerminal", "onCloseRequest", "closeApp"]
 
 // Methods close over the bridge instead of holding it in a private field, so a test mock satisfies the type.
 // Store values are MobX proxies, which the preload bridge cannot clone, so object arguments go through plain.
@@ -82,6 +82,8 @@ export class API implements SlagentApi {
   readonly resizeTerminal: SlagentApi["resizeTerminal"]
   readonly closeTerminal: SlagentApi["closeTerminal"]
   readonly onTerminalEvent: SlagentApi["onTerminalEvent"]
+  readonly onCloseRequest: SlagentApi["onCloseRequest"]
+  readonly closeApp: SlagentApi["closeApp"]
 
   constructor(raw: SlagentApi, log: Log) {
     const bridge = timed(raw, log)
@@ -158,6 +160,8 @@ export class API implements SlagentApi {
     this.resizeTerminal = (id, cols, rows) => bridge.resizeTerminal(id, cols, rows)
     this.closeTerminal = (id) => bridge.closeTerminal(id)
     this.onTerminalEvent = (listener) => bridge.onTerminalEvent(listener)
+    this.onCloseRequest = (listener) => bridge.onCloseRequest(listener)
+    this.closeApp = () => bridge.closeApp()
   }
 
   static fromWindow(window: Window, log: Log): API | null {

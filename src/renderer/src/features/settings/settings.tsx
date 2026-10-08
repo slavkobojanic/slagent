@@ -42,7 +42,7 @@ export function Settings({
 }: SettingsProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-1/2 w-1/2 min-w-settings flex-col p-0">
+      <DialogContent overlayClassName="fixed inset-0 z-50 bg-background/25 backdrop-blur-md" className="flex h-1/2 w-1/2 min-w-settings flex-col p-0">
         {/* Radix needs a title in the content; the tab labels say the rest. */}
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <div className="flex min-h-0 flex-1">
