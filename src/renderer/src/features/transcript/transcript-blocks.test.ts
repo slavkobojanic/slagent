@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { AssistantMessage, ToolMessage, UserMessage } from "@shared/types"
-import { awaitingModel, groupMessages, lastEditableMessage, waitingForText } from "@/features/transcript/transcript-blocks"
+import { awaitingModel, groupMessages, lastEditableMessage, sameTurn, waitingForText } from "@/features/transcript/transcript-blocks"
 
 function user(id: string, overrides: Partial<UserMessage> = {}): UserMessage {
   return { id, role: "user", text: `prompt ${id}`, attachments: [], entryId: `entry-${id}`, ...overrides }
@@ -53,6 +53,24 @@ describe("groupMessages", () => {
       { kind: "user", message: { id: "u1" } },
       { kind: "turn", turn: { id: "t1", assistant: null, tools: [{ id: "t1" }] } },
     ])
+  })
+})
+
+describe("sameTurn", () => {
+  const reply = assistant("a1")
+  const first = tool("t1")
+
+  it("can match a rebuilt turn holding the same messages", () => {
+    expect(sameTurn({ id: "a1", assistant: reply, tools: [first] }, { id: "a1", assistant: reply, tools: [first] })).toBe(true)
+  })
+
+  it("can tell apart a turn whose reply was replaced", () => {
+    expect(sameTurn({ id: "a1", assistant: reply, tools: [] }, { id: "a1", assistant: { ...reply }, tools: [] })).toBe(false)
+  })
+
+  it("can tell apart a turn whose tool calls changed", () => {
+    expect(sameTurn({ id: "a1", assistant: reply, tools: [first] }, { id: "a1", assistant: reply, tools: [{ ...first }] })).toBe(false)
+    expect(sameTurn({ id: "a1", assistant: reply, tools: [first] }, { id: "a1", assistant: reply, tools: [first, tool("t2")] })).toBe(false)
   })
 })
 

@@ -33,6 +33,15 @@ export function groupMessages(messages: ChatMessage[]): Block[] {
   return blocks
 }
 
+// Turns are rebuilt on every transcript event. A turn that still holds the same message objects
+// shows the same thing, so its view can skip re-rendering.
+export function sameTurn(a: Turn, b: Turn): boolean {
+  if (a.id !== b.id || a.assistant !== b.assistant || a.tools.length !== b.tools.length) {
+    return false
+  }
+  return a.tools.every((tool, index) => tool === b.tools[index])
+}
+
 // The last user message that the chat can edit. Only messages with an entry in the saved
 // chat can be edited.
 export function lastEditableMessage(messages: ChatMessage[]): UserMessage | undefined {

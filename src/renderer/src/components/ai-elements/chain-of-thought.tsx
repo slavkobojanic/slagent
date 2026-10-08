@@ -1,11 +1,7 @@
 "use client";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { BrainIcon, ChevronDownIcon, DotIcon } from "lucide-react";
@@ -147,27 +143,32 @@ export const ChainOfThoughtStep = memo(
   )
 );
 
-type ChainOfThoughtContentProps = ComponentProps<
-  typeof CollapsibleContent
->;
+type ChainOfThoughtContentProps = ComponentProps<"div">;
 
+// A plain conditional block rather than Radix CollapsibleContent: its Presence and height
+// measurement force a style and layout pass per instance on mount, which made opening a long
+// transcript (one open chain per turn) stall for hundreds of milliseconds. The close
+// animation is the only thing lost.
 export const ChainOfThoughtContent = memo(
   ({ className, children, ...props }: ChainOfThoughtContentProps) => {
     const { isOpen } = useChainOfThought();
 
+    if (!isOpen) {
+      return null;
+    }
+
     return (
-      <Collapsible open={isOpen}>
-        <CollapsibleContent
-          className={cn(
-            "mt-2 space-y-3",
-            "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
-            className
-          )}
-          {...props}
-        >
-          {children}
-        </CollapsibleContent>
-      </Collapsible>
+      <div
+        className={cn(
+          "mt-2 space-y-3",
+          "fade-in-0 slide-in-from-top-2 animate-in text-popover-foreground outline-none",
+          className
+        )}
+        data-state="open"
+        {...props}
+      >
+        {children}
+      </div>
     );
   }
 );

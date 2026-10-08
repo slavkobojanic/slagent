@@ -1,8 +1,8 @@
-import type { ComponentType, ReactNode } from "react"
+import { memo, type ComponentType, type ReactNode } from "react"
 import { observer } from "mobx-react-lite"
 import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
-import { waitingForText, type Turn } from "@/features/transcript/transcript-blocks"
+import { sameTurn, waitingForText, type Turn } from "@/features/transcript/transcript-blocks"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import { AssistantTurn } from "./assistant-turn"
 import { createResponse } from "./response/create"
@@ -24,7 +24,9 @@ export function createAssistantTurn({
   const Response = createResponse({ window, runStore, CommentableResponse, log: log.child("response") })
   const ToolChain = createToolChain({ panelPresenter })
 
-  return observer(function AssistantTurnHost({ turn }: { turn: Turn }) {
+  // The message list hands every turn a new object on each transcript event; comparing the
+  // messages inside keeps a long chat from re-rendering every turn while one streams.
+  const AssistantTurnHost = observer(function AssistantTurnHost({ turn }: { turn: Turn }) {
     const assistant = turn.assistant
     return (
       <AssistantTurn
@@ -38,4 +40,6 @@ export function createAssistantTurn({
       />
     )
   })
+
+  return memo(AssistantTurnHost, (previous, next) => sameTurn(previous.turn, next.turn))
 }

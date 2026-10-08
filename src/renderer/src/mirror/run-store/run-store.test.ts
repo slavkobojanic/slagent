@@ -57,5 +57,26 @@ describe("RunStore", () => {
       expect(store.streaming).toBe(false)
       expect(store.usage).toBeNull()
     })
+
+    it("can keep an unchanged message as the same object when the window is sent again", () => {
+      const store = new RunStore()
+      store.setTranscript(transcript)
+      const kept = store.messages[0]
+
+      store.setTranscript({ ...transcript, messages: [{ ...message }] })
+
+      expect(store.messages[0]).toBe(kept)
+    })
+
+    it("can replace a message whose content changed", () => {
+      const store = new RunStore()
+      store.setTranscript(transcript)
+      const previous = store.messages[0]
+
+      store.setTranscript({ ...transcript, messages: [{ ...message, text: "hello again" }] })
+
+      expect(store.messages[0]).not.toBe(previous)
+      expect(store.messages[0]).toEqual({ ...message, text: "hello again" })
+    })
   })
 })

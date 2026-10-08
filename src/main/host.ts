@@ -54,6 +54,8 @@ import { importShellEnv } from "./shell-env"
 import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type TranscriptWindow } from "./transcript-window"
 
 const PROVIDER = "openrouter"
+const TRANSCRIPT_PUBLISH_TIMER = "publish:transcript"
+const TRANSCRIPT_PUBLISH_MS = 33
 const PREFERRED_MODELS = [
   "anthropic/claude-sonnet-5.5",
   "anthropic/claude-sonnet-5",
@@ -553,6 +555,7 @@ export class AgentHost {
   }
 
   close(): void {
+    this.clearTimer(TRANSCRIPT_PUBLISH_TIMER)
     for (const runtime of this.runtimes.values()) runtime.dispose()
     this.runtimes.clear()
     this.messageCounts.clear()
@@ -812,7 +815,22 @@ export class AgentHost {
     if (this.touchOnNewMessages(runtime)) this.publishLibrary()
     this.scheduleTranscript(runtime)
     if (runningChanged) this.publishLibrary()
-    if (runtime.projectId === this.projectId && runtime.chatId === this.chatId) this.publishTranscript()
+    if (runtime.projectId !== this.projectId || runtime.chatId !== this.chatId) return
+    if (runningChanged) this.publishTranscript()
+    else this.publishTranscriptSoon()
+  }
+
+  // Every streamed token changes the runtime, and each publish sends the whole transcript
+  // window. Coalescing to one publish per frame keeps long chats from flooding the renderer.
+  private publishTranscriptSoon(): void {
+    if (this.timers.has(TRANSCRIPT_PUBLISH_TIMER)) return
+    this.timers.set(
+      TRANSCRIPT_PUBLISH_TIMER,
+      setTimeout(() => {
+        this.timers.delete(TRANSCRIPT_PUBLISH_TIMER)
+        this.publishTranscript()
+      }, TRANSCRIPT_PUBLISH_MS),
+    )
   }
 
   // The sidebar orders chats by updatedAt, so every message the runtime
@@ -1178,6 +1196,7 @@ export class AgentHost {
   }
 
   private publishTranscript(): void {
+    this.clearTimer(TRANSCRIPT_PUBLISH_TIMER)
     this.revision += 1
     this.emit({
       type: "transcript",
