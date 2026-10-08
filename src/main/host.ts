@@ -12,7 +12,9 @@ import type {
   AppMeta,
   ChatMessage,
   ChatSearchResult,
+  CreateSkillInput,
   DiffScope,
+  DraftSkillInput,
   GitStatus,
   ChatStatus,
   ChatSummary,
@@ -29,6 +31,7 @@ import type {
   QueueMode,
   RewindMode,
   RewindResult,
+  SkillDraft,
   SlashCommand,
   Snapshot,
   TranscriptPage,
@@ -49,6 +52,7 @@ import { assertDirectory, Library, type StoredChat } from "./library"
 import { parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
 import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
+import { createSkillFile, draftSkill } from "./skills-create"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { importShellEnv } from "./shell-env"
 import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type TranscriptWindow } from "./transcript-window"
@@ -434,6 +438,23 @@ export class AgentHost {
     const model = this.titleModel(this.openRuntime()?.modelId ?? this.draftModelId ?? "")
     if (!runtime || !model) throw new Error("No model is available.")
     return generateCommitMessage(runtime, model, diff)
+  }
+
+  // The built-in "#create-skill" flow: a hidden call drafts the skill, a second call writes it.
+  async draftSkill(input: DraftSkillInput): Promise<SkillDraft> {
+    if (typeof input.userText !== "string" || input.userText.trim() === "" || typeof input.assistantText !== "string" || input.assistantText.trim() === "") {
+      throw new Error("The skill is drafted from the last exchange.")
+    }
+    const runtime = this.modelRuntime
+    const model = this.titleModel(this.openRuntime()?.modelId ?? this.draftModelId ?? "")
+    if (!runtime || !model) throw new Error("No model is available.")
+    return draftSkill(runtime, model, input)
+  }
+
+  async createSkill(input: CreateSkillInput): Promise<string> {
+    if (input.location !== "user" && input.location !== "project") throw new Error("Unknown location.")
+    if (input.location === "project" && !this.cwd) throw new Error("Choose a folder first.")
+    return createSkillFile(this.cwd, input)
   }
 
   private requireCwd(): string {

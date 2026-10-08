@@ -124,8 +124,9 @@ function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
   const history = new PromptHistoryStore()
   const suggestions = new SuggestionsStore()
   const suggestionsPresenter = new SuggestionsPresenter(suggestions, history, api, window, nullLog())
-  const presenter = new ComposerPresenter(store, new PromptHistoryPresenter(history, window, nullLog()), suggestionsPresenter, attachments, reviewPresenter, api, commands, port, window, log)
-  return { mirror, review, reviewPresenter, store, history, suggestions, suggestionsPresenter, attachments, api, commands, port, presenter }
+  const onBuiltin = vi.fn()
+  const presenter = new ComposerPresenter(store, new PromptHistoryPresenter(history, window, nullLog()), suggestionsPresenter, attachments, reviewPresenter, api, commands, port, window, log, onBuiltin)
+  return { mirror, review, reviewPresenter, store, history, suggestions, suggestionsPresenter, attachments, api, commands, port, presenter, onBuiltin }
 }
 
 // A real logger that prints only timings, on a clock the test moves by hand.
@@ -257,6 +258,22 @@ describe("ComposerPresenter", () => {
 
       expect(api.prompt).toHaveBeenCalledTimes(1)
       expect(api.prompt.mock.calls[0]?.[0]).toMatchObject({ text: "/review please fix the bug" })
+    })
+
+    it("can run a built-in command instead of sending a prompt", async () => {
+      const { store, api, presenter, onBuiltin } = harness()
+      store.setText("#create-skill focused on releases")
+
+      const event = keyEvent("Enter")
+      presenter.handleKeyDown(event)
+      await flush()
+
+      expect(event.preventDefault).toHaveBeenCalledTimes(1)
+      expect(api.prompt).not.toHaveBeenCalled()
+      expect(onBuiltin).toHaveBeenCalledTimes(1)
+      expect(onBuiltin.mock.calls[0]?.[0]).toMatchObject({ insert: "#create-skill" })
+      expect(onBuiltin.mock.calls[0]?.[1]).toBe("focused on releases")
+      expect(store.text).toBe("")
     })
 
     it("can leave Shift+Enter alone so that it adds a line", () => {

@@ -15,6 +15,8 @@ export const channels = {
   removeProject: "agent:remove-project",
   searchFiles: "agent:search-files",
   listCommands: "agent:list-commands",
+  draftSkill: "agent:draft-skill",
+  createSkill: "agent:create-skill",
   chooseFolder: "agent:choose-folder",
   setModel: "agent:set-model",
   setTitleModel: "agent:set-title-model",
@@ -294,7 +296,29 @@ export type FileMatch = {
   name: string
 }
 
-export type SlashCommandKind = "skill" | "prompt" | "command"
+export type SlashCommandKind = "skill" | "prompt" | "command" | "builtin"
+
+// A draft for a new skill, produced by a hidden model call from the last exchange.
+export type SkillDraft = {
+  name: string
+  description: string
+  body: string
+}
+
+export type DraftSkillInput = {
+  userText: string
+  assistantText: string
+  guidance?: string
+}
+
+export type CreateSkillInput = {
+  name: string
+  description: string
+  body: string
+  location: SkillLocation
+}
+
+export type SkillLocation = "user" | "project"
 
 export type SlashCommand = {
   name: string
@@ -566,6 +590,8 @@ export type SlagentApi = {
   removeProject: (projectId: string, typedName: string) => Promise<void>
   searchFiles: (query: string) => Promise<FileMatch[]>
   listCommands: () => Promise<SlashCommand[]>
+  draftSkill: (input: DraftSkillInput) => Promise<SkillDraft>
+  createSkill: (input: CreateSkillInput) => Promise<string>
   pathForFile: (file: File) => string
   chooseFolder: () => Promise<void>
   setModel: (modelId: string) => Promise<ModelChange>

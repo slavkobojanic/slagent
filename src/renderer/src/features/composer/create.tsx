@@ -13,7 +13,7 @@ import { AttachmentsPresenter } from "./attachments/attachments-presenter/attach
 import { AttachmentsStore } from "./attachments/attachments-store/attachments-store"
 import { createFileInput } from "./attachments/file-input/create"
 import { Composer } from "./composer"
-import { ComposerPresenter } from "./composer-presenter/composer-presenter"
+import { ComposerPresenter, type BuiltinRunner } from "./composer-presenter/composer-presenter"
 import { ComposerStore } from "./composer-store/composer-store"
 import { createPendingComments } from "./pending-comments/create"
 import { createPromptHistory } from "./prompt-history/create"
@@ -36,6 +36,7 @@ export function createComposer({
   reviewPresenter,
   commandRegistry,
   composerPort,
+  onBuiltin,
   log,
 }: {
   api: API
@@ -47,6 +48,7 @@ export function createComposer({
   reviewPresenter: ReviewPresenter
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
+  onBuiltin?: BuiltinRunner
   log: Log
 }): ComponentType {
   const composerStore = new ComposerStore(libraryStore, metaStore, runStore)
@@ -67,6 +69,7 @@ export function createComposer({
     composerPort,
     window,
     log,
+    onBuiltin,
   )
 
   const RunStatus = createRunStatus({ api, window, runStore, log: log.child("run-status") })

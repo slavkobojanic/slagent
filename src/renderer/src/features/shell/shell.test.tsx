@@ -18,6 +18,7 @@ const base: ShellProps = {
   TerminalDrawer: slot("terminal"),
   Settings: slot("settings dialog"),
   Models: slot("model dialog"),
+  CreateSkill: slot("create skill dialog"),
 }
 
 function tagOf(markup: string, className: string): string {

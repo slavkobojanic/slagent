@@ -27,6 +27,8 @@ export class API implements SlagentApi {
   readonly removeProject: SlagentApi["removeProject"]
   readonly searchFiles: SlagentApi["searchFiles"]
   readonly listCommands: SlagentApi["listCommands"]
+  readonly draftSkill: SlagentApi["draftSkill"]
+  readonly createSkill: SlagentApi["createSkill"]
   readonly pathForFile: SlagentApi["pathForFile"]
   readonly chooseFolder: SlagentApi["chooseFolder"]
   readonly setModel: SlagentApi["setModel"]
@@ -97,6 +99,8 @@ export class API implements SlagentApi {
     this.removeProject = (projectId, typedName) => bridge.removeProject(projectId, typedName)
     this.searchFiles = (query) => bridge.searchFiles(query)
     this.listCommands = () => bridge.listCommands()
+    this.draftSkill = (input) => bridge.draftSkill(plain(input))
+    this.createSkill = (input) => bridge.createSkill(plain(input))
     this.pathForFile = (file) => bridge.pathForFile(file)
     this.chooseFolder = () => bridge.chooseFolder()
     this.setModel = (modelId) => bridge.setModel(modelId)

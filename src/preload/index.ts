@@ -20,6 +20,8 @@ const api: SlagentApi = {
   removeProject: (projectId, typedName) => ipcRenderer.invoke(channels.removeProject, projectId, typedName),
   searchFiles: (query) => ipcRenderer.invoke(channels.searchFiles, query),
   listCommands: () => ipcRenderer.invoke(channels.listCommands),
+  draftSkill: (input) => ipcRenderer.invoke(channels.draftSkill, input),
+  createSkill: (input) => ipcRenderer.invoke(channels.createSkill, input),
   pathForFile: (file) => {
     try {
       return webUtils.getPathForFile(file)

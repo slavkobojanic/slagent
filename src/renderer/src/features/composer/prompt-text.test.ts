@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { SlashCommand } from "@shared/types"
-import { chatMentionAt, filterCommands, kindLabel, mentionAt, slashAt } from "@/features/composer/prompt-text"
+import { chatMentionAt, filterCommands, hashAt, kindLabel, mentionAt, slashAt } from "@/features/composer/prompt-text"
 
 function command(insert: string, description = ""): SlashCommand {
   return { name: insert.slice(1), insert, description, kind: "command" }
@@ -56,6 +56,28 @@ describe("slashAt", () => {
   })
 })
 
+describe("hashAt", () => {
+  it("can return the built-in typed so far at the start", () => {
+    expect(hashAt("#cre", 4)).toEqual({ query: "cre", start: 0 })
+  })
+
+  it("can return an empty query for a lone hash", () => {
+    expect(hashAt("#", 1)).toEqual({ query: "", start: 0 })
+  })
+
+  it("can open mid-sentence like /", () => {
+    expect(hashAt("hi #cre", 7)).toEqual({ query: "cre", start: 3 })
+  })
+
+  it("can ignore a hash inside a word", () => {
+    expect(hashAt("issue#123", 9)).toBeNull()
+  })
+
+  it("can close once a space follows the command", () => {
+    expect(hashAt("#create-skill make it terse", 27)).toBeNull()
+  })
+})
+
 describe("filterCommands", () => {
   it("can list commands that start with the query before those that only contain it", () => {
     const items = [command("/review-plan"), command("/plan"), command("/planner")]
@@ -77,7 +99,7 @@ describe("filterCommands", () => {
 })
 
 describe("kindLabel", () => {
-  it("can name a skill, a prompt template, and a command", () => {
-    expect([kindLabel("skill"), kindLabel("prompt"), kindLabel("command")]).toEqual(["Skill", "Prompt template", "Command"])
+  it("can name a skill, a prompt template, a command, and a built-in", () => {
+    expect([kindLabel("skill"), kindLabel("prompt"), kindLabel("command"), kindLabel("builtin")]).toEqual(["Skill", "Prompt template", "Command", "Built-in"])
   })
 })

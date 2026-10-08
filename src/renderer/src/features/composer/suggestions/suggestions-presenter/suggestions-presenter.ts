@@ -2,7 +2,7 @@ import type { ChatMention, ChatSearchResult, FileMatch, PromptMention, SlashComm
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { PromptHistoryStore } from "@/features/composer/prompt-history/prompt-history-store/prompt-history-store"
-import { chatMentionAt, mentionAt, slashAt, type Trigger } from "@/features/composer/prompt-text"
+import { chatMentionAt, hashAt, mentionAt, slashAt, type Trigger } from "@/features/composer/prompt-text"
 import type { SuggestionsStore } from "@/features/composer/suggestions/suggestions-store/suggestions-store"
 
 // Searches wait this long after the last keystroke, so typing does not send one request per letter.
@@ -82,6 +82,7 @@ export class SuggestionsPresenter {
       mention: mentionAt(text, caret),
       chatMention: chatMentionAt(text, caret),
       slash: slashAt(text, caret),
+      hash: hashAt(text, caret),
     })
   }
 
@@ -138,7 +139,9 @@ export class SuggestionsPresenter {
       return
     }
     if (kind === "command") {
-      const command = this.store.commandMatches[index]
+      // The slash menu wins when both triggers are open, since it comes first in the menu order.
+      const matches = this.store.slash !== null ? this.store.commandMatches : this.store.builtinMatches
+      const command = matches[index]
       if (command === undefined) {
         return
       }
@@ -189,7 +192,8 @@ export class SuggestionsPresenter {
   }
 
   private chooseCommand = (command: SlashCommand, text: string, caret: number, apply: ApplyText) => {
-    const trigger = this.store.slash
+    // The slash menu wins when both triggers are open, since it comes first in the menu order.
+    const trigger = this.store.slash ?? this.store.hash
     if (trigger === null) {
       return
     }
@@ -198,6 +202,7 @@ export class SuggestionsPresenter {
     apply(`${text.slice(0, trigger.start)}${token}${text.slice(caret).trimStart()}`, trigger.start + token.length)
     this.commandToken = command.insert
     this.store.closeSlash()
+    this.store.closeHash()
   }
 
   // Pi only runs a slash command from the start of the prompt, so a command chosen
