@@ -723,10 +723,10 @@ export class AgentHost {
         if (generated) patch.titleGenerated = true
         void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary())
       },
-      generateTitle: (user, assistant) => {
+      generateTitle: (user) => {
         const titleModel = this.titleModel()
         if (!titleModel) return Promise.resolve(null)
-        return generateTitle(runtimeModel, titleModel, user, assistant)
+        return generateTitle(runtimeModel, titleModel, user)
       },
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
@@ -811,11 +811,11 @@ export class AgentHost {
       personalisation: () => this.personalisation,
       // Titles come from a small OpenRouter model, so without a key the
       // first line of the message stays as the title.
-      generateTitle: (user, assistant) => {
+      generateTitle: (user) => {
         const runtimeModel = this.modelRuntime
         const titleModel = this.titleModel()
         if (!runtimeModel || !titleModel || !this.openRouter.configured) return Promise.resolve(null)
-        return generateTitle(runtimeModel, titleModel, user, assistant)
+        return generateTitle(runtimeModel, titleModel, user)
       },
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => {
