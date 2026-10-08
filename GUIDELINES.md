@@ -71,6 +71,7 @@ src/renderer/src/
     create.tsx
     <unit>.tsx                      # the one view
     <unit>.test.tsx
+    <unit>.stories.tsx              # one story per named state
     <unit>.css                      # only if Tailwind cannot express it
     <unit>-store/<unit>-store.ts    # only if the unit owns state
     <unit>-presenter/<unit>-presenter.ts
@@ -78,6 +79,7 @@ src/renderer/src/
   components/ui/                    # shadcn primitives (CLI-managed)
   components/ai-elements/           # vendored primitives
   components/                       # dumb units used by 2+ features
+  storybook/                        # story placeholders and sample data (no app code)
   lib/                              # pure helpers: no state, no hooks, no globals
 ```
 
@@ -173,7 +175,7 @@ Comments record a non-obvious *why* (an ordering constraint, an Electron or brow
 - **Stores:** real instance. One `describe` per member. One `it` per branch.
 - **Presenters:** mocked collaborators (`createMockInstance(IpcXService)`, real stores where practical), and `nullLog()` for the logger. One guard per test. Assert IPC calls and store changes. Tests that cover listeners call `start()`, then `stop()`.
 - **Views:** props in, markup out. Each named state gets one test. No clicks or submits in view tests. Interaction is covered by presenter tests. Snapshot with `viewMarkup()` when the markup is the contract.
-- **No Storybook.** A view's test file renders the same named states a story would.
+- **Storybook.** Every renderable view ships a colocated `<unit>.stories.tsx` with one story per named state, mirroring the test cases. `Default` is the neutral state. Stories pass plain props and slot placeholders only: no stores, no presenters, no `create.tsx`, no hooks in the story file. `pnpm storybook` runs them and `pnpm build-storybook` checks they build. Shared placeholders and sample data live in `src/renderer/src/storybook/`. Vendored `components/ai-elements/**` are out of scope.
 - **Not unit-tested:** `create.tsx`. The mirror's ordering and revision gates are tested directly.
 - Test names: the outer `describe` is the unit name. `it("can ... when ...")`.
 - Runner: Vitest with jsdom. `pnpm test` runs once. Setup lives in `src/renderer/src/test/setup.ts`.
