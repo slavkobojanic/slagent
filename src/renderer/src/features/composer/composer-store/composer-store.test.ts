@@ -199,7 +199,7 @@ describe("ComposerStore", () => {
 
     it("can name a draft by project and chat", () => {
       const { mirror, store } = setup()
-      mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c1" })
+      mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1" })
 
       expect(store.draftKey).toBe("p1:c1")
     })

@@ -1,13 +1,16 @@
 import type { ChatSummary } from "@shared/types"
+import { projectOfChat } from "@/features/library/library-utils"
 import type { ChatRenameStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-rename/chat-rename-store/chat-rename-store"
 import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
+import type { LibraryStore } from "@/mirror/library-store/library-store"
 
 export class ChatRenamePresenter {
   constructor(
     private readonly store: ChatRenameStore,
     private readonly api: API,
+    private readonly libraryStore: LibraryStore,
     private readonly log: Log,
   ) {}
 
@@ -26,8 +29,9 @@ export class ChatRenamePresenter {
     if (title === "") {
       return
     }
-    this.log.action("rename-chat", { chatId: chat.id, title })
-    void toastFailure(() => this.api.renameChat(chat.id, title))
+    const projectId = projectOfChat(this.libraryStore.library, chat.id)
+    this.log.action("rename-chat", { chatId: chat.id, projectId, title })
+    void toastFailure(() => this.api.renameChat(chat.id, title, projectId))
   }
 
   handleCancel = () => {

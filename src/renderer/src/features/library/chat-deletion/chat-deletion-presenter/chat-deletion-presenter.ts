@@ -25,10 +25,10 @@ export class ChatDeletionPresenter {
       return
     }
 
-    this.log.action("delete-chat", { chatId: target.id, title: target.title })
+    this.log.action("delete-chat", { chatId: target.id, projectId: this.store.projectId, title: target.title })
     this.store.setBusy(true)
     try {
-      await this.api.deleteChat(target.id)
+      await this.api.deleteChat(target.id, this.store.projectId)
       // The library event removes the row. The dialog closes once the call succeeds.
       this.store.setTarget(null)
     } catch (error) {

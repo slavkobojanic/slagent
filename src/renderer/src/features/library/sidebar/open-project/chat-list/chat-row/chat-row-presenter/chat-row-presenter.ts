@@ -1,4 +1,5 @@
 import type { ChatSummary } from "@shared/types"
+import { projectOfChat } from "@/features/library/library-utils"
 import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatRowMenuStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-store/chat-row-menu-store"
 import type { ChatRowStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-store/chat-row-store"
@@ -37,9 +38,11 @@ export class ChatRowPresenter {
     this.clearClockTimer()
   }
 
+  // The sidebar can list chats of projects that are not open, so the chat's own project goes along.
   handleOpen = (chat: ChatSummary) => {
-    this.log.action("open-chat", { chatId: chat.id, title: chat.title })
-    return toastFailure(() => this.chatSwitchPresenter.openChat(chat.id))
+    const projectId = projectOfChat(this.libraryStore.library, chat.id)
+    this.log.action("open-chat", { chatId: chat.id, projectId, title: chat.title })
+    return toastFailure(() => this.chatSwitchPresenter.openChat(chat.id, projectId))
   }
 
   handleContextMenu = (chat: ChatSummary) => {
@@ -51,7 +54,8 @@ export class ChatRowPresenter {
     const now = Date.now()
     this.store.setNow(now)
     this.clearClockTimer()
-    const expiry = nextDoneExpiry(this.libraryStore.library.chats, now)
+    const library = this.libraryStore.library
+    const expiry = nextDoneExpiry([...library.chats, ...Object.values(library.chatsByProject).flat()], now)
     if (expiry === null) {
       return
     }

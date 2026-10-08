@@ -8,12 +8,19 @@ export class ChatListStore {
   showAll = false
   reduceMotion = false
 
-  constructor(private readonly libraryStore: LibraryStore) {
+  // An undefined projectId reads the open project's chats; otherwise the project's own.
+  constructor(
+    private readonly libraryStore: LibraryStore,
+    readonly projectId?: string,
+  ) {
     makeAutoObservable(this)
   }
 
   get chats(): ChatSummary[] {
-    return orderedChats(this.libraryStore.library.chats)
+    if (this.projectId === undefined) {
+      return orderedChats(this.libraryStore.library.chats)
+    }
+    return orderedChats(this.libraryStore.library.chatsByProject[this.projectId] ?? [])
   }
 
   get visible(): ChatSummary[] {

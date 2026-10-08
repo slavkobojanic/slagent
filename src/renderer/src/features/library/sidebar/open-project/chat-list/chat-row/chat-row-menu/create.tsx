@@ -6,12 +6,14 @@ import type { ChatRenameStore } from "@/features/library/sidebar/open-project/ch
 import type { ChatRowMenuStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-store/chat-row-menu-store"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
+import type { LibraryStore } from "@/mirror/library-store/library-store"
 import { ChatRowMenu } from "./chat-row-menu"
 import { ChatRowMenuPresenter } from "./chat-row-menu-presenter/chat-row-menu-presenter"
 
 export function createChatRowMenu({
   api,
   window,
+  libraryStore,
   chatRowMenuStore,
   chatRenameStore,
   chatDeletionStore,
@@ -19,12 +21,13 @@ export function createChatRowMenu({
 }: {
   api: API
   window: Window
+  libraryStore: LibraryStore
   chatRowMenuStore: ChatRowMenuStore
   chatRenameStore: ChatRenameStore
   chatDeletionStore: ChatDeletionStore
   log: Log
 }): ComponentType<{ chat: ChatSummary }> {
-  const presenter = new ChatRowMenuPresenter(chatRowMenuStore, api, window, chatRenameStore, chatDeletionStore, log)
+  const presenter = new ChatRowMenuPresenter(chatRowMenuStore, api, window, libraryStore, chatRenameStore, chatDeletionStore, log)
 
   return observer(function ChatRowMenuHost({ chat }: { chat: ChatSummary }) {
     return (

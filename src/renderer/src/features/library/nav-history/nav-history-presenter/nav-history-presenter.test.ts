@@ -24,7 +24,7 @@ function place(projectId: string, chatId: string | null) {
 }
 
 function libraryState(openProjectId: string | null, openChatId: string | null, chats: ChatSummary[] = []): LibraryState {
-  return { projects: [], openProjectId, chats, openChatId }
+  return { projects: [], openProjectId, chats, chatsByProject: {}, openChatId }
 }
 
 describe("NavHistoryPresenter", () => {

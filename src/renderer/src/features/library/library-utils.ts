@@ -24,6 +24,18 @@ export function isDraftBecomingChat(previous: LibraryContext, next: Place): bool
   return !previous.chatIds.has(next.chatId)
 }
 
+// The project a chat belongs to, or undefined when the library does not list it. The open
+// project's chats live in `chats`; the other projects' in `chatsByProject`.
+export function projectOfChat(library: LibraryState, chatId: string): string | undefined {
+  if (library.chats.some((chat) => chat.id === chatId)) {
+    return library.openProjectId ?? undefined
+  }
+  for (const [projectId, chats] of Object.entries(library.chatsByProject)) {
+    if (chats.some((chat) => chat.id === chatId)) return projectId
+  }
+  return undefined
+}
+
 // Pinned chats first, newest pin first. Then the rest, most recently updated first.
 export function orderedChats(chats: ChatSummary[]): ChatSummary[] {
   const pinned = chats.filter((chat) => chat.pinned).sort((left, right) => right.pinnedAt - left.pinnedAt)

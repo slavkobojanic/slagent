@@ -71,7 +71,7 @@ describe("isDraftBecomingChat", () => {
 
 describe("libraryContext", () => {
   it("can record the open place and the ids of the chats in the library", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1"), chat("c2")], openChatId: "c1" }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1"), chat("c2")], chatsByProject: {}, openChatId: "c1" }
 
     const context = libraryContext(library)
 

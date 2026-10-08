@@ -16,7 +16,7 @@ function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
 }
 
 function libraryState(openProjectId: string | null, openChatId: string | null, chats: ChatSummary[] = []): LibraryState {
-  return { projects: [], openProjectId, chats, openChatId }
+  return { projects: [], openProjectId, chats, chatsByProject: {}, openChatId }
 }
 
 function transcript(chatId: string | null) {

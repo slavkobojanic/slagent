@@ -7,7 +7,7 @@ function chat(overrides: Partial<ChatSummary> = {}): ChatSummary {
 }
 
 function library(overrides: Partial<LibraryState> = {}): LibraryState {
-  return { projects: [], openProjectId: "p1", chats: [chat()], openChatId: "c1", ...overrides }
+  return { projects: [], openProjectId: "p1", chats: [chat()], chatsByProject: {}, openChatId: "c1", ...overrides }
 }
 
 describe("openChatOf", () => {

@@ -7,6 +7,7 @@ import { ChatRowMenuPresenter } from "@/features/library/sidebar/open-project/ch
 import { ChatRowMenuStore } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-menu/chat-row-menu-store/chat-row-menu-store"
 import type { API } from "@/ipc/api"
 import { nullLog } from "@/log/log"
+import { LibraryStore } from "@/mirror/library-store/library-store"
 import { createMockInstance, type MockInstance } from "@/test/create-mock-instance"
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
@@ -24,6 +25,7 @@ describe("ChatRowMenuPresenter", () => {
   let api: MockInstance<API>
   let rename: ChatRenameStore
   let deletion: ChatDeletionStore
+  let libraryStore: LibraryStore
   let presenter: ChatRowMenuPresenter
 
   beforeEach(() => {
@@ -33,7 +35,8 @@ describe("ChatRowMenuPresenter", () => {
     api.pinChat.mockResolvedValue(undefined)
     rename = new ChatRenameStore()
     deletion = new ChatDeletionStore()
-    presenter = new ChatRowMenuPresenter(store, api, window, rename, deletion, nullLog())
+    libraryStore = new LibraryStore()
+    presenter = new ChatRowMenuPresenter(store, api, window, libraryStore, rename, deletion, nullLog())
   })
 
   afterEach(() => {
@@ -69,8 +72,16 @@ describe("ChatRowMenuPresenter", () => {
       await presenter.handlePin(chat("c1"))
       await presenter.handlePin(chat("c2", { pinned: true }))
 
-      expect(api.pinChat).toHaveBeenNthCalledWith(1, "c1", true)
-      expect(api.pinChat).toHaveBeenNthCalledWith(2, "c2", false)
+      expect(api.pinChat).toHaveBeenNthCalledWith(1, "c1", true, undefined)
+      expect(api.pinChat).toHaveBeenNthCalledWith(2, "c2", false, undefined)
+    })
+
+    it("can pin a chat of a project that is not open, naming its project", async () => {
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c3")] }, openChatId: null })
+
+      await presenter.handlePin(chat("c3"))
+
+      expect(api.pinChat).toHaveBeenCalledWith("c3", true, "p2")
     })
   })
 
@@ -90,6 +101,15 @@ describe("ChatRowMenuPresenter", () => {
       presenter.handleDelete(target)
 
       expect(deletion.target).toEqual(target)
+      expect(deletion.projectId).toBeUndefined()
+    })
+
+    it("can carry the project of a chat that is not open", () => {
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c3")] }, openChatId: null })
+
+      presenter.handleDelete(chat("c3"))
+
+      expect(deletion.projectId).toBe("p2")
     })
   })
 

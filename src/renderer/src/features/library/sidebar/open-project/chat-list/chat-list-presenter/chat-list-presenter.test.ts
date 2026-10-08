@@ -24,7 +24,7 @@ function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
 }
 
 function libraryState(openProjectId: string | null, chats: ChatSummary[] = []): LibraryState {
-  return { projects: [], openProjectId, chats, openChatId: null }
+  return { projects: [], openProjectId, chats, chatsByProject: {}, openChatId: null }
 }
 
 function commandNamed(registry: CommandRegistry, id: string): Command {

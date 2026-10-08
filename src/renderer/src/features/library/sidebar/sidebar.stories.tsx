@@ -11,7 +11,7 @@ const meta = {
     SearchBox: slot("SearchBox"),
     SearchResults: slot("SearchResults"),
     OpenProject: slot("OpenProject"),
-    PinnedProjects: slot("PinnedProjects"),
+    OtherProjects: slot("OtherProjects"),
     ResizeHandle: slot("ResizeHandle"),
   },
 } satisfies Meta<typeof Sidebar>
