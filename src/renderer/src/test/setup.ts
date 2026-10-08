@@ -5,3 +5,12 @@ import { afterEach } from "vitest"
 afterEach(() => {
   cleanup()
 })
+
+// jsdom has no ResizeObserver, and components that measure their content need one.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver

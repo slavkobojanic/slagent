@@ -111,7 +111,7 @@ function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
   const api = createMockInstance<API>(["prompt", "abort", "setPlanMode", "pathForFile"])
   const attachments = new AttachmentsPresenter(new AttachmentsStore(), api, window, nullLog())
   vi.spyOn(attachments, "removeLast")
-  vi.spyOn(attachments, "clear")
+  vi.spyOn(attachments, "follow")
   vi.spyOn(attachments, "stop")
   api.prompt.mockResolvedValue(undefined)
   api.abort.mockResolvedValue(undefined)
@@ -864,7 +864,7 @@ describe("ComposerPresenter", () => {
       mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], openChatId: "c2" })
 
       expect(store.text).toBe("other chat")
-      expect(attachments.clear).toHaveBeenCalledTimes(1)
+      expect(attachments.follow).toHaveBeenCalledWith("p1:c2")
       expect(history.draft).toBe("")
     })
   })
