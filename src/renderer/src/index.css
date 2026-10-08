@@ -41,6 +41,8 @@
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
+  /* The settings dialog: at least 860px, but never wider than the window allows. */
+  --container-settings: min(53.75rem, calc(100vw - 2rem));
 }
 
 :root {

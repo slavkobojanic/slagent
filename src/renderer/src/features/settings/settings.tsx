@@ -39,11 +39,11 @@ export function Settings({
 }: SettingsProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent genieTo='[data-genie-target="settings"]' className="flex h-1/2 w-1/2 flex-col p-0">
+      <DialogContent genieTo='[data-genie-target="settings"]' className="flex h-1/2 w-1/2 min-w-settings flex-col p-0">
         {/* Radix needs a title in the content; the tab labels say the rest. */}
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <div className="flex min-h-0 flex-1">
-          <nav aria-label="Settings sections" className="w-40 shrink-0 space-y-1 border-r border-white/10 p-2">
+          <nav aria-label="Settings sections" className="w-40 shrink-0 space-y-1 border-r border-white/10 p-2 max-md:w-12">
             {TABS.map((item) => {
               const Icon = item.icon
               return (
@@ -51,11 +51,13 @@ export function Settings({
                   key={item.value}
                   type="button"
                   aria-current={tab === item.value ? "page" : undefined}
-                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-white/60 hover:text-white aria-[current=page]:bg-white/10 aria-[current=page]:text-white not-aria-[current=page]:hover:bg-white/5"
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-white/60 hover:text-white aria-[current=page]:bg-white/10 aria-[current=page]:text-white not-aria-[current=page]:hover:bg-white/5 max-md:justify-center max-md:px-0"
+                  title={item.label}
                   onClick={() => onTabChange(item.value)}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {item.label}
+                  {/* sr-only keeps the button's accessible name once the sidebar is icon only. */}
+                  <span className="max-md:sr-only">{item.label}</span>
                 </button>
               )
             })}
