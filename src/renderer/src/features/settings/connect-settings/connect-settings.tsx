@@ -37,39 +37,46 @@ function Body({ server, qr, onCopy }: ConnectSettingsProps) {
   }
   return (
     <>
-      {qr !== null ? (
-        <div className="flex items-center gap-4 rounded-md border border-white/10 bg-white/5 p-3">
-          <svg
-            role="img"
-            aria-label="QR code for the slagent iOS app"
-            viewBox={`-4 -4 ${qr.size + 8} ${qr.size + 8}`}
-            className="size-36 shrink-0 rounded-sm bg-white"
-            shapeRendering="crispEdges"
-          >
-            <path d={qr.path} className="fill-black" />
-          </svg>
-          <p className="text-sm text-white/60">
-            Scan this with your iPhone's camera to connect the slagent iOS app. The phone needs Tailscale, signed in to
-            the same tailnet.
+      <div className="overflow-hidden rounded-xl bg-white/3">
+        {qr !== null ? (
+          <div className="flex items-center gap-5 p-4">
+            {/* Fixed colours: the light theme swaps white and black, and a QR code reads best dark on light. */}
+            <svg
+              role="img"
+              aria-label="QR code for the slagent iOS app"
+              viewBox={`-4 -4 ${qr.size + 8} ${qr.size + 8}`}
+              className="size-32 shrink-0 rounded-lg bg-[#fff]"
+              shapeRendering="crispEdges"
+            >
+              <path d={qr.path} className="fill-[#000]" />
+            </svg>
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-medium">Scan with your iPhone</p>
+              <p className="text-sm text-white/60">
+                Point the camera at the code to connect the slagent iOS app. The phone needs Tailscale, signed in to the
+                same tailnet.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="p-4 text-sm text-white/60">
+            Turn on Tailscale on this Mac to connect a phone. The address updates by itself once it is up.
           </p>
+        )}
+        <div className="flex items-center gap-2 bg-white/3 py-1.5 pr-1.5 pl-4">
+          <span title={server.url} className="min-w-0 flex-1 truncate font-mono text-xs text-white/70">
+            {server.url}
+          </span>
+          <Button type="button" variant="ghost" size="xs" onClick={() => onCopy(server.url)}>
+            <Copy className="size-3.5" />
+            Copy
+          </Button>
         </div>
-      ) : (
-        <p className="text-sm text-white/60">
-          Turn on Tailscale on this Mac to connect a phone. The address updates by itself once it is up.
-        </p>
-      )}
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1 rounded-md border border-white/10 bg-white/5 px-3 py-2.5 font-mono text-xs break-all text-white/80">
-          {server.url}
-        </div>
-        <Button variant="outline" size="sm" onClick={() => onCopy(server.url)}>
-          <Copy className="size-3.5" />
-          Copy
-        </Button>
       </div>
       <p className="text-xs text-white/35">
-        Listens on {server.host}, port {server.port}. The same address is saved to slagent-server.json in the app data
-        folder.
+        Listens on <span className="font-mono text-white/45">{server.host}</span>, port{" "}
+        <span className="font-mono text-white/45">{server.port}</span>. The same address is saved to slagent-server.json
+        in the app data folder.
       </p>
     </>
   )
