@@ -26,6 +26,11 @@ export class TerminalBarPresenter {
 
   handleClose = (id: string) => {
     this.log.action("close-terminal-chip", { id })
+    if (this.store.task(id) !== null) {
+      // A task's shell outlives its chip, so closing only dismisses the chip
+      // and, when the drawer holds the shell, its tab as well.
+      this.store.dismissTask(id)
+    }
     this.terminalPresenter.closeTab(id)
   }
 
