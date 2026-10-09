@@ -4,8 +4,8 @@ import { Terminal } from "@/features/terminal/terminal"
 import { TerminalTab } from "@/features/terminal/terminal-tab/terminal-tab"
 
 const tabs = [
-  <TerminalTab key="a" title="zsh" active exited={false} onSelect={fn()} onClose={fn()} />,
-  <TerminalTab key="b" title="~/code/slagent" active={false} exited={false} onSelect={fn()} onClose={fn()} />,
+  <TerminalTab key="a" title="zsh" active exited={false} origin="user" color={null} onSelect={fn()} onClose={fn()} />,
+  <TerminalTab key="b" title="~/code/slagent" active={false} exited={false} origin="user" color={null} onSelect={fn()} onClose={fn()} />,
 ]
 
 const surfaces = [

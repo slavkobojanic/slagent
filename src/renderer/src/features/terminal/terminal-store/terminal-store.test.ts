@@ -130,4 +130,36 @@ describe("TerminalStore", () => {
       expect(store.tabs[0]?.exited).toBe(true)
     })
   })
+
+  describe("addTab origin", () => {
+    it("can mark a tab as the agent's", () => {
+      const store = new TerminalStore()
+
+      store.addTab(session("a"), "task")
+
+      expect(store.tabs[0]?.origin).toBe("task")
+    })
+  })
+
+  describe("revealTab", () => {
+    it("can open the drawer over an existing tab", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+      store.setOpen(false)
+
+      store.revealTab("a")
+
+      expect(store.open).toBe(true)
+      expect(store.activeId).toBe("a")
+    })
+
+    it("can ignore an id the drawer does not have", () => {
+      const store = new TerminalStore()
+      store.setOpen(false)
+
+      store.revealTab("gone")
+
+      expect(store.open).toBe(false)
+    })
+  })
 })

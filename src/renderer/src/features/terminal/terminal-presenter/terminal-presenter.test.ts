@@ -400,4 +400,37 @@ describe("TerminalPresenter", () => {
       expect(commands.commands).toHaveLength(0)
     })
   })
+
+  describe("reveal", () => {
+    it("can open the drawer over a tab", async () => {
+      const { presenter, store } = parts
+      await presenter.create()
+      store.setOpen(false)
+
+      presenter.reveal("a")
+
+      expect(store.open).toBe(true)
+      expect(store.activeId).toBe("a")
+    })
+  })
+
+  describe("adoptTask", () => {
+    it("can add a drawer tab for the agent's shell without spawning one", () => {
+      const { api, presenter, store } = parts
+
+      presenter.adoptTask(session("task-1"), false, null)
+
+      expect(store.tabs.map((tab) => tab.origin)).toEqual(["task"])
+      expect(store.activeId).toBe("task-1")
+      expect(api.createTerminal).not.toHaveBeenCalled()
+    })
+
+    it("can show a finished task's exit line", () => {
+      const { presenter, store } = parts
+
+      presenter.adoptTask(session("task-1"), true, 2)
+
+      expect(store.tabs[0]?.exited).toBe(true)
+    })
+  })
 })

@@ -7,6 +7,8 @@ function props(overrides: Partial<TerminalTabProps> = {}): TerminalTabProps {
     title: "zsh",
     active: false,
     exited: false,
+    origin: "user",
+    color: null,
     onSelect: vi.fn(),
     onClose: vi.fn(),
     ...overrides,
@@ -33,6 +35,13 @@ describe("TerminalTab", () => {
 
     expect(markup).toContain("rounded-full")
     expect(markup).toContain('title="zsh (exited)"')
+  })
+
+  it("can tint the dot of a task tab with the project colour", () => {
+    const markup = viewMarkup(<TerminalTab {...props({ origin: "task", color: "#22c55e" })} />)
+
+    expect(markup).toContain("rounded-full")
+    expect(markup).toContain("rgb(34, 197, 94)")
   })
 
   it("can offer a close button named after the tab", () => {
