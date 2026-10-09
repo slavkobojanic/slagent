@@ -37,6 +37,13 @@ type State = {
 
 type Client = {
   socket: WebSocket
+  // What the client calls itself. A phone keeps one across reconnects for the
+  // desktop log; it is never used to route messages.
+  clientId: string
+  // The server-side identity of one connection. A reconnecting phone opens a
+  // new socket while the old half-open one can still be alive, so routing by
+  // the declared id would let the stale socket's close undo the new session.
+  sessionId: string
   // The window token only app connections send, so menu items and
   // notifications can find the client of the focused window.
   windowToken: string | null
@@ -61,10 +68,10 @@ export type ApiServer = {
 export type ApiServerOptions = {
   // userData/slagent-server.json: the port and token survive restarts.
   statePath: string
-  onCall: (clientId: string, method: string, params: unknown[]) => Promise<unknown>
-  onCallSent: (clientId: string, method: string, params: unknown[]) => void
-  onClient: (clientId: string, windowToken: string | null) => void
-  onClientGone: (clientId: string) => void
+  onCall: (sessionId: string, method: string, params: unknown[]) => Promise<unknown>
+  onCallSent: (sessionId: string, method: string, params: unknown[]) => void
+  onClient: (sessionId: string, clientId: string, windowToken: string | null) => void
+  onClientGone: (sessionId: string) => void
   // Maps an attachment's [projectId, chatId, file] to its path on disk, or null.
   attachmentFile: (parts: string[]) => string | null
   onInfo: (info: ServerInfo) => void
@@ -119,8 +126,14 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
     wss.handleUpgrade(request, socket, head, (socket) => {
       const clientId = url.searchParams.get("client") ?? randomUUID()
       const windowToken = url.searchParams.get("window")
-      clients.set(clientId, { socket, windowToken })
-      options.onClient(clientId, windowToken)
+      // The declared id names the device; each connection is its own session.
+      // A fresh connection from the same device replaces the old socket, whose
+      // late close then cannot touch the new session.
+      const sessionId = randomUUID()
+      const previous = [...clients.values()].find((client) => client.clientId === clientId)
+      if (previous && previous.socket !== socket) previous.socket.terminate()
+      clients.set(sessionId, { socket, clientId, sessionId, windowToken })
+      options.onClient(sessionId, clientId, windowToken)
       socket.on("message", (data) => {
         let message: WsClientMessage
         try {
@@ -132,17 +145,17 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
         if (typeof message.method !== "string") return
         const id = "id" in message && typeof message.id === "number" ? message.id : null
         if (id === null) {
-          options.onCallSent(clientId, message.method, params)
+          options.onCallSent(sessionId, message.method, params)
           return
         }
         void options
-          .onCall(clientId, message.method, params)
-          .then((result) => send(clientId, { id, ok: true, result }))
-          .catch((error) => send(clientId, { id, ok: false, message: errorMessage(error) }))
+          .onCall(sessionId, message.method, params)
+          .then((result) => send(sessionId, { id, ok: true, result }))
+          .catch((error) => send(sessionId, { id, ok: false, message: errorMessage(error) }))
       })
       socket.on("close", () => {
-        clients.delete(clientId)
-        options.onClientGone(clientId)
+        if (clients.get(sessionId)?.socket === socket) clients.delete(sessionId)
+        options.onClientGone(sessionId)
       })
       socket.on("error", () => undefined)
     })

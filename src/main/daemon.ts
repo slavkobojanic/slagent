@@ -78,8 +78,8 @@ export async function runDaemon(): Promise<void> {
       statePath: join(userData, "slagent-server.json"),
       onCall: calls.onCall,
       onCallSent: calls.onCallSent,
-      onClient: (clientId) => host?.attach(clientId),
-      onClientGone: (clientId) => host?.detach(clientId),
+      onClient: (sessionId) => host?.attach(sessionId),
+      onClientGone: (sessionId) => host?.detach(sessionId),
       attachmentFile: (parts) => attachmentFile(libraryRoot, parts),
       onInfo: () => host?.refreshMeta(),
     })

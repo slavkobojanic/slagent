@@ -327,14 +327,14 @@ app.whenReady().then(async () => {
       onCall: (clientId, method, params) =>
         daemonMethods.has(method) ? handleDaemonCall(method) : calls.onCall(clientId, method, params),
       onCallSent: calls.onCallSent,
-      onClient: (clientId, windowToken) => {
-        if (windowToken) clientByToken.set(windowToken, clientId)
-        host?.attach(clientId)
+      onClient: (sessionId, _clientId, windowToken) => {
+        if (windowToken) clientByToken.set(windowToken, sessionId)
+        host?.attach(sessionId)
       },
-      onClientGone: (clientId) => {
-        host?.detach(clientId)
+      onClientGone: (sessionId) => {
+        host?.detach(sessionId)
         for (const [token, id] of clientByToken) {
-          if (id === clientId) clientByToken.delete(token)
+          if (id === sessionId) clientByToken.delete(token)
         }
       },
       attachmentFile: (parts) => attachmentFile(libraryRoot, parts),
