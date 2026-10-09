@@ -24,7 +24,8 @@ function setup(log: Log = nullLog()) {
   const run = new RunStore()
   const changesStore = new ChangesStore(panel, run, new MetaStore())
   const store = new DiffPanelStore()
-  const api = createMockInstance<API>(["gitStatus", "gitDiff", "gitCommit", "gitPush", "gitPullRequest", "gitCommitMessage", "openExternal"])
+  const api = createMockInstance<API>(["gitStatus", "gitDiff", "gitCommit", "gitPush", "gitPullRequest", "gitCommitMessage", "openExternal", "onEvent"])
+  api.onEvent.mockReturnValue(() => undefined)
   const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), nullLog())
   vi.spyOn(panelPresenter, "openFile").mockResolvedValue(undefined)
   const review = new ReviewPresenter(new ReviewStore(), nullLog())
@@ -109,18 +110,44 @@ describe("DiffPanelPresenter", () => {
       expect(api.gitStatus).not.toHaveBeenCalled()
     })
 
-    it("can wait for a run to end before loading when the panel opens during the run", async () => {
+    it("can load the diff right away when the panel opens during a run, so the diff is live", async () => {
       const { panel, run, api, presenter } = parts
       presenter.start()
       run.setTranscript(makeTranscript({ streaming: true }))
 
       panel.setOpen(true)
       await flush()
-      expect(api.gitStatus).not.toHaveBeenCalled()
 
-      run.setTranscript(makeTranscript({ streaming: false }))
-      await flush()
       expect(api.gitStatus).toHaveBeenCalledTimes(1)
+    })
+
+    it("can reload the diff on a git event while the diff is on screen, so edits show as they land", async () => {
+      const { panel, api, presenter } = parts
+      presenter.start()
+      panel.setOpen(true)
+      await flush()
+      api.gitStatus.mockClear()
+
+      const listener = api.onEvent.mock.calls[0][0]
+      listener({ type: "git", revision: 1 })
+      await flush()
+
+      expect(api.gitStatus).toHaveBeenCalledTimes(1)
+    })
+
+    it("can leave the diff alone on a git event while the panel is closed", async () => {
+      const { panel, api, presenter } = parts
+      presenter.start()
+      panel.setOpen(true)
+      await flush()
+      panel.setOpen(false)
+      api.gitStatus.mockClear()
+
+      const listener = api.onEvent.mock.calls[0][0]
+      listener({ type: "git", revision: 1 })
+      await flush()
+
+      expect(api.gitStatus).not.toHaveBeenCalled()
     })
 
     it("can stop reloading the diff once stopped", async () => {
@@ -226,8 +253,7 @@ describe("DiffPanelPresenter", () => {
       expect(store.scope).toBe("turn")
       expect(api.gitDiff).not.toHaveBeenCalled()
     })
-
-    it("can switch the scope without loading while a run is going", async () => {
+    it("can switch the scope and reload even while a run is going, so the live diff follows", async () => {
       const { panel, run, api, store, presenter } = parts
       presenter.start()
       panel.setOpen(true)
@@ -239,7 +265,7 @@ describe("DiffPanelPresenter", () => {
       await flush()
 
       expect(store.scope).toBe("turn")
-      expect(api.gitDiff).not.toHaveBeenCalled()
+      expect(api.gitDiff).toHaveBeenCalledWith("turn")
     })
 
     it("can leave the diff alone when the scope picked is the one already shown", async () => {

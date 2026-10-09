@@ -16,7 +16,9 @@ function props(overrides: Partial<MobileChatScreenProps> = {}): MobileChatScreen
     projectName: "slagent",
     ready: true,
     metaError: null,
+    changesCount: 0,
     onBack: noop,
+    onOpenChanges: noop,
     onOpenConnection: noop,
     Banner: named("Banner"),
     Transcript: named("Transcript"),
@@ -49,6 +51,18 @@ describe("MobileChatScreen", () => {
     render(<MobileChatScreen {...props({ projectName: null })} />)
 
     expect(screen.queryByText("slagent")).toBeNull()
+  })
+
+  it("can open the changes from the header when files are changed", () => {
+    render(<MobileChatScreen {...props({ changesCount: 3, onOpenChanges: () => undefined })} />)
+
+    expect(screen.getByRole("button", { name: "Changes (3)" })).not.toBeNull()
+  })
+
+  it("can hold the changes button back when nothing is changed", () => {
+    render(<MobileChatScreen {...props({ changesCount: 0, onOpenChanges: () => undefined })} />)
+
+    expect(screen.queryByRole("button", { name: /Changes/ })).toBeNull()
   })
 
   it("can show the agent's startup error", () => {

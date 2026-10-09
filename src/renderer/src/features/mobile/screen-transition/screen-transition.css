@@ -18,6 +18,10 @@
   z-index: 2;
 }
 
+.screen-layer-changes {
+  z-index: 3;
+}
+
 .screen-layer-push-enter {
   animation: screen-push-in 250ms var(--ease-drawer) both;
 }

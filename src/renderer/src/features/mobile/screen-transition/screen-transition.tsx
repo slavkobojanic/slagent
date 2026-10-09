@@ -10,23 +10,28 @@ const POP_MS = 200
 
 type Direction = "push" | "pop"
 
+// Deeper screens sit above shallower ones: chats < chat < changes.
+const DEPTH: Record<MobileScreen, number> = { chats: 0, chat: 1, changes: 2 }
+
 export type ScreenTransitionProps = {
   screen: MobileScreen
   ChatList: ComponentType
   ChatScreen: ComponentType
+  ChangesScreen: ComponentType
 }
 
-// The push/pop between the chat list and the open chat. The outgoing screen
-// stays mounted beneath the incoming one for the length of the animation, then
-// unmounts; the layers animate with CSS only. The first screen of a session
-// appears directly, without motion.
-export function ScreenTransition({ screen, ChatList, ChatScreen }: ScreenTransitionProps) {
+// The push/pop between the three screens. The outgoing screen stays mounted
+// beneath the incoming one for the length of the animation, then unmounts; the
+// layers animate with CSS only. The first screen of a session appears directly,
+// without motion.
+export function ScreenTransition({ screen, ChatList, ChatScreen, ChangesScreen }: ScreenTransitionProps) {
   const [state, setState] = useState(() => ({ current: screen, leaving: null as MobileScreen | null, direction: "push" as Direction, entering: false }))
 
   useEffect(() => {
     setState((prev) => {
       if (prev.current === screen) return prev
-      return { current: screen, leaving: prev.current, direction: screen === "chat" ? "push" : "pop", entering: true }
+      const direction: Direction = DEPTH[screen] > DEPTH[prev.current] ? "push" : "pop"
+      return { current: screen, leaving: prev.current, direction, entering: true }
     })
   }, [screen])
 
@@ -46,12 +51,18 @@ export function ScreenTransition({ screen, ChatList, ChatScreen }: ScreenTransit
     <div className="screen-stage">
       {leaving !== null && leaving !== current ? (
         <div className={cn("screen-layer", `screen-layer-${leaving}`, entering && `screen-layer-${direction}-exit`)}>
-          {leaving === "chat" ? <ChatScreen /> : <ChatList />}
+          <Screen name={leaving} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} />
         </div>
       ) : null}
       <div className={cn("screen-layer", `screen-layer-${current}`, entering && `screen-layer-${direction}-enter`)}>
-        {current === "chat" ? <ChatScreen /> : <ChatList />}
+        <Screen name={current} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} />
       </div>
     </div>
   )
+}
+
+function Screen({ name, ChatList, ChatScreen, ChangesScreen }: { name: MobileScreen; ChatList: ComponentType; ChatScreen: ComponentType; ChangesScreen: ComponentType }) {
+  if (name === "chat") return <ChatScreen />
+  if (name === "changes") return <ChangesScreen />
+  return <ChatList />
 }

@@ -6,14 +6,15 @@ export type MobileShellProps = {
   screen: MobileScreen
   ChatList: ComponentType
   ChatScreen: ComponentType
+  ChangesScreen: ComponentType
   ConnectionSheet: ComponentType
   BackSwipe: ComponentType
 }
 
-export function MobileShell({ screen, ChatList, ChatScreen, ConnectionSheet, BackSwipe }: MobileShellProps) {
+export function MobileShell({ screen, ChatList, ChatScreen, ChangesScreen, ConnectionSheet, BackSwipe }: MobileShellProps) {
   return (
     <div className="h-full bg-background text-foreground">
-      <ScreenTransition screen={screen} ChatList={ChatList} ChatScreen={ChatScreen} />
+      <ScreenTransition screen={screen} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} />
       <ConnectionSheet />
       <BackSwipe />
     </div>

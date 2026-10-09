@@ -87,6 +87,13 @@ describe("MobilePresenter", () => {
       presenter.back()
       expect(store.screen).toBe("chats")
     })
+
+    it("can return to the chat from the changes", () => {
+      const { store, presenter } = setup()
+      store.setScreen("changes")
+      presenter.back()
+      expect(store.screen).toBe("chat")
+    })
   })
 
   describe("handleConnectionOpenChange", () => {

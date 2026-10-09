@@ -55,7 +55,7 @@ export class BackSwipePresenter {
       return
     }
     const touch = event.touches[0]
-    if (touch.clientX > EDGE_PX || this.mobileStore.screen !== "chat") {
+    if (touch.clientX > EDGE_PX || this.mobileStore.screen === "chats") {
       return
     }
     this.origin = { x: touch.clientX, y: touch.clientY }
