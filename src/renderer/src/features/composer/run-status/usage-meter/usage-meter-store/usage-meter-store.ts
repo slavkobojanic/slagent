@@ -6,6 +6,8 @@ import type { RunStore } from "@/mirror/run-store/run-store"
 
 export type UsageLevel = "normal" | "warning" | "critical"
 
+export type UsageRow = { label: string; value: string }
+
 export type UsageModel = {
   ringPercent: number
   level: UsageLevel
@@ -13,9 +15,7 @@ export type UsageModel = {
   costText: string | null
   ariaLabel: string
   contextText: string
-  thisChatText: string
-  tokensText: string
-  allChatsText: string | null
+  rows: UsageRow[]
   canCompact: boolean
 }
 
@@ -53,6 +53,14 @@ export class UsageMeterStore {
 
 function toModel(usage: UsageState, totals: UsageTotals | null, canCompact: boolean): UsageModel {
   const contextText = contextLabel(usage)
+  const rows = [
+    { label: "This chat", value: `${formatTokens(usage.totalTokens)} tokens · ${formatCost(usage.cost)}` },
+    { label: "Tokens", value: `${formatTokens(usage.inputTokens)} in · ${formatTokens(usage.outputTokens)} out · ${formatTokens(usage.cacheTokens)} cached` },
+  ]
+  const allChats = allChatsRow(totals)
+  if (allChats !== null) {
+    rows.push(allChats)
+  }
   return {
     ringPercent: Math.min(usage.percent ?? 0, 100),
     level: levelFor(usage.percent ?? 0),
@@ -60,9 +68,7 @@ function toModel(usage: UsageState, totals: UsageTotals | null, canCompact: bool
     costText: usage.cost > 0 ? formatCost(usage.cost) : null,
     ariaLabel: `${contextText}, ${formatCost(usage.cost)} spent`,
     contextText,
-    thisChatText: `This chat: ${formatTokens(usage.totalTokens)} tokens · ${formatCost(usage.cost)}`,
-    tokensText: `${formatTokens(usage.inputTokens)} in · ${formatTokens(usage.outputTokens)} out · ${formatTokens(usage.cacheTokens)} cached`,
-    allChatsText: allChatsLabel(totals),
+    rows,
     canCompact,
   }
 }
@@ -91,10 +97,10 @@ function contextLabel(usage: UsageState): string {
   return `${formatTokens(usage.contextTokens)} of ${formatTokens(usage.contextWindow)} context`
 }
 
-function allChatsLabel(totals: UsageTotals | null): string | null {
+function allChatsRow(totals: UsageTotals | null): UsageRow | null {
   if (totals === null || totals.chats <= 0) {
     return null
   }
-  return `All chats: ${formatTokens(totals.tokens)} tokens · ${formatCost(totals.cost)}`
+  return { label: "All chats", value: `${formatTokens(totals.tokens)} tokens · ${formatCost(totals.cost)}` }
 }
 

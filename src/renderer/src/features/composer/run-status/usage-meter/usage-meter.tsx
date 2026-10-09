@@ -2,7 +2,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
@@ -14,17 +13,22 @@ export type UsageMeterModel = {
   costText: string | null
   ariaLabel: string
   contextText: string
-  thisChatText: string
-  tokensText: string
-  allChatsText: string | null
+  rows: { label: string; value: string }[]
   canCompact: boolean
 }
 
-// The text colour per level. Each is a full class string, so Tailwind generates every one.
+// The trigger's colour per level. Each is a full class string, so Tailwind generates every one.
 const TONE_CLASS: Record<UsageMeterModel["level"], string> = {
   normal: "text-white/50",
   warning: "text-warning",
   critical: "text-destructive",
+}
+
+// The context bar's fill colour per level. Each is a full class string, so Tailwind generates every one.
+const BAR_CLASS: Record<UsageMeterModel["level"], string> = {
+  normal: "bg-white/50",
+  warning: "bg-warning",
+  critical: "bg-destructive",
 }
 
 export type UsageMeterProps = {
@@ -51,15 +55,21 @@ export function UsageMeter({ usage, error, onCompact }: UsageMeterProps) {
             {usage.costText !== null ? <span className="text-white/40">{usage.costText}</span> : null}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel className="space-y-1.5 font-normal">
+        <DropdownMenuContent align="end" className="w-72">
+          <div className="space-y-2 px-2 py-1.5">
             <p className="text-sm font-medium">{usage.contextText}</p>
-            <div className="space-y-0.5 text-xs text-white/50 tabular-nums">
-              <p className="text-white/80">{usage.thisChatText}</p>
-              <p>{usage.tokensText}</p>
-              {usage.allChatsText !== null ? <p className="pt-1 text-white/80">{usage.allChatsText}</p> : null}
+            <div className="h-1 overflow-hidden rounded-full bg-white/10">
+              <div className={cn("h-full rounded-full", BAR_CLASS[usage.level])} style={{ width: `${usage.ringPercent}%` }} />
             </div>
-          </DropdownMenuLabel>
+            <div className="space-y-1 text-xs tabular-nums">
+              {usage.rows.map((row) => (
+                <div key={row.label} className="flex items-baseline justify-between gap-6">
+                  <span className="text-white/50">{row.label}</span>
+                  <span className="text-white/80">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
           <DropdownMenuItem disabled={!usage.canCompact} onSelect={onCompact}>
             Summarize earlier messages
           </DropdownMenuItem>

@@ -61,14 +61,14 @@ describe("TerminalBarStore", () => {
     expect(store.chips).toHaveLength(1)
   })
 
-  it("can tint a task chip with its own project's colour and user chips with the open project's", () => {
+  it("can leave a user's shell neutral and tint a task with its own project's colour", () => {
     const terminalTabs = new TerminalStore()
     terminalTabs.addTab({ id: "terminal-1", title: "zsh", cwd: "/work/atlas" })
     const library = new LibraryStore()
     library.setLibrary(libraryState([task]))
     const store = new TerminalBarStore(terminalTabs, library)
 
-    expect(store.chips[0]?.color).toBe("#3b82f6")
+    expect(store.chips[0]?.color).toBe(null)
   })
 
   it("can mark the open shell active", () => {

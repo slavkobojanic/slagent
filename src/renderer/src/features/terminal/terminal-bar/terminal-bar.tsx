@@ -1,6 +1,6 @@
 import { Plus, SquareTerminal, X } from "lucide-react"
 import type { ReactNode } from "react"
-import { contrastText } from "@/lib/color"
+import { contrastText, NEUTRAL_ACCENT } from "@/lib/color"
 import { cn } from "@/lib/utils"
 export type TerminalChip = {
   id: string
@@ -58,14 +58,14 @@ export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreat
 }
 
 function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: string) => void; onClose: (id: string) => void }) {
-  // The active chip takes the project colour whole; the text contrast is picked for it.
-  const accent = chip.active && chip.color !== null ? chip.color : null
+  // The active chip takes its project colour whole, or a plain grey when the
+  // shell belongs to no project; the text contrast is picked for either.
+  const accent = chip.active ? chip.color ?? NEUTRAL_ACCENT : null
   const text = accent === null ? undefined : contrastText(accent)
   return (
     <div
       className={cn(
         "group flex shrink-0 items-center rounded text-xs font-mono",
-        chip.active && accent === null ? "bg-white/10 text-white" : null,
         !chip.active ? "text-white/60 hover:text-white" : null,
         chip.exited && !chip.active ? "opacity-50" : null,
       )}

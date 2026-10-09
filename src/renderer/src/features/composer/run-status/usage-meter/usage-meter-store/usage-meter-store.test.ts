@@ -154,20 +154,22 @@ describe("UsageMeterStore", () => {
     it("can show the all-chats totals once chats have run", () => {
       const { store } = setup(usage, { tokens: 1_500_000, cost: 3.5, chats: 4 })
 
-      expect(store.model?.allChatsText).toBe("All chats: 1.5M tokens · $3.50")
+      expect(store.model?.rows.at(-1)).toEqual({ label: "All chats", value: "1.5M tokens · $3.50" })
     })
 
     it("can leave the all-chats line out when no chat has run", () => {
       const { store } = setup(usage, noChats)
 
-      expect(store.model?.allChatsText).toBeNull()
+      expect(store.model?.rows.some((row) => row.label === "All chats")).toBe(false)
     })
 
     it("can show this chat's tokens and its split between input, output and cache", () => {
       const { store } = setup(usage)
 
-      expect(store.model?.thisChatText).toBe("This chat: 2k tokens · $0.12")
-      expect(store.model?.tokensText).toBe("1k in · 800 out · 300 cached")
+      expect(store.model?.rows).toEqual([
+        { label: "This chat", value: "2k tokens · $0.12" },
+        { label: "Tokens", value: "1k in · 800 out · 300 cached" },
+      ])
     })
 
     it("can show a context window of a million or more in millions", () => {
