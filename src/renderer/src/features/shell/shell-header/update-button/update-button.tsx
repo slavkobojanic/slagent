@@ -21,7 +21,7 @@ export function UpdateButton({ version, installing, onInstall }: UpdateButtonPro
       disabled={installing}
       onClick={onInstall}
     >
-      <DownloadIcon />
+      <DownloadIcon className="size-3 shrink-0" />
       Update available (v{version})
     </Button>
   )
