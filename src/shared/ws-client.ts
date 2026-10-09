@@ -206,6 +206,7 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     gitPush: () => call<void>("gitPush"),
     gitPullRequest: () => call<string>("gitPullRequest"),
     gitCommitMessage: () => call<string>("gitCommitMessage"),
+    tailscaleList: () => call<Result<"tailscaleList">>("tailscaleList"),
     compact: () => call<void>("compact"),
     getPermissions: () => call<Result<"getPermissions">>("getPermissions"),
     requestAccessibility: () => call<Result<"requestAccessibility">>("requestAccessibility"),

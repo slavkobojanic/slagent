@@ -171,6 +171,8 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return host.gitPullRequest(clientId)
       case "gitCommitMessage":
         return host.gitCommitMessage(clientId)
+      case "tailscaleList":
+        return host.tailscaleList()
       case "removeQueued":
         host.removeQueued(clientId, str(params[0]))
         return

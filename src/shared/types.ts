@@ -29,6 +29,15 @@ export type ServerInfo = {
   tailscale: boolean
 }
 
+// A machine on the phone's Tailscale network, as the connected Mac sees it.
+// Only machines that answer on slagent's serve port are reported.
+export type TailscalePeer = {
+  name: string
+  host: string
+  port: number
+  online: boolean
+}
+
 // The background daemon on the Mac serves remote clients while the app is closed.
 export type DaemonStatus = {
   // Only macOS has launchd LaunchAgents.
@@ -686,6 +695,8 @@ export type SlagentApi = {
   gitPush: () => Promise<void>
   gitPullRequest: () => Promise<string>
   gitCommitMessage: () => Promise<string>
+  // The tailnet's machines running slagent, asked of the connected Mac.
+  tailscaleList: () => Promise<TailscalePeer[]>
   compact: () => Promise<void>
   getPermissions: () => Promise<ComputerPermissions>
   requestAccessibility: () => Promise<ComputerPermissions>

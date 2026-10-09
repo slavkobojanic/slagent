@@ -11,11 +11,14 @@ export type ConnectionSheetProps = {
   onOpenChange: (open: boolean) => void
   onForget: () => void
   Connect: ComponentType
-  // Other saved Macs to switch to with one tap, above the address form.
+  // Other saved Macs to switch to with one tap, above the address form. The
+  // connected one is left out: it already has its card above.
   SavedServers?: ComponentType
+  // Tailnet machines running slagent, to connect to without pairing.
+  Tailnet?: ComponentType
 }
 
-export function ConnectionSheet({ open, online, label, onOpenChange, onForget, Connect, SavedServers }: ConnectionSheetProps) {
+export function ConnectionSheet({ open, online, label, onOpenChange, onForget, Connect, SavedServers, Tailnet }: ConnectionSheetProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -37,6 +40,7 @@ export function ConnectionSheet({ open, online, label, onOpenChange, onForget, C
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Switch to another Mac</h3>
             {SavedServers ? <SavedServers /> : null}
+            {Tailnet ? <Tailnet /> : null}
             <Connect />
           </div>
         </div>

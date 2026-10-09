@@ -54,7 +54,7 @@ export function createMobileApp({ window, device, saved }: { window: Window; dev
 
   if (saved.address === null) {
     const Connect = createConnect({ device, log: log.child("connect") })
-    const SavedServers = createSavedServers({ device, log: log.child("saved-servers") })
+    const SavedServers = createSavedServers({ device, connectionStore: { address: null }, log: log.child("saved-servers") })
     return function ConnectHost() {
       return <ConnectPage Connect={Connect} SavedServers={SavedServers} />
     }

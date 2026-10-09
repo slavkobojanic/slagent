@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { WebSocket } from "ws"
-import { startApiServer, type ApiServer } from "./server"
+import { isTailnetAddress, startApiServer, type ApiServer } from "./server"
 
 const tempDirs: string[] = []
 const servers: ApiServer[] = []
@@ -30,7 +30,9 @@ async function start(
 
 function connect(info: ApiServer["info"], token = info.token): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(`${info.url.split("?")[0]}?token=${token}`)
+    // Loopback, not the info url: when Tailscale is up the url points at the
+    // tailnet IP, whose connections the server trusts without the token.
+    const socket = new WebSocket(`ws://127.0.0.1:${info.port}?token=${token}`)
     socket.on("open", () => resolve(socket))
     socket.on("error", reject)
   })
@@ -55,6 +57,15 @@ afterEach(async () => {
 })
 
 describe("api server", () => {
+  it("can tell a Tailscale address, which the tailnet itself authenticates", () => {
+    expect(isTailnetAddress("100.64.93.107")).toBe(true)
+    expect(isTailnetAddress("100.127.255.1")).toBe(true)
+    expect(isTailnetAddress("::ffff:100.64.93.107")).toBe(true)
+    expect(isTailnetAddress("100.63.0.1")).toBe(false)
+    expect(isTailnetAddress("100.128.0.1")).toBe(false)
+    expect(isTailnetAddress("127.0.0.1")).toBe(false)
+    expect(isTailnetAddress("192.168.1.5")).toBe(false)
+  })
   it("rejects connections without the token", async () => {
     const server = await start()
     const socket = await connect(server.info, "wrong-token").catch(() => null)
