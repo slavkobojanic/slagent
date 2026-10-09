@@ -15,11 +15,12 @@ const SHARE_CLASSES = ["bg-info", "bg-success", "bg-warning", "bg-destructive", 
 // Lifetime spend per model, sortable, with a stacked spend-share bar above.
 export function ModelTable({ models, totalCost, sort, onSort }: ModelTableProps) {
   return (
-    <div className="space-y-3">
-      {totalCost > 0 ? <SpendShareBar models={models} totalCost={totalCost} /> : null}
-      <table className="w-full text-left text-xs">
-        <thead className="text-white/50">
-          <tr>
+    <TooltipProvider>
+      <div className="space-y-3">
+        {totalCost > 0 ? <SpendShareBar models={models} totalCost={totalCost} /> : null}
+        <table className="w-full text-left text-xs">
+          <thead className="text-white/50">
+            <tr>
             <th className="py-1.5 font-medium" aria-sort={sortAttr(sort, "model")}>
               <SortHeader label="Model" active={sort.key === "model"} dir={sort.dir} onSort={() => onSort("model")} />
             </th>
@@ -43,41 +44,55 @@ export function ModelTable({ models, totalCost, sort, onSort }: ModelTableProps)
             </th>
           </tr>
         </thead>
-        <tbody>
-          {models.map((model) => (
-            <tr key={`${model.provider}:${model.model}`} className="border-t border-white/10">
-              <td className="py-1.5 pr-2 font-mono">{model.model}</td>
-              <td className="py-1.5 text-right text-white/70">{formatTokens(model.input)}</td>
-              <td className="py-1.5 text-right text-white/70">{formatTokens(model.output)}</td>
-              <td className="py-1.5 text-right text-white/70">{formatTokens(model.cacheRead + model.cacheWrite)}</td>
-              <td className="py-1.5 text-right text-white/70">{formatCost(model.cost)}</td>
-              <td className="py-1.5 text-right text-white/70">{model.turns}</td>
-              <td className="py-1.5 text-right text-white/70">{shareLabel(model, totalCost)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          <tbody>
+            {models.map((model) => (
+              <tr key={`${model.provider}:${model.model}`} className="border-t border-white/10">
+                <td className="w-44 max-w-44 py-1.5 pr-2 font-mono">
+                  <ModelName name={model.model} />
+                </td>
+                <td className="py-1.5 text-right text-white/70">{formatTokens(model.input)}</td>
+                <td className="py-1.5 text-right text-white/70">{formatTokens(model.output)}</td>
+                <td className="py-1.5 text-right text-white/70">{formatTokens(model.cacheRead + model.cacheWrite)}</td>
+                <td className="py-1.5 text-right text-white/70">{formatCost(model.cost)}</td>
+                <td className="py-1.5 text-right text-white/70">{model.turns}</td>
+                <td className="py-1.5 text-right text-white/70">{shareLabel(model, totalCost)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </TooltipProvider>
+  )
+}
+
+// The model column shares the row with seven numbers, so the name is capped
+// and the full id opens in a tooltip when it is long enough to truncate.
+function ModelName({ name }: { name: string }) {
+  const content = <span className="block truncate">{name}</span>
+  if (name.length <= 22) return content
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent className="max-w-64 break-all">{name}</TooltipContent>
+    </Tooltip>
   )
 }
 
 function SpendShareBar({ models, totalCost }: { models: UsageModelStats[]; totalCost: number }) {
   const shares = models.map((model, index) => ({ model, share: model.cost / totalCost, color: SHARE_CLASSES[index % SHARE_CLASSES.length]! }))
   return (
-    <TooltipProvider>
-      <div aria-label="Share of spend by model" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
-        {shares.map(({ model, share, color }) => (
-          <Tooltip key={model.model}>
-            <TooltipTrigger asChild>
-              <span className={`${color}`} style={{ width: `${Math.max(share * 100, 1)}%` }} />
-            </TooltipTrigger>
-            <TooltipContent>
-              {model.model} · {percent(share)}
-            </TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
-    </TooltipProvider>
+    <div aria-label="Share of spend by model" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
+      {shares.map(({ model, share, color }) => (
+        <Tooltip key={model.model}>
+          <TooltipTrigger asChild>
+            <span className={`${color}`} style={{ width: `${Math.max(share * 100, 1)}%` }} />
+          </TooltipTrigger>
+          <TooltipContent>
+            {model.model} · {percent(share)}
+          </TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
   )
 }
 
