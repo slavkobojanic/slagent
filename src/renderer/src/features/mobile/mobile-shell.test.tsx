@@ -8,8 +8,8 @@ function named(label: string) {
   }
 }
 
-function shell(screen: "chats" | "chat") {
-  return <MobileShell screen={screen} ChatList={named("ChatList")} ChatScreen={named("ChatScreen")} ConnectionSheet={named("ConnectionSheet")} BackSwipe={named("BackSwipe")} />
+function shell(screen: "chats" | "chat" | "changes") {
+  return <MobileShell screen={screen} ChatList={named("ChatList")} ChatScreen={named("ChatScreen")} ChangesScreen={named("ChangesScreen")} ConnectionSheet={named("ConnectionSheet")} BackSwipe={named("BackSwipe")} />
 }
 
 describe("MobileShell", () => {
@@ -31,6 +31,38 @@ describe("MobileShell", () => {
 
     expect(screen.getByText("ChatScreen")).not.toBeNull()
     expect(screen.queryByText("ChatList")).toBeNull()
+  })
+
+  it("can show the chat's changes", () => {
+    render(shell("changes"))
+
+    expect(screen.getByText("ChangesScreen")).not.toBeNull()
+    expect(screen.queryByText("ChatScreen")).toBeNull()
+  })
+
+  it("pushes the changes over the chat, then pops back to the chat", () => {
+    vi.useFakeTimers()
+    const { rerender } = render(shell("chat"))
+    rerender(shell("changes"))
+
+    expect(screen.getByText("ChangesScreen")).not.toBeNull()
+    expect(screen.getByText("ChatScreen")).not.toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(screen.queryByText("ChatScreen")).toBeNull()
+    expect(screen.getByText("ChangesScreen")).not.toBeNull()
+
+    rerender(shell("chat"))
+    expect(screen.getByText("ChangesScreen")).not.toBeNull()
+    expect(screen.getByText("ChatScreen")).not.toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(screen.queryByText("ChangesScreen")).toBeNull()
+    expect(screen.getByText("ChatScreen")).not.toBeNull()
   })
 
   it("keeps the leaving screen mounted while the push plays", () => {

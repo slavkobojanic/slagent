@@ -1,4 +1,4 @@
-import { ChevronLeft, Server } from "lucide-react"
+import { ChevronLeft, FileDiffIcon, Server } from "lucide-react"
 import type { ComponentType } from "react"
 import { Button } from "@/components/ui/button"
 import "@/features/mobile/mobile.css"
@@ -8,7 +8,9 @@ export type MobileChatScreenProps = {
   projectName: string | null
   ready: boolean
   metaError: string | null
+  changesCount: number
   onBack: () => void
+  onOpenChanges: () => void
   onOpenConnection: () => void
   Banner: ComponentType
   Transcript: ComponentType
@@ -16,7 +18,7 @@ export type MobileChatScreenProps = {
   PlanOverlay: ComponentType
 }
 
-export function MobileChatScreen({ title, projectName, ready, metaError, onBack, onOpenConnection, Banner, Transcript, Composer, PlanOverlay }: MobileChatScreenProps) {
+export function MobileChatScreen({ title, projectName, ready, metaError, changesCount, onBack, onOpenChanges, onOpenConnection, Banner, Transcript, Composer, PlanOverlay }: MobileChatScreenProps) {
   return (
     <div className="mobile-safe-x flex h-full flex-col bg-background text-foreground">
       <header className="mobile-safe-top shrink-0 border-b border-border">
@@ -28,6 +30,16 @@ export function MobileChatScreen({ title, projectName, ready, metaError, onBack,
             <h1 className="truncate text-sm font-semibold">{title}</h1>
             {projectName !== null ? <p className="truncate text-xs text-foreground/50">{projectName}</p> : null}
           </div>
+          {changesCount > 0 ? (
+            <Button type="button" variant="ghost" size="icon-lg" aria-label={`Changes (${changesCount})`} onClick={onOpenChanges}>
+              <span className="relative">
+                <FileDiffIcon className="size-5" />
+                <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-foreground px-1 text-center font-semibold leading-4 text-background">
+                  {changesCount > 9 ? "9+" : changesCount}
+                </span>
+              </span>
+            </Button>
+          ) : null}
           <Button type="button" variant="ghost" size="icon-lg" aria-label="Connection" onClick={onOpenConnection}>
             <Server className="size-5" />
           </Button>

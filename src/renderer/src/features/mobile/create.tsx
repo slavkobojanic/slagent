@@ -10,11 +10,15 @@ import type { ConnectionStore } from "@/state/connection/connection-store/connec
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { createMobileChatList } from "./chat-list/create"
 import { createMobileChatScreen } from "./chat-screen/create"
+import { createMobileChangesScreen } from "./changes-screen/create"
+import { MobileChangesPresenter } from "./changes-screen/changes-presenter/changes-presenter"
+import { MobileChangesStore } from "./changes-screen/changes-store/changes-store"
 import { createConnect } from "./connect/create"
 import { createConnectionBanner } from "./connection-banner/create"
 import { createConnectionSheet } from "./connection-sheet/create"
 import { createBackSwipe } from "./back-swipe/create"
 import { MobilePresenter } from "./mobile-presenter/mobile-presenter"
+import type { RunStore } from "@/mirror/run-store/run-store"
 import { MobileShell } from "./mobile-shell"
 import { MobileStore } from "./mobile-store/mobile-store"
 
@@ -27,6 +31,7 @@ export function createMobile({
   themeStore,
   connectionStore,
   connectionPresenter,
+  runStore,
   Transcript,
   Composer,
   PlanOverlay,
@@ -40,6 +45,7 @@ export function createMobile({
   themeStore: ThemeStore
   connectionStore: ConnectionStore
   connectionPresenter: ConnectionPresenter
+  runStore: RunStore
   Transcript: ComponentType
   Composer: ComponentType
   PlanOverlay: ComponentType
@@ -49,14 +55,19 @@ export function createMobile({
   const mobilePresenter = new MobilePresenter(mobileStore, libraryStore, themeStore, api, device, window, log)
   mobilePresenter.start()
 
+  const changesStore = new MobileChangesStore()
+  const changesPresenter = new MobileChangesPresenter(changesStore, mobileStore, runStore, api, log.child("changes"))
+  changesPresenter.start()
+
   const Banner = createConnectionBanner({ connectionStore, mobilePresenter })
   const ChatList = createMobileChatList({ libraryStore, metaStore, mobileStore, mobilePresenter, Banner })
-  const ChatScreen = createMobileChatScreen({ metaStore, mobileStore, mobilePresenter, Banner, Transcript, Composer, PlanOverlay })
+  const ChatScreen = createMobileChatScreen({ metaStore, mobileStore, mobilePresenter, changesStore, changesPresenter, Banner, Transcript, Composer, PlanOverlay })
+  const ChangesScreen = createMobileChangesScreen({ changesStore, changesPresenter, themeStore })
   const Connect = createConnect({ device, log: log.child("connect") })
   const ConnectionSheet = createConnectionSheet({ connectionStore, connectionPresenter, mobileStore, mobilePresenter, device, log, Connect })
   const BackSwipe = createBackSwipe({ window, mobileStore, mobilePresenter, log: log.child("back-swipe") })
 
   return observer(function MobileHost() {
-    return <MobileShell screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ConnectionSheet={ConnectionSheet} BackSwipe={BackSwipe} />
+    return <MobileShell screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} ConnectionSheet={ConnectionSheet} BackSwipe={BackSwipe} />
   })
 }

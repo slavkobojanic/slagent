@@ -32,7 +32,8 @@ export class DiffPanelPresenter {
     }
     this.started = true
     this.disposers = [
-      // A run that ends refreshes the diff, but only while the diff is on screen.
+      // A run that ends refreshes the diff once more, to catch any write the
+      // live events missed, but only while the diff is on screen.
       this.log.reaction(
         "streaming",
         () => this.runStore.streaming,
@@ -42,16 +43,23 @@ export class DiffPanelPresenter {
           }
         },
       ),
-      // The diff loads when it comes on screen. While a run is going, the run's end loads it instead.
+      // The diff loads when it comes on screen, even mid-run.
       this.log.reaction(
         "changes-shown",
         () => this.changesStore.changesShown,
         (shown) => {
-          if (shown && !this.runStore.streaming) {
+          if (shown) {
             void this.handleRefresh()
           }
         },
       ),
+      // The main process publishes git events while the agent changes files, so the
+      // open diff follows the edits live.
+      this.api.onEvent((event) => {
+        if (event.type === "git" && this.changesStore.changesShown) {
+          void this.handleRefresh()
+        }
+      }),
     ]
   }
 
@@ -91,7 +99,8 @@ export class DiffPanelPresenter {
     }
     this.log.action("select-scope", { scope })
     this.store.setScope(scope)
-    if (!this.changesStore.changesShown || this.runStore.streaming) {
+    // The scope picker only exists inside the open panel, so a closed panel is left alone.
+    if (!this.changesStore.changesShown) {
       return
     }
     void this.handleRefresh()

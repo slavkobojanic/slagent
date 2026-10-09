@@ -70,6 +70,9 @@ import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type T
 const PROVIDER = "openrouter"
 const TRANSCRIPT_PUBLISH_MS = 33
 const GIT_PUBLISH_MS = 200
+// Working-tree edits publish less often than branch flips: the agent writes many
+// files in a burst, and one refresh a second is already live enough for a diff.
+const GIT_TREE_PUBLISH_MS = 1000
 const PREFERRED_MODELS = [
   "anthropic/claude-sonnet-5.5",
   "anthropic/claude-sonnet-5",
@@ -118,8 +121,9 @@ export class AgentHost {
   // Projects whose chats moved and still need the project file rewritten.
   private readonly dirtyProjects = new Set<string>()
   private readonly extensionCache = new Map<string, ExtensionCache>()
-  // One .git/HEAD watcher per session, for the branch label under its open chat.
-  private readonly gitWatchers = new Map<string, { watcher: FSWatcher; head: string }>()
+  // A .git/HEAD watcher per session, for the branch label under its open chat, plus a
+  // working-tree watcher that keeps the diff panel live while an agent runs.
+  private readonly gitWatchers = new Map<string, { watcher: FSWatcher; head: string; tree: FSWatcher | null }>()
   private prefs: Prefs = {}
   private personalisation: Personalisation = { ...EMPTY_PERSONALISATION }
   private readonly sessions = new Map<string, Session>()
@@ -557,7 +561,8 @@ export class AgentHost {
   }
 
   // The branch shows beneath the chat, so .git/HEAD is watched and any change publishes a git
-  // event to the session looking at that project.
+  // event to the session looking at that project. The working tree is watched too, so a diff
+  // panel open while the agent works refreshes as the files change, not only at run end.
   private watchGit(session: Session): void {
     const head = join(session.cwd, ".git", "HEAD")
     const existing = this.gitWatchers.get(session.clientId)
@@ -565,6 +570,7 @@ export class AgentHost {
       return
     }
     existing?.watcher.close()
+    existing?.tree?.close()
     this.gitWatchers.delete(session.clientId)
     try {
       const watcher = watch(head, { persistent: false }, () => {
@@ -574,22 +580,56 @@ export class AgentHost {
           key,
           setTimeout(() => {
             this.timers.delete(key)
-            this.revision += 1
-            this.emit(session.clientId, { type: "git", revision: this.revision })
+            this.publishGit(session)
           }, GIT_PUBLISH_MS),
         )
       })
       watcher.once("error", () => {
         // The folder or repo can disappear while open; the label just keeps its last value.
       })
-      this.gitWatchers.set(session.clientId, { watcher, head })
+      this.gitWatchers.set(session.clientId, { watcher, head, tree: this.watchGitTree(session) })
     } catch {
       // Not a git repository: the branch line stays hidden.
     }
   }
 
+  // Recursive fs.watch is not on every platform; where it is missing, the diff
+  // still refreshes when a run ends and when the panel is opened.
+  private watchGitTree(session: Session): FSWatcher | null {
+    try {
+      const watcher = watch(session.cwd, { persistent: false, recursive: true }, () => {
+        // Trailing debounce: publish once the burst of writes settles, so the
+        // refresh sees the finished state of the files.
+        const key = `git-tree:${session.clientId}`
+        const pending = this.timers.get(key)
+        if (pending) clearTimeout(pending)
+        this.timers.set(
+          key,
+          setTimeout(() => {
+            this.timers.delete(key)
+            // Only while an agent is running: otherwise every manual save in an editor
+            // would wake the branch label and the diff fetchers.
+            if (!this.sessionRuntime(session)?.running) return
+            this.publishGit(session)
+          }, GIT_TREE_PUBLISH_MS),
+        )
+      })
+      watcher.once("error", () => {})
+      return watcher
+    } catch {
+      return null
+    }
+  }
+
+  private publishGit(session: Session): void {
+    this.revision += 1
+    this.emit(session.clientId, { type: "git", revision: this.revision })
+  }
+
   private closeSessionGitWatcher(clientId: string): void {
-    this.gitWatchers.get(clientId)?.watcher.close()
+    const entry = this.gitWatchers.get(clientId)
+    entry?.watcher.close()
+    entry?.tree?.close()
     this.gitWatchers.delete(clientId)
   }
 
@@ -755,7 +795,10 @@ export class AgentHost {
 
   close(): void {
     this.clearPublishTimers()
-    for (const entry of this.gitWatchers.values()) entry.watcher.close()
+    for (const entry of this.gitWatchers.values()) {
+      entry.watcher.close()
+      entry.tree?.close()
+    }
     this.gitWatchers.clear()
     for (const runtime of this.runtimes.values()) runtime.dispose()
     this.runtimes.clear()

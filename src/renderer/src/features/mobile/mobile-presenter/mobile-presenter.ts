@@ -71,7 +71,8 @@ export class MobilePresenter {
 
   back = () => {
     this.log.action("back")
-    this.store.setScreen("chats")
+    // The changes screen pops to the chat; the chat pops to the list.
+    this.store.setScreen(this.store.screen === "changes" ? "chat" : "chats")
   }
 
   openConnection = () => {

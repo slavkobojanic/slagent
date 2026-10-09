@@ -1,2 +1,2 @@
-// The phone shows one screen at a time: the chat list, or the open chat.
-export type MobileScreen = "chats" | "chat"
+// The phone shows one screen at a time: the chat list, the open chat, or the chat's changes.
+export type MobileScreen = "chats" | "chat" | "changes"

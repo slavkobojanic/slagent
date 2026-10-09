@@ -11,7 +11,9 @@ const meta = {
     projectName: "slagent",
     ready: true,
     metaError: null,
+    changesCount: 0,
     onBack: fn(),
+    onOpenChanges: fn(),
     onOpenConnection: fn(),
     Banner: () => null,
     Transcript: fill("Transcript"),
@@ -32,3 +34,5 @@ export const Starting: Story = { args: { ready: false } }
 export const NoProject: Story = { args: { title: "Plan the trip", projectName: null } }
 
 export const MetaError: Story = { args: { metaError: "Pi failed to start" } }
+
+export const ChangedFiles: Story = { args: { changesCount: 3 } }
