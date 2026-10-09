@@ -14,12 +14,15 @@ export function createPlanOverlay({
   runStore,
   panelPresenter,
   composerPort,
+  showPlan = false,
   log,
 }: {
   api: API
   runStore: RunStore
   panelPresenter: PanelPresenter
   composerPort: ComposerPort
+  // The desktop shows the plan in the right panel; a phone has none, so the overlay shows it.
+  showPlan?: boolean
   log: Log
 }): ComponentType {
   const store = new PlanOverlayStore()
@@ -30,6 +33,6 @@ export function createPlanOverlay({
     if (!runStore.planProposal || store.dismissed) {
       return null
     }
-    return <PlanOverlay approving={store.approving} onAccept={presenter.accept} onRevise={presenter.revise} onCancel={presenter.cancel} />
+    return <PlanOverlay plan={showPlan ? runStore.planProposal : null} approving={store.approving} onAccept={presenter.accept} onRevise={presenter.revise} onCancel={presenter.cancel} />
   })
 }

@@ -110,13 +110,13 @@ function textFile(name: string): File {
   return new File(["hi"], name, { type: "text/plain" })
 }
 
-function harness(meta: AppMeta = openMeta, log: Log = nullLog()) {
+function harness(meta: AppMeta = openMeta, log: Log = nullLog(), touch = false) {
   const mirror = { library: new LibraryStore(), meta: new MetaStore(), run: new RunStore() }
   mirror.meta.setMeta(meta)
   mirror.library.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1" })
   const review = new ReviewStore()
   const reviewPresenter = new ReviewPresenter(review, nullLog())
-  const store = new ComposerStore(mirror.library, mirror.meta, mirror.run)
+  const store = new ComposerStore(mirror.library, mirror.meta, mirror.run, touch)
   const api = createMockInstance<API>(["prompt", "abort", "setPlanMode", "pathForFile"])
   const attachmentStore = new AttachmentsStore()
   const attachments = new AttachmentsPresenter(attachmentStore, api, window, nullLog())
@@ -292,6 +292,29 @@ describe("ComposerPresenter", () => {
 
       expect(event.preventDefault).not.toHaveBeenCalled()
       expect(api.prompt).not.toHaveBeenCalled()
+    })
+
+    it("can leave Enter alone so that it adds a line on a touch device", () => {
+      const { store, api, presenter } = harness(openMeta, nullLog(), true)
+      store.setText("hi")
+
+      const event = keyEvent("Enter")
+      presenter.handleKeyDown(event)
+
+      expect(event.preventDefault).not.toHaveBeenCalled()
+      expect(api.prompt).not.toHaveBeenCalled()
+    })
+
+    it("can send on Cmd+Enter on a touch device", async () => {
+      const { store, api, presenter } = harness(openMeta, nullLog(), true)
+      store.setText("hi")
+
+      const event = keyEvent("Enter", { metaKey: true })
+      presenter.handleKeyDown(event)
+      await flush()
+
+      expect(event.preventDefault).toHaveBeenCalled()
+      expect(api.prompt).toHaveBeenCalled()
     })
 
     it("can leave Enter alone while an input method is composing", () => {
@@ -809,6 +832,14 @@ describe("ComposerPresenter", () => {
       const dialog = document.createElement("div")
       dialog.setAttribute("role", "dialog")
       document.body.appendChild(dialog)
+
+      const textarea = mountTextarea(presenter)
+
+      expect(document.activeElement).not.toBe(textarea)
+    })
+
+    it("can leave the keyboard down when the box mounts on a touch device", () => {
+      const { presenter } = harness(openMeta, nullLog(), true)
 
       const textarea = mountTextarea(presenter)
 

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover lets the app draw under the notch; maximum-scale stops iOS zooming into focused fields. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>slagent</title>
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+        background: #000;
+        color: #fff;
+        overscroll-behavior: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html.light,
+      html.light body {
+        background: #fff;
+        color: #000;
+      }
+    </style>
+    <script>
+      // Set the theme class before first paint so light mode doesn't flash black.
+      try {
+        var pref = localStorage.getItem("slagent-theme") || "system"
+        var dark = pref === "dark" || (pref === "system" && matchMedia("(prefers-color-scheme: dark)").matches)
+        document.documentElement.className = dark ? "dark" : "light"
+      } catch (error) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/mobile.tsx"></script>
+  </body>
+</html>

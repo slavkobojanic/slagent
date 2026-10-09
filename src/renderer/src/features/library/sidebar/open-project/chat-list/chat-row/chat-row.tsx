@@ -1,7 +1,7 @@
 import { PinIcon } from "lucide-react"
 import type { ComponentType } from "react"
 import type { ChatStatus, ChatSummary } from "@shared/types"
-import { StatusDot } from "@/features/library/sidebar/status-dot/status-dot"
+import { StatusDot } from "@/components/status-dot"
 import { cn } from "@/lib/utils"
 
 export type ChatRowProps = {

@@ -13,7 +13,8 @@ This file is the source of truth. Do not invent a different state, folder, styli
 - **Each connection is a session.** The host keeps a per-client session (open project, open chat, transcript paging) and projects every event through it: the same `library` or `meta` change reaches each client shaped for what that client has open. Library, meta and settings are global; only the view is per-window.
 - **UI state is renderer-owned.** Sidebar and panel widths, dialog open flags, drafts, comment drafts, theme, and keyboard commands live in renderer stores.
 - **There is no router.** No `react-router`, no `navigate`, no `assign`, no URL. The open project and chat are mirrored `library` state.
-- **Transport is one websocket per client.** The main process runs a token-authed WS server (`src/main/server.ts`); the preload wraps it as `window.slagent`. State changes arrive as `UiEvent` pushes; every command is a call over the same socket. `window.slagent` is read only in `ipc/`. One thin class, `API` in `ipc/api.ts`, wraps it. There are no per-domain services and no fakes. External clients (the future mobile app) speak the same contract.
+- **Transport is one websocket per client.** The main process runs a token-authed WS server (`src/main/server.ts`); the preload wraps it as `window.slagent` with the shared client in `src/shared/ws-client.ts`. State changes arrive as `UiEvent` pushes; every command is a call over the same socket. `window.slagent` is read only in `ipc/`. One thin class, `API` in `ipc/api.ts`, wraps it. There are no per-domain services and no fakes.
+- **The iOS app is the same renderer with another root.** `mobile.tsx` boots `create-mobile.tsx`, which has no preload: `ipc/remote.ts` opens the websocket over Tailscale and installs the same `window.slagent`, and `ipc/device.ts` (`Device`) wraps the Capacitor plugins (saved server, deep links, resume, status bar). It reuses the mirror, transcript and composer and adds a phone shell in `features/mobile/`. Desktop-only features stay out of its root rather than branching on the platform inside them.
 - **Styling is Tailwind plus shadcn.** No CSS modules. Classes live on the view. `cn()` merges them.
 
 ## Layers
@@ -26,6 +27,7 @@ This file is the source of truth. Do not invent a different state, folder, styli
 | **Owning `create.tsx`** | Called **once** at boot. Constructs store and presenter, starts the presenter, and returns a stable component. `observer` iff it reads a store. | Called during render, styling the view, business rules |
 | **Assemble `create.tsx`** | Re-runnable. Returns a `ReactElement`. Composes already-built pieces. | Store, presenter, IPC, `observer` |
 | **`ipc/api.ts`** | `API`: one thin class over `window.slagent`, `toJS` on object arguments. | UI, stores, presenters, logic |
+| **`ipc/device.ts`** | `Device`: one thin class over the Capacitor plugins the iOS app uses, taken whole by presenters like `api`. | UI, stores, logic |
 | **`mirror/`** | Applies `UiEvent`s and the snapshot to mirrored stores, with revision gates. | UI, IPC outside the service interfaces |
 | **`log/`** | `Log`: namespaced debug logging, timings, logged reactions. The only place that touches `console`. | UI, stores, presenters |
 
@@ -59,8 +61,11 @@ A wrapper is not concerned with a child's rows, fetch, or clicks. It only knows 
 src/renderer/src/
   main.tsx                          # entry: mounts the root host
   create.tsx                        # root owning create: API, mirror, shared stores, slices, shell
+  mobile.tsx                        # iOS entry: reads the saved server, mounts the mobile root
+  create-mobile.tsx                 # iOS root owning create: remote bridge, mirror, transcript, composer, phone shell
   index.css                         # Tailwind import, theme tokens, global base only
   ipc/api.ts                        # API: the window.slagent wrapper
+  ipc/remote.ts, ipc/device.ts      # iOS only: the websocket bridge and the Capacitor plugins
   log/log.ts                        # Log: namespaced debug logger, created once by the root
   mirror/                           # main-process state mirrored from events (single writer)
     <name>-store/<name>-store.ts
