@@ -4,18 +4,24 @@
   padding-top: env(safe-area-inset-top);
 }
 
-/* The webview stays full height behind the keyboard (--kb-height is set from
-   the Keyboard plugin as it starts to move), so the bottom inset grows to the
-   keyboard's height and the composer rides up with it. The keyboard covers the
-   home indicator, so the larger of the two wins. Duration and curve match the
-   iOS keyboard, so the two move as one. */
 .mobile-safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), var(--kb-height, 0px));
-  transition: padding-bottom 250ms var(--ease-keyboard);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* The keyboard (Keyboard resize: none, so the webview never snaps): everything
+   below the header rides the keyboard as one compositor-only transform —
+   animating padding would reflow the whole transcript every frame, which is
+   what made the keyboard feel jagged. The shift is the keyboard height minus
+   the composer's safe-area padding, so the composer lands flush against the
+   keyboard's top with no layout change at all. Duration and curve match the
+   iOS keyboard, so the two move as one. */
+.mobile-keyboard-shift {
+  transform: translateY(calc(-1 * max(var(--kb-height, 0px) - env(safe-area-inset-bottom), 0px)));
+  transition: transform 250ms var(--ease-keyboard);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mobile-safe-bottom {
+  .mobile-keyboard-shift {
     transition: none;
   }
 }
