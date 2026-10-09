@@ -17,11 +17,8 @@ export type TailnetPeersProps = {
 // Every Mac on the tailnet that runs slagent, as the connected Mac sees it, so
 // the sheet shows the whole fleet — personal and work — with the active one
 // marked. Picking another needs no pairing: the tailnet membership is the
-// credential.
+// credential. The heading and its refresh stay up even when nothing is found.
 export function TailnetPeers({ peers, loading, current, onPick, onRefresh }: TailnetPeersProps) {
-  if (peers.length === 0 && !loading) {
-    return null
-  }
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -54,6 +51,7 @@ export function TailnetPeers({ peers, loading, current, onPick, onRefresh }: Tai
           )
         })}
         {loading && peers.length === 0 ? <p className="px-3 py-2 text-xs text-foreground/50">Looking for Macs…</p> : null}
+        {!loading && peers.length === 0 ? <p className="px-3 py-2 text-xs text-foreground/50">No Macs found. Tap refresh to look again.</p> : null}
       </div>
     </div>
   )
