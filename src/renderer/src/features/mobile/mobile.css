@@ -4,13 +4,14 @@
   padding-top: env(safe-area-inset-top);
 }
 
-/* While the keyboard is up (--kb-height is set from the Keyboard plugin) the
-   webview is resized above it, so the home-indicator inset must yield the same
-   amount; the composer then sits against the keyboard instead of floating
-   above it. The padding follows the keyboard's own curve. */
+/* The webview stays full height behind the keyboard (--kb-height is set from
+   the Keyboard plugin as it starts to move), so the bottom inset grows to the
+   keyboard's height and the composer rides up with it. The keyboard covers the
+   home indicator, so the larger of the two wins. Duration and curve match the
+   iOS keyboard, so the two move as one. */
 .mobile-safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom) - var(--kb-height, 0px), 0px);
-  transition: padding-bottom 250ms var(--ease-drawer);
+  padding-bottom: max(env(safe-area-inset-bottom), var(--kb-height, 0px));
+  transition: padding-bottom 250ms var(--ease-keyboard);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -25,8 +25,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 }
 
-// The keyboard resizes the web view, so the strip behind the keyboard's rounded
-// top corners shows this view instead of the page. It follows the light or dark
+// Shows wherever the web view does not paint, such as during a rotation or
+// behind the keyboard's rounded top corners before the page has padded up. It follows the light or dark
 // appearance like the page does, rather than a fixed colour.
 class MainViewController: CAPBridgeViewController {
     override func viewDidLoad() {
