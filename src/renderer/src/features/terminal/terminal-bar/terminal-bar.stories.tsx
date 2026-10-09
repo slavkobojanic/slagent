@@ -7,6 +7,17 @@ const userShell: TerminalChip = { id: "terminal-1", title: "~/projects/slagent",
 const running: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6" }
 const finished: TerminalChip = { id: "task-2", title: "tests", active: false, exited: true, origin: "task", color: "#3b82f6" }
 
+// One shell per project colour, none selected: how the wash reads side by side.
+const projectColours = ["#ef4444", "#f97316", "#22c55e", "#3b82f6", "#a855f7", "#ec4899"]
+const perProject: TerminalChip[] = projectColours.map((color, index) => ({
+  id: `task-${index}`,
+  title: `project ${index + 1} build`,
+  active: false,
+  exited: false,
+  origin: "task",
+  color,
+}))
+
 function base(overrides: Partial<TerminalBarProps> = {}): TerminalBarProps {
   return {
     chips: [],
@@ -42,6 +53,10 @@ export const Empty: Story = {
 
 export const WithTerminals: Story = {
   args: base({ chips: [userShell, running, finished] }),
+}
+
+export const PerProjectWash: Story = {
+  args: base({ chips: perProject }),
 }
 
 export const WithDrawerOpen: Story = {
