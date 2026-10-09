@@ -8,6 +8,10 @@ import type { TerminalStore } from "@/features/terminal/terminal-store/terminal-
 // agent's task shells in a single list. A task whose shell is not in the
 // drawer yet still gets a chip, so the bar shows every terminal there is.
 export class TerminalBarStore {
+  // Task chips the user closed: the bar re-derives task chips from the library
+  // on every read, so a closed one needs a place to stay closed.
+  private readonly dismissed = new Set<string>()
+
   constructor(
     private readonly terminalTabs: TerminalStore,
     private readonly library: LibraryStore,
@@ -36,6 +40,7 @@ export class TerminalBarStore {
       color: tab.origin === "task" ? colours.get(this.taskFor(tab.id)?.projectId ?? "") ?? null : null,
     }))
     for (const task of this.library.library.tasks) {
+      if (this.dismissed.has(task.id)) continue
       if (this.terminalTabs.tabs.some((tab) => tab.id === task.id)) continue
       chips.push({
         id: task.id,
@@ -56,6 +61,12 @@ export class TerminalBarStore {
 
   task(id: string): TaskEntry | null {
     return this.library.library.tasks.find((task) => task.id === id) ?? null
+  }
+
+  // Closing a task chip only hides it: its shell keeps running in the main
+  // process, and the composer's task strip still shows the task itself.
+  dismissTask(id: string) {
+    this.dismissed.add(id)
   }
 
   private taskFor(id: string): TaskEntry | undefined {
