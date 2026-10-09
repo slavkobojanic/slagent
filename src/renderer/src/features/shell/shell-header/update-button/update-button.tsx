@@ -1,3 +1,4 @@
+import { DownloadIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export type UpdateButtonProps = {
@@ -14,12 +15,13 @@ export function UpdateButton({ version, installing, onInstall }: UpdateButtonPro
   return (
     <Button
       type="button"
-      size="sm"
-      className="mr-1 bg-info text-white hover:bg-info/90"
+      size="xs"
+      className="mr-1 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
       title="Restart to install the update"
       disabled={installing}
       onClick={onInstall}
     >
+      <DownloadIcon />
       Update available (v{version})
     </Button>
   )
