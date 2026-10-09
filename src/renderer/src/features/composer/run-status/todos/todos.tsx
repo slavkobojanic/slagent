@@ -33,7 +33,7 @@ export function TodoPanel({ panel }: TodoPanelProps) {
     return null
   }
   return (
-    <Queue className="mb-2 rounded-none border-0 bg-transparent p-0 shadow-none">
+    <Queue className="mb-2">
       <QueueSection>
         <QueueSectionTrigger>
           <span className="flex min-w-0 items-center gap-2">

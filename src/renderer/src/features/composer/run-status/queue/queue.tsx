@@ -33,7 +33,7 @@ export function MessageQueue({ rows, error, onModeChange, onRemove }: MessageQue
     return null
   }
   return (
-    <Queue className="mb-2 rounded-none border-0 bg-transparent p-0 shadow-none">
+    <Queue className="mb-2">
       <QueueSection>
         <QueueSectionTrigger>
           <QueueSectionLabel count={rows.length} label="queued" />
