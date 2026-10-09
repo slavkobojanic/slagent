@@ -31,7 +31,6 @@ export class TerminalBarStore {
       title: tab.title,
       active: tab.id === this.terminalTabs.activeId,
       exited: tab.exited,
-      running: this.taskFor(tab.id)?.status === "running",
       origin: tab.origin,
       color: tab.origin === "task" ? colours.get(this.taskFor(tab.id)?.projectId ?? "") ?? openColour : openColour,
     }))
@@ -42,7 +41,6 @@ export class TerminalBarStore {
         title: task.label,
         active: false,
         exited: task.status !== "running",
-        running: task.status === "running",
         origin: "task",
         color: colours.get(task.projectId) ?? null,
       })
@@ -69,7 +67,6 @@ export type TerminalChip = {
   title: string
   active: boolean
   exited: boolean
-  running: boolean
   origin: "user" | "task"
   color: string | null
 }

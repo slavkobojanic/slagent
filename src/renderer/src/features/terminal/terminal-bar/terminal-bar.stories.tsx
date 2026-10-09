@@ -3,9 +3,9 @@ import { fn } from "storybook/test"
 import type { TerminalChip } from "@/features/terminal/terminal-bar/terminal-bar"
 import { TerminalBar, type TerminalBarProps } from "@/features/terminal/terminal-bar/terminal-bar"
 
-const userShell: TerminalChip = { id: "terminal-1", title: "~/projects/slagent", active: true, exited: false, running: false, origin: "user", color: "#3b82f6" }
-const running: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, running: true, origin: "task", color: "#3b82f6" }
-const finished: TerminalChip = { id: "task-2", title: "tests", active: false, exited: true, running: false, origin: "task", color: "#3b82f6" }
+const userShell: TerminalChip = { id: "terminal-1", title: "~/projects/slagent", active: true, exited: false, origin: "user", color: "#3b82f6" }
+const running: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6" }
+const finished: TerminalChip = { id: "task-2", title: "tests", active: false, exited: true, origin: "task", color: "#3b82f6" }
 
 function base(overrides: Partial<TerminalBarProps> = {}): TerminalBarProps {
   return {

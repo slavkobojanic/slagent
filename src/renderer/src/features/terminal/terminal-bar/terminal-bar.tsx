@@ -7,7 +7,6 @@ export type TerminalChip = {
   title: string
   active: boolean
   exited: boolean
-  running: boolean
   origin: "user" | "task"
   color: string | null
 }
@@ -68,6 +67,7 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
         "group flex shrink-0 items-center rounded text-xs font-mono",
         chip.active && accent === null ? "bg-white/10 text-white" : null,
         !chip.active ? "text-white/60 hover:text-white" : null,
+        chip.exited && !chip.active ? "opacity-50" : null,
       )}
       style={
         accent === null
@@ -83,11 +83,10 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
         role="tab"
         aria-selected={chip.active}
         title={chip.exited ? `${chip.title} (exited)` : chip.title}
-        className="flex max-w-40 items-center gap-1.5 truncate py-1 pr-1 pl-2"
+        className="flex max-w-40 items-center truncate py-1 pr-1 pl-2"
         onClick={() => onSelect(chip.id)}
       >
-        <Dot chip={chip} text={text} />
-        <span className="truncate">{chip.title}</span>
+        <span className="truncate">{ellipsize(chip.title, 20)}</span>
       </button>
       <button
         type="button"
@@ -101,19 +100,10 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
   )
 }
 
-function Dot({ chip, text }: { chip: TerminalChip; text?: string }): ReactNode {
-  if (chip.exited) {
-    return <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-foreground/40" />
+// The bar shows the shape of the command at a glance; the tooltip has the whole thing.
+function ellipsize(text: string, max: number): string {
+  if (text.length <= max) {
+    return text
   }
-  return (
-    <span
-      aria-hidden
-      className={cn("size-1.5 shrink-0 rounded-full", chip.running && "animate-pulse")}
-      style={
-        chip.active && chip.color !== null
-          ? { backgroundColor: text }
-          : { backgroundColor: chip.color ?? "rgba(255,255,255,0.6)" }
-      }
-    />
-  )
+  return `${text.slice(0, max - 1)}\u2026`
 }
