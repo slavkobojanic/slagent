@@ -1,9 +1,10 @@
 import { execFile, spawn } from "node:child_process"
 import { connect } from "node:net"
 import { join } from "node:path"
-import { app } from "electron"
+import { app, Menu, nativeImage, Tray } from "electron"
 import type { ComputerPermissions, ComputerUse } from "./computer"
 import { createCallHandler, systemOpenExternal } from "./calls"
+import { stopDaemon } from "./daemon-launchd"
 import { AgentHost } from "./host"
 import { attachmentFile } from "./library"
 import { McpManager } from "./mcp"
@@ -16,6 +17,7 @@ let mcp: McpManager | null = null
 let terminal: TerminalManager | null = null
 let apiServer: ApiServer | null = null
 let started: Promise<void> = Promise.resolve()
+let tray: Tray | null = null
 
 // Computer use drives the screen through the app's own window, so the daemon
 // reports it as unavailable instead of failing differently deeper down.
@@ -92,6 +94,10 @@ export async function runDaemon(): Promise<void> {
       (apiServer.info.tailscale ? " (on the tailnet)" : " (localhost only; start Tailscale)"),
   )
 
+  // The only place the daemon's liveness is visible while the app is closed:
+  // a menu bar item that exists exactly while the daemon owns the Mac.
+  showTray()
+
   // launchd sends SIGTERM to stop or replace the daemon; flush the library
   // first so the app or the next daemon run finds every chat written.
   process.on("SIGTERM", () => {
@@ -109,6 +115,48 @@ async function flush(): Promise<void> {
   host?.close()
   terminal?.stop()
   apiServer?.close()
+  tray?.destroy()
+  tray = null
+}
+
+// The menu bar icon is the daemon's face: it disappears when the app takes
+// over, and its menu can hand over or stop the daemon on purpose.
+function showTray(): void {
+  const icon = nativeImage.createFromPath(join(process.resourcesPath, "menubar.png"))
+  const dev = nativeImage.createFromPath(join(app.getAppPath(), "resources", "menubar.png"))
+  const image = icon.isEmpty() ? dev : icon
+  image.setTemplateImage(true)
+  tray = new Tray(image)
+  tray.setToolTip("slagent daemon")
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: serverLine(),
+        enabled: false,
+      },
+      { type: "separator" },
+      {
+        label: "Open slagent",
+        click: () => handoffToApp(),
+      },
+      {
+        // Stopping here means unloading the launchd service, so KeepAlive does
+        // not just restart it; installing it again in the app brings it back.
+        label: "Stop daemon",
+        click: () => {
+          void stopDaemon()
+            .catch((error) => console.error("daemon stop:", error))
+            .finally(() => flush().finally(() => app.exit(0)))
+        },
+      },
+    ]),
+  )
+}
+
+function serverLine(): string {
+  const info = apiServer?.info
+  if (!info) return "Starting…"
+  return info.tailscale ? `Serving ${info.host}:${info.port} on the tailnet` : `Serving ${info.host}:${info.port} on localhost`
 }
 
 // The daemon is a background app, so a user launch intent (Dock click, an open
