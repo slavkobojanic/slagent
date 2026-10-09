@@ -36,8 +36,7 @@ export class Device {
   readonly onResume: (listener: () => void) => () => void
   readonly setDarkChrome: (dark: boolean) => void
   readonly hideKeyboardBar: () => void
-  // Fires with the keyboard's height while it is about to show; the composer
-  // keeps itself against the keyboard through this.
+  // Fire as the keyboard starts to show or hide, so the page can move with it.
   readonly onKeyboardShow: (listener: (height: number) => void) => () => void
   readonly onKeyboardHide: (listener: () => void) => () => void
   readonly reload: () => void
@@ -127,7 +126,7 @@ export class Device {
     }
     this.onKeyboardHide = (listener) => {
       if (!this.native) return noop
-      return handle(Keyboard.addListener("keyboardDidHide", () => listener()))
+      return handle(Keyboard.addListener("keyboardWillHide", () => listener()))
     }
     this.reload = () => window.location.reload()
   }
