@@ -23,8 +23,18 @@ export type ServerInfo = {
   host: string
   port: number
   token: string
+  // The Mac's hostname, so a phone with several saved machines can tell them apart.
+  name: string
   // Whether the server is reachable on the Tailscale interface.
   tailscale: boolean
+}
+
+// The background daemon on the Mac serves remote clients while the app is closed.
+export type DaemonStatus = {
+  // Only macOS has launchd LaunchAgents.
+  supported: boolean
+  installed: boolean
+  running: boolean
 }
 
 // Global agent personalisation. Every field is optional: null or missing means
@@ -677,6 +687,10 @@ export type SlagentApi = {
   cliStatus: () => Promise<CliStatus>
   installCli: () => Promise<CliStatus>
   uninstallCli: () => Promise<CliStatus>
+  // The LaunchAgent daemon that keeps the server reachable with the app closed.
+  daemonStatus: () => Promise<DaemonStatus>
+  enableDaemon: () => Promise<DaemonStatus>
+  disableDaemon: () => Promise<DaemonStatus>
   setPersonalisation: (value: Personalisation) => Promise<void>
   // Opens a file picker and returns the picked text files with their contents.
   pickContextFiles: () => Promise<PinnedFile[]>

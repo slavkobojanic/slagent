@@ -1,21 +1,27 @@
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { randomUUID } from "node:crypto"
-import { app, BrowserWindow, dialog, nativeImage, net, Notification, protocol, shell } from "electron"
-import type { CreateSkillInput, DraftSkillInput, EffortLevel, ModelRouting, Personalisation, TerminalEvent } from "../shared/types"
+import { app, BrowserWindow, nativeImage, net, Notification, protocol, shell } from "electron"
+import type { TerminalEvent } from "../shared/types"
 import { AgentHost } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
 import { McpManager } from "./mcp"
-import { openInEditor, readFileView } from "./editor"
-import { parsePrompt } from "./prompt"
-import { parseReply } from "./extensions/ask-user"
-import { startUpdater, installUpdate, updateStatus, checkForUpdates, appVersion } from "./updater"
 import { setApplicationMenu } from "./menu"
-import { cliStatus, installCli, uninstallCli } from "./cli"
 import { TerminalManager } from "./terminal"
 import { startApiServer, type ApiServer } from "./server"
+import { createCallHandler, systemOpenExternal } from "./calls"
+import { runDaemon, handoffToApp, waitDaemonPortFree } from "./daemon"
+import { daemonStatus, installDaemon, startDaemon, stopDaemon, uninstallDaemon } from "./daemon-launchd"
+import { attachmentFile } from "./library"
+import { startUpdater } from "./updater"
+import type { DaemonStatus } from "../shared/types"
 
 const devServerUrl = process.env.ELECTRON_RENDERER_URL
+
+// The same app run with --daemon is the headless background server. It shares
+// this entry so remote clients speak the exact same protocol however the Mac
+// serves them.
+const DAEMON = process.argv.includes("--daemon")
 
 let host: AgentHost | null = null
 let computer: ComputerUse | null = null
@@ -36,6 +42,11 @@ const clientByToken = new Map<string, string>()
 
 app.on("open-file", (event, path) => {
   event.preventDefault()
+  if (DAEMON) {
+    // The daemon cannot open windows, so a user launch intent hands over to it.
+    handoffToApp(path)
+    return
+  }
   if (started) void openFolderFromSystem(path)
   else pendingFolders.push(path)
 })
@@ -53,29 +64,9 @@ protocol.registerSchemesAsPrivileged([
   },
 ])
 
-const permissionSettings = {
-  accessibility: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-  screen: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
-} as const
-
 function requireHost(): AgentHost {
   if (!host) throw new Error("Pi is not ready.")
   return host
-}
-
-function requireTerminal(): TerminalManager {
-  if (!terminal) throw new Error("The terminal is not ready.")
-  return terminal
-}
-
-function requireComputer(): ComputerUse {
-  if (!computer) throw new Error("Computer use is not ready.")
-  return computer
-}
-
-function requireMcp(): McpManager {
-  if (!mcp) throw new Error("MCP is not ready.")
-  return mcp
 }
 
 function loadAppIcon() {
@@ -217,221 +208,72 @@ async function openFolderFromSystem(folder: string): Promise<void> {
     .catch((error) => console.error("open folder:", error))
 }
 
-function str(value: unknown): string {
-  if (typeof value !== "string") throw new Error("Bad argument.")
-  return value
-}
+const calls = createCallHandler({
+  host: () => {
+    if (!host) throw new Error("Pi is not ready.")
+    return host
+  },
+  computer: () => computer,
+  mcp: () => mcp,
+  terminal: () => terminal,
+  desktop: true,
+  openExternal: systemOpenExternal,
+  closeWindow: (clientId) => {
+    const win = windowOfClient(clientId)
+    if (win) {
+      closeApproved.add(win)
+      win.close()
+    }
+  },
+})
 
-function optStr(value: unknown): string | undefined {
-  return typeof value === "string" && value ? value : undefined
-}
-
-// Every websocket call from a client lands here, with the caller's identity
-// first so the host can scope the call to that client's session.
-async function handleCall(clientId: string, method: string, params: unknown[]): Promise<unknown> {
-  const host = requireHost()
+// Settings for the daemon live here, not in calls.ts, because only the desktop
+// app can install or remove the LaunchAgent.
+async function handleDaemonCall(method: string): Promise<DaemonStatus> {
+  if (process.platform !== "darwin") return { supported: false, installed: false, running: false }
   switch (method) {
-    case "getSnapshot":
-      return host.getSnapshot(clientId)
-    case "prompt":
-      return host.prompt(clientId, parsePrompt(params[0]))
-    case "abort":
-      return host.abort(clientId)
-    case "newChat":
-      return host.newChat(clientId, optStr(params[0]))
-    case "openProject":
-      return host.openProject(clientId, str(params[0]))
-    case "openChat":
-      return host.openChat(clientId, str(params[0]), optStr(params[1]), optStr(params[2]))
-    case "pageTranscript": {
-      const page = params[0]
-      if (page !== "older" && page !== "newer" && page !== "latest") throw new Error("Unknown page.")
-      return host.pageTranscript(clientId, page)
-    }
-    case "searchChats":
-      return host.searchChats(String(params[0] ?? ""))
-    case "pinProject":
-      return host.pinProject(clientId, str(params[0]), params[1] === true)
-    case "pinChat":
-      return host.pinChat(clientId, str(params[0]), params[1] === true, optStr(params[2]))
-    case "renameChat":
-      return host.renameChat(clientId, str(params[0]), str(params[1]), optStr(params[2]))
-    case "deleteChat":
-      return host.deleteChat(clientId, str(params[0]), optStr(params[1]))
-    case "readTranscript":
-      return host.readTranscript(clientId, str(params[0]), optStr(params[1]))
-    case "removeProject":
-      return host.removeProject(clientId, str(params[0]), str(params[1]))
-    case "searchFiles":
-      return host.searchFiles(clientId, String(params[0] ?? ""))
-    case "listCommands":
-      return host.listCommands(clientId)
-    case "draftSkill":
-      return host.draftSkill(clientId, params[0] as DraftSkillInput)
-    case "createSkill":
-      return host.createSkill(clientId, params[0] as CreateSkillInput)
-    case "createChatProject":
-      return host.createChatProject(clientId)
-    case "chooseFolder": {
-      const result = await dialog.showOpenDialog({
-        title: "Choose a folder",
-        defaultPath: host.getCwd() || undefined,
-        properties: ["openDirectory", "createDirectory"],
-      })
-      const folder = result.filePaths[0]
-      if (result.canceled || !folder) return
-      await host.openFolder(clientId, folder)
-      return
-    }
-    case "setModel":
-      return host.setModel(clientId, str(params[0]))
-    case "setTitleModel":
-      return host.setTitleModel(String(params[0] ?? ""))
-    case "setRouting":
-      return host.setRouting(params[0] as ModelRouting)
-    case "setEffort":
-      return host.setEffort(params[0] as EffortLevel)
-    case "saveOpenRouterKey":
-      return host.saveOpenRouterKey(str(params[0]))
-    case "logoutOpenRouter":
-      return host.logoutOpenRouter()
-    case "setQueueMode": {
-      const mode = params[1]
-      if (mode !== "follow-up" && mode !== "steer") throw new Error("Unknown queue mode.")
-      return host.setQueueMode(clientId, str(params[0]), mode)
-    }
-    case "editMessage": {
-      const text = params[1]
-      if (typeof text !== "string" || !text.trim()) throw new Error("Write a message first.")
-      return host.editMessage(clientId, str(params[0]), text)
-    }
-    case "setPlanMode":
-      return host.setPlanMode(clientId, params[0] === true)
-    case "approvePlan":
-      return host.approvePlan(clientId)
-    case "answerQuestion":
-      return host.answerQuestion(clientId, str(params[0]), parseReply(params[1]))
-    case "rewind": {
-      const mode = params[1]
-      if (mode !== "both" && mode !== "chat" && mode !== "code") throw new Error("Unknown rewind.")
-      return host.rewind(clientId, str(params[0]), mode)
-    }
-    case "undoRewind": {
-      const commit = params[0]
-      if (typeof commit !== "string" || !/^[0-9a-f]{7,64}$/.test(commit)) throw new Error("Unknown checkpoint.")
-      return host.undoRewind(clientId, commit)
-    }
-    case "taskOutput":
-      return host.taskOutput(clientId, str(params[0]))
-    case "stopTask":
-      return host.stopTask(clientId, str(params[0]))
-    case "gitStatus":
-      return host.gitStatus(clientId)
-    case "gitDiff":
-      return host.gitDiff(clientId, params[0] === "turn" ? "turn" : "uncommitted")
-    case "gitCommit":
-      return host.gitCommit(clientId, String(params[0] ?? ""))
-    case "gitPush":
-      return host.gitPush(clientId)
-    case "gitPullRequest":
-      return host.gitPullRequest(clientId)
-    case "gitCommitMessage":
-      return host.gitCommitMessage(clientId)
-    case "removeQueued":
-      host.removeQueued(clientId, str(params[0]))
-      return
-    case "compact":
-      return host.compact(clientId)
-    case "openExternal": {
-      const parsed = new URL(str(params[0]))
-      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-        throw new Error("Only web links can be opened.")
-      }
-      return shell.openExternal(parsed.toString())
-    }
-    case "openInEditor":
-      return openInEditor(host.getCwd(), str(params[0]))
-    case "readFile":
-      return readFileView(host.getCwd(), str(params[0]))
-    case "getPermissions":
-      return requireComputer().permissions()
-    case "requestAccessibility":
-      return requireComputer().requestAccessibility()
-    case "requestScreenRecording":
-      return requireComputer().requestScreenRecording()
-    case "openPermissionSettings": {
-      const pane = str(params[0])
-      if (pane !== "accessibility" && pane !== "screen") throw new Error("Unknown permission.")
-      return shell.openExternal(permissionSettings[pane])
-    }
-    case "mcpList":
-      return requireMcp().list()
-    case "mcpSignIn":
-      return requireMcp().signIn(requireName(params[0]))
-    case "mcpSignOut":
-      return requireMcp().signOut(requireName(params[0]))
-    case "mcpSetEnabled":
-      return requireMcp().setEnabled(requireName(params[0]), params[1] === true)
-    case "usageStats":
-      return host.usageStats()
-    case "terminalCreate":
-      return requireTerminal().create()
-    case "updateStatus":
-      return updateStatus()
-    case "updateCheck":
-      return checkForUpdates()
-    case "installUpdate":
-      return installUpdate()
-    case "appVersion":
-      return appVersion
-    case "closeApp": {
-      const win = windowOfClient(clientId)
-      if (win) {
-        closeApproved.add(win)
-        win.close()
-      }
-      return
-    }
-    case "cliStatus":
-      return cliStatus()
-    case "installCli":
-      return installCli()
-    case "uninstallCli":
-      return uninstallCli()
-    case "setPersonalisation":
-      return host.setPersonalisation(params[0] as Personalisation)
-    case "pickContextFiles":
-      return host.pickContextFiles()
+    case "daemonStatus":
+      return daemonStatus()
+    case "enableDaemon":
+      await installDaemon(daemonProgram())
+      return daemonStatus()
+    case "disableDaemon":
+      await uninstallDaemon()
+      return daemonStatus()
     default:
       throw new Error(`Unknown method: ${method}`)
   }
 }
 
-// Fire-and-forget calls: terminal keystrokes and drags.
-function handleCallSent(_clientId: string, method: string, params: unknown[]): void {
-  switch (method) {
-    case "writeTerminal":
-      if (typeof params[0] === "string" && typeof params[1] === "string") terminal?.write(params[0], params[1])
-      return
-    case "resizeTerminal":
-      if (typeof params[0] === "string" && typeof params[1] === "number" && typeof params[2] === "number") {
-        terminal?.resize(params[0], params[1], params[2])
-      }
-      return
-    case "closeTerminal":
-      if (typeof params[0] === "string") terminal?.close(params[0])
-      return
-    default:
-      return
+// The LaunchAgent runs this same app headless, so the daemon speaks the same
+// protocol over the same port and the phone notices nothing when they trade places.
+function daemonProgram(): { program: string; args: string[]; logPath: string } {
+  const appPath = app.isPackaged ? join(process.resourcesPath, "app.asar") : app.getAppPath()
+  return {
+    program: process.execPath,
+    args: [appPath, "--daemon"],
+    logPath: join(app.getPath("userData"), "daemon.log"),
   }
 }
 
-function requireName(name: unknown): string {
-  if (typeof name !== "string" || !name) throw new Error("Unknown MCP server.")
-  return name
-}
 
 app.whenReady().then(async () => {
+  if (DAEMON) {
+    // The daemon never opens windows, so a click on its (hidden) app or any
+    // other launch intent means the real app should take over.
+    app.on("activate", () => handoffToApp())
+    await runDaemon()
+    return
+  }
+
+  // When the daemon is serving the phone, it owns the port; stop it and let
+  // it finish writing before the app binds, so the phone keeps one address.
+  const daemon = await daemonStatus().catch(() => null)
+  if (daemon?.installed) {
+    await stopDaemon().catch((error) => console.error("daemon:", error))
+    await waitDaemonPortFree(8747, 10_000)
+  }
+
   const icon = loadAppIcon()
   if (app.dock && !icon.isEmpty()) app.dock.setIcon(icon)
 
@@ -480,8 +322,9 @@ app.whenReady().then(async () => {
   try {
     apiServer = await startApiServer({
       statePath: join(app.getPath("userData"), "slagent-server.json"),
-      onCall: handleCall,
-      onCallSent: handleCallSent,
+      onCall: (clientId, method, params) =>
+        method.startsWith("daemon") ? handleDaemonCall(method) : calls.onCall(clientId, method, params),
+      onCallSent: calls.onCallSent,
       onClient: (clientId, windowToken) => {
         if (windowToken) clientByToken.set(windowToken, clientId)
         host?.attach(clientId)
@@ -511,6 +354,7 @@ app.whenReady().then(async () => {
       computer?.stop()
       terminal?.stop()
       apiServer?.close()
+      await handOffToDaemon()
     },
     onReady: (version) => apiServer?.hub.publishUpdateReady(version),
   })
@@ -531,14 +375,21 @@ app.on("before-quit", (event) => {
   event.preventDefault()
   quitting = true
   const pending = host?.flush() ?? Promise.resolve()
-  void pending.finally(() => {
+  void pending.finally(async () => {
     host?.close()
     computer?.stop()
     terminal?.stop()
     apiServer?.close()
+    await handOffToDaemon()
     app.quit()
   })
 })
+
+// Quitting the app hands the server over to the daemon, when it is installed.
+async function handOffToDaemon(): Promise<void> {
+  const status = await daemonStatus().catch(() => null)
+  if (status?.installed) await startDaemon().catch((error) => console.error("daemon:", error))
+}
 
 function serveAttachment(libraryRoot: string, request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -552,14 +403,4 @@ function serveAttachment(libraryRoot: string, request: Request): Promise<Respons
   const file = attachmentFile(libraryRoot, parts)
   if (!file) return Promise.resolve(new Response("Not found", { status: 404 }))
   return net.fetch(pathToFileURL(file).href).catch(() => new Response("Not found", { status: 404 }))
-}
-
-// [projectId, chatId, file] to the attachment's path, or null when the parts
-// could leave the library's attachment folders.
-function attachmentFile(libraryRoot: string, parts: string[]): string | null {
-  if (parts.length !== 3) return null
-  if (parts.some((part) => !part || part.includes("..") || part.includes("/") || part.includes("\\"))) return null
-  const file = join(libraryRoot, "projects", parts[0]!, "chats", parts[1]!, "attachments", parts[2]!)
-  if (!file.startsWith(join(libraryRoot, "projects"))) return null
-  return file
 }

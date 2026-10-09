@@ -358,6 +358,16 @@ export async function assertDirectory(folder: string): Promise<string> {
   return resolved
 }
 
+// [projectId, chatId, file] to the attachment's path, or null when the parts
+// could leave the library's attachment folders.
+export function attachmentFile(libraryRoot: string, parts: string[]): string | null {
+  if (parts.length !== 3) return null
+  if (parts.some((part) => !part || part.includes("..") || part.includes("/") || part.includes("\\"))) return null
+  const file = join(libraryRoot, "projects", parts[0]!, "chats", parts[1]!, "attachments", parts[2]!)
+  if (!file.startsWith(join(libraryRoot, "projects"))) return null
+  return file
+}
+
 async function deleteProjectFolder(folder: string): Promise<void> {
   let resolved = folder
   try {

@@ -8,7 +8,7 @@ import {
   type ServerResponse,
 } from "node:http"
 import { dirname, extname } from "node:path"
-import { networkInterfaces } from "node:os"
+import { hostname, networkInterfaces } from "node:os"
 import { WebSocket, WebSocketServer } from "ws"
 import type { ServerInfo, TerminalEvent, UiEvent, WsClientMessage, WsServerMessage } from "../shared/types"
 
@@ -185,6 +185,7 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
       host,
       port,
       token: state.token,
+      name: hostname(),
       tailscale: tailscale !== null,
     }
   }
