@@ -279,7 +279,8 @@ export class AgentHost {
     const session = this.requireSession(clientId)
     await this.run(async () => {
       const project = await this.library.ensureChatProject()
-      await this.openProjectUnlocked(session, project.id)
+      // "New" starts a draft: the chat project's last chat is not resumed.
+      await this.openProjectUnlocked(session, project.id, false)
     })
   }
 
@@ -737,7 +738,7 @@ export class AgentHost {
     this.messageCounts.clear()
   }
 
-  private async openProjectUnlocked(session: Session, projectId: string): Promise<void> {
+  private async openProjectUnlocked(session: Session, projectId: string, resume = true): Promise<void> {
     const project = this.library.project(projectId)
     if (!project) throw new Error("That project is gone.")
     if (project.mode === "chat") {
@@ -755,7 +756,7 @@ export class AgentHost {
     this.cwd = project.path
     this.watchGit(session)
     await this.persistPrefs()
-    const chatId = project.openChatId
+    const chatId = resume ? project.openChatId : null
     if (chatId && this.library.chat(project.id, chatId)) {
       await this.loadChat(session, project.id, chatId)
     } else {
