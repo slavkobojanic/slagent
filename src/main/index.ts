@@ -316,6 +316,11 @@ app.whenReady().then(async () => {
       },
     },
     () => mcp?.serversForSession() ?? {},
+    async (name, config) => {
+      const manager = mcp
+      if (!manager) throw new Error("MCP is not ready.")
+      await manager.addServer(name, config)
+    },
     () => apiServer?.info ?? null,
     () => terminal,
   )

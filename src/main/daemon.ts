@@ -58,6 +58,10 @@ export async function runDaemon(): Promise<void> {
       badge: () => undefined,
     },
     () => mcp?.serversForSession() ?? {},
+    async (name, config) => {
+      if (!mcp) throw new Error("MCP is not ready.")
+      await mcp.addServer(name, config)
+    },
     () => apiServer?.info ?? null,
     () => terminal,
   )

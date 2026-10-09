@@ -56,6 +56,7 @@ import { planMode, type PlanModeControl } from "./extensions/plan-mode"
 import { CHAT_SYSTEM_PROMPT, CHAT_TOOLS } from "./chat-prompt"
 import { todoExtension } from "./extensions/todo"
 import { chatHistoryExtension } from "./extensions/chat-history"
+import { mcpAddExtension } from "./extensions/mcp-add"
 import { preparePrompt, queueDetail } from "./prompt"
 import type { Library } from "./library"
 import type { UsageRecord } from "./usage-ledger"
@@ -125,6 +126,8 @@ export type ChatRuntimeOptions = {
   modelRuntime: ModelRuntime
   // Servers slagent manages, registered with Pi's MCP extension for this session.
   mcpServers?: Record<string, McpServerConfig>
+  // Persists a server the model adds with add_mcp_server into slagent's mcp.json.
+  addMcpServer?: (name: string, config: McpServerConfig) => Promise<void>
   // Past-chat search and reads, shared with the renderer.
   library: Library
   // Global personalisation, re-read on every run so edits apply from the next message.
@@ -418,6 +421,12 @@ export class ChatRuntime {
       },
       { name: "slagent-mcp-servers", hidden: true, factory: mcpServersExtension(this.options.mcpServers ?? {}) },
       { name: "slagent-mcp", hidden: true, factory: createMcpExtension() },
+      {
+        name: "slagent-mcp-add",
+        hidden: true,
+        replaceable: true,
+        factory: mcpAddExtension({ addServer: this.options.addMcpServer ?? (() => Promise.reject(new Error("MCP is not ready."))) }),
+      },
     ]
     if (process.platform === "darwin" && !chatMode) {
       toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]

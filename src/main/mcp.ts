@@ -36,6 +36,9 @@ const DEFAULT_SERVERS: Record<string, McpServerConfig> = {
 
 const PROBE_TIMEOUT_MS = 25_000
 
+// Same rule Pi enforces for server names, so tools keep the `mcp__<server>__<tool>` shape.
+const SERVER_NAME = /^[A-Za-z0-9_-]+$/
+
 export type McpManagerOptions = {
   configPath: string
   authPath?: string
@@ -70,6 +73,25 @@ export class McpManager {
   async list(): Promise<McpServerStatus[]> {
     const entries = Object.entries(this.servers).sort(([a], [b]) => a.localeCompare(b))
     return Promise.all(entries.map(([name, config]) => this.statusOf(name, config)))
+  }
+
+  // Names follow Pi's rule so session tools stay `mcp__<name>__<tool>`. Failing on
+  // an existing name keeps the agent from silently replacing a server the user
+  // configured; removal stays in Settings > MCP.
+  async addServer(name: string, config: McpServerConfig): Promise<void> {
+    if (!SERVER_NAME.test(name)) {
+      throw new Error(`"${name}" is not a valid server name; use letters, digits, "_" and "-".`)
+    }
+    if (this.servers[name]) {
+      throw new Error(`An MCP server named "${name}" already exists. Remove it in Settings > MCP first.`)
+    }
+    if ("url" in config) {
+      if (!/^https?:\/\//.test(config.url)) throw new Error(`"${config.url}" is not an http(s) URL.`)
+    } else if (typeof config.command !== "string" || !config.command.trim()) {
+      throw new Error("A stdio server needs a command.")
+    }
+    this.servers = { ...this.servers, [name]: config }
+    await this.writeConfig()
   }
 
   async setEnabled(name: string, enabled: boolean): Promise<McpServerStatus[]> {
