@@ -319,6 +319,12 @@ export type SlashCommand = {
   kind: SlashCommandKind
 }
 
+// The icon and colour a user picked for a project. Both optional: null clears.
+export type ProjectAppearance = {
+  icon: string | null
+  color: string | null
+}
+
 // "chat" projects are conversations without a picked folder: the app manages
 // their cwd under the library root and the agent gets a chat-like prompt.
 // Absent mode (older records) means "code".
@@ -335,6 +341,10 @@ export type ProjectSummary = {
   lastOpenedAt: number
   running: boolean
   attention: boolean
+  // Sidebar icon id from the appearance catalog; absent means no icon.
+  icon?: string
+  // Accent colour for the icon and the project's terminals; absent means the app default.
+  color?: string
 }
 
 // "done" means the last run finished cleanly while no client had the chat
@@ -374,6 +384,14 @@ export type LibraryState = {
   chats: ChatSummary[]
   chatsByProject: Record<string, ChatSummary[]>
   openChatId: string | null
+  // Background tasks from every chat, so the status bar can show them all.
+  tasks: TaskEntry[]
+}
+
+// A background task a chat's agent started, with its project so the status bar
+// can colour it and say where it came from.
+export type TaskEntry = TaskInfo & {
+  projectId: string
 }
 
 export type TaskInfo = {
@@ -628,6 +646,8 @@ export type SlagentApi = {
   pageTranscript: (page: TranscriptPage) => Promise<void>
   searchChats: (query: string) => Promise<ChatSearchResult[]>
   pinProject: (projectId: string, pinned: boolean) => Promise<void>
+  // Icon and colour from the appearance catalog; null clears that part.
+  setProjectAppearance: (projectId: string, appearance: ProjectAppearance) => Promise<void>
   // projectId names the chat's project; it falls back to the open project.
   pinChat: (chatId: string, pinned: boolean, projectId?: string) => Promise<void>
   renameChat: (chatId: string, title: string, projectId?: string) => Promise<void>
