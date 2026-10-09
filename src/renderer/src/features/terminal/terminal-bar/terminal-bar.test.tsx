@@ -41,6 +41,13 @@ describe("TerminalBar", () => {
     expect(html).toContain("rgb(59, 130, 246)")
   })
 
+  it("can fill the active chip of a shell with no project in plain grey", () => {
+    const html = viewMarkup(<TerminalBar {...base({ chips: [{ ...chip, active: true }] })} />)
+
+    expect(html).toContain("rgb(156, 163, 175)")
+    expect(html).toContain("rgb(0, 0, 0)")
+  })
+
   it("can keep the close button visible without a hover background", () => {
     const html = viewMarkup(<TerminalBar {...base({ chips: [chip] })} />)
 

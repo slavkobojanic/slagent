@@ -12,3 +12,6 @@ function luminance(hex: string): number {
 export function contrastText(hex: string): string {
   return luminance(hex) > 0.35 ? "#000000" : "#ffffff"
 }
+
+// The fallback accent for terminals that belong to no project.
+export const NEUTRAL_ACCENT = "#9ca3af"

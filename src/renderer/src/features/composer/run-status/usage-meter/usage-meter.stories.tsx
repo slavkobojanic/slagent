@@ -9,9 +9,11 @@ const usage = {
   costText: "$0.42",
   ariaLabel: "Context 21 percent used",
   contextText: "42,000 of 200,000 tokens used",
-  thisChatText: "This chat: 15,500 tokens",
-  tokensText: "12,400 in, 3,100 out",
-  allChatsText: "All chats: 120,000 tokens",
+  rows: [
+    { label: "This chat", value: "15,500 tokens" },
+    { label: "Tokens", value: "12,400 in · 3,100 out" },
+    { label: "All chats", value: "120,000 tokens" },
+  ],
   canCompact: true,
 }
 

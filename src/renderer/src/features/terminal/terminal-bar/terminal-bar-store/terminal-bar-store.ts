@@ -25,14 +25,15 @@ export class TerminalBarStore {
 
   get chips(): TerminalChip[] {
     const colours = new Map(this.library.library.projects.map((project) => [project.id, projectColorValue(project.color)]))
-    const openColour = colours.get(this.library.library.openProjectId ?? "") ?? null
+    // A shell the user started belongs to no project, so it stays neutral; a
+    // task's shell carries its own project's colour.
     const chips: TerminalChip[] = this.terminalTabs.tabs.map((tab) => ({
       id: tab.id,
       title: tab.title,
       active: tab.id === this.terminalTabs.activeId,
       exited: tab.exited,
       origin: tab.origin,
-      color: tab.origin === "task" ? colours.get(this.taskFor(tab.id)?.projectId ?? "") ?? openColour : openColour,
+      color: tab.origin === "task" ? colours.get(this.taskFor(tab.id)?.projectId ?? "") ?? null : null,
     }))
     for (const task of this.library.library.tasks) {
       if (this.terminalTabs.tabs.some((tab) => tab.id === task.id)) continue

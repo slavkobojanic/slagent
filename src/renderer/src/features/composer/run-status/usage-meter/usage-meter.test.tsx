@@ -11,9 +11,10 @@ const model: UsageMeterModel = {
   costText: "$0.12",
   ariaLabel: "42k of 200k context, $0.12 spent",
   contextText: "42k of 200k context",
-  thisChatText: "This chat: 2k tokens · $0.12",
-  tokensText: "1k in · 800 out · 300 cached",
-  allChatsText: null,
+  rows: [
+    { label: "This chat", value: "2k tokens · $0.12" },
+    { label: "Tokens", value: "1k in · 800 out · 300 cached" },
+  ],
   canCompact: true,
 }
 
