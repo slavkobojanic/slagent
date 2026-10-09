@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
@@ -9,7 +9,10 @@ import { startApiServer, type ApiServer } from "./server"
 const tempDirs: string[] = []
 const servers: ApiServer[] = []
 
-async function start(onCall: (method: string) => Promise<unknown> = async () => undefined): Promise<ApiServer> {
+async function start(
+  onCall: (method: string) => Promise<unknown> = async () => undefined,
+  attachmentFile: (parts: string[]) => string | null = () => null,
+): Promise<ApiServer> {
   const dir = await mkdtemp(join(tmpdir(), "slagent-server-"))
   tempDirs.push(dir)
   const server = await startApiServer({
@@ -18,6 +21,8 @@ async function start(onCall: (method: string) => Promise<unknown> = async () => 
     onCallSent: () => undefined,
     onClient: () => undefined,
     onClientGone: () => undefined,
+    attachmentFile,
+    onInfo: () => undefined,
   })
   servers.push(server)
   return server
@@ -78,6 +83,39 @@ describe("api server", () => {
     expect(pushed).toEqual({ type: "library", revision: 1, library: { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null } })
   })
 
+  it("serves attachments over http to a tokened request", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "slagent-attachment-"))
+    tempDirs.push(dir)
+    const file = join(dir, "shot.png")
+    await writeFile(file, "png-bytes")
+    const asked: string[][] = []
+    const server = await start(undefined, (parts) => {
+      asked.push(parts)
+      return parts[2] === "shot.png" ? file : null
+    })
+    const base = `http://127.0.0.1:${server.info.port}`
+    const ok = await fetch(`${base}/${server.info.token}/attachment/p1/c1/shot.png`)
+    expect(ok.status).toBe(200)
+    expect(ok.headers.get("content-type")).toBe("image/png")
+    expect(await ok.text()).toBe("png-bytes")
+    expect(asked).toEqual([["p1", "c1", "shot.png"]])
+
+    const wrongToken = await fetch(`${base}/wrong/attachment/p1/c1/shot.png`)
+    expect(wrongToken.status).toBe(404)
+    const missing = await fetch(`${base}/${server.info.token}/attachment/p1/c1/other.png`)
+    expect(missing.status).toBe(404)
+  })
+
+  it("answers a ping only with the token", async () => {
+    const server = await start()
+    const base = `http://127.0.0.1:${server.info.port}`
+    const ok = await fetch(`${base}/${server.info.token}/ping`)
+    expect(ok.status).toBe(200)
+    expect(ok.headers.get("access-control-allow-origin")).toBe("*")
+    expect(await ok.text()).toBe("ok")
+    expect((await fetch(`${base}/wrong/ping`)).status).toBe(404)
+  })
+
   it("keeps the token across restarts and reports it in the connection info", async () => {
     const dir = await mkdtemp(join(tmpdir(), "slagent-server-"))
     tempDirs.push(dir)
@@ -88,6 +126,8 @@ describe("api server", () => {
       onCallSent: () => undefined,
       onClient: () => undefined,
       onClientGone: () => undefined,
+      attachmentFile: () => null,
+      onInfo: () => undefined,
     })
     servers.push(first)
     const second = await startApiServer({
@@ -96,6 +136,8 @@ describe("api server", () => {
       onCallSent: () => undefined,
       onClient: () => undefined,
       onClientGone: () => undefined,
+      attachmentFile: () => null,
+      onInfo: () => undefined,
     })
     servers.push(second)
     expect(second.info.token).toBe(first.info.token)
