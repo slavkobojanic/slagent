@@ -20,6 +20,7 @@ export class API implements SlagentApi {
   readonly pageTranscript: SlagentApi["pageTranscript"]
   readonly searchChats: SlagentApi["searchChats"]
   readonly pinProject: SlagentApi["pinProject"]
+  readonly setProjectAppearance: SlagentApi["setProjectAppearance"]
   readonly pinChat: SlagentApi["pinChat"]
   readonly renameChat: SlagentApi["renameChat"]
   readonly deleteChat: SlagentApi["deleteChat"]
@@ -104,6 +105,7 @@ export class API implements SlagentApi {
     this.pageTranscript = (page) => bridge.pageTranscript(plain(page))
     this.searchChats = (query) => bridge.searchChats(query)
     this.pinProject = (projectId, pinned) => bridge.pinProject(projectId, pinned)
+    this.setProjectAppearance = (projectId, appearance) => bridge.setProjectAppearance(projectId, plain(appearance))
     this.pinChat = (chatId, pinned, projectId) => bridge.pinChat(chatId, pinned, projectId)
     this.renameChat = (chatId, title, projectId) => bridge.renameChat(chatId, title, projectId)
     this.deleteChat = (chatId, projectId) => bridge.deleteChat(chatId, projectId)

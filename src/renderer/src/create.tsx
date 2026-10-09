@@ -164,15 +164,18 @@ export function createApp(): ComponentType {
   })
   const PermissionsWizard = createPermissionsWizard({ log: log.child("permissions-wizard"), api, window, permissionsStore })
   const PlanOverlay = createPlanOverlay({ api, runStore, panelPresenter, composerPort, log: log.child("plan-overlay") })
-  const TerminalDrawer = createTerminal({
+  const terminal = createTerminal({
     log: log.child("terminal"),
     api,
     window,
+    libraryStore,
     layoutStore,
     layoutPresenter,
     commandRegistry,
     composerPort,
   })
+  const TerminalDrawer = terminal.Terminal
+  const TerminalBar = terminal.Bar
   const appCloseStore = new AppCloseStore()
   const AppClose = createAppClose({ api, appCloseStore, log: log.child("app-close") })
   const Shell = createShell({
@@ -184,6 +187,7 @@ export function createApp(): ComponentType {
     Changes,
     PlanOverlay,
     TerminalDrawer,
+    TerminalBar,
     CreateSkill: CreateSkill.CreateSkill,
     log: log.child("shell"),
     api,

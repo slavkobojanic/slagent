@@ -122,7 +122,7 @@ describe("MobilePresenter", () => {
     it("can reopen the chat it was on when the socket comes back", () => {
       const { libraryStore, store, api, presenter, reconnect } = setup()
       presenter.start()
-      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1" })
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1", tasks: [] })
       store.setScreen("chat")
       reconnect()
       expect(api.openChat).toHaveBeenCalledWith("c1", "p1")
@@ -132,7 +132,7 @@ describe("MobilePresenter", () => {
     it("can reopen a draft when the socket comes back mid-draft", () => {
       const { libraryStore, store, api, presenter, reconnect } = setup()
       presenter.start()
-      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null })
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null, tasks: [] })
       store.setScreen("chat")
       reconnect()
       expect(api.newChat).toHaveBeenCalledWith("p1")
@@ -142,7 +142,7 @@ describe("MobilePresenter", () => {
     it("can leave the session alone when the list is showing", () => {
       const { libraryStore, api, presenter, reconnect } = setup()
       presenter.start()
-      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1" })
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: "c1", tasks: [] })
       reconnect()
       expect(api.openChat).not.toHaveBeenCalled()
       presenter.stop()

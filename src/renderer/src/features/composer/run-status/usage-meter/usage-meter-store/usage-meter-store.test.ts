@@ -49,35 +49,6 @@ function setup(current: UsageState | null, totals: UsageTotals = noChats) {
 }
 
 describe("UsageMeterStore", () => {
-  describe("visible", () => {
-    it("can be false when the run has no usage yet", () => {
-      const { store } = setup(null)
-
-      expect(store.visible).toBe(false)
-    })
-
-    it("can be true once the run reports usage", () => {
-      const { store } = setup(usage)
-
-      expect(store.visible).toBe(true)
-    })
-  })
-
-  describe("canCompact", () => {
-    it("can be false while a run streams", () => {
-      const { run, store } = setup(usage)
-      run.streaming = true
-
-      expect(store.canCompact).toBe(false)
-    })
-
-    it("can be true when no run is live", () => {
-      const { store } = setup(usage)
-
-      expect(store.canCompact).toBe(true)
-    })
-  })
-
   describe("model", () => {
     it("can be null when the run has no usage", () => {
       const { store } = setup(null)
@@ -154,45 +125,28 @@ describe("UsageMeterStore", () => {
     it("can show the all-chats totals once chats have run", () => {
       const { store } = setup(usage, { tokens: 1_500_000, cost: 3.5, chats: 4 })
 
-      expect(store.model?.allChatsText).toBe("All chats: 1.5M tokens · $3.50")
+      expect(store.model?.rows.at(-1)).toEqual({ label: "All chats", value: "1.5M tokens · $3.50" })
     })
 
     it("can leave the all-chats line out when no chat has run", () => {
       const { store } = setup(usage, noChats)
 
-      expect(store.model?.allChatsText).toBeNull()
+      expect(store.model?.rows.some((row) => row.label === "All chats")).toBe(false)
     })
 
     it("can show this chat's tokens and its split between input, output and cache", () => {
       const { store } = setup(usage)
 
-      expect(store.model?.thisChatText).toBe("This chat: 2k tokens · $0.12")
-      expect(store.model?.tokensText).toBe("1k in · 800 out · 300 cached")
+      expect(store.model?.rows).toEqual([
+        { label: "This chat", value: "2k tokens · $0.12" },
+        { label: "Tokens", value: "1k in · 800 out · 300 cached" },
+      ])
     })
 
     it("can show a context window of a million or more in millions", () => {
       const { store } = setup({ ...usage, contextWindow: 2_000_000 })
 
       expect(store.model?.contextText).toBe("42k of 2.0M context")
-    })
-
-    it("can say the chat cannot be summarized while a run streams", () => {
-      const { run, store } = setup(usage)
-      run.streaming = true
-
-      expect(store.model?.canCompact).toBe(false)
-    })
-  })
-
-  describe("setError", () => {
-    it("can set the error and clear it again", () => {
-      const { store } = setup(usage)
-
-      store.setError("Compact failed")
-      expect(store.error).toBe("Compact failed")
-
-      store.setError(null)
-      expect(store.error).toBeNull()
     })
   })
 })

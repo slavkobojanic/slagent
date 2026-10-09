@@ -47,7 +47,7 @@ import type { ComputerUse } from "./computer"
 import { assistantParts, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
 import { CheckpointStore } from "./checkpoints"
 import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
-import { type BackgroundTasks, backgroundTasks } from "./extensions/background-tasks"
+import { type BackgroundTasks, backgroundTasks, type TaskTerminalSpawner } from "./extensions/background-tasks"
 import { focusGuard } from "./extensions/focus-guard"
 import { discoverAgents, subagentExtension } from "./extensions/subagents"
 import { ASK_USER, askUser, type AskUserDetails } from "./extensions/ask-user"
@@ -129,6 +129,8 @@ export type ChatRuntimeOptions = {
   library: Library
   // Global personalisation, re-read on every run so edits apply from the next message.
   personalisation: () => Personalisation
+  // Where background task terminals come from; null while the app is starting.
+  taskTerminals: () => TaskTerminalSpawner | null
   onChange: (runningChanged: boolean) => void
   onExtensions: (extensions: ExtensionInfo[], errors: string[]) => void
   onTitle: (title: string, generated: boolean) => void
@@ -139,6 +141,8 @@ export type ChatRuntimeOptions = {
   // One row per completed assistant message, for the append-only usage log.
   onUsageRecord: (record: UsageRecord) => void
   onTaskFinished: (task: TaskInfo) => void
+  // The task list changed: the host publishes it for the app-wide status bar.
+  onTasksChanged: () => void
   onQuestion: (request: QuestionRequest) => void
   // Keeps a proposed plan across restarts, so a crash shows it again.
   planProposal?: string | null
@@ -175,7 +179,7 @@ export class ChatRuntime {
   private usageState: UsageState | null = null
   private todos: TodoItem[] = []
   private checkpoints: CheckpointStore
-  private tasks: BackgroundTasks
+  private taskTerminal: BackgroundTasks
   private taskList: TaskInfo[] = []
   private planEnabled = false
   private planProposal: string | null
@@ -232,19 +236,25 @@ export class ChatRuntime {
     this.planProposal = options.planProposal ?? null
     this.awaiting = this.planProposal !== null
     this.checkpoints = new CheckpointStore(options.cwd, options.checkpointDir)
-    this.tasks = backgroundTasks(options.cwd, (tasks, finished) => {
+    this.taskTerminal = backgroundTasks(options.taskTerminals, options.cwd, (tasks, finished) => {
       this.taskList = tasks
       this.emit(false)
+      this.options.onTasksChanged()
       if (finished && finished.status !== "stopped") this.options.onTaskFinished(finished)
     })
   }
 
   taskOutput(id: string): string {
-    return this.tasks.output(id)
+    return this.taskTerminal.output(id)
   }
 
   stopTask(id: string): void {
-    this.tasks.stop(id)
+    this.taskTerminal.stop(id)
+  }
+
+  // The host aggregates these across chats for the status bar.
+  get tasks(): TaskInfo[] {
+    return this.taskList
   }
 
   get runningTasks(): number {
@@ -377,7 +387,7 @@ export class ChatRuntime {
     // tool with the same name, such as pi-subagents, is used instead.
     const extensionFactories: InlineExtension[] = [
       { name: "slagent-checkpoints", factory: checkpointExtension(this.checkpoints), hidden: true },
-      { name: "slagent-background-tasks", factory: this.tasks.extension, hidden: true, replaceable: true },
+      { name: "slagent-background-tasks", factory: this.taskTerminal.extension, hidden: true, replaceable: true },
       {
         name: "slagent-subagents",
         hidden: true,
@@ -669,7 +679,7 @@ export class ChatRuntime {
 
   dispose(): void {
     this.questions.cancel()
-    this.tasks.stopAll()
+    this.taskTerminal.stopAll()
     this.disposed = true
     this.sessionToken = null
     this.unsubscribe?.()

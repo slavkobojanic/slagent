@@ -30,7 +30,7 @@ export function EffortSwitcher({ effort, onValueChange }: EffortSwitcherProps) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-white/60 hover:bg-white/10"
+          className="flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-white/60 hover:bg-white/10"
           aria-label={`Reasoning effort: ${current.label}`}
           title="How hard the model reasons before answering"
         >

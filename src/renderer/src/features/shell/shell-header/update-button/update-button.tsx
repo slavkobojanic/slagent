@@ -16,12 +16,12 @@ export function UpdateButton({ version, installing, onInstall }: UpdateButtonPro
     <Button
       type="button"
       size="xs"
-      className="mr-1 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
+      className="mr-1 gap-1 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
       title="Restart to install the update"
       disabled={installing}
       onClick={onInstall}
     >
-      <DownloadIcon />
+      <DownloadIcon className="size-3 shrink-0" strokeWidth={2.5} />
       Update available (v{version})
     </Button>
   )

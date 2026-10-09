@@ -24,7 +24,7 @@ const base: ProjectRowProps = {
   modKey: "⌘",
   onSelect: noop,
   onNewChat: noop,
-  menu: <ProjectRowMenu project={summary} onPin={noop} onRemove={noop} />,
+  menu: <ProjectRowMenu project={summary} onPin={noop} onCustomize={noop} onRemove={noop} />,
 }
 
 // The opening tag of the row's own button. The row menu's trigger also carries aria-expanded, so the tag is checked whole.
@@ -58,5 +58,17 @@ describe("ProjectRow", () => {
     const html = viewMarkup(<ProjectRow {...base} active={false} collapsed />)
 
     expect(rowButtonTag(html)).toContain('aria-expanded="false"')
+  })
+
+  it("can show the project icon tinted with the project colour", () => {
+    const html = viewMarkup(<ProjectRow {...base} project={{ ...summary, icon: "rocket", color: "blue" }} />)
+
+    expect(html).toContain("rgb(59, 130, 246)")
+  })
+
+  it("can leave the icon out when the project has none", () => {
+    const html = viewMarkup(<ProjectRow {...base} />)
+
+    expect(html).not.toContain("rgb(59, 130, 246)")
   })
 })

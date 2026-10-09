@@ -317,6 +317,7 @@ app.whenReady().then(async () => {
     },
     () => mcp?.serversForSession() ?? {},
     () => apiServer?.info ?? null,
+    () => terminal,
   )
 
   terminal = new TerminalManager((event: TerminalEvent) => apiServer?.hub.publishTerminal(event), () => host?.getCwd() ?? "")

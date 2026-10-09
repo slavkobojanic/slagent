@@ -52,3 +52,13 @@
     transition: opacity 150ms var(--ease-out);
   }
 }
+
+/* Project rows keep their "..." on screen instead of fading in on hover. */
+.row-menu-static {
+  grid-template-columns: 1fr;
+}
+
+.row-menu-static .row-menu-button {
+  opacity: 1;
+  transform: none;
+}

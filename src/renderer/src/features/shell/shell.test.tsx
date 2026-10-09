@@ -16,6 +16,7 @@ const base: ShellProps = {
   MainColumn: slot("main"),
   PanelFrame: slot("panel"),
   TerminalDrawer: slot("terminal"),
+  TerminalBar: slot("terminal bar"),
   Settings: slot("settings dialog"),
   Models: slot("model dialog"),
   CreateSkill: slot("create skill dialog"),
@@ -39,7 +40,8 @@ describe("Shell", () => {
     const markup = viewMarkup(<Shell {...base} />)
 
     expect(markup.indexOf("panel")).toBeLessThan(markup.indexOf("terminal"))
-    expect(markup.indexOf("terminal")).toBeLessThan(markup.indexOf("settings dialog"))
+    expect(markup.indexOf("terminal")).toBeLessThan(markup.indexOf("terminal bar"))
+    expect(markup.indexOf("terminal bar")).toBeLessThan(markup.indexOf("settings dialog"))
   })
 
   it("can render the settings and model dialogs", () => {

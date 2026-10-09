@@ -15,6 +15,10 @@ export type StoredProject = {
   pinnedAt: number
   lastOpenedAt: number
   openChatId: string | null
+  // Sidebar icon id from the appearance catalog; absent means no icon.
+  icon?: string
+  // Accent colour for the icon and the project's terminals; absent means the app default.
+  color?: string
 }
 
 export type StoredChat = {
@@ -189,6 +193,16 @@ export class Library {
     if (!project) return
     project.pinned = pinned
     if (pinned) project.pinnedAt = Date.now()
+    await this.writeIndex()
+  }
+
+  async setAppearance(id: string, icon: string | null, color: string | null): Promise<void> {
+    const project = this.project(id)
+    if (!project) return
+    if (icon === null) delete project.icon
+    else project.icon = icon
+    if (color === null) delete project.color
+    else project.color = color
     await this.writeIndex()
   }
 

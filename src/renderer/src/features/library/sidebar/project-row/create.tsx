@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import type { ProjectSummary } from "@shared/types"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
+import type { ProjectAppearanceStore } from "@/features/library/project-appearance/project-appearance-store/project-appearance-store"
 import type { API } from "@/ipc/api"
 import { modKey } from "@/lib/format"
 import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
@@ -26,6 +27,7 @@ export function createProjectRow({
   composerPort,
   commandRegistry,
   projectRemovalStore,
+  projectAppearanceStore,
   log,
 }: {
   api: API
@@ -34,9 +36,10 @@ export function createProjectRow({
   composerPort: ComposerPort
   commandRegistry: CommandRegistry
   projectRemovalStore: ProjectRemovalStore
+  projectAppearanceStore: ProjectAppearanceStore
   log: Log
 }): ComponentType<ProjectRowHostProps> {
-  const presenter = new ProjectRowPresenter(api, window, libraryStore, composerPort, commandRegistry, projectRemovalStore, log)
+  const presenter = new ProjectRowPresenter(api, window, libraryStore, composerPort, commandRegistry, projectRemovalStore, projectAppearanceStore, log)
   presenter.start()
   const mod = modKey(api.platform)
 
@@ -49,7 +52,16 @@ export function createProjectRow({
         modKey={mod}
         onSelect={onSelect}
         onNewChat={presenter.handleNewChat}
-        menu={project.id === NO_PROJECT_ID ? null : <ProjectRowMenu project={project} onPin={presenter.handlePin} onRemove={presenter.handleRemove} />}
+        menu={
+          project.id === NO_PROJECT_ID ? null : (
+            <ProjectRowMenu
+              project={project}
+              onPin={presenter.handlePin}
+              onCustomize={presenter.handleCustomize}
+              onRemove={presenter.handleRemove}
+            />
+          )
+        }
       />
     )
   }
