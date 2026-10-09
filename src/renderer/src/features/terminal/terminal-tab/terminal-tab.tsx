@@ -17,7 +17,7 @@ export function TerminalTab({ title, active, exited, origin, color, onSelect, on
   return (
     <div
       className={cn(
-        "group flex shrink-0 items-center rounded-md text-xs",
+        "group flex shrink-0 items-center rounded-md font-mono text-xs",
         active ? "bg-white/10 text-white" : "text-white/60 hover:text-white",
       )}
       style={color === null || !active ? undefined : { boxShadow: `inset 0 -2px 0 0 ${color}` }}
@@ -40,7 +40,7 @@ export function TerminalTab({ title, active, exited, origin, color, onSelect, on
       <button
         type="button"
         aria-label={`Close ${title}`}
-        className="mr-0.5 rounded p-0.5 opacity-0 hover:bg-white/10 group-hover:opacity-100 focus-visible:opacity-100"
+        className="mr-1 rounded p-0.5"
         onClick={onClose}
       >
         <X className="size-3" />
