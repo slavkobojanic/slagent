@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addressLabel, connectLink, parseServerAddress, rewriteAttachmentLinks, socketUrl } from "./server-address"
+import { addressLabel, addressLabelWith, connectLink, parseServerAddress, rewriteAttachmentLinks, socketUrl } from "./server-address"
 
 const server = { url: "ws://100.64.0.1:8747?token=abc", host: "100.64.0.1", port: 8747, token: "abc", name: "mac", tailscale: true }
 
@@ -51,6 +51,14 @@ describe("addressLabel", () => {
 
   it("can prefer the machine name when it has one", () => {
     expect(addressLabel({ host: "100.64.0.1", port: 8747, token: "t", name: "work-laptop" })).toBe("work-laptop")
+  })
+
+  it("can prefer the person's nickname over everything", () => {
+    expect(addressLabelWith({ host: "100.64.0.1", port: 8747, token: "t", name: "work-laptop" }, { "100.64.0.1:8747": "Work Mac" })).toBe("Work Mac")
+  })
+
+  it("can fall back to the hostname when the machine has no nickname", () => {
+    expect(addressLabelWith({ host: "100.64.0.1", port: 8747, token: "t", name: "work-laptop" }, {})).toBe("work-laptop")
   })
 })
 

@@ -10,6 +10,7 @@ function props(overrides: Partial<MacPickerProps> = {}): MacPickerProps {
     label: "Slavkos-MacBook-Pro",
     online: true,
     servers: [MAC, STUDIO],
+    nicknames: {},
     current: MAC,
     open: false,
     onOpenChange: vi.fn(),

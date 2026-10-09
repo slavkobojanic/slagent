@@ -1,6 +1,6 @@
 import { ChevronDown } from "lucide-react"
 import type { ServerAddress } from "@/lib/server-address"
-import { addressLabel } from "@/lib/server-address"
+import { addressLabelWith } from "@/lib/server-address"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,8 @@ export type MacPickerProps = {
   label: string
   online: boolean
   servers: ServerAddress[]
+  // Nicknames keyed by "host:port", shown instead of each Mac's hostname.
+  nicknames: Record<string, string>
   // The Mac the phone is connected to right now, matched without its token.
   current: ServerAddress | null
   open: boolean
@@ -23,7 +25,7 @@ export type MacPickerProps = {
 // The connected computer, shown beneath the chats title as a quiet grey pill
 // with a chevron. Its dropdown lists every Mac this phone has connected to;
 // the active one is marked, and picking another boots the app against it.
-export function MacPicker({ label, online, servers, current, open, onOpenChange, onPick }: MacPickerProps) {
+export function MacPicker({ label, online, servers, nicknames, current, open, onOpenChange, onPick }: MacPickerProps) {
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
@@ -44,7 +46,7 @@ export function MacPicker({ label, online, servers, current, open, onOpenChange,
           return (
             <DropdownMenuItem key={`${address.host}:${address.port}`} className="items-start gap-2 py-2" onSelect={() => onPick(address)}>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm">{addressLabel(address)}</p>
+                <p className="truncate text-sm">{addressLabelWith(address, nicknames)}</p>
                 <p className="truncate font-mono text-xs text-white/50">
                   {address.host}:{address.port}
                 </p>

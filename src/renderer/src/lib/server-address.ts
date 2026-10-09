@@ -56,6 +56,13 @@ export function addressLabel(address: ServerAddress): string {
   return `${hostPart(address.host)}:${address.port}`
 }
 
+// The nickname a person gave a machine wins over the Mac's own hostname.
+export function addressLabelWith(address: ServerAddress, nicknames: Record<string, string>): string {
+  const nickname = nicknames[`${hostPart(address.host)}:${address.port}`]
+  if (nickname !== undefined) return nickname
+  return addressLabel(address)
+}
+
 // The server's attachment links use the desktop's own slagent:// scheme, which a
 // phone cannot load. The same files are served over HTTP, behind the token.
 export function rewriteAttachmentLinks(text: string, address: ServerAddress): string {

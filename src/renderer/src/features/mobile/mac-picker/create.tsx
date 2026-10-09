@@ -26,6 +26,7 @@ export function createMacPicker({
         label={connectionStore.label}
         online={connectionStore.online}
         servers={store.servers}
+        nicknames={connectionStore.nicknames}
         current={connectionStore.address}
         open={store.open}
         onOpenChange={presenter.handleOpenChange}
