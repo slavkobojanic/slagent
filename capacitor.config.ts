@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: "com.slagent.mobile",
   appName: "slagent",
   webDir: "out/mobile",
-  backgroundColor: "#000000",
   ios: {
     contentInset: "never",
     // The Mac is reached by its Tailscale IP over plain ws:// and http://.
