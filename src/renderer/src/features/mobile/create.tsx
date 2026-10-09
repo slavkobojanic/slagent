@@ -13,6 +13,7 @@ import { createMobileChatScreen } from "./chat-screen/create"
 import { createConnect } from "./connect/create"
 import { createConnectionBanner } from "./connection-banner/create"
 import { createConnectionSheet } from "./connection-sheet/create"
+import { createBackSwipe } from "./back-swipe/create"
 import { MobilePresenter } from "./mobile-presenter/mobile-presenter"
 import { MobileShell } from "./mobile-shell"
 import { MobileStore } from "./mobile-store/mobile-store"
@@ -53,8 +54,9 @@ export function createMobile({
   const ChatScreen = createMobileChatScreen({ metaStore, mobileStore, mobilePresenter, Banner, Transcript, Composer, PlanOverlay })
   const Connect = createConnect({ device, log: log.child("connect") })
   const ConnectionSheet = createConnectionSheet({ connectionStore, connectionPresenter, mobileStore, mobilePresenter, device, log, Connect })
+  const BackSwipe = createBackSwipe({ window, mobileStore, mobilePresenter, log: log.child("back-swipe") })
 
   return observer(function MobileHost() {
-    return <MobileShell screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ConnectionSheet={ConnectionSheet} />
+    return <MobileShell screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ConnectionSheet={ConnectionSheet} BackSwipe={BackSwipe} />
   })
 }
