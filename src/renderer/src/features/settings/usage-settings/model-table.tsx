@@ -1,4 +1,5 @@
 import type { UsageModelStats } from "@shared/types"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatCost, formatTokens } from "@/lib/format"
 import type { UsageSort, UsageSortKey } from "./usage-grid"
 
@@ -63,11 +64,20 @@ export function ModelTable({ models, totalCost, sort, onSort }: ModelTableProps)
 function SpendShareBar({ models, totalCost }: { models: UsageModelStats[]; totalCost: number }) {
   const shares = models.map((model, index) => ({ model, share: model.cost / totalCost, color: SHARE_CLASSES[index % SHARE_CLASSES.length]! }))
   return (
-    <div aria-label="Share of spend by model" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
-      {shares.map(({ model, share, color }) => (
-        <span key={model.model} className={`${color}`} style={{ width: `${Math.max(share * 100, 1)}%` }} title={`${model.model}: ${percent(share)}`} />
-      ))}
-    </div>
+    <TooltipProvider>
+      <div aria-label="Share of spend by model" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
+        {shares.map(({ model, share, color }) => (
+          <Tooltip key={model.model}>
+            <TooltipTrigger asChild>
+              <span className={`${color}`} style={{ width: `${Math.max(share * 100, 1)}%` }} />
+            </TooltipTrigger>
+            <TooltipContent>
+              {model.model} · {percent(share)}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </TooltipProvider>
   )
 }
 
