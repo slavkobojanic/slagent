@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 import type { OpenRouterStatus } from "@shared/types"
+import { Card } from "@/components/ui/card"
 import { openRouterLabel } from "@/lib/format"
 
 export type OpenRouterKeyProps = {
@@ -23,12 +24,12 @@ export function OpenRouterKey({ status, authFile, error, onSave, KeyField, KeyAc
       </div>
       <p className="text-sm text-white/60">Non-Claude models run through OpenRouter, using the account Pi is signed into.</p>
       {status.envKey ? (
-        <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2.5">
+        <Card>
           <p className="text-xs text-white/60">
             <span className="font-mono text-white/80">OPENROUTER_API_KEY</span> is set in your environment, so OpenRouter
             already works. Save a key below only to override it.
           </p>
-        </div>
+        </Card>
       ) : null}
       <form
         className="space-y-3"

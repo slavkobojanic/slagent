@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 import type { CliStatus } from "@shared/types"
+import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 export type CliSettingsProps = {
@@ -34,7 +35,7 @@ export function CliSettings({ status, error, InstallCommand, UninstallCommand }:
       <p className="text-sm text-white/60">
         Open slagent from a terminal. Pass a folder to open it as a project, or nothing to just bring up the app.
       </p>
-      <div className="space-y-1 rounded-md border border-white/10 bg-white/5 px-3 py-2.5 font-mono text-xs text-white/80">
+      <Card className="space-y-1 font-mono text-xs text-white/80">
         <div>
           slagent .<span className="text-white/35">{"  "}# open this folder</span>
         </div>
@@ -44,7 +45,7 @@ export function CliSettings({ status, error, InstallCommand, UninstallCommand }:
         <div>
           slagent<span className="text-white/35">{"  "}# open the app</span>
         </div>
-      </div>
+      </Card>
       {state === "conflict" ? (
         <p className="text-xs text-destructive/80">
           Another program already has a file at <span className="font-mono">{status?.path}</span>. Remove it to install
