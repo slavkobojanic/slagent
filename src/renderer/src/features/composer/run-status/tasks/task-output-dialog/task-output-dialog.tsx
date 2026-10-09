@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export type DialogTask = {
@@ -28,10 +29,10 @@ export function TaskOutputDialog({ task, output, onClose, bindBottom }: TaskOutp
           <DialogTitle>{task?.label}</DialogTitle>
           <DialogDescription className="font-mono text-xs break-all">{task?.command}</DialogDescription>
         </DialogHeader>
-        <div className="max-h-96 overflow-auto rounded-md border border-white/10 bg-white/5 p-3">
+        <Card className="max-h-96 overflow-auto p-3">
           <pre className="font-mono text-xs whitespace-pre-wrap">{output}</pre>
           <div ref={bindBottom} />
-        </div>
+        </Card>
         {task !== null ? <p className="mt-2 text-xs text-muted-foreground">{task.statusText}</p> : null}
       </DialogContent>
     </Dialog>
