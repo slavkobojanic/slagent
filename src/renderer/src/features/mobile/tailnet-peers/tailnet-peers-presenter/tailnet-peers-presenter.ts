@@ -5,10 +5,9 @@ import type { ConnectionStore } from "@/state/connection/connection-store/connec
 import type { MobileStore } from "@/features/mobile/mobile-store/mobile-store"
 import type { TailnetPeersStore } from "@/features/mobile/tailnet-peers/tailnet-peers-store/tailnet-peers-store"
 
-// What the peers list needs from the phone's device: the roster, and the
-// switch, which boots the whole app against the picked Mac.
+// What the peers list needs from the phone's device: the switch, which boots
+// the whole app against the picked Mac.
 type PeersDevice = {
-  loadServers: () => Promise<ServerAddress[]>
   saveAddress: (address: ServerAddress) => Promise<void>
   reload: () => void
 }
@@ -18,8 +17,9 @@ type PeersApi = {
   onReconnect: (listener: () => void) => () => void
 }
 
-// Asks the connected Mac for the tailnet's slagent machines, and switches the
-// phone to one of them with a tap. The tailnet membership is the credential.
+// Asks the connected Mac for the tailnet's slagent machines — the whole fleet,
+// the active Mac included — and switches the phone to one of them with a tap.
+// The tailnet membership is the credential.
 export class TailnetPeersPresenter {
   private disposers: Array<() => void> = []
 
@@ -52,19 +52,13 @@ export class TailnetPeersPresenter {
     void this.handleRefresh()
   }
 
-  savedServers = (): ServerAddress[] => {
-    return this.store.saved
-  }
-
   handleRefresh = async () => {
     if (!this.connection.online) {
       return
     }
     this.store.setLoading(true)
     try {
-      const [peers, saved] = await Promise.all([this.api.tailscaleList(), this.device.loadServers()])
-      this.store.setPeers(peers)
-      this.store.setSaved(saved)
+      this.store.setPeers(await this.api.tailscaleList())
     } catch (error) {
       // No Tailscale, or an older Mac: the list just stays empty.
       this.log.debug("tailnet-list-failed", { error })

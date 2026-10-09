@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import type { TailscalePeer } from "@shared/types"
-import type { ServerAddress } from "@/lib/server-address"
 import { ConnectionStore } from "@/state/connection/connection-store/connection-store"
 import type { Device } from "@/ipc/device"
 import type { API } from "@/ipc/api"
@@ -15,18 +14,17 @@ const PERSONAL: TailscalePeer = { name: "personal.tail-scale.ts.net", host: "100
 const WORK: TailscalePeer = { name: "work.tail-scale.ts.net", host: "100.64.0.9", port: 8747, online: false }
 
 function connection(online: boolean): ConnectionStore {
-  const store = new ConnectionStore({ host: "100.64.0.9", port: 8747, token: "t" })
+  const store = new ConnectionStore({ host: WORK.host, port: WORK.port, token: "t" })
   store.setStatus(online ? "open" : "connecting")
   return store
 }
 
-function setup(online = true, peers: TailscalePeer[] = [PERSONAL, WORK], saved: ServerAddress[] = []) {
+function setup(online = true, peers: TailscalePeer[] = [PERSONAL, WORK]) {
   const store = new TailnetPeersStore()
   const api = createMockInstance<API>(["tailscaleList", "onReconnect"])
   api.tailscaleList.mockResolvedValue(peers)
   api.onReconnect.mockReturnValue(() => undefined)
-  const device = createMockInstance<Device>(["loadServers", "saveAddress", "reload"])
-  device.loadServers.mockResolvedValue(saved)
+  const device = createMockInstance<Device>(["saveAddress", "reload"])
   device.saveAddress.mockResolvedValue(undefined)
   const mobileStore = new MobileStore(new LibraryStore())
   mobileStore.connectionOpen = true
@@ -37,13 +35,12 @@ function setup(online = true, peers: TailscalePeer[] = [PERSONAL, WORK], saved: 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
 
 describe("TailnetPeersPresenter", () => {
-  it("can fill the list from the connected Mac's tailnet and the saved roster", async () => {
+  it("can fill the list with the whole fleet, the connected Mac included", async () => {
     const { store, presenter } = setup()
     await presenter.start()
     await flush()
 
     expect(store.peers).toEqual([PERSONAL, WORK])
-    expect(store.saved).toEqual([])
     expect(store.loading).toBe(false)
   })
 
@@ -51,6 +48,7 @@ describe("TailnetPeersPresenter", () => {
     const { store, api, presenter } = setup(false)
 
     await presenter.start()
+    await flush()
 
     expect(api.tailscaleList).not.toHaveBeenCalled()
     expect(store.peers).toEqual([])
@@ -58,9 +56,9 @@ describe("TailnetPeersPresenter", () => {
 
   it("can keep the list empty when the Mac has no Tailscale", async () => {
     const { store, presenter } = setup(true, [])
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
 
     await presenter.start()
+    await flush()
 
     expect(store.peers).toEqual([])
   })
@@ -72,8 +70,7 @@ describe("TailnetPeersPresenter", () => {
     api.tailscaleList.mockClear()
 
     mobileStore.connectionOpen = true
-    await Promise.resolve()
-    await Promise.resolve()
+    await flush()
 
     expect(api.tailscaleList).toHaveBeenCalled()
     expect(store.peers).toEqual([PERSONAL, WORK])
@@ -83,7 +80,7 @@ describe("TailnetPeersPresenter", () => {
     const { device, presenter } = setup()
 
     presenter.handlePick({ host: PERSONAL.host, port: PERSONAL.port, token: "", name: PERSONAL.name })
-    await Promise.resolve()
+    await flush()
 
     expect(device.saveAddress).toHaveBeenCalledWith({ host: "100.64.0.5", port: 8747, token: "", name: "personal.tail-scale.ts.net" })
     expect(device.reload).toHaveBeenCalled()

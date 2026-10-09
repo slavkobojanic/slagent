@@ -31,7 +31,7 @@ export function createTailnetPeers({
       <TailnetPeers
         peers={store.peers}
         loading={store.loading}
-        saved={presenter.savedServers()}
+        current={connectionStore.address}
         onPick={presenter.handlePick}
       />
     )
