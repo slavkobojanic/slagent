@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
+import { viewMarkup } from "@/test/view-markup"
 import { TailnetPeers, type TailnetPeersProps } from "./tailnet-peers"
 
 const PEERS = [
@@ -14,6 +15,7 @@ function props(overrides: Partial<TailnetPeersProps> = {}): TailnetPeersProps {
     loading: false,
     current: CURRENT,
     onPick: vi.fn(),
+    onRefresh: vi.fn(),
     ...overrides,
   }
 }
@@ -34,6 +36,18 @@ describe("TailnetPeers", () => {
     const row = screen.getByText("work.tail-scale.ts.net").closest(".flex.items-center")!
     expect(row.textContent).toContain("Active")
     expect(row.querySelector("button")).toBeNull()
+  })
+
+  it("can refresh the list from its heading", () => {
+    render(<TailnetPeers {...props()} />)
+
+    expect(screen.getByRole("button", { name: "Refresh" })).not.toBeNull()
+  })
+
+  it("can spin the refresh while the list loads", () => {
+    const markup = viewMarkup(<TailnetPeers {...props({ loading: true })} />)
+
+    expect(markup).toContain("animate-spin")
   })
 
   it("can hold the list back when there are no candidates", () => {
