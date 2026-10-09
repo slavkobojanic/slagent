@@ -144,8 +144,8 @@ export class TerminalPresenter {
   }
 
   closeTab = (id: string) => {
-    this.log.action("close-tab", { id })
     const shell = this.shells.get(id)
+    const origin = this.store.tabs.find((tab) => tab.id === id)?.origin
     if (shell !== undefined) {
       if (shell.element !== null) {
         this.observer?.unobserve(shell.element)
@@ -153,6 +153,14 @@ export class TerminalPresenter {
       shell.emulator.dispose()
       this.shells.delete(id)
     }
+    // A task's shell keeps running in the main process, so closing its tab
+    // only hides it. A user shell dies with its tab.
+    if (origin === "task") {
+      this.log.action("dismiss-task-terminal", { id })
+      this.store.removeTab(id)
+      return
+    }
+    this.log.action("close-tab", { id })
     this.api.closeTerminal(id)
     this.store.removeTab(id)
   }

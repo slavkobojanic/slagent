@@ -7,13 +7,9 @@ function props(overrides: Partial<TerminalProps> = {}): TerminalProps {
     open: true,
     height: 288,
     resizing: false,
-    tabs: [],
     surfaces: [],
     empty: true,
     error: null,
-    canCreate: true,
-    onCreate: vi.fn(),
-    onClose: vi.fn(),
     onResizeStart: vi.fn(),
     onResizeReset: vi.fn(),
     ...overrides,
@@ -35,18 +31,9 @@ describe("Terminal", () => {
     expect(markup).toContain('inert=""')
   })
 
-  it("can show the tabs and the surfaces of the open shells", () => {
-    const markup = viewMarkup(
-      <Terminal
-        {...props({
-          empty: false,
-          tabs: [<div key="a">first tab</div>],
-          surfaces: [<div key="a">first surface</div>],
-        })}
-      />,
-    )
+  it("can show the surfaces of the open shells", () => {
+    const markup = viewMarkup(<Terminal {...props({ empty: false, surfaces: [<div key="a">first surface</div>] })} />)
 
-    expect(markup).toContain("first tab")
     expect(markup).toContain("first surface")
   })
 
@@ -63,23 +50,15 @@ describe("Terminal", () => {
     expect(markup).toContain("no shell")
   })
 
-  it("can refuse a new tab while one is spawning", () => {
-    const markup = viewMarkup(<Terminal {...props({ canCreate: false })} />)
-
-    expect(markup).toContain('aria-label="New terminal tab"')
-    expect(markup).toContain("disabled")
-  })
-
   it("can mark the drawer as resizing while the handle is dragged", () => {
     const markup = viewMarkup(<Terminal {...props({ resizing: true })} />)
 
     expect(markup).toContain('data-resizing="true"')
   })
 
-  it("can offer a close button for the drawer", () => {
+  it("can offer a resize handle for the drawer", () => {
     const markup = viewMarkup(<Terminal {...props()} />)
 
-    expect(markup).toContain('aria-label="Hide terminal"')
     expect(markup).toContain('aria-label="Resize terminal"')
   })
 })
