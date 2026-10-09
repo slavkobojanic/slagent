@@ -27,7 +27,7 @@ export function MobileChatList({ groups, empty, ready, opening, error, onOpenCha
           <Button type="button" variant="ghost" size="icon" aria-label="Connection" onClick={onOpenConnection}>
             <Server className="size-5" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" aria-label="New chat" onClick={() => onNewChat(null)}>
+          <Button type="button" variant="ghost" size="icon" className="mobile-press" aria-label="New chat" onClick={() => onNewChat(null)}>
             <Plus className="size-5" />
           </Button>
         </div>
@@ -60,7 +60,7 @@ function Body({
     return (
       <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
         <p className="text-sm text-foreground/60">No chats yet. Open a folder in slagent on your Mac to see its chats here, or start a chat now.</p>
-        <Button type="button" onClick={() => onNewChat(null)}>
+        <Button type="button" className="mobile-press" onClick={() => onNewChat(null)}>
           <Plus className="size-4" />
           New chat
         </Button>
@@ -73,7 +73,7 @@ function Body({
         <section key={group.id} aria-label={group.name}>
           <div className="flex items-center gap-2 px-4 pt-5 pb-1">
             <h2 className="min-w-0 flex-1 truncate text-xs font-medium tracking-wide text-foreground/50 uppercase">{group.name}</h2>
-            <Button type="button" variant="ghost" size="xs" aria-label={`New chat in ${group.name}`} onClick={() => onNewChat(group.newChatProjectId)}>
+            <Button type="button" variant="ghost" size="xs" className="mobile-press" aria-label={`New chat in ${group.name}`} onClick={() => onNewChat(group.newChatProjectId)}>
               <Plus className="size-3.5" />
               New
             </Button>

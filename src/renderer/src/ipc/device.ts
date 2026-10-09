@@ -36,6 +36,10 @@ export class Device {
   readonly onResume: (listener: () => void) => () => void
   readonly setDarkChrome: (dark: boolean) => void
   readonly hideKeyboardBar: () => void
+  // Fires with the keyboard's height while it is about to show; the composer
+  // keeps itself against the keyboard through this.
+  readonly onKeyboardShow: (listener: (height: number) => void) => () => void
+  readonly onKeyboardHide: (listener: () => void) => () => void
   readonly reload: () => void
 
   constructor(window: Window) {
@@ -117,9 +121,19 @@ export class Device {
       if (!this.native) return
       void Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => undefined)
     }
+    this.onKeyboardShow = (listener) => {
+      if (!this.native) return noop
+      return handle(Keyboard.addListener("keyboardWillShow", (info) => listener(info.keyboardHeight)))
+    }
+    this.onKeyboardHide = (listener) => {
+      if (!this.native) return noop
+      return handle(Keyboard.addListener("keyboardDidHide", () => listener()))
+    }
     this.reload = () => window.location.reload()
   }
 }
+
+function noop(): void {}
 
 // Plugin listeners register asynchronously; the disposer removes them once they exist.
 function handle(registration: Promise<{ remove: () => Promise<void> }>): () => void {

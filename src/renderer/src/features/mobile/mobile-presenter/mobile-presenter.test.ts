@@ -21,9 +21,22 @@ function setup() {
     reconnect = listener
     return () => undefined
   })
-  const device = createMockInstance<Device>(["setDarkChrome", "hideKeyboardBar"])
-  const presenter = new MobilePresenter(store, libraryStore, themeStore, api, device, nullLog())
-  return { libraryStore, store, themeStore, api, device, presenter, reconnect: () => reconnect() }
+  const device = createMockInstance<Device>(["setDarkChrome", "hideKeyboardBar", "onKeyboardShow", "onKeyboardHide"])
+  // Live handles the mock implementations fill in, so tests can fire the events.
+  const keyboard: { show: (height: number) => void; hide: () => void } = {
+    show: () => undefined,
+    hide: () => undefined,
+  }
+  device.onKeyboardShow.mockImplementation((listener) => {
+    keyboard.show = listener
+    return () => undefined
+  })
+  device.onKeyboardHide.mockImplementation((listener) => {
+    keyboard.hide = listener
+    return () => undefined
+  })
+  const presenter = new MobilePresenter(store, libraryStore, themeStore, api, device, window, nullLog())
+  return { libraryStore, store, themeStore, api, device, presenter, reconnect: () => reconnect(), keyboard }
 }
 
 describe("MobilePresenter", () => {
@@ -87,6 +100,16 @@ describe("MobilePresenter", () => {
   })
 
   describe("start", () => {
+    it("can keep the composer against the keyboard", () => {
+      const { presenter, keyboard } = setup()
+      presenter.start()
+      keyboard.show(336)
+      expect(document.documentElement.style.getPropertyValue("--kb-height")).toBe("336px")
+      keyboard.hide()
+      expect(document.documentElement.style.getPropertyValue("--kb-height")).toBe("0px")
+      presenter.stop()
+    })
+
     it("can match the status bar to the theme", () => {
       const { themeStore, device, presenter } = setup()
       presenter.start()

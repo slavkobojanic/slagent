@@ -2,6 +2,7 @@ import type { API } from "@/ipc/api"
 import type { Device } from "@/ipc/device"
 import { errorText } from "@/lib/format"
 import type { Log } from "@/log/log"
+import { setKeyboardHeight } from "@/features/mobile/keyboard-height"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { MobileStore } from "@/features/mobile/mobile-store/mobile-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
@@ -15,6 +16,7 @@ export class MobilePresenter {
     private readonly themeStore: ThemeStore,
     private readonly api: API,
     private readonly device: Device,
+    private readonly window: Window,
     private readonly log: Log,
   ) {}
 
@@ -24,6 +26,8 @@ export class MobilePresenter {
     }
     this.disposers.push(this.api.onReconnect(this.restore))
     this.disposers.push(this.log.reaction("dark-chrome", () => this.themeStore.resolved === "dark", this.device.setDarkChrome, { fireImmediately: true }))
+    this.disposers.push(this.device.onKeyboardShow((height) => setKeyboardHeight(this.window, height)))
+    this.disposers.push(this.device.onKeyboardHide(() => setKeyboardHeight(this.window, 0)))
     this.device.hideKeyboardBar()
   }
 

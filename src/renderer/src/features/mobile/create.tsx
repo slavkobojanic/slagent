@@ -45,7 +45,7 @@ export function createMobile({
   log: Log
 }): ComponentType {
   const mobileStore = new MobileStore(libraryStore)
-  const mobilePresenter = new MobilePresenter(mobileStore, libraryStore, themeStore, api, device, log)
+  const mobilePresenter = new MobilePresenter(mobileStore, libraryStore, themeStore, api, device, window, log)
   mobilePresenter.start()
 
   const Banner = createConnectionBanner({ connectionStore, mobilePresenter })
