@@ -26,7 +26,7 @@ export type TerminalBarProps = {
 // an agent's task owns, in one list. Selecting a chip shows it in the drawer.
 export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreate, onToggle, branch }: TerminalBarProps) {
   return (
-    <footer aria-label="Terminals" className="flex h-8 shrink-0 items-center gap-2 border-t border-white/10 bg-background px-3 text-xs">
+    <footer aria-label="Terminals" className="flex h-10 shrink-0 items-center gap-2 border-t border-white/10 bg-background px-3 text-xs">
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {chips.length === 0 ? <span className="shrink-0 text-white/30">No terminals</span> : chips.map((chip) => (
           <Chip key={chip.id} chip={chip} onSelect={onSelect} onClose={onClose} />
