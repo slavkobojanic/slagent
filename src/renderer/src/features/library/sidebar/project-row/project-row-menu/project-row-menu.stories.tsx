@@ -6,7 +6,7 @@ import { project } from "@/storybook/sample"
 const meta = {
   title: "Features/Library/ProjectRowMenu",
   component: ProjectRowMenu,
-  args: { project: project(), onPin: fn(), onRemove: fn() },
+  args: { project: project(), onPin: fn(), onCustomize: fn(), onRemove: fn() },
 } satisfies Meta<typeof ProjectRowMenu>
 
 export default meta

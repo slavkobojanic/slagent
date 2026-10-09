@@ -16,6 +16,8 @@ import { createChatDeletion } from "./chat-deletion/create"
 import { ChatDeletionStore } from "./chat-deletion/chat-deletion-store/chat-deletion-store"
 import { ChatSwitchPresenter } from "./chat-switch/chat-switch-presenter/chat-switch-presenter"
 import { createCommandPalette } from "./command-palette/create"
+import { createProjectAppearance } from "./project-appearance/create"
+import { ProjectAppearanceStore } from "./project-appearance/project-appearance-store/project-appearance-store"
 import { Library } from "./library"
 import { NavHistoryPresenter } from "./nav-history/nav-history-presenter/nav-history-presenter"
 import { NavHistoryStore } from "./nav-history/nav-history-store/nav-history-store"
@@ -57,6 +59,7 @@ export function createLibrary({
   // Sidebar rows open the confirmations, so their stores live here, above both.
   const chatDeletionStore = new ChatDeletionStore()
   const projectRemovalStore = new ProjectRemovalStore()
+  const projectAppearanceStore = new ProjectAppearanceStore()
 
   const chatSwitchPresenter = new ChatSwitchPresenter(libraryStore, runStore, api, panelPresenter, reviewPresenter, log.child("chat-switch"))
   chatSwitchPresenter.start()
@@ -72,11 +75,13 @@ export function createLibrary({
     jumpPort,
     chatDeletionStore,
     projectRemovalStore,
+    projectAppearanceStore,
     chatSwitchPresenter,
     log: log.child("sidebar"),
   })
   const ChatDeletion = createChatDeletion({ api, chatDeletionStore, log: log.child("chat-deletion") })
   const ProjectRemoval = createProjectRemoval({ api, projectRemovalStore, log: log.child("project-removal") })
+  const ProjectAppearance = createProjectAppearance({ api, store: projectAppearanceStore, log: log.child("project-appearance") })
 
   const navHistoryPresenter = new NavHistoryPresenter(
     new NavHistoryStore(),
@@ -104,6 +109,6 @@ export function createLibrary({
   })
 
   return function LibraryHost() {
-    return <Library Sidebar={Sidebar} ChatDeletion={ChatDeletion} ProjectRemoval={ProjectRemoval} CommandPalette={CommandPalette} />
+    return <Library Sidebar={Sidebar} ChatDeletion={ChatDeletion} ProjectRemoval={ProjectRemoval} ProjectAppearance={ProjectAppearance} CommandPalette={CommandPalette} />
   }
 }

@@ -2,6 +2,7 @@ import { ChevronRightIcon, PinIcon, SquarePenIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import type { ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
+import { projectColor, projectIcon } from "@/components/project-appearance"
 import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +19,8 @@ export type ProjectRowProps = {
 }
 
 export function ProjectRow({ project, active, collapsed, modKey, onSelect, onNewChat, menu }: ProjectRowProps) {
+  const Icon = projectIcon(project.icon)
+  const color = projectColor(project)
   return (
     <div className="group flex w-full min-w-0 items-center overflow-hidden rounded-md">
       <button
@@ -27,6 +30,15 @@ export function ProjectRow({ project, active, collapsed, modKey, onSelect, onNew
         onClick={() => onSelect(project)}
       >
         <ChevronRightIcon className={cn("size-3 shrink-0 text-foreground/40 transition-transform duration-150", !collapsed && "rotate-90")} />
+        {Icon === null ? null : (
+          <span
+            aria-hidden
+            className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border"
+            style={color === null ? undefined : { borderColor: color }}
+          >
+            <Icon className="size-3" style={color === null ? undefined : { color }} />
+          </span>
+        )}
         <span className={cn("truncate", active ? "font-medium" : "text-foreground/80")}>{project.name}</span>
         {project.pinned ? <PinIcon className="size-3 shrink-0 text-foreground/40" /> : null}
       </button>

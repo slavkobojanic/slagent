@@ -26,7 +26,7 @@ describe("OtherProjectsStore", () => {
         openProjectId: "open",
         chats: [],
         chatsByProject: {},
-        openChatId: null,
+        openChatId: null, tasks: [],
       })
 
       expect(new OtherProjectsStore(libraryStore).others.map((item) => item.project.id)).toEqual(["apple", "mango", "mango2", "open", "zebra"])
@@ -39,7 +39,7 @@ describe("OtherProjectsStore", () => {
         openProjectId: "p2",
         chats: [],
         chatsByProject: {},
-        openChatId: null,
+        openChatId: null, tasks: [],
       })
 
       const others = new OtherProjectsStore(libraryStore).others
@@ -53,7 +53,7 @@ describe("OtherProjectsStore", () => {
         openProjectId: null,
         chats: [],
         chatsByProject: {},
-        openChatId: null,
+        openChatId: null, tasks: [],
       })
 
       expect(new OtherProjectsStore(libraryStore).others.map((item) => item.project.id)).toEqual(["code"])
@@ -69,7 +69,7 @@ describe("OtherProjectsStore", () => {
         openProjectId: "open-chat",
         chats: [chat("c")],
         chatsByProject: { c1: [chat("a")], c2: [chat("b")] },
-        openChatId: null,
+        openChatId: null, tasks: [],
       })
 
       const store = new OtherProjectsStore(libraryStore)
@@ -84,7 +84,7 @@ describe("OtherProjectsStore", () => {
         openProjectId: "p1",
         chats: [],
         chatsByProject: {},
-        openChatId: null,
+        openChatId: null, tasks: [],
       })
 
       const store = new OtherProjectsStore(libraryStore)
@@ -101,7 +101,7 @@ describe("OtherProjectsStore", () => {
         openProjectId: "p2",
         chats: [chat("c2")],
         chatsByProject: { p1: [chat("c1")] },
-        openChatId: null,
+        openChatId: null, tasks: [],
       })
 
       const store = new OtherProjectsStore(libraryStore)

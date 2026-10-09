@@ -10,6 +10,7 @@ const meta = {
     Sidebar: fill("Sidebar"),
     ChatDeletion: slot("ChatDeletion"),
     ProjectRemoval: slot("ProjectRemoval"),
+    ProjectAppearance: slot("ProjectAppearance"),
     CommandPalette: slot("CommandPalette"),
   },
 } satisfies Meta<typeof Library>
