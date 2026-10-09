@@ -155,6 +155,8 @@ export class AgentHost {
     private readonly computer: ComputerUse,
     private readonly notifier: Notifier,
     private readonly getMcpServers: () => Record<string, McpServerConfig>,
+    // The app and the daemon own slagent's McpManager; the host only hands it to chats.
+    private readonly addMcpServer: (name: string, config: McpServerConfig) => Promise<void>,
     private readonly getServerInfo: () => ServerInfo | null,
     // Background task terminals live with the user's terminals, so the host
     // reads them through a getter: the manager is built after the host.
@@ -907,6 +909,7 @@ export class AgentHost {
       gate: this.gate,
       modelRuntime: runtimeModel,
       mcpServers: this.getMcpServers(),
+      addMcpServer: this.addMcpServer,
       library: this.library,
       personalisation: () => this.personalisation,
       onChange: (runningChanged) => {
