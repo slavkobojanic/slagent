@@ -1,6 +1,6 @@
 import { makeAutoObservable } from "mobx"
 import type { ChatStatus, ChatSummary } from "@shared/types"
-import { chatDisplayStatus } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-utils"
+import { chatDisplayStatus } from "@/lib/chat-status"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 
 export class ChatRowStore {

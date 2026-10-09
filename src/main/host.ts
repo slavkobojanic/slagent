@@ -164,6 +164,11 @@ export class AgentHost {
     }).catch((error) => console.error("initial project:", error))
   }
 
+  // Something outside the host's own state changed, like the server's address.
+  refreshMeta(): void {
+    this.publishMeta(null)
+  }
+
   detach(clientId: string): void {
     this.closeSessionGitWatcher(clientId)
     this.sessions.delete(clientId)

@@ -37,6 +37,7 @@ export function createComposer({
   commandRegistry,
   composerPort,
   onBuiltin,
+  touch = false,
   log,
 }: {
   api: API
@@ -49,9 +50,11 @@ export function createComposer({
   commandRegistry: CommandRegistry
   composerPort: ComposerPort
   onBuiltin?: BuiltinRunner
+  // A phone: Return adds a line and opening a chat does not raise the keyboard.
+  touch?: boolean
   log: Log
 }): ComponentType {
-  const composerStore = new ComposerStore(libraryStore, metaStore, runStore)
+  const composerStore = new ComposerStore(libraryStore, metaStore, runStore, touch)
   const attachmentsStore = new AttachmentsStore()
   const attachmentsPresenter = new AttachmentsPresenter(attachmentsStore, api, window, log.child("attachments"))
   const promptHistoryStore = new PromptHistoryStore()

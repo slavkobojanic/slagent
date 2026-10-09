@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { StatusDot } from "@/features/library/sidebar/status-dot/status-dot"
+import { StatusDot } from "@/components/status-dot"
 import { viewMarkup } from "@/test/view-markup"
 
 describe("StatusDot", () => {

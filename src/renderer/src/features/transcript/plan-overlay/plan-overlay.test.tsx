@@ -5,7 +5,7 @@ import { viewMarkup } from "@/test/view-markup"
 const noop = () => undefined
 
 function props(overrides: Partial<PlanOverlayProps> = {}): PlanOverlayProps {
-  return { approving: false, onAccept: noop, onRevise: noop, onCancel: noop, ...overrides }
+  return { plan: null, approving: false, onAccept: noop, onRevise: noop, onCancel: noop, ...overrides }
 }
 
 describe("PlanOverlay", () => {
@@ -18,6 +18,14 @@ describe("PlanOverlay", () => {
     expect(markup).toContain(">Revise</button>")
     expect(markup).toMatch(/<button[^>]*>Accept and build<\/button>/)
     expect(markup).not.toMatch(/disabled=""[^>]*>Accept and build/)
+  })
+
+  it("shows the plan above the actions when it is given", () => {
+    const markup = viewMarkup(<PlanOverlay {...props({ plan: "1. Add the thing" })} />)
+
+    expect(markup).toContain('aria-label="Plan document"')
+    expect(markup).toContain("Add the thing")
+    expect(markup).toMatch(/<button[^>]*>Accept and build<\/button>/)
   })
 
   it("disables Accept and build while the approval is in flight", () => {
