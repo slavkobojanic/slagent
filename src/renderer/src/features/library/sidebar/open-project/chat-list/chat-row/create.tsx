@@ -32,8 +32,7 @@ export function createChatRow({
   const store = new ChatRowStore(libraryStore)
   const chatRenameStore = new ChatRenameStore()
   const chatRowMenuStore = new ChatRowMenuStore()
-  const presenter = new ChatRowPresenter(store, libraryStore, window, chatRowMenuStore, chatSwitchPresenter, log)
-  presenter.start()
+  const presenter = new ChatRowPresenter(libraryStore, chatRowMenuStore, chatSwitchPresenter, log)
 
   const Rename = createChatRename({ api, libraryStore, chatRenameStore, log: log.child("chat-rename") })
   const Menu = createChatRowMenu({ api, window, libraryStore, chatRowMenuStore, chatRenameStore, chatDeletionStore, log: log.child("chat-row-menu") })
