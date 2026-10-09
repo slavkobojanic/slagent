@@ -9,7 +9,7 @@ function named(label: string) {
 }
 
 function shell(screen: "chats" | "chat") {
-  return <MobileShell screen={screen} ChatList={named("ChatList")} ChatScreen={named("ChatScreen")} ConnectionSheet={named("ConnectionSheet")} />
+  return <MobileShell screen={screen} ChatList={named("ChatList")} ChatScreen={named("ChatScreen")} ConnectionSheet={named("ConnectionSheet")} BackSwipe={named("BackSwipe")} />
 }
 
 describe("MobileShell", () => {
@@ -23,6 +23,7 @@ describe("MobileShell", () => {
     expect(screen.getByText("ChatList")).not.toBeNull()
     expect(screen.queryByText("ChatScreen")).toBeNull()
     expect(screen.getByText("ConnectionSheet")).not.toBeNull()
+    expect(screen.getByText("BackSwipe")).not.toBeNull()
   })
 
   it("can show the chat when one is open", () => {
