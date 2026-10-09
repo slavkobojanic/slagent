@@ -1,5 +1,6 @@
 import { Plus, SquareTerminal, X } from "lucide-react"
 import type { ReactNode } from "react"
+import { contrastText } from "@/lib/color"
 import { cn } from "@/lib/utils"
 export type TerminalChip = {
   id: string
@@ -58,13 +59,24 @@ export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreat
 }
 
 function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: string) => void; onClose: (id: string) => void }) {
+  // The active chip takes the project colour whole; the text contrast is picked for it.
+  const accent = chip.active && chip.color !== null ? chip.color : null
+  const text = accent === null ? undefined : contrastText(accent)
   return (
     <div
       className={cn(
         "group flex shrink-0 items-center rounded text-xs font-mono",
-        chip.active ? "bg-white/10 text-white" : "text-white/60 hover:text-white",
+        chip.active && accent === null ? "bg-white/10 text-white" : null,
+        !chip.active ? "text-white/60 hover:text-white" : null,
       )}
-      style={chip.color === null || !chip.active ? undefined : { boxShadow: `inset 0 -2px 0 0 ${chip.color}` }}
+      style={
+        accent === null
+          ? undefined
+          : {
+              backgroundColor: accent,
+              color: text,
+            }
+      }
     >
       <button
         type="button"
@@ -74,7 +86,7 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
         className="flex max-w-40 items-center gap-1.5 truncate py-1 pr-1 pl-2"
         onClick={() => onSelect(chip.id)}
       >
-        <Dot chip={chip} />
+        <Dot chip={chip} text={text} />
         <span className="truncate">{chip.title}</span>
       </button>
       <button
@@ -89,7 +101,7 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
   )
 }
 
-function Dot({ chip }: { chip: TerminalChip }): ReactNode {
+function Dot({ chip, text }: { chip: TerminalChip; text?: string }): ReactNode {
   if (chip.exited) {
     return <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-foreground/40" />
   }
@@ -97,7 +109,11 @@ function Dot({ chip }: { chip: TerminalChip }): ReactNode {
     <span
       aria-hidden
       className={cn("size-1.5 shrink-0 rounded-full", chip.running && "animate-pulse")}
-      style={{ backgroundColor: chip.color ?? "rgba(255,255,255,0.6)" }}
+      style={
+        chip.active && chip.color !== null
+          ? { backgroundColor: text }
+          : { backgroundColor: chip.color ?? "rgba(255,255,255,0.6)" }
+      }
     />
   )
 }

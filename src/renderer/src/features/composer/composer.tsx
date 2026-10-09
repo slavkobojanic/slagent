@@ -18,7 +18,7 @@ export function Composer({
   PromptForm,
 }: ComposerProps) {
   return (
-    <div className="relative mx-auto w-full max-w-3xl px-6 pb-1 bg-transparent">
+    <div className="relative mx-auto w-full max-w-3xl px-6 pb-2 bg-transparent">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 -top-5 h-5 bg-gradient-to-t from-background to-transparent"
