@@ -1,0 +1,108 @@
+/* The push/pop between the chat list and the open chat. The chat layer sits on
+   top in both directions: it slides in over a receding list on push, and
+   slides away revealing the list on pop. Transform and opacity only. */
+
+.screen-stage {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.screen-layer {
+  position: absolute;
+  inset: 0;
+  background: var(--background);
+}
+
+.screen-layer-chat {
+  z-index: 2;
+}
+
+.screen-layer-push-enter {
+  animation: screen-push-in 250ms var(--ease-drawer) both;
+}
+
+.screen-layer-push-exit {
+  animation: screen-push-out 250ms var(--ease-drawer) both;
+}
+
+.screen-layer-pop-enter {
+  animation: screen-pop-in 200ms var(--ease-drawer) both;
+}
+
+.screen-layer-pop-exit {
+  animation: screen-pop-out 200ms var(--ease-drawer) both;
+}
+
+/* Push: the chat arrives from the right edge while the list recedes under it. */
+@keyframes screen-push-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes screen-push-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+
+/* Pop: the chat leaves through the edge it came from, the list returns. */
+@keyframes screen-pop-in {
+  from {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes screen-pop-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Reduced motion keeps the change legible with an opacity crossfade only. */
+@media (prefers-reduced-motion: reduce) {
+  .screen-layer-push-enter,
+  .screen-layer-pop-enter {
+    animation: screen-fade-in 150ms ease-out both;
+  }
+
+  .screen-layer-push-exit,
+  .screen-layer-pop-exit {
+    animation: screen-fade-out 150ms ease-out both;
+  }
+}
+
+@keyframes screen-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes screen-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
