@@ -1,4 +1,5 @@
 import type { ComponentType } from "react"
+import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { ProjectAppearanceStore } from "./project-appearance-store/project-appearance-store"
@@ -16,7 +17,7 @@ export function createProjectAppearance({
 }): ComponentType {
   const presenter = new ProjectAppearancePresenter(store, api, log)
 
-  return function ProjectAppearanceHost() {
+  return observer(function ProjectAppearanceHost() {
     return (
       <ProjectAppearance
         open={store.open}
@@ -31,5 +32,5 @@ export function createProjectAppearance({
         onConfirm={() => void presenter.handleConfirm()}
       />
     )
-  }
+  })
 }

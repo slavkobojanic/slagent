@@ -42,6 +42,7 @@ export function ProjectRow({ project, active, collapsed, modKey, onSelect, onNew
         <span className={cn("truncate", active ? "font-medium" : "text-foreground/80")}>{project.name}</span>
         {project.pinned ? <PinIcon className="size-3 shrink-0 text-foreground/40" /> : null}
       </button>
+      {menu ?? null}
       <Button
         type="button"
         variant="ghost"
@@ -53,7 +54,6 @@ export function ProjectRow({ project, active, collapsed, modKey, onSelect, onNew
       >
         <SquarePenIcon className="size-3.5" />
       </Button>
-      {menu ?? null}
     </div>
   )
 }

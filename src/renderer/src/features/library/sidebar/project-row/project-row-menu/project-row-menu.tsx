@@ -11,7 +11,7 @@ export type ProjectRowMenuProps = {
 
 export function ProjectRowMenu({ project, onPin, onCustomize, onRemove }: ProjectRowMenuProps) {
   return (
-    <RowMenu label={`${project.name} actions`}>
+    <RowMenu label={`${project.name} actions`} alwaysVisible>
       <DropdownMenuItem onSelect={() => onPin(project)}>{project.pinned ? "Unpin" : "Pin"}</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onCustomize(project)}>Customise…</DropdownMenuItem>
       <DropdownMenuItem variant="destructive" onSelect={() => onRemove(project)}>
