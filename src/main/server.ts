@@ -75,7 +75,6 @@ export type ApiServerOptions = {
 // phone on the tailnet can reach it. Every connection needs the token.
 // Plain HTTP on the same port serves chat attachments to remote clients, which
 // cannot load the app's slagent:// links: GET /<token>/attachment/<project>/<chat>/<file>.
-// GET /<token>/ping answers "ok", so a phone can check an address before saving it.
 export async function startApiServer(options: ApiServerOptions): Promise<ApiServer> {
   const state = await loadState(options.statePath)
   const wss = new WebSocketServer({ noServer: true })
@@ -87,12 +86,6 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
     const [token, kind, ...rest] = parts
     if (request.method !== "GET" || !token || !sameToken(token, state.token)) {
       response.writeHead(404).end()
-      return
-    }
-    // A phone checks the address and token before it saves them. Its page is
-    // on another origin, so the answer allows any.
-    if (kind === "ping" && rest.length === 0) {
-      response.writeHead(200, { "Content-Type": "text/plain", "Access-Control-Allow-Origin": "*" }).end("ok")
       return
     }
     if (kind !== "attachment") {
