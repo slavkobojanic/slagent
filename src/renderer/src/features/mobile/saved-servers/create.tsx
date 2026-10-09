@@ -14,15 +14,29 @@ export function createSavedServers({
 }: {
   device: Device
   // The connected Mac is left out of the switch list: it already has its card.
-  // Null on a phone that is not connected yet.
-  connectionStore: Pick<ConnectionStore, "address"> | { address: ServerAddress | null }
+  // Null on a phone that is not connected yet. Nicknames saved here keep the
+  // connected Mac's own label current too.
+  connectionStore: ConnectionStore | { address: ServerAddress | null }
   log: Log
 }) {
   const store = new SavedServersStore()
-  const presenter = new SavedServersPresenter(store, device, log.child("saved-servers"))
+  const presenter = new SavedServersPresenter(store, device, "setNicknames" in connectionStore ? connectionStore : null, log.child("saved-servers"))
   presenter.start()
 
   return observer(function SavedServersHost() {
-    return <SavedServers servers={store.others(connectionStore.address)} onPick={presenter.handlePick} onRemove={presenter.handleRemove} />
+    return (
+      <SavedServers
+        servers={store.others(connectionStore.address)}
+        nicknames={store.nicknames}
+        editing={store.editing}
+        draft={store.draft}
+        onRenameStart={presenter.handleRenameStart}
+        onRenameChange={presenter.handleRenameChange}
+        onRenameSave={presenter.handleRenameSave}
+        onRenameCancel={presenter.handleRenameCancel}
+        onPick={presenter.handlePick}
+        onRemove={presenter.handleRemove}
+      />
+    )
   })
 }

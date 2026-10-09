@@ -8,6 +8,7 @@ import { socketUrl, type ServerAddress } from "@/lib/server-address"
 const ADDRESS_KEY = "slagent:server-address"
 const SERVERS_KEY = "slagent:servers"
 const CLIENT_KEY = "slagent:client-id"
+const NICKNAMES_KEY = "slagent:nicknames"
 const PROBE_TIMEOUT_MS = 5000
 
 export type SavedConnection = {
@@ -29,6 +30,10 @@ export class Device {
   readonly loadServers: () => Promise<ServerAddress[]>
   // Drops one machine from the roster; the active one is dropped by saveAddress(null).
   readonly forgetServer: (address: ServerAddress) => Promise<void>
+  // Nicknames keyed by "host:port", so a person can name their machines and the
+  // roster's hostnames stop being the only label.
+  readonly loadNicknames: () => Promise<Record<string, string>>
+  readonly saveNickname: (address: ServerAddress, nickname: string) => Promise<void>
   // Whether the desktop app answers at the address with its token.
   readonly probe: (address: ServerAddress) => Promise<boolean>
   readonly launchUrl: () => Promise<string | null>
@@ -74,6 +79,20 @@ export class Device {
     this.forgetServer = async (address) => {
       const roster = (await this.loadServers()).filter((saved) => !sameMachine(saved, address))
       await Preferences.set({ key: SERVERS_KEY, value: JSON.stringify(roster) })
+    }
+    this.loadNicknames = async () => {
+      const stored = await Preferences.get({ key: NICKNAMES_KEY })
+      return parseNicknames(stored.value)
+    }
+    this.saveNickname = async (address, nickname) => {
+      const trimmed = nickname.trim()
+      const nicknames = await this.loadNicknames()
+      if (trimmed === "") {
+        delete nicknames[key(address)]
+      } else {
+        nicknames[key(address)] = trimmed
+      }
+      await Preferences.set({ key: NICKNAMES_KEY, value: JSON.stringify(nicknames) })
     }
     // Opens the websocket itself, so any slagent build that accepts the token answers.
     this.probe = (address) =>
@@ -156,6 +175,25 @@ function parseSaved(value: string | null): ServerAddress | null {
   }
 }
 
+function parseNicknames(value: string | null): Record<string, string> {
+  if (value === null) {
+    return {}
+  }
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {}
+    }
+    const nicknames: Record<string, string> = {}
+    for (const [key, nickname] of Object.entries(parsed)) {
+      if (typeof nickname === "string" && nickname.trim() !== "") nicknames[key] = nickname.trim()
+    }
+    return nicknames
+  } catch {
+    return {}
+  }
+}
+
 function parseList(value: string | null): ServerAddress[] {
   if (value === null) {
     return []
@@ -181,6 +219,11 @@ function parseList(value: string | null): ServerAddress[] {
 // QR code replaces the old credentials instead of adding a duplicate.
 function sameMachine(a: ServerAddress, b: ServerAddress): boolean {
   return a.host === b.host && a.port === b.port
+}
+
+// The stable key for a machine across the roster and the nicknames.
+function key(address: ServerAddress): string {
+  return `${address.host}:${address.port}`
 }
 
 function randomId(window: Window): string {

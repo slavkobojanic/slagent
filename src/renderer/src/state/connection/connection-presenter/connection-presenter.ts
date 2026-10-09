@@ -22,6 +22,7 @@ export class ConnectionPresenter {
     this.disposers.push(() => this.client.statusListeners.delete(this.handleStatus))
     // iOS drops the socket while the app sleeps; coming back should not wait out the retry timer.
     this.disposers.push(this.device.onResume(this.client.wake))
+    void this.loadNicknames()
   }
 
   stop = () => {
@@ -33,6 +34,31 @@ export class ConnectionPresenter {
     this.client.close()
     await this.device.saveAddress(null)
     this.device.reload()
+  }
+
+  // Nicknames live on the phone, so every screen can call a Mac what its person calls it.
+  handleRenameStart = () => {
+    this.log.action("rename-start")
+    this.store.setRenaming(true)
+  }
+
+  handleRenameChange = (value: string) => {
+    this.store.setDraftNickname(value)
+  }
+
+  handleRenameSave = async () => {
+    this.log.action("rename-save", { nickname: this.store.draftNickname })
+    this.store.setRenaming(false)
+    await this.device.saveNickname(this.store.address, this.store.draftNickname)
+    this.store.setNicknames(await this.device.loadNicknames())
+  }
+
+  handleRenameCancel = () => {
+    this.store.setRenaming(false)
+  }
+
+  private loadNicknames = async () => {
+    this.store.setNicknames(await this.device.loadNicknames())
   }
 
   private handleStatus = (status: WsStatus) => {

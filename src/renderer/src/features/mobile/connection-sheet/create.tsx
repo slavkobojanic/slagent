@@ -39,6 +39,12 @@ export function createConnectionSheet({
         open={mobileStore.connectionOpen}
         online={connectionStore.online}
         label={connectionStore.label}
+        renaming={connectionStore.renaming}
+        draftNickname={connectionStore.draftNickname}
+        onRenameStart={connectionPresenter.handleRenameStart}
+        onRenameChange={connectionPresenter.handleRenameChange}
+        onRenameSave={connectionPresenter.handleRenameSave}
+        onRenameCancel={connectionPresenter.handleRenameCancel}
         onOpenChange={mobilePresenter.handleConnectionOpenChange}
         onForget={connectionPresenter.forget}
         Connect={Connect}

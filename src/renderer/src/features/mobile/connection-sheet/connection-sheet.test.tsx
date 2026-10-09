@@ -9,7 +9,21 @@ function ConnectSlot() {
 }
 
 function props(overrides: Partial<ConnectionSheetProps> = {}): ConnectionSheetProps {
-  return { open: true, online: true, label: "100.64.0.1:8747", onOpenChange: noop, onForget: noop, Connect: ConnectSlot, ...overrides }
+  return {
+    open: true,
+    online: true,
+    label: "100.64.0.1:8747",
+    renaming: false,
+    draftNickname: "",
+    onRenameStart: noop,
+    onRenameChange: noop,
+    onRenameSave: noop,
+    onRenameCancel: noop,
+    onOpenChange: noop,
+    onForget: noop,
+    Connect: ConnectSlot,
+    ...overrides,
+  }
 }
 
 describe("ConnectionSheet", () => {
@@ -32,5 +46,21 @@ describe("ConnectionSheet", () => {
     render(<ConnectionSheet {...props({ open: false })} />)
 
     expect(screen.queryByText("100.64.0.1:8747")).toBeNull()
+  })
+
+  it("can open a rename box on the connected Mac's card", () => {
+    render(<ConnectionSheet {...props({ renaming: true, draftNickname: "Work" })} />)
+
+    expect(screen.getByLabelText("Nickname")).not.toBeNull()
+    expect(screen.getByDisplayValue("Work")).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Save" })).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Cancel" })).not.toBeNull()
+    expect(screen.queryByRole("button", { name: "Forget" })).toBeNull()
+  })
+
+  it("can offer renaming the connected Mac next to Forget", () => {
+    render(<ConnectionSheet {...props()} />)
+
+    expect(screen.getByRole("button", { name: "Rename" })).not.toBeNull()
   })
 })

@@ -17,6 +17,7 @@ const macPicker: ComponentType = () => (
       { host: "100.64.0.9", port: 8747, token: "t2", name: "Studio-Mac" },
     ]}
     current={{ host: "100.64.0.1", port: 8747, token: "t1" }}
+    nicknames={{ "100.64.0.1:8747": "Work" }}
     open={false}
     onOpenChange={fn()}
     onPick={fn()}
