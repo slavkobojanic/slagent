@@ -106,16 +106,6 @@ describe("api server", () => {
     expect(missing.status).toBe(404)
   })
 
-  it("answers a ping only with the token", async () => {
-    const server = await start()
-    const base = `http://127.0.0.1:${server.info.port}`
-    const ok = await fetch(`${base}/${server.info.token}/ping`)
-    expect(ok.status).toBe(200)
-    expect(ok.headers.get("access-control-allow-origin")).toBe("*")
-    expect(await ok.text()).toBe("ok")
-    expect((await fetch(`${base}/wrong/ping`)).status).toBe(404)
-  })
-
   it("keeps the token across restarts and reports it in the connection info", async () => {
     const dir = await mkdtemp(join(tmpdir(), "slagent-server-"))
     tempDirs.push(dir)

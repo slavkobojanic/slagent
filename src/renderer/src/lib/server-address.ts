@@ -49,10 +49,6 @@ export function socketUrl(address: ServerAddress, clientId: string): string {
   return `ws://${hostPart(address.host)}:${address.port}?${params.toString()}`
 }
 
-export function pingUrl(address: ServerAddress): string {
-  return `http://${hostPart(address.host)}:${address.port}/${encodeURIComponent(address.token)}/ping`
-}
-
 export function addressLabel(address: ServerAddress): string {
   return `${hostPart(address.host)}:${address.port}`
 }

@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core"
 import { Keyboard } from "@capacitor/keyboard"
 import { Preferences } from "@capacitor/preferences"
 import { StatusBar, Style } from "@capacitor/status-bar"
-import { pingUrl, type ServerAddress } from "@/lib/server-address"
+import { socketUrl, type ServerAddress } from "@/lib/server-address"
 
 const ADDRESS_KEY = "slagent:server-address"
 const CLIENT_KEY = "slagent:client-id"
@@ -50,18 +50,23 @@ export class Device {
       }
       await Preferences.set({ key: ADDRESS_KEY, value: JSON.stringify(address) })
     }
-    this.probe = async (address) => {
-      const controller = new AbortController()
-      const timer = window.setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS)
-      try {
-        const response = await window.fetch(pingUrl(address), { signal: controller.signal, cache: "no-store" })
-        return response.ok
-      } catch {
-        return false
-      } finally {
-        window.clearTimeout(timer)
-      }
-    }
+    // Opens the websocket itself, so any slagent build that accepts the token answers.
+    this.probe = (address) =>
+      new Promise((resolve) => {
+        const socket = new WebSocket(socketUrl(address, `probe-${randomId(window)}`))
+        const finish = (ok: boolean) => {
+          window.clearTimeout(timer)
+          socket.onopen = null
+          socket.onerror = null
+          socket.onclose = null
+          socket.close()
+          resolve(ok)
+        }
+        const timer = window.setTimeout(() => finish(false), PROBE_TIMEOUT_MS)
+        socket.onopen = () => finish(true)
+        socket.onerror = () => finish(false)
+        socket.onclose = () => finish(false)
+      })
     this.launchUrl = async () => {
       if (!this.native) {
         return null
