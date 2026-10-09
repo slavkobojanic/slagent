@@ -1,6 +1,6 @@
 import { PatchDiff } from "@pierre/diffs/react"
 import type { FileDiff } from "@/lib/diff"
-import { PIERRE_CSS, PIERRE_THEME } from "@/lib/pierre"
+import { PIERRE_CSS_NO_HEADER, PIERRE_THEME } from "@/lib/pierre"
 
 export type MobileDiffListProps = {
   files: FileDiff[]
@@ -30,7 +30,7 @@ export function MobileDiffList({ files, emptyText, themeType }: MobileDiffListPr
               themeType,
               diffStyle: "unified",
               overflow: "scroll",
-              unsafeCSS: PIERRE_CSS,
+              unsafeCSS: PIERRE_CSS_NO_HEADER,
               enableGutterUtility: false,
             }}
           />
