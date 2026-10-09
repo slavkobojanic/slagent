@@ -10,9 +10,11 @@ export type ConnectionSheetProps = {
   onOpenChange: (open: boolean) => void
   onForget: () => void
   Connect: ComponentType
+  // Other saved Macs to switch to with one tap, above the address form.
+  SavedServers?: ComponentType
 }
 
-export function ConnectionSheet({ open, online, label, onOpenChange, onForget, Connect }: ConnectionSheetProps) {
+export function ConnectionSheet({ open, online, label, onOpenChange, onForget, Connect, SavedServers }: ConnectionSheetProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -33,6 +35,7 @@ export function ConnectionSheet({ open, online, label, onOpenChange, onForget, C
           </div>
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Switch to another Mac</h3>
+            {SavedServers ? <SavedServers /> : null}
             <Connect />
           </div>
         </div>

@@ -7,6 +7,7 @@ import { createCreateSkill } from "@/features/create-skill/create"
 import { createLinkMenu } from "@/features/link-menu/create"
 import { ConnectPage } from "@/features/mobile/connect-page/connect-page"
 import { createConnect } from "@/features/mobile/connect/create"
+import { createSavedServers } from "@/features/mobile/saved-servers/create"
 import { createMobile } from "@/features/mobile/create"
 import { createPlanOverlay } from "@/features/transcript/plan-overlay/create"
 import { createTranscript } from "@/features/transcript/create"
@@ -53,8 +54,9 @@ export function createMobileApp({ window, device, saved }: { window: Window; dev
 
   if (saved.address === null) {
     const Connect = createConnect({ device, log: log.child("connect") })
+    const SavedServers = createSavedServers({ device, log: log.child("saved-servers") })
     return function ConnectHost() {
-      return <ConnectPage Connect={Connect} />
+      return <ConnectPage Connect={Connect} SavedServers={SavedServers} />
     }
   }
 

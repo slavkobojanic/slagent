@@ -9,7 +9,7 @@ function withServer(server: ServerInfo | null): ConnectSettingsStore {
   return new ConnectSettingsStore(metaStore)
 }
 
-const tailnet: ServerInfo = { url: "ws://100.64.0.1:8747?token=t", host: "100.64.0.1", port: 8747, token: "t", tailscale: true }
+const tailnet: ServerInfo = { url: "ws://100.64.0.1:8747?token=t", host: "100.64.0.1", port: 8747, token: "t", name: "mac", tailscale: true }
 
 describe("ConnectSettingsStore", () => {
   describe("server", () => {
@@ -32,3 +32,21 @@ describe("ConnectSettingsStore", () => {
     })
   })
 })
+
+  describe("daemon", () => {
+    it("can enable only when the daemon is not installed", () => {
+      const store = new ConnectSettingsStore(new MetaStore())
+      expect(store.canEnable).toBe(false)
+      store.setDaemon({ supported: true, installed: false, running: false })
+      expect(store.canEnable).toBe(true)
+      store.setBusy(true)
+      expect(store.canEnable).toBe(false)
+    })
+
+    it("can disable only when the daemon is installed", () => {
+      const store = new ConnectSettingsStore(new MetaStore())
+      expect(store.canDisable).toBe(false)
+      store.setDaemon({ supported: true, installed: true, running: false })
+      expect(store.canDisable).toBe(true)
+    })
+  })

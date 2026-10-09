@@ -5,6 +5,8 @@ export type ServerAddress = {
   host: string
   port: number
   token: string
+  // The Mac's hostname, so a phone with several saved machines can tell them apart.
+  name?: string
 }
 
 // The link the desktop app shows as a QR code. The phone's camera opens it in
@@ -36,11 +38,11 @@ export function parseServerAddress(text: string): ServerAddress | null {
   if (url.hostname === "" || token === "" || !validPort(port)) {
     return null
   }
-  return { host: url.hostname, port, token }
+  return { host: url.hostname, port, token, name: url.searchParams.get("name") ?? undefined }
 }
 
 export function connectLink(server: ServerInfo): string {
-  const params = new URLSearchParams({ host: server.host, port: String(server.port), token: server.token })
+  const params = new URLSearchParams({ host: server.host, port: String(server.port), token: server.token, name: server.name })
   return `${CONNECT_LINK}?${params.toString()}`
 }
 
@@ -50,6 +52,7 @@ export function socketUrl(address: ServerAddress, clientId: string): string {
 }
 
 export function addressLabel(address: ServerAddress): string {
+  if (address.name) return address.name
   return `${hostPart(address.host)}:${address.port}`
 }
 
@@ -70,7 +73,7 @@ function addressFromParams(params: URLSearchParams): ServerAddress | null {
   if (host === "" || token === "" || !validPort(port)) {
     return null
   }
-  return { host, port, token }
+  return { host, port, token, name: params.get("name") ?? undefined }
 }
 
 function validPort(port: number): boolean {

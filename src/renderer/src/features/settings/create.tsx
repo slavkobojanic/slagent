@@ -59,7 +59,7 @@ export function createSettings({
   const CliSettings = createCliSettings({ api, overlayStore, settingsStore, log: log.child("cli-settings") })
   const Usage = createUsageSettings({ api, log: log.child("usage-settings") })
   const About = createAbout({ api, log: log.child("about") })
-  const ConnectSettings = createConnectSettings({ metaStore, log: log.child("connect-settings") })
+  const ConnectSettings = createConnectSettings({ api, metaStore, log: log.child("connect-settings") })
 
   presenter.start()
 
