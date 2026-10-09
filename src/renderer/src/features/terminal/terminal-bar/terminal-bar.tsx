@@ -26,8 +26,8 @@ export type TerminalBarProps = {
 // an agent's task owns, in one list. Selecting a chip shows it in the drawer.
 export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreate, onToggle }: TerminalBarProps) {
   return (
-    <footer aria-label="Terminals" className="flex h-6 shrink-0 items-center gap-2 border-t border-white/10 bg-background px-2 text-xs">
-      <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+    <footer aria-label="Terminals" className="flex h-8 shrink-0 items-center gap-2 border-t border-white/10 bg-background px-3 text-xs">
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
         {chips.length === 0 ? <span className="shrink-0 text-white/30">No terminals</span> : chips.map((chip) => (
           <Chip key={chip.id} chip={chip} onSelect={onSelect} onClose={onClose} />
         ))}
@@ -37,7 +37,7 @@ export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreat
         aria-label="New terminal tab"
         title="New terminal tab"
         disabled={!canCreate}
-        className="shrink-0 rounded p-0.5 text-white/60 hover:text-white disabled:opacity-40"
+        className="shrink-0 rounded p-1 text-white/60 hover:text-white disabled:opacity-40"
         onClick={onCreate}
       >
         <Plus className="size-3.5" />
@@ -47,7 +47,7 @@ export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreat
         aria-label={open ? "Hide terminal" : "Show terminal"}
         title={open ? "Hide terminal" : "Show terminal"}
         aria-pressed={open}
-        className={cn("shrink-0 rounded p-0.5 hover:text-white", open ? "bg-white/10 text-white" : "text-white/60")}
+        className={cn("shrink-0 rounded p-1 hover:text-white", open ? "bg-white/10 text-white" : "text-white/60")}
         onClick={onToggle}
       >
         {open ? <X className="size-3.5" /> : <SquareTerminal className="size-3.5" />}
@@ -70,7 +70,7 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
         role="tab"
         aria-selected={chip.active}
         title={chip.exited ? `${chip.title} (exited)` : chip.title}
-        className="flex max-w-40 items-center gap-1.5 truncate py-0.5 pr-0.5 pl-1.5"
+        className="flex max-w-40 items-center gap-1.5 truncate py-1 pr-1 pl-2"
         onClick={() => onSelect(chip.id)}
       >
         <Dot chip={chip} />
@@ -79,7 +79,7 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
       <button
         type="button"
         aria-label={`Close ${chip.title}`}
-        className="mr-0.5 rounded p-0.5"
+        className="mr-1 rounded p-0.5"
         onClick={() => onClose(chip.id)}
       >
         <X className="size-3" />
