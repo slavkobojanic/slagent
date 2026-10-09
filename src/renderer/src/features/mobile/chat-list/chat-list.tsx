@@ -72,7 +72,7 @@ function Body({
       {groups.map((group) => (
         <section key={group.id} aria-label={group.name}>
           <div className="flex items-center gap-2 px-4 pt-5 pb-1">
-            <h2 className="min-w-0 flex-1 truncate text-xs font-medium tracking-wide text-foreground/50 uppercase">{group.name}</h2>
+            <h2 className="min-w-0 flex-1 truncate text-xs font-medium text-foreground/50">{group.name}</h2>
             <Button type="button" variant="ghost" size="xs" className="mobile-press" aria-label={`New chat in ${group.name}`} onClick={() => onNewChat(group.newChatProjectId)}>
               <Plus className="size-3.5" />
               New
