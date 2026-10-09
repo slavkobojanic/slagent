@@ -132,7 +132,11 @@ export class AgentHost {
   private openRouter: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
   private ready = false
   private startupError: string | null = null
-  private revision = 0
+  // Clients drop events older than the newest revision they have seen, and a
+  // phone outlives the process serving it (app and daemon hand over), so the
+  // count starts from the clock: a later process always starts above an
+  // earlier one, unless that one averaged over a thousand events a millisecond.
+  private revision = Date.now() * 1000
   private tail: Promise<void> = Promise.resolve()
 
   constructor(
