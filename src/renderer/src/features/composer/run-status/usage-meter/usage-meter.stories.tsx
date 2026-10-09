@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { fn } from "storybook/test"
 import { UsageMeter } from "@/features/composer/run-status/usage-meter/usage-meter"
 
 const usage = {
@@ -14,13 +13,12 @@ const usage = {
     { label: "Tokens", value: "12,400 in · 3,100 out" },
     { label: "All chats", value: "120,000 tokens" },
   ],
-  canCompact: true,
 }
 
 const meta = {
   title: "Features/Composer/UsageMeter",
   component: UsageMeter,
-  args: { usage, error: null, onCompact: fn() },
+  args: { usage },
 } satisfies Meta<typeof UsageMeter>
 
 export default meta
@@ -31,7 +29,5 @@ export const Normal: Story = {}
 export const Warning: Story = { args: { usage: { ...usage, ringPercent: 75, level: "warning", percentText: "75%" } } }
 
 export const Critical: Story = { args: { usage: { ...usage, ringPercent: 95, level: "critical", percentText: "95%" } } }
-
-export const Error: Story = { args: { error: "Could not summarize earlier messages." } }
 
 export const Hidden: Story = { args: { usage: null } }

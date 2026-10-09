@@ -16,12 +16,9 @@ export type UsageModel = {
   ariaLabel: string
   contextText: string
   rows: UsageRow[]
-  canCompact: boolean
 }
 
 export class UsageMeterStore {
-  error: string | null = null
-
   constructor(
     private readonly run: RunStore,
     private readonly meta: MetaStore,
@@ -29,29 +26,16 @@ export class UsageMeterStore {
     makeAutoObservable(this)
   }
 
-  get visible(): boolean {
-    return this.run.usage !== null
-  }
-
-  // Summarizing rewrites the chat, so it waits until the run that is writing it has ended.
-  get canCompact(): boolean {
-    return !this.run.streaming
-  }
-
   get model(): UsageModel | null {
     const usage = this.run.usage
     if (usage === null) {
       return null
     }
-    return toModel(usage, this.meta.meta?.usageTotals ?? null, this.canCompact)
-  }
-
-  setError(message: string | null) {
-    this.error = message
+    return toModel(usage, this.meta.meta?.usageTotals ?? null)
   }
 }
 
-function toModel(usage: UsageState, totals: UsageTotals | null, canCompact: boolean): UsageModel {
+function toModel(usage: UsageState, totals: UsageTotals | null): UsageModel {
   const contextText = contextLabel(usage)
   const rows = [
     { label: "This chat", value: `${formatTokens(usage.totalTokens)} tokens · ${formatCost(usage.cost)}` },
@@ -69,7 +53,6 @@ function toModel(usage: UsageState, totals: UsageTotals | null, canCompact: bool
     ariaLabel: `${contextText}, ${formatCost(usage.cost)} spent`,
     contextText,
     rows,
-    canCompact,
   }
 }
 
@@ -103,4 +86,3 @@ function allChatsRow(totals: UsageTotals | null): UsageRow | null {
   }
   return { label: "All chats", value: `${formatTokens(totals.tokens)} tokens · ${formatCost(totals.cost)}` }
 }
-
