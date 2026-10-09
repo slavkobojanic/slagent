@@ -254,11 +254,11 @@ html.light {
 }
 
 .dialog-scale[data-state="open"] {
-  animation: dialog-scale-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  animation: dialog-scale-in 200ms var(--ease-out);
 }
 
 .dialog-scale[data-state="closed"] {
-  animation: dialog-scale-out 150ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: dialog-scale-out 150ms var(--ease-drawer) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
