@@ -151,6 +151,8 @@ export function createApp(): ComponentType {
     themeStore,
     themePresenter,
     mcpStore,
+    linkStore,
+    linkPresenter,
     commandRegistry,
   })
   const Models = createModels({

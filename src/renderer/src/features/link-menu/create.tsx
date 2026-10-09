@@ -18,8 +18,6 @@ export function createLinkMenu({ store, presenter }: { store: LinkStore; present
         preference={store.preference}
         onOpen={presenter.handleOpen}
         onCopy={presenter.handleCopy}
-        onAlwaysOpen={presenter.handleAlwaysOpen}
-        onAlwaysCopy={presenter.handleAlwaysCopy}
         onAskEveryTime={presenter.handleAskEveryTime}
       />
     )

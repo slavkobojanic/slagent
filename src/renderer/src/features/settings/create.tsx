@@ -12,12 +12,15 @@ import { createAbout } from "./about/create"
 import { createCliSettings } from "./cli-settings/create"
 import { createConnectSettings } from "./connect-settings/create"
 import { createMcpSettings } from "./mcp-settings/create"
+import { createLinkPreference } from "./link-preference/create"
 import { createOpenRouterKey } from "./openrouter-key/create"
 import { createPersonalisationSettings } from "./personalisation-settings/create"
 import { createProviderRouting } from "./provider-routing/create"
 import { createTitleModel } from "./title-model/create"
 import { createUsageSettings } from "./usage-settings/create"
 import { Settings } from "./settings"
+import type { LinkPresenter } from "@/state/link/link-presenter/link-presenter"
+import type { LinkStore } from "@/state/link/link-store/link-store"
 import { SettingsPresenter } from "./settings-presenter/settings-presenter"
 import { SettingsStore } from "./settings-store/settings-store"
 import { createThemePicker } from "./theme-picker/create"
@@ -29,6 +32,8 @@ export function createSettings({
   themeStore,
   themePresenter,
   mcpStore,
+  linkStore,
+  linkPresenter,
   commandRegistry,
   log,
 }: {
@@ -38,6 +43,8 @@ export function createSettings({
   themeStore: ThemeStore
   themePresenter: ThemePresenter
   mcpStore: McpStore
+  linkStore: LinkStore
+  linkPresenter: LinkPresenter
   commandRegistry: CommandRegistry
   log: Log
 }): ComponentType {
@@ -60,6 +67,7 @@ export function createSettings({
   const Usage = createUsageSettings({ api, log: log.child("usage-settings") })
   const About = createAbout({ api, log: log.child("about") })
   const ConnectSettings = createConnectSettings({ api, metaStore, log: log.child("connect-settings") })
+  const LinkPreference = createLinkPreference({ store: linkStore, presenter: linkPresenter })
 
   presenter.start()
 
@@ -80,6 +88,7 @@ export function createSettings({
         Usage={Usage}
         About={About}
         ConnectSettings={ConnectSettings}
+        LinkPreference={LinkPreference}
       />
     )
   })

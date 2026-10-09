@@ -13,8 +13,6 @@ const meta = {
     preference: null,
     onOpen: fn(),
     onCopy: fn(),
-    onAlwaysOpen: fn(),
-    onAlwaysCopy: fn(),
     onAskEveryTime: fn(),
   },
   render: (args) => (
