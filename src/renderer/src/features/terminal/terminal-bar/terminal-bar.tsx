@@ -59,8 +59,11 @@ export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreat
 
 function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: string) => void; onClose: (id: string) => void }) {
   // The active chip takes its project colour whole, or a plain grey when the
-  // shell belongs to no project; the text contrast is picked for either.
+  // shell belongs to no project; the text contrast is picked for either. An
+  // inactive chip wears a much lighter wash of the same colour, so shells from
+  // different projects stay tellable apart without stealing the row.
   const accent = chip.active ? chip.color ?? NEUTRAL_ACCENT : null
+  const wash = !chip.active && chip.color !== null ? `color-mix(in srgb, ${chip.color} 20%, transparent)` : null
   const text = accent === null ? undefined : contrastText(accent)
   return (
     <div
@@ -70,12 +73,11 @@ function Chip({ chip, onSelect, onClose }: { chip: TerminalChip; onSelect: (id: 
         chip.exited && !chip.active ? "opacity-50" : null,
       )}
       style={
-        accent === null
-          ? undefined
-          : {
-              backgroundColor: accent,
-              color: text,
-            }
+        accent !== null
+          ? { backgroundColor: accent, color: text }
+          : wash !== null
+            ? { backgroundColor: wash }
+            : undefined
       }
     >
       <button
