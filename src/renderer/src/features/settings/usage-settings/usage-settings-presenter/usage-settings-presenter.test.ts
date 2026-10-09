@@ -67,8 +67,8 @@ describe("UsageSettingsPresenter", () => {
     it("can sort the model table", () => {
       const { store, presenter } = setup()
 
-      presenter.handleSort("turns")
-      expect(store.sort).toEqual({ key: "turns", dir: "desc" })
+      presenter.handleSort("input")
+      expect(store.sort).toEqual({ key: "input", dir: "desc" })
     })
   })
 })

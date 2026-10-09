@@ -13,7 +13,7 @@ export type UsageSettingsProps = {
   sortedModels: UsageModelStats[]
   sort: UsageSort
   onMetric: () => void
-  onSort: (key: "model" | "input" | "output" | "cache" | "cost" | "turns" | "share") => void
+  onSort: (key: "model" | "input" | "output" | "cache" | "cost" | "share") => void
 }
 
 export function UsageSettings({ stats, metric, cells, sortedModels, sort, onMetric, onSort }: UsageSettingsProps) {

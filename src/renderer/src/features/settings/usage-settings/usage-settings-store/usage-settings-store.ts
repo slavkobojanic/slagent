@@ -56,7 +56,6 @@ export class UsageSettingsStore {
         output: (model) => model.output,
         cache: (model) => model.cacheRead + model.cacheWrite,
         cost: (model) => model.cost,
-        turns: (model) => model.turns,
       }
       return (values[key](a) - values[key](b)) * flip
     })
