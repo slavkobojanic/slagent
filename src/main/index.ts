@@ -229,6 +229,8 @@ const calls = createCallHandler({
 
 // Settings for the daemon live here, not in calls.ts, because only the desktop
 // app can install or remove the LaunchAgent.
+const daemonMethods = new Set(["daemonStatus", "enableDaemon", "disableDaemon"])
+
 async function handleDaemonCall(method: string): Promise<DaemonStatus> {
   if (process.platform !== "darwin") return { supported: false, installed: false, running: false }
   switch (method) {
@@ -323,7 +325,7 @@ app.whenReady().then(async () => {
     apiServer = await startApiServer({
       statePath: join(app.getPath("userData"), "slagent-server.json"),
       onCall: (clientId, method, params) =>
-        method.startsWith("daemon") ? handleDaemonCall(method) : calls.onCall(clientId, method, params),
+        daemonMethods.has(method) ? handleDaemonCall(method) : calls.onCall(clientId, method, params),
       onCallSent: calls.onCallSent,
       onClient: (clientId, windowToken) => {
         if (windowToken) clientByToken.set(windowToken, clientId)
