@@ -166,17 +166,20 @@ describe("LinkPresenter", () => {
     })
 
     it("can open the link and close the menu", () => {
-      presenter.handleOpen(url)
+      presenter.handleOpen(url, false)
 
       expect(openExternal).toHaveBeenCalledWith(url)
       expect(store.menu).toBeNull()
+      expect(store.preference).toBeNull()
     })
 
     it("can copy the link, toast and close the menu", async () => {
       stubClipboard()
 
-      presenter.handleCopy(url)
+      presenter.handleCopy(url, false)
       await flush()
+
+      expect(store.preference).toBeNull()
 
       expect(writeText).toHaveBeenCalledWith(url)
       expect(toast.success).toHaveBeenCalledWith("Copied")
@@ -187,14 +190,14 @@ describe("LinkPresenter", () => {
       stubClipboard()
       writeText.mockRejectedValue(new Error("denied"))
 
-      presenter.handleCopy(url)
+      presenter.handleCopy(url, false)
       await flush()
 
       expect(toast.error).toHaveBeenCalledWith("denied")
     })
 
     it("can remember opening in the browser", () => {
-      presenter.handleAlwaysOpen(url)
+      presenter.handleOpen(url, true)
 
       expect(store.preference).toBe("browser")
       expect(window.localStorage.getItem("slagent-link")).toBe("browser")
@@ -205,12 +208,19 @@ describe("LinkPresenter", () => {
     it("can remember copying", async () => {
       stubClipboard()
 
-      presenter.handleAlwaysCopy(url)
+      presenter.handleCopy(url, true)
       await flush()
 
       expect(store.preference).toBe("copy")
       expect(window.localStorage.getItem("slagent-link")).toBe("copy")
       expect(writeText).toHaveBeenCalledWith(url)
+    })
+
+    it("can change the remembered decision from settings", () => {
+      presenter.setPreference("copy")
+
+      expect(store.preference).toBe("copy")
+      expect(window.localStorage.getItem("slagent-link")).toBe("copy")
     })
 
     it("can go back to asking every time", () => {

@@ -21,6 +21,7 @@ const meta = {
     Usage: slot("Usage"),
     About: slot("About"),
     ConnectSettings: slot("ConnectSettings"),
+    LinkPreference: slot("LinkPreference"),
   },
 } satisfies Meta<typeof Settings>
 

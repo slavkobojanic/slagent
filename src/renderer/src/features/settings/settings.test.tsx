@@ -42,6 +42,10 @@ function ConnectSection() {
   return <p>Connect section</p>
 }
 
+function LinkSection() {
+  return <p>Link section</p>
+}
+
 function renderDialog(overrides: Partial<SettingsProps> = {}) {
   return render(
     <Settings
@@ -59,6 +63,7 @@ function renderDialog(overrides: Partial<SettingsProps> = {}) {
       Usage={UsageSection}
       About={AboutSection}
       ConnectSettings={ConnectSection}
+      LinkPreference={LinkSection}
       {...overrides}
     />,
   )
@@ -82,6 +87,7 @@ describe("Settings", () => {
     expect(screen.getByText("Theme section")).not.toBeNull()
     expect(screen.getByText("OpenRouter section")).not.toBeNull()
     expect(screen.getByText("Provider section")).not.toBeNull()
+    expect(screen.getByText("Link section")).not.toBeNull()
     expect(screen.queryByText("MCP section")).toBeNull()
     expect(activeTab()).toBe("General")
   })

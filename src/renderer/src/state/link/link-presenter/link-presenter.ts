@@ -66,29 +66,30 @@ export class LinkPresenter {
     this.window.document.removeEventListener("keydown", this.handleKeyDown)
   }
 
-  handleOpen = (url: string) => {
+  handleOpen = (url: string, remember: boolean) => {
     this.handleClose()
+    if (remember) {
+      this.remember("browser")
+    }
     this.openWebLink(url)
   }
 
-  handleCopy = (url: string) => {
+  handleCopy = (url: string, remember: boolean) => {
     this.handleClose()
+    if (remember) {
+      this.remember("copy")
+    }
     void this.copyLink(url)
-  }
-
-  handleAlwaysOpen = (url: string) => {
-    this.remember("browser")
-    this.handleOpen(url)
-  }
-
-  handleAlwaysCopy = (url: string) => {
-    this.remember("copy")
-    this.handleCopy(url)
   }
 
   handleAskEveryTime = () => {
     this.remember(null)
     this.handleClose()
+  }
+
+  // The settings view changes the remembered decision without a menu open.
+  setPreference = (preference: LinkPreference | null) => {
+    this.remember(preference)
   }
 
   handleClose = () => {

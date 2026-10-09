@@ -18,6 +18,7 @@ export type SettingsProps = {
   Usage: ComponentType
   About: ComponentType
   ConnectSettings: ComponentType
+  LinkPreference: ComponentType
 }
 
 const TABS: { value: SettingsTab; label: string; icon: LucideIcon }[] = [
@@ -45,6 +46,7 @@ export function Settings({
   Usage,
   About,
   ConnectSettings,
+  LinkPreference,
 }: SettingsProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -78,6 +80,7 @@ export function Settings({
                 <OpenRouterKey />
                 <TitleModel />
                 <ProviderRouting />
+                <LinkPreference />
               </div>
             ) : null}
             {tab === "personalisation" ? <PersonalisationSettings /> : null}
