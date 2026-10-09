@@ -337,11 +337,9 @@ export type ProjectSummary = {
   attention: boolean
 }
 
-// "done" means the last run finished cleanly; the renderer shows it for
-// DONE_WINDOW_MS after finishedAt, then falls back to idle.
+// "done" means the last run finished cleanly while no client had the chat
+// open. It stays until a client opens the chat, then falls back to idle.
 export type ChatStatus = "idle" | "running" | "waiting" | "done" | "error"
-
-export const DONE_WINDOW_MS = 5 * 60 * 1000
 
 export type ChatSummary = {
   id: string
@@ -352,6 +350,9 @@ export type ChatSummary = {
   running: boolean
   status: ChatStatus
   finishedAt: number | null
+  // The last run finished without a client viewing the chat. Absent in older
+  // snapshots; false means seen.
+  unread?: boolean
 }
 
 export type ChatSearchResult = {

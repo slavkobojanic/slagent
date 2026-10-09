@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DONE_WINDOW_MS, type LibraryState } from "@shared/types"
+import type { LibraryState } from "@shared/types"
 import { MobileChatListStore } from "@/features/mobile/chat-list/chat-list-store/chat-list-store"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { chat, project } from "@/storybook/sample"
@@ -38,10 +38,9 @@ describe("MobileChatListStore", () => {
       expect(store.groups.map((group) => group.name)).toEqual(["alpha", "zeta"])
     })
 
-    it("can show a done chat as idle once the done window has passed", () => {
-      const store = withLibrary({ projects: [project({ id: "p1" })], chatsByProject: { p1: [chat({ id: "c1", status: "done", finishedAt: 0 })] } })
-      store.setNow(DONE_WINDOW_MS + 1)
-      expect(store.groups[0]?.items[0]?.status).toBe("idle")
+    it("can show a done chat's own status", () => {
+      const store = withLibrary({ projects: [project({ id: "p1" })], chatsByProject: { p1: [chat({ id: "c1", status: "done", unread: true })] } })
+      expect(store.groups[0]?.items[0]?.status).toBe("done")
     })
   })
 

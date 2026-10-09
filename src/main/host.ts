@@ -43,7 +43,7 @@ import type {
   UsageStats,
   UsageTotals,
 } from "../shared/types"
-import { DONE_WINDOW_MS, EMPTY_PERSONALISATION } from "../shared/types"
+import { EMPTY_PERSONALISATION } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import { CLAUDE_MODELS, ClaudeRuntime, claudeModel, isClaudeModel } from "./claude-runtime"
 import type { ComputerUse } from "./computer"
@@ -805,7 +805,11 @@ export class AgentHost {
     this.cwd = project.path
     this.watchGit(session)
     await this.library.touchProject(projectId, chatId)
-    if (chat.unread) await this.library.updateChat(projectId, chatId, { unread: false })
+    // Opening the chat is what clears the unseen-finished dot, for every client.
+    if (chat.unread) {
+      await this.library.updateChat(projectId, chatId, { unread: false })
+      this.publishLibrary(null)
+    }
     const existing = this.runtimeFor(projectId, chatId)
     if (existing) return
     if (isClaudeModel(chat.modelId)) {
@@ -1342,6 +1346,7 @@ export class AgentHost {
       running: runtime?.running ?? false,
       status: this.chatStatus(chat, runtime),
       finishedAt: chat.finishedAt ?? null,
+      unread: chat.unread ?? false,
     }
   }
 
@@ -1349,7 +1354,8 @@ export class AgentHost {
     if (runtime?.waiting) return "waiting"
     if (runtime?.running) return "running"
     if (runtime?.failed) return "error"
-    if (chat.finishedAt && Date.now() - chat.finishedAt < DONE_WINDOW_MS) return "done"
+    // Done sticks until the chat is opened, on every client over the library event.
+    if (chat.unread && chat.finishedAt) return "done"
     return "idle"
   }
 

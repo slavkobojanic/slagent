@@ -28,10 +28,10 @@ describe("StatusDot", () => {
     expect(html).toContain("bg-destructive/50")
   })
 
-  it("can show a finished chat as done in gray", () => {
+  it("can show a finished chat as done in green", () => {
     const html = viewMarkup(<StatusDot status="done" />)
 
     expect(html).toContain('aria-label="Finished"')
-    expect(html).toContain("bg-foreground/15")
+    expect(html).toContain("bg-success")
   })
 })

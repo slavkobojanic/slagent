@@ -11,8 +11,8 @@ const LABELS: Partial<Record<ChatStatus, string>> = {
 const CLASSES: Partial<Record<ChatStatus, string>> = {
   idle: "bg-foreground/15",
   running: "status-dot-throb bg-foreground/60",
-  // Done is gray: green for finished is unnecessary.
-  done: "bg-foreground/15",
+  // Done is green: it means the chat finished while it was unseen.
+  done: "bg-success",
   // Lighter than the palette colour so the dot does not shout.
   waiting: "bg-info/50",
   error: "bg-destructive/50",
