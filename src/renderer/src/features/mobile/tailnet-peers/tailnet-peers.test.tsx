@@ -50,10 +50,12 @@ describe("TailnetPeers", () => {
     expect(markup).toContain("animate-spin")
   })
 
-  it("can hold the list back when there are no candidates", () => {
-    const { container } = render(<TailnetPeers {...props({ peers: [] })} />)
+  it("can show the heading and refresh even when nothing is found", () => {
+    render(<TailnetPeers {...props({ peers: [] })} />)
 
-    expect(container.textContent).toBe("")
+    expect(screen.getByText("On your Tailscale network")).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Refresh" })).not.toBeNull()
+    expect(screen.getByText("No Macs found. Tap refresh to look again.")).not.toBeNull()
   })
 
   it("can explain the search while it runs with no results yet", () => {
