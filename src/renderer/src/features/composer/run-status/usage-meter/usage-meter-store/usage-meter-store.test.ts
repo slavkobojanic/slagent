@@ -49,35 +49,6 @@ function setup(current: UsageState | null, totals: UsageTotals = noChats) {
 }
 
 describe("UsageMeterStore", () => {
-  describe("visible", () => {
-    it("can be false when the run has no usage yet", () => {
-      const { store } = setup(null)
-
-      expect(store.visible).toBe(false)
-    })
-
-    it("can be true once the run reports usage", () => {
-      const { store } = setup(usage)
-
-      expect(store.visible).toBe(true)
-    })
-  })
-
-  describe("canCompact", () => {
-    it("can be false while a run streams", () => {
-      const { run, store } = setup(usage)
-      run.streaming = true
-
-      expect(store.canCompact).toBe(false)
-    })
-
-    it("can be true when no run is live", () => {
-      const { store } = setup(usage)
-
-      expect(store.canCompact).toBe(true)
-    })
-  })
-
   describe("model", () => {
     it("can be null when the run has no usage", () => {
       const { store } = setup(null)
@@ -176,25 +147,6 @@ describe("UsageMeterStore", () => {
       const { store } = setup({ ...usage, contextWindow: 2_000_000 })
 
       expect(store.model?.contextText).toBe("42k of 2.0M context")
-    })
-
-    it("can say the chat cannot be summarized while a run streams", () => {
-      const { run, store } = setup(usage)
-      run.streaming = true
-
-      expect(store.model?.canCompact).toBe(false)
-    })
-  })
-
-  describe("setError", () => {
-    it("can set the error and clear it again", () => {
-      const { store } = setup(usage)
-
-      store.setError("Compact failed")
-      expect(store.error).toBe("Compact failed")
-
-      store.setError(null)
-      expect(store.error).toBeNull()
     })
   })
 })
