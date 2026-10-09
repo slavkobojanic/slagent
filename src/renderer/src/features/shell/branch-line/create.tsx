@@ -25,6 +25,6 @@ export function createBranchLine({
     if (!branchLineStore.visible) {
       return null
     }
-    return <BranchLine label={branchLineStore.label} aheadBehind={branchLineStore.aheadBehind} />
+    return <BranchLine label={branchLineStore.label} />
   })
 }

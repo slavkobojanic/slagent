@@ -5,6 +5,7 @@ import type {
   EffortLevel,
   ModelRouting,
   Personalisation,
+  ProjectAppearance,
 } from "../shared/types"
 import type { AgentHost } from "./host"
 import { cliStatus, installCli, uninstallCli } from "./cli"
@@ -82,6 +83,8 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return host.searchChats(String(params[0] ?? ""))
       case "pinProject":
         return host.pinProject(clientId, str(params[0]), params[1] === true)
+      case "setProjectAppearance":
+        return host.setProjectAppearance(clientId, str(params[0]), params[1] as ProjectAppearance)
       case "pinChat":
         return host.pinChat(clientId, str(params[0]), params[1] === true, optStr(params[2]))
       case "renameChat":

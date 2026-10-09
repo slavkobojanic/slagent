@@ -13,6 +13,7 @@ const meta = {
     MainColumn: fill("MainColumn"),
     PanelFrame: fill("PanelFrame"),
     TerminalDrawer: fill("Terminal"),
+    TerminalBar: slot("TerminalBar"),
     Settings: slot("Settings"),
     Models: slot("Models"),
     CreateSkill: slot("CreateSkill"),

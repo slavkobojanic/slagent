@@ -1,4 +1,4 @@
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
@@ -32,6 +32,7 @@ export function createShell({
   Changes,
   PlanOverlay,
   TerminalDrawer,
+  TerminalBar,
   CreateSkill,
   api,
   libraryStore,
@@ -55,6 +56,7 @@ export function createShell({
   Changes: ComponentType
   PlanOverlay: ComponentType
   TerminalDrawer: ComponentType
+  TerminalBar: ComponentType<{ branch?: ReactNode }>
   CreateSkill: ComponentType
   api: API
   libraryStore: LibraryStore
@@ -93,7 +95,10 @@ export function createShell({
   const SidebarFrame = createSidebarFrame({ Library, layoutStore })
   const branchLineStore = new BranchLineStore()
   const BranchLine = createBranchLine({ api, branchLineStore, metaStore, log })
-  const MainColumn = createMainColumn({ Transcript, Composer, PlanOverlay, BranchLine, metaStore, projectMenuStore, updateButtonStore })
+  const MainColumn = createMainColumn({ Transcript, Composer, PlanOverlay, metaStore, projectMenuStore, updateButtonStore })
+  const TerminalBarWithBranch = function TerminalBarWithBranch() {
+    return <TerminalBar branch={<BranchLine />} />
+  }
   const PanelFrame = createPanelFrame({ Changes, metaStore, layoutStore, panelStore })
 
   return observer(function ShellHost() {
@@ -105,6 +110,7 @@ export function createShell({
         MainColumn={MainColumn}
         PanelFrame={PanelFrame}
         TerminalDrawer={TerminalDrawer}
+        TerminalBar={TerminalBarWithBranch}
         Settings={Settings}
         Models={Models}
         CreateSkill={CreateSkill}

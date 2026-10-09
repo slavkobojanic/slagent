@@ -10,7 +10,7 @@ function chat(id: string, updatedAt = 0): ChatSummary {
 
 function storeWith(chats: ChatSummary[]): ChatListStore {
   const libraryStore = new LibraryStore()
-  libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats, chatsByProject: {}, openChatId: null })
+  libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats, chatsByProject: {}, openChatId: null, tasks: [] })
   return new ChatListStore(libraryStore)
 }
 

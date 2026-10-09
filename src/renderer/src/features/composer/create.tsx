@@ -80,7 +80,7 @@ export function createComposer({
   const PromptHistory = createPromptHistory({ promptHistoryStore, promptHistoryPresenter, composerPresenter })
   const Suggestions = createSuggestions({ suggestionsStore, suggestionsPresenter, composerPresenter })
   const FileInput = createFileInput({ attachmentsPresenter })
-  const UsageMeter = createUsageMeter({ api, runStore, metaStore, commandRegistry, log: log.child("usage-meter") })
+  const UsageMeter = createUsageMeter({ runStore, metaStore })
   const PromptForm = createPromptForm({ composerStore, composerPresenter, attachmentsStore, attachmentsPresenter, UsageMeter, api, metaStore, log })
 
   return observer(function ComposerHost() {

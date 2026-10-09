@@ -3,6 +3,7 @@ import type { ComponentType } from "react"
 import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
 import type { ChatDeletionStore } from "@/features/library/chat-deletion/chat-deletion-store/chat-deletion-store"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
+import type { ProjectAppearanceStore } from "@/features/library/project-appearance/project-appearance-store/project-appearance-store"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
@@ -33,6 +34,7 @@ export function createSidebar({
   jumpPort,
   chatDeletionStore,
   projectRemovalStore,
+  projectAppearanceStore,
   chatSwitchPresenter,
   log,
 }: {
@@ -46,6 +48,7 @@ export function createSidebar({
   jumpPort: JumpPort
   chatDeletionStore: ChatDeletionStore
   projectRemovalStore: ProjectRemovalStore
+  projectAppearanceStore: ProjectAppearanceStore
   chatSwitchPresenter: ChatSwitchPresenter
   log: Log
 }): ComponentType {
@@ -57,6 +60,7 @@ export function createSidebar({
     composerPort,
     commandRegistry,
     projectRemovalStore,
+    projectAppearanceStore,
     log: log.child("project-row"),
   })
   const OpenProject = createOpenProject({

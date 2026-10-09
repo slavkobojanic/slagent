@@ -6,7 +6,7 @@ import { chat, project } from "@/storybook/sample"
 
 function withLibrary(library: Partial<LibraryState>): MobileChatListStore {
   const libraryStore = new LibraryStore()
-  libraryStore.setLibrary({ projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, ...library })
+  libraryStore.setLibrary({ projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, ...library, tasks: library.tasks ?? [] })
   return new MobileChatListStore(libraryStore)
 }
 

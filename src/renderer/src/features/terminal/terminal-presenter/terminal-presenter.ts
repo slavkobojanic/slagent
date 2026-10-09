@@ -70,6 +70,36 @@ export class TerminalPresenter {
     this.shells.clear()
   }
 
+  // Shows a terminal in the drawer. The status bar calls this so the user can
+  // see what the agent's shell is doing.
+  reveal = (id: string) => {
+    const shell = this.shells.get(id)
+    if (shell === undefined) {
+      return
+    }
+    this.log.action("reveal-terminal", { id })
+    this.store.revealTab(id)
+    shell.emulator.focus()
+  }
+
+  // A terminal a status bar entry owns. The shell already runs in the main
+  // process; this only adds a drawer tab and an emulator for it. A task that
+  // already finished shows its exit line instead of waiting for an event that
+  // has already passed.
+  adoptTask = (session: TerminalSession, exited: boolean, exitCode: number | null): boolean => {
+    if (this.shells.has(session.id)) {
+      return true
+    }
+    this.log.action("adopt-task-terminal", { id: session.id })
+    this.shells.set(session.id, { emulator: this.buildEmulator(session), element: null })
+    this.store.addTab(session, "task")
+    if (exited) {
+      this.shells.get(session.id)?.emulator.write(`\r\n\x1b[2m[exited with code ${exitCode ?? "unknown"}]\x1b[0m\r\n`)
+      this.store.setExited(session.id)
+    }
+    return true
+  }
+
   toggle = () => {
     if (this.store.open) {
       this.close()
@@ -114,8 +144,8 @@ export class TerminalPresenter {
   }
 
   closeTab = (id: string) => {
-    this.log.action("close-tab", { id })
     const shell = this.shells.get(id)
+    const origin = this.store.tabs.find((tab) => tab.id === id)?.origin
     if (shell !== undefined) {
       if (shell.element !== null) {
         this.observer?.unobserve(shell.element)
@@ -123,6 +153,14 @@ export class TerminalPresenter {
       shell.emulator.dispose()
       this.shells.delete(id)
     }
+    // A task's shell keeps running in the main process, so closing its tab
+    // only hides it. A user shell dies with its tab.
+    if (origin === "task") {
+      this.log.action("dismiss-task-terminal", { id })
+      this.store.removeTab(id)
+      return
+    }
+    this.log.action("close-tab", { id })
     this.api.closeTerminal(id)
     this.store.removeTab(id)
   }

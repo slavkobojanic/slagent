@@ -27,6 +27,7 @@ import type {
   OpenRouterStatus,
   Personalisation,
   PinnedFile,
+  ProjectAppearance,
   ProjectSummary,
   PromptRequest,
   QuestionReply,
@@ -39,12 +40,14 @@ import type {
   Snapshot,
   TranscriptPage,
   TranscriptState,
+  TaskEntry,
   UiEvent,
   UsageStats,
   UsageTotals,
 } from "../shared/types"
 import { EMPTY_PERSONALISATION } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
+import type { TaskTerminalSpawner } from "./extensions/background-tasks"
 import { CLAUDE_MODELS, ClaudeRuntime, claudeModel, isClaudeModel } from "./claude-runtime"
 import type { ComputerUse } from "./computer"
 import { draftCommands } from "./commands"
@@ -53,6 +56,7 @@ import { ComputerGate } from "./computer-gate"
 import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
+import { PROJECT_COLORS, PROJECT_ICONS } from "../shared/project-appearance"
 import { parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
 import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
@@ -147,6 +151,9 @@ export class AgentHost {
     private readonly notifier: Notifier,
     private readonly getMcpServers: () => Record<string, McpServerConfig>,
     private readonly getServerInfo: () => ServerInfo | null,
+    // Background task terminals live with the user's terminals, so the host
+    // reads them through a getter: the manager is built after the host.
+    private readonly getTerminalTasks: () => TaskTerminalSpawner | null,
   ) {
     this.library = new Library(libraryRoot)
     this.usage = new UsageLedger(join(libraryRoot, "usage.db"))
@@ -339,6 +346,19 @@ export class AgentHost {
   async pinProject(_clientId: string, projectId: string, pinned: boolean): Promise<void> {
     await this.run(async () => {
       await this.library.setPinned(projectId, pinned)
+      this.publishLibrary(null)
+    })
+  }
+
+  async setProjectAppearance(_clientId: string, projectId: string, appearance: ProjectAppearance): Promise<void> {
+    await this.run(async () => {
+      if (appearance.icon !== null && !PROJECT_ICONS.some((icon) => icon.id === appearance.icon)) {
+        throw new Error("Unknown icon.")
+      }
+      if (appearance.color !== null && !PROJECT_COLORS.some((color) => color.id === appearance.color)) {
+        throw new Error("Unknown colour.")
+      }
+      await this.library.setAppearance(projectId, appearance.icon, appearance.color)
       this.publishLibrary(null)
     })
   }
@@ -885,6 +905,11 @@ export class AgentHost {
         if (task.status === "failed") body = `${task.label} exited with code ${task.exitCode ?? "unknown"}`
         this.notify(projectId, chatId, body)
       },
+      taskTerminals: () => this.getTerminalTasks(),
+      onTasksChanged: () => {
+        // The task list rides the library event, which every client mirrors.
+        this.publishLibrary(null)
+      },
       onQuestion: (request) => {
         const open = this.isViewed(projectId, chatId)
         if (open && this.notifier.focused(projectId, chatId)) return
@@ -1082,12 +1107,13 @@ export class AgentHost {
     this.notifier.notify({ title, body, projectId, chatId })
   }
 
-  async taskOutput(clientId: string, id: string): Promise<string> {
-    return this.sessionRuntime(this.requireSession(clientId))?.taskOutput(id) ?? ""
+  async taskOutput(_clientId: string, id: string): Promise<string> {
+    // Task ids are unique across chats, so a status bar can read any chat's task.
+    return this.runtimeWithTask(id)?.taskOutput(id) ?? ""
   }
 
-  async stopTask(clientId: string, id: string): Promise<void> {
-    this.sessionRuntime(this.requireSession(clientId))?.stopTask(id)
+  async stopTask(_clientId: string, id: string): Promise<void> {
+    this.runtimeWithTask(id)?.stopTask(id)
   }
 
   async usageStats(): Promise<UsageStats> {
@@ -1153,6 +1179,15 @@ export class AgentHost {
 
   private runtimeFor(projectId: string, chatId: string): Runtime | null {
     return this.runtimes.get(`${projectId}:${chatId}`) ?? null
+  }
+
+  // The chat that owns a background task. The session's own chat is likeliest,
+  // but the status bar serves tasks from every chat.
+  private runtimeWithTask(id: string): Runtime | null {
+    for (const runtime of this.runtimes.values()) {
+      if (runtime.tasks.some((task) => task.id === id)) return runtime
+    }
+    return null
   }
 
   private applyDraftModel(): void {
@@ -1314,6 +1349,8 @@ export class AgentHost {
       lastOpenedAt: project.lastOpenedAt,
       running: this.projectRunning(project.id),
       attention: this.projectAttention(project.id),
+      icon: project.icon,
+      color: project.color,
     }))
     let chats: ChatSummary[] = []
     const chatsByProject: Record<string, ChatSummary[]> = {}
@@ -1332,7 +1369,20 @@ export class AgentHost {
       chats,
       chatsByProject,
       openChatId: session.chatId,
+      tasks: this.taskEntries(),
     }
+  }
+
+  // Every chat's background tasks, so the status bar shows them all, not just
+  // the open chat's.
+  private taskEntries(): TaskEntry[] {
+    const entries: TaskEntry[] = []
+    for (const runtime of this.runtimes.values()) {
+      for (const task of runtime.tasks) {
+        entries.push({ ...task, projectId: runtime.projectId })
+      }
+    }
+    return entries.sort((left, right) => right.startedAt - left.startedAt)
   }
 
   private chatSummary(projectId: string, chat: StoredChat): ChatSummary {

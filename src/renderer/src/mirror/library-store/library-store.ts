@@ -2,7 +2,7 @@ import { makeAutoObservable } from "mobx"
 import type { LibraryState } from "@shared/types"
 
 export class LibraryStore {
-  library: LibraryState = { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null }
+  library: LibraryState = { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, tasks: [] }
 
   constructor() {
     makeAutoObservable(this)

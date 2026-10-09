@@ -71,19 +71,19 @@ describe("isDraftBecomingChat", () => {
 
 describe("chatOf", () => {
   it("can find a chat of the open project", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1")], chatsByProject: {}, openChatId: "c1" }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1")], chatsByProject: {}, openChatId: "c1", tasks: [] }
 
     expect(chatOf(library, "c1")?.id).toBe("c1")
   })
 
   it("can find a chat of a project that is not open", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c2")] }, openChatId: "c2" }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c2")] }, openChatId: "c2", tasks: [] }
 
     expect(chatOf(library, "c2")?.id).toBe("c2")
   })
 
   it("can return undefined for a chat the library does not list", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null, tasks: [] }
 
     expect(chatOf(library, "gone")).toBeUndefined()
   })
@@ -91,19 +91,19 @@ describe("chatOf", () => {
 
 describe("projectOfChat", () => {
   it("can name the open project for its own chats", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1")], chatsByProject: {}, openChatId: "c1" }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1")], chatsByProject: {}, openChatId: "c1", tasks: [] }
 
     expect(projectOfChat(library, "c1")).toBe("p1")
   })
 
   it("can name a project that is not open", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c2")] }, openChatId: null }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c2")] }, openChatId: null, tasks: [] }
 
     expect(projectOfChat(library, "c2")).toBe("p2")
   })
 
   it("can return undefined for a chat the library does not list", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [], chatsByProject: {}, openChatId: null, tasks: [] }
 
     expect(projectOfChat(library, "gone")).toBeUndefined()
   })
@@ -111,7 +111,7 @@ describe("projectOfChat", () => {
 
 describe("libraryContext", () => {
   it("can record the open place and the ids of the chats in the library", () => {
-    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1"), chat("c2")], chatsByProject: {}, openChatId: "c1" }
+    const library: LibraryState = { projects: [], openProjectId: "p1", chats: [chat("c1"), chat("c2")], chatsByProject: {}, openChatId: "c1", tasks: [] }
 
     const context = libraryContext(library)
 

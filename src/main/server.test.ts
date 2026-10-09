@@ -78,9 +78,9 @@ describe("api server", () => {
       const message = JSON.parse(String(data)) as { event?: unknown }
       if (message.event) pushed = message.event
     })
-    server.hub.publish(null, { type: "library", revision: 1, library: { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null } })
+    server.hub.publish(null, { type: "library", revision: 1, library: { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, tasks: [] } })
     await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(pushed).toEqual({ type: "library", revision: 1, library: { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null } })
+    expect(pushed).toEqual({ type: "library", revision: 1, library: { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, tasks: [] } })
   })
 
   it("serves attachments over http to a tokened request", async () => {

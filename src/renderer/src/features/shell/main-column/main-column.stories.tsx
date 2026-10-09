@@ -13,7 +13,6 @@ const meta = {
     Transcript: fill("Transcript"),
     Composer: fill("Composer"),
     PlanOverlay: fill("PlanOverlay"),
-    BranchLine: fill("BranchLine"),
   },
 } satisfies Meta<typeof MainColumn>
 

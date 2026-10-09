@@ -169,6 +169,7 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     pageTranscript: (page) => call<void>("pageTranscript", page),
     searchChats: (query) => call<Result<"searchChats">>("searchChats", query),
     pinProject: (projectId, pinned) => call<void>("pinProject", projectId, pinned),
+    setProjectAppearance: (projectId, appearance) => call<void>("setProjectAppearance", projectId, appearance),
     pinChat: (chatId, pinned, projectId) => call<void>("pinChat", chatId, pinned, projectId),
     renameChat: (chatId, title, projectId) => call<void>("renameChat", chatId, title, projectId),
     deleteChat: (chatId, projectId) => call<void>("deleteChat", chatId, projectId),

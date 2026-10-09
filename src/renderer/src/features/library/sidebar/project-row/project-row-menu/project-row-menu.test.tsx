@@ -18,7 +18,7 @@ const summary: ProjectSummary = {
 
 describe("ProjectRowMenu", () => {
   it("can label its trigger for the project it belongs to", () => {
-    const html = viewMarkup(<ProjectRowMenu project={summary} onPin={noop} onRemove={noop} />)
+    const html = viewMarkup(<ProjectRowMenu project={summary} onPin={noop} onCustomize={noop} onRemove={noop} />)
 
     expect(html).toContain('aria-label="Atlas actions"')
   })

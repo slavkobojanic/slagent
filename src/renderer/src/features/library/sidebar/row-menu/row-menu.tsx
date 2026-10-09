@@ -2,19 +2,22 @@ import { EllipsisIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 
 export type RowMenuProps = {
   label: string
   // Controlled only when something else opens the menu, such as a right-click.
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  // Project rows keep the trigger on screen; chat rows fade it in from the right on hover.
+  alwaysVisible?: boolean
   children: ReactNode
 }
 
 // The reveal-on-hover CSS lives in library.css (.row-menu).
-export function RowMenu({ label, open, onOpenChange, children }: RowMenuProps) {
+export function RowMenu({ label, open, onOpenChange, alwaysVisible, children }: RowMenuProps) {
   return (
-    <div className="row-menu">
+    <div className={cn("row-menu", alwaysVisible && "row-menu-static")}>
       <div>
         <DropdownMenu open={open} onOpenChange={onOpenChange}>
           <DropdownMenuTrigger asChild>

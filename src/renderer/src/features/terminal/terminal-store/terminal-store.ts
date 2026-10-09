@@ -8,6 +8,9 @@ export type TerminalTab = {
   title: string
   cwd: string
   exited: boolean
+  // Who created it: "user" tabs come from the + button, "task" tabs from the
+  // status bar for a background task's shell.
+  origin: "user" | "task"
 }
 
 export class TerminalStore {
@@ -52,10 +55,20 @@ export class TerminalStore {
     this.error = message
   }
 
-  addTab(session: TerminalSession) {
-    this.tabs = [...this.tabs, { id: session.id, title: session.title, cwd: session.cwd, exited: false }]
+  addTab(session: TerminalSession, origin: "user" | "task" = "user") {
+    this.tabs = [...this.tabs, { id: session.id, title: session.title, cwd: session.cwd, exited: false, origin }]
     this.activeId = session.id
     this.error = null
+  }
+
+  // Shows an existing tab and opens the drawer over it, so the status bar can
+  // reveal a terminal the agent created.
+  revealTab(id: string) {
+    if (!this.tabs.some((tab) => tab.id === id)) {
+      return
+    }
+    this.open = true
+    this.activeId = id
   }
 
   removeTab(id: string) {
