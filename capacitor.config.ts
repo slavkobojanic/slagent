@@ -13,8 +13,9 @@ const config: CapacitorConfig = {
   },
   plugins: {
     Keyboard: {
-      // The webview keeps its size; the page pads itself above the keyboard
-      // on the keyboard's own curve (mobile.css), so the composer rides up with it.
+      // The webview keeps its size; the screen rides the keyboard with a
+      // compositor-only transform (mobile-keyboard-shift in mobile.css), so the
+      // keyboard animation never reflows the page.
       resize: "none",
     },
   },
