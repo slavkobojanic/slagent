@@ -66,20 +66,23 @@ type StatusPeer = {
   Online?: boolean
 }
 
-// Splits `tailscale status --json`'s peer map into slagent candidates.
+// Splits `tailscale status --json` into slagent candidates. The reporting Mac
+// itself arrives as Self, not Peer, and the connected phone needs it in the
+// list too, so both are read.
 export function parsePeers(raw: string): TailscalePeer[] {
-  let parsed: { Peer?: Record<string, StatusPeer> }
+  let parsed: { Self?: StatusPeer; Peer?: Record<string, StatusPeer> }
   try {
-    parsed = JSON.parse(raw) as { Peer?: Record<string, StatusPeer> }
+    parsed = JSON.parse(raw) as { Self?: StatusPeer; Peer?: Record<string, StatusPeer> }
   } catch {
     return []
   }
+  const entries = [...Object.values(parsed.Peer ?? {}), ...(parsed.Self ? [parsed.Self] : [])]
   const peers: TailscalePeer[] = []
-  for (const peer of Object.values(parsed.Peer ?? {})) {
+  for (const peer of entries) {
     const host = peer.TailscaleIPs?.[0]
     const name = (peer.DNSName ?? peer.HostName ?? "").replace(/\.$/, "")
     if (!host || name === "") continue
-    peers.push({ name, host, port: SERVE_PORT, online: peer.Online ?? false })
+    peers.push({ name, host, port: SERVE_PORT, online: peer.Online ?? true })
   }
   return peers
 }

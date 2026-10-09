@@ -33,6 +33,7 @@ export function createTailnetPeers({
         loading={store.loading}
         current={connectionStore.address}
         onPick={presenter.handlePick}
+        onRefresh={presenter.handleRefresh}
       />
     )
   })

@@ -1,3 +1,4 @@
+import { RefreshCwIcon } from "lucide-react"
 import type { TailscalePeer } from "@shared/types"
 import type { ServerAddress } from "@/lib/server-address"
 import { Button } from "@/components/ui/button"
@@ -10,19 +11,25 @@ export type TailnetPeersProps = {
   // offering a button.
   current: ServerAddress | null
   onPick: (address: ServerAddress) => void
+  onRefresh: () => void
 }
 
 // Every Mac on the tailnet that runs slagent, as the connected Mac sees it, so
 // the sheet shows the whole fleet — personal and work — with the active one
 // marked. Picking another needs no pairing: the tailnet membership is the
 // credential.
-export function TailnetPeers({ peers, loading, current, onPick }: TailnetPeersProps) {
+export function TailnetPeers({ peers, loading, current, onPick, onRefresh }: TailnetPeersProps) {
   if (peers.length === 0 && !loading) {
     return null
   }
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium">On your Tailscale network</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="min-w-0 flex-1 text-sm font-medium">On your Tailscale network</h3>
+        <Button type="button" variant="ghost" size="icon-sm" aria-label="Refresh" onClick={onRefresh}>
+          <RefreshCwIcon className={cn("size-3.5", loading && "animate-spin")} />
+        </Button>
+      </div>
       <div className="space-y-2">
         {peers.map((peer) => {
           const active = current !== null && peer.host === current.host && peer.port === current.port

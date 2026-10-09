@@ -20,10 +20,24 @@ describe("parsePeers", () => {
     ])
   })
 
+  it("can include the reporting Mac itself, which arrives as Self, so the list holds the whole fleet", () => {
+    const peers = parsePeers(
+      JSON.stringify({
+        Self: { DNSName: "personal.tail-scale.ts.net.", TailscaleIPs: ["100.64.0.5"], Online: true },
+        Peer: { k1: { DNSName: "work.tail-scale.ts.net.", TailscaleIPs: ["100.64.0.9"], Online: true } },
+      }),
+    )
+
+    expect(peers).toEqual([
+      { name: "work.tail-scale.ts.net", host: "100.64.0.9", port: 8747, online: true },
+      { name: "personal.tail-scale.ts.net", host: "100.64.0.5", port: 8747, online: true },
+    ])
+  })
+
   it("can fall back to the hostname when the DNS name is missing", () => {
     const peers = parsePeers(status({ k1: { HostName: "studio", TailscaleIPs: ["100.64.0.7"] } }))
 
-    expect(peers).toEqual([{ name: "studio", host: "100.64.0.7", port: 8747, online: false }])
+    expect(peers).toEqual([{ name: "studio", host: "100.64.0.7", port: 8747, online: true }])
   })
 
   it("can leave out peers without an address or a name", () => {
@@ -35,7 +49,7 @@ describe("parsePeers", () => {
       }),
     )
 
-    expect(peers).toEqual([{ name: "studio", host: "100.64.0.7", port: 8747, online: false }])
+    expect(peers).toEqual([{ name: "studio", host: "100.64.0.7", port: 8747, online: true }])
   })
 
   it("can survive output that is not the status JSON", () => {
