@@ -3,10 +3,12 @@ import "@/features/mobile/mobile.css"
 
 export type ConnectPageProps = {
   Connect: ComponentType
+  // The Macs this phone already knows, when there are any.
+  SavedServers?: ComponentType
 }
 
 // What a fresh install shows: how to reach the Mac over Tailscale, then the address form.
-export function ConnectPage({ Connect }: ConnectPageProps) {
+export function ConnectPage({ Connect, SavedServers }: ConnectPageProps) {
   return (
     <div className="mobile-safe-top mobile-safe-bottom mobile-safe-x h-full overflow-y-auto bg-background text-foreground">
       <div className="mx-auto flex max-w-md flex-col gap-6 px-6 py-10">
@@ -20,6 +22,7 @@ export function ConnectPage({ Connect }: ConnectPageProps) {
           <li>Scan the QR code with this phone's camera, or copy the address and paste it below.</li>
         </ol>
         <Connect />
+        {SavedServers ? <SavedServers /> : null}
       </div>
     </div>
   )

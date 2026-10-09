@@ -1,10 +1,14 @@
 import { makeAutoObservable } from "mobx"
-import type { ServerInfo } from "@shared/types"
+import type { DaemonStatus, ServerInfo } from "@shared/types"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import { qrShape, type QrShape } from "@/lib/qr"
 import { connectLink } from "@/lib/server-address"
 
 export class ConnectSettingsStore {
+  daemon: DaemonStatus | null = null
+  busy = false
+  error: string | null = null
+
   constructor(private readonly metaStore: MetaStore) {
     makeAutoObservable(this)
   }
@@ -20,5 +24,25 @@ export class ConnectSettingsStore {
       return null
     }
     return qrShape(connectLink(server))
+  }
+
+  get canEnable(): boolean {
+    return !this.busy && this.daemon?.installed === false
+  }
+
+  get canDisable(): boolean {
+    return !this.busy && this.daemon?.installed === true
+  }
+
+  setDaemon(status: DaemonStatus) {
+    this.daemon = status
+  }
+
+  setBusy(value: boolean) {
+    this.busy = value
+  }
+
+  setError(message: string | null) {
+    this.error = message
   }
 }

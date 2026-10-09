@@ -52,7 +52,7 @@ export function createMobile({
   const ChatList = createMobileChatList({ window, libraryStore, metaStore, mobileStore, mobilePresenter, Banner, log: log.child("chat-list") })
   const ChatScreen = createMobileChatScreen({ metaStore, mobileStore, mobilePresenter, Banner, Transcript, Composer, PlanOverlay })
   const Connect = createConnect({ device, log: log.child("connect") })
-  const ConnectionSheet = createConnectionSheet({ connectionStore, connectionPresenter, mobileStore, mobilePresenter, Connect })
+  const ConnectionSheet = createConnectionSheet({ connectionStore, connectionPresenter, mobileStore, mobilePresenter, device, log, Connect })
 
   return observer(function MobileHost() {
     return <MobileShell screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ConnectionSheet={ConnectionSheet} />

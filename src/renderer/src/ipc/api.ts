@@ -77,6 +77,9 @@ export class API implements SlagentApi {
   readonly cliStatus: SlagentApi["cliStatus"]
   readonly installCli: SlagentApi["installCli"]
   readonly uninstallCli: SlagentApi["uninstallCli"]
+  readonly daemonStatus: SlagentApi["daemonStatus"]
+  readonly enableDaemon: SlagentApi["enableDaemon"]
+  readonly disableDaemon: SlagentApi["disableDaemon"]
   readonly setPersonalisation: SlagentApi["setPersonalisation"]
   readonly pickContextFiles: SlagentApi["pickContextFiles"]
   readonly createTerminal: SlagentApi["createTerminal"]
@@ -157,6 +160,9 @@ export class API implements SlagentApi {
     this.cliStatus = () => bridge.cliStatus()
     this.installCli = () => bridge.installCli()
     this.uninstallCli = () => bridge.uninstallCli()
+    this.daemonStatus = () => bridge.daemonStatus()
+    this.enableDaemon = () => bridge.enableDaemon()
+    this.disableDaemon = () => bridge.disableDaemon()
     this.setPersonalisation = (value) => bridge.setPersonalisation(plain(value))
     this.pickContextFiles = () => bridge.pickContextFiles()
     this.createTerminal = () => bridge.createTerminal()

@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest"
 import { addressLabel, connectLink, parseServerAddress, rewriteAttachmentLinks, socketUrl } from "./server-address"
 
-const server = { url: "ws://100.64.0.1:8747?token=abc", host: "100.64.0.1", port: 8747, token: "abc", tailscale: true }
+const server = { url: "ws://100.64.0.1:8747?token=abc", host: "100.64.0.1", port: 8747, token: "abc", name: "mac", tailscale: true }
 
 describe("parseServerAddress", () => {
   it("can read the websocket address when it carries a token", () => {
     expect(parseServerAddress(" ws://100.64.0.1:8747?token=abc ")).toEqual({ host: "100.64.0.1", port: 8747, token: "abc" })
   })
 
+  it("can carry the machine name when it has one", () => {
+    expect(parseServerAddress("ws://100.64.0.1:8747?token=abc&name=work")).toEqual({ host: "100.64.0.1", port: 8747, token: "abc", name: "work" })
+  })
+
   it("can read the connect link when the QR code is scanned", () => {
-    expect(parseServerAddress(connectLink(server))).toEqual({ host: "100.64.0.1", port: 8747, token: "abc" })
+    expect(parseServerAddress(connectLink(server))).toEqual({ host: "100.64.0.1", port: 8747, token: "abc", name: "mac" })
   })
 
   it("can refuse an address when the token is missing", () => {
@@ -43,6 +47,10 @@ describe("socketUrl", () => {
 describe("addressLabel", () => {
   it("can show the host and port", () => {
     expect(addressLabel({ host: "100.64.0.1", port: 8747, token: "t" })).toBe("100.64.0.1:8747")
+  })
+
+  it("can prefer the machine name when it has one", () => {
+    expect(addressLabel({ host: "100.64.0.1", port: 8747, token: "t", name: "work-laptop" })).toBe("work-laptop")
   })
 })
 

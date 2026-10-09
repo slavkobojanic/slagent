@@ -6,6 +6,7 @@ import { StatusBar, Style } from "@capacitor/status-bar"
 import { socketUrl, type ServerAddress } from "@/lib/server-address"
 
 const ADDRESS_KEY = "slagent:server-address"
+const SERVERS_KEY = "slagent:servers"
 const CLIENT_KEY = "slagent:client-id"
 const PROBE_TIMEOUT_MS = 5000
 
@@ -22,7 +23,12 @@ export type SavedConnection = {
 export class Device {
   readonly native: boolean
   readonly loadConnection: () => Promise<SavedConnection>
+  // Saves the active Mac and keeps it in the roster, so the phone remembers
+  // every machine it has connected to and can switch between them.
   readonly saveAddress: (address: ServerAddress | null) => Promise<void>
+  readonly loadServers: () => Promise<ServerAddress[]>
+  // Drops one machine from the roster; the active one is dropped by saveAddress(null).
+  readonly forgetServer: (address: ServerAddress) => Promise<void>
   // Whether the desktop app answers at the address with its token.
   readonly probe: (address: ServerAddress) => Promise<boolean>
   readonly launchUrl: () => Promise<string | null>
@@ -49,6 +55,22 @@ export class Device {
         return
       }
       await Preferences.set({ key: ADDRESS_KEY, value: JSON.stringify(address) })
+      const roster = (await this.loadServers()).filter((saved) => !sameMachine(saved, address))
+      await Preferences.set({ key: SERVERS_KEY, value: JSON.stringify([address, ...roster]) })
+    }
+    this.loadServers = async () => {
+      const stored = await Preferences.get({ key: SERVERS_KEY })
+      const roster = parseList(stored.value)
+      // The address saved before the roster existed joins it on first read.
+      const legacy = parseSaved((await Preferences.get({ key: ADDRESS_KEY })).value)
+      if (legacy !== null && !roster.some((saved) => sameMachine(saved, legacy))) {
+        return [legacy, ...roster]
+      }
+      return roster
+    }
+    this.forgetServer = async (address) => {
+      const roster = (await this.loadServers()).filter((saved) => !sameMachine(saved, address))
+      await Preferences.set({ key: SERVERS_KEY, value: JSON.stringify(roster) })
     }
     // Opens the websocket itself, so any slagent build that accepts the token answers.
     this.probe = (address) =>
@@ -115,10 +137,37 @@ function parseSaved(value: string | null): ServerAddress | null {
     if (typeof parsed.host !== "string" || typeof parsed.port !== "number" || typeof parsed.token !== "string") {
       return null
     }
-    return { host: parsed.host, port: parsed.port, token: parsed.token }
+    return { host: parsed.host, port: parsed.port, token: parsed.token, name: parsed.name }
   } catch {
     return null
   }
+}
+
+function parseList(value: string | null): ServerAddress[] {
+  if (value === null) {
+    return []
+  }
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+    const list: ServerAddress[] = []
+    for (const entry of parsed) {
+      const address = entry as Partial<ServerAddress>
+      if (typeof address.host !== "string" || typeof address.port !== "number" || typeof address.token !== "string") continue
+      list.push({ host: address.host, port: address.port, token: address.token, name: address.name })
+    }
+    return list
+  } catch {
+    return []
+  }
+}
+
+// One roster entry per Mac, matched by address without the token, so a new
+// QR code replaces the old credentials instead of adding a duplicate.
+function sameMachine(a: ServerAddress, b: ServerAddress): boolean {
+  return a.host === b.host && a.port === b.port
 }
 
 function randomId(window: Window): string {
