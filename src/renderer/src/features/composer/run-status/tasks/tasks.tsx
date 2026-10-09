@@ -39,7 +39,7 @@ export function TaskStrip({ chips, error, viewing, output, onOpen, onStop, onClo
     <>
       <div className="mb-2 flex flex-wrap gap-1.5">
         {chips.map((chip) => (
-          <span key={chip.id} className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-white/15 py-0.5 pr-0.5 pl-2 text-xs">
+          <span key={chip.id} className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-white/5 py-0.5 pr-0.5 pl-2 text-xs transition-colors hover:bg-white/10">
             <span className={cn("size-1.5 shrink-0 rounded-full", DOT_CLASS[chip.status])} />
             <button type="button" className="max-w-56 truncate hover:underline" title={chip.command} onClick={() => onOpen(chip.id)}>
               {chip.label}

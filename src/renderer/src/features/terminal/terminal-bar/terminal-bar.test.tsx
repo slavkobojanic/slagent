@@ -3,8 +3,8 @@ import type { TerminalChip } from "@/features/terminal/terminal-bar/terminal-bar
 import { TerminalBar, type TerminalBarProps } from "@/features/terminal/terminal-bar/terminal-bar"
 import { viewMarkup } from "@/test/view-markup"
 
-const chip: TerminalChip = { id: "terminal-1", title: "zsh", active: true, exited: false, running: false, origin: "user", color: null }
-const task: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, running: true, origin: "task", color: "#3b82f6" }
+const chip: TerminalChip = { id: "terminal-1", title: "zsh", active: true, exited: false, origin: "user", color: null }
+const task: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6" }
 
 function base(overrides: Partial<TerminalBarProps> = {}): TerminalBarProps {
   return {
@@ -49,10 +49,18 @@ describe("TerminalBar", () => {
     expect(html).not.toContain("hover:bg-white/10")
   })
 
-  it("can pulse a running task's dot", () => {
-    const html = viewMarkup(<TerminalBar {...base({ chips: [task] })} />)
+  it("can ellipse a long command and show the full one on hover", () => {
+    const long: TerminalChip = { id: "task-9", title: "pnpm storybook dev -p 6006 --ci", active: false, exited: false, origin: "task", color: null }
+    const html = viewMarkup(<TerminalBar {...base({ chips: [long] })} />)
 
-    expect(html).toContain("animate-pulse")
+    expect(html).toContain("pnpm storybook dev …")
+    expect(html).toContain('title="pnpm storybook dev -p 6006 --ci"')
+  })
+
+  it("can dim an exited chip", () => {
+    const html = viewMarkup(<TerminalBar {...base({ chips: [{ ...chip, active: false, exited: true }] })} />)
+
+    expect(html).toContain("opacity-50")
   })
 
   it("can offer the new-shell and drawer-toggle controls", () => {

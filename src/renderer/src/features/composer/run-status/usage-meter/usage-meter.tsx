@@ -3,7 +3,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
@@ -53,15 +52,14 @@ export function UsageMeter({ usage, error, onCompact }: UsageMeterProps) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel className="space-y-2 font-normal">
-            <p className="text-sm">{usage.contextText}</p>
+          <DropdownMenuLabel className="space-y-1.5 font-normal">
+            <p className="text-sm font-medium">{usage.contextText}</p>
             <div className="space-y-0.5 text-xs text-white/50 tabular-nums">
               <p className="text-white/80">{usage.thisChatText}</p>
               <p>{usage.tokensText}</p>
               {usage.allChatsText !== null ? <p className="pt-1 text-white/80">{usage.allChatsText}</p> : null}
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuSeparator />
           <DropdownMenuItem disabled={!usage.canCompact} onSelect={onCompact}>
             Summarize earlier messages
           </DropdownMenuItem>

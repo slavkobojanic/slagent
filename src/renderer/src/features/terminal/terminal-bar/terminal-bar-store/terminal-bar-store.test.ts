@@ -46,7 +46,7 @@ describe("TerminalBarStore", () => {
     const store = new TerminalBarStore(new TerminalStore(), library)
 
     expect(store.chips).toEqual([
-      { id: "task-1", title: "dev server", active: false, exited: false, running: true, origin: "task", color: "#3b82f6" },
+      { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6" },
     ])
   })
 
