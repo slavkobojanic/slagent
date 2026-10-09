@@ -355,14 +355,22 @@ app.whenReady().then(async () => {
   started = host.start()
   for (const folder of pendingFolders.splice(0)) void openFolderFromSystem(folder)
   startUpdater({
-    prepareQuit: async () => {
+    prepareQuit: async (forUpdate: boolean) => {
       quitting = true
       await (host?.flush() ?? Promise.resolve())
       host?.close()
       computer?.stop()
       terminal?.stop()
       apiServer?.close()
-      await handOffToDaemon()
+      if (forUpdate) {
+        // ShipIt refuses to replace the bundle while any instance of the app is
+        // running, so the daemon (the same executable) has to leave first; the
+        // plist stays, and the next normal quit hands the port over again.
+        await stopDaemon().catch((error) => console.error("daemon:", error))
+        await waitDaemonPortFree(8747, 10_000)
+      } else {
+        await handOffToDaemon()
+      }
     },
     onReady: (version) => apiServer?.hub.publishUpdateReady(version),
   })
