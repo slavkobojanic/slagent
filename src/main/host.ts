@@ -62,6 +62,7 @@ import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
 import { createSkillFile, draftSkill } from "./skills-create"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
+import { tailscalePeers, type TailscalePeer } from "./tailscale"
 import { importShellEnv } from "./shell-env"
 import { runUsageBackfill } from "./usage-backfill"
 import { UsageLedger } from "./usage-ledger"
@@ -540,6 +541,12 @@ export class AgentHost {
     const model = this.titleModel(this.sessionRuntime(this.requireSession(clientId))?.modelId ?? this.draftModelId ?? "")
     if (!runtime || !model) throw new Error("No model is available.")
     return generateCommitMessage(runtime, model, diff)
+  }
+
+  // The tailnet's machines running slagent, as seen from the connected Mac. A
+  // phone picks one of these to connect to without pairing again.
+  tailscaleList(): Promise<TailscalePeer[]> {
+    return tailscalePeers()
   }
 
   // The built-in "#create-skill" flow: a hidden call drafts the skill, a second call writes it.

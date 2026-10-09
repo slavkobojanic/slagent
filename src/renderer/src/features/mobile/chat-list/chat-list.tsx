@@ -25,16 +25,16 @@ export function MobileChatList({ groups, empty, ready, opening, error, MacPicker
     <div className="mobile-safe-x flex h-full flex-col bg-background text-foreground">
       <header className="mobile-safe-top shrink-0 border-b border-border">
         <div className="flex h-12 items-center gap-2 px-4">
-          <h1 className="min-w-0 flex-1 text-lg font-semibold tracking-tight">Chats</h1>
+          <h1 className="min-w-0 shrink-0 text-lg font-semibold tracking-tight">Chats</h1>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <MacPicker />
+          </div>
           <Button type="button" variant="ghost" size="icon" aria-label="Connection" onClick={onOpenConnection}>
             <Server className="size-5" />
           </Button>
           <Button type="button" variant="ghost" size="icon" className="mobile-press" aria-label="New chat" onClick={() => onNewChat(null)}>
             <Plus className="size-5" />
           </Button>
-        </div>
-        <div className="px-4 pb-2">
-          <MacPicker />
         </div>
       </header>
       <Banner />

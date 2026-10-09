@@ -64,7 +64,7 @@ export function createMobile({
   const ChatScreen = createMobileChatScreen({ metaStore, mobileStore, mobilePresenter, changesStore, changesPresenter, Banner, Transcript, Composer, PlanOverlay })
   const ChangesScreen = createMobileChangesScreen({ changesStore, changesPresenter, themeStore })
   const Connect = createConnect({ device, log: log.child("connect") })
-  const ConnectionSheet = createConnectionSheet({ connectionStore, connectionPresenter, mobileStore, mobilePresenter, device, log, Connect })
+  const ConnectionSheet = createConnectionSheet({ api, connectionStore, connectionPresenter, mobileStore, mobilePresenter, device, log, Connect })
   const BackSwipe = createBackSwipe({ window, mobileStore, mobilePresenter, log: log.child("back-swipe") })
 
   return observer(function MobileHost() {

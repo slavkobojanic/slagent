@@ -119,7 +119,10 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
 
   const upgrade = (request: IncomingMessage, socket: import("node:stream").Duplex, head: Buffer): void => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`)
-    if (!sameToken(url.searchParams.get("token") ?? "", state.token)) {
+    // The local listener serves the app's own windows, which prove themselves
+    // with the token. A connection arriving from a Tailscale address is already
+    // authenticated by the tailnet itself, so it is trusted without the token.
+    if (!sameToken(url.searchParams.get("token") ?? "", state.token) && !fromTailnet((socket as import("node:net").Socket).remoteAddress)) {
       socket.end("HTTP/1.1 401 Unauthorized\r\n\r\n")
       return
     }
@@ -264,11 +267,24 @@ function findTailscaleAddress(): string | null {
   for (const addresses of Object.values(networkInterfaces())) {
     for (const address of addresses ?? []) {
       if (address.family !== "IPv4" || address.internal) continue
-      const bytes = address.address.split(".").map(Number)
-      if (bytes[0] === 100 && bytes[1]! >= 64 && bytes[1]! <= 127) return address.address
+      if (isTailnetAddress(address.address)) return address.address
     }
   }
   return null
+}
+
+// Whether an address is in the CGNAT range Tailscale assigns, where being
+// reachable at all means the peer is a member of the tailnet.
+export function isTailnetAddress(address: string): boolean {
+  const bytes = address.replace(/^::ffff:/, "").split(".").map(Number)
+  return bytes.length === 4 && bytes[0] === 100 && bytes[1]! >= 64 && bytes[1]! <= 127
+}
+
+// The remote end of a socket, which IPv6-mapped IPv4 addresses hide behind a
+// "::ffff:" prefix.
+function fromTailnet(remoteAddress: string | undefined): boolean {
+  if (remoteAddress === undefined) return false
+  return isTailnetAddress(remoteAddress)
 }
 
 async function loadState(statePath: string): Promise<State> {

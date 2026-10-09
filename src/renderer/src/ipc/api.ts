@@ -58,6 +58,7 @@ export class API implements SlagentApi {
   readonly gitPush: SlagentApi["gitPush"]
   readonly gitPullRequest: SlagentApi["gitPullRequest"]
   readonly gitCommitMessage: SlagentApi["gitCommitMessage"]
+  readonly tailscaleList: SlagentApi["tailscaleList"]
   readonly compact: SlagentApi["compact"]
   readonly getPermissions: SlagentApi["getPermissions"]
   readonly requestAccessibility: SlagentApi["requestAccessibility"]
@@ -143,6 +144,7 @@ export class API implements SlagentApi {
     this.gitPush = () => bridge.gitPush()
     this.gitPullRequest = () => bridge.gitPullRequest()
     this.gitCommitMessage = () => bridge.gitCommitMessage()
+    this.tailscaleList = () => bridge.tailscaleList()
     this.compact = () => bridge.compact()
     this.getPermissions = () => bridge.getPermissions()
     this.requestAccessibility = () => bridge.requestAccessibility()
