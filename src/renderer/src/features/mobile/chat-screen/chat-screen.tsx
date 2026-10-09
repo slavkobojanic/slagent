@@ -36,7 +36,14 @@ export function MobileChatScreen({ title, projectName, ready, metaError, onBack,
       <Banner />
       {metaError !== null ? <p className="border-b border-border px-4 py-2 text-sm text-destructive">{metaError}</p> : null}
       <main className="mobile-safe-bottom relative flex min-h-0 flex-1 flex-col">
-        {ready ? <Transcript /> : <div className="flex flex-1 items-center justify-center text-sm text-foreground/50">Starting</div>}
+        {ready ? (
+          // Fades in over the "Starting" placeholder, so the swap is not a teleport.
+          <div className="mobile-fade-in flex min-h-0 flex-1 flex-col">
+            <Transcript />
+          </div>
+        ) : (
+          <div className="flex flex-1 items-center justify-center text-sm text-foreground/50">Starting</div>
+        )}
         <Composer />
         <PlanOverlay />
       </main>

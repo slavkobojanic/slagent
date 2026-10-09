@@ -2,6 +2,7 @@ import { ChevronRight, PinIcon } from "lucide-react"
 import { StatusDot } from "@/components/status-dot"
 import { Spinner } from "@/components/ui/spinner"
 import type { ChatListItem } from "@/features/mobile/chat-list/chat-list-items"
+import "@/features/mobile/mobile.css"
 
 export type MobileChatRowProps = {
   item: ChatListItem
@@ -15,7 +16,7 @@ export function MobileChatRow({ item, opening, onOpen }: MobileChatRowProps) {
     <li>
       <button
         type="button"
-        className="flex min-h-12 w-full min-w-0 items-center gap-3 px-4 py-3 text-left text-base active:bg-foreground/10"
+        className="mobile-press flex min-h-12 w-full min-w-0 items-center gap-3 px-4 py-3 text-left text-base active:bg-foreground/10"
         onClick={() => onOpen(projectId, chat.id)}
       >
         <span className="flex w-3 shrink-0 justify-center">

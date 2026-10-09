@@ -4,8 +4,66 @@
   padding-top: env(safe-area-inset-top);
 }
 
+/* While the keyboard is up (--kb-height is set from the Keyboard plugin) the
+   webview is resized above it, so the home-indicator inset must yield the same
+   amount; the composer then sits against the keyboard instead of floating
+   above it. The padding follows the keyboard's own curve. */
 .mobile-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: max(env(safe-area-inset-bottom) - var(--kb-height, 0px), 0px);
+  transition: padding-bottom 250ms var(--ease-drawer);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-safe-bottom {
+    transition: none;
+  }
+}
+
+/* Tap feedback on rows and buttons: near-imperceptible, so the tap lands
+   without ever feeling like a decoration. */
+.mobile-press {
+  transition: transform 120ms var(--ease-out);
+}
+
+.mobile-press:active {
+  transform: scale(0.98);
+}
+
+/* Mount fades for content that would otherwise teleport in: the transcript
+   after "Starting" and the offline banner. */
+.mobile-fade-in {
+  animation: mobile-fade-in 150ms var(--ease-out) both;
+}
+
+@keyframes mobile-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mobile-banner-in {
+  animation: mobile-banner-in 150ms var(--ease-out) both;
+}
+
+@keyframes mobile-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-fade-in,
+  .mobile-banner-in {
+    animation: none;
+  }
 }
 
 .mobile-safe-x {

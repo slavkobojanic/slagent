@@ -1,5 +1,6 @@
 import { WifiOff } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
+import "@/features/mobile/mobile.css"
 
 export type ConnectionBannerProps = {
   online: boolean
@@ -16,7 +17,7 @@ export function ConnectionBanner({ online, reached, label, onOpen }: ConnectionB
   return (
     <button
       type="button"
-      className="flex w-full items-center gap-2 border-b border-border bg-warning/10 px-4 py-2 text-left text-sm text-foreground/80"
+      className="mobile-banner-in flex w-full items-center gap-2 border-b border-border bg-warning/10 px-4 py-2 text-left text-sm text-foreground/80"
       onClick={onOpen}
     >
       {reached ? <Spinner className="size-4 shrink-0" /> : <WifiOff className="size-4 shrink-0 text-warning" />}
