@@ -59,6 +59,7 @@ export async function runDaemon(): Promise<void> {
     },
     () => mcp?.serversForSession() ?? {},
     () => apiServer?.info ?? null,
+    () => terminal,
   )
   terminal = new TerminalManager((event) => apiServer?.hub.publishTerminal(event), () => host?.getCwd() ?? "")
   const calls = createCallHandler({

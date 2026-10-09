@@ -1,8 +1,6 @@
-import { type ChildProcess, spawn } from "node:child_process"
-import { randomUUID } from "node:crypto"
 import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
-import type { TaskInfo } from "../../shared/types"
+import type { TaskInfo, TerminalSession } from "../../shared/types"
 
 // Pi's bash tool waits for each command to finish. These tools start long
 // commands, such as dev servers, watchers and slow test runs, in the
@@ -12,8 +10,20 @@ const OUTPUT_LIMIT = 200_000
 const DEFAULT_TAIL = 80
 const RESULT = "slagent-task-result"
 
+// Every task runs in a real terminal owned by the TerminalManager, so the
+// user can open it in the drawer while the agent only reads the buffer.
+export type TaskTerminalSpawner = {
+  createTask: (command: string, sink: TaskSink, cwd?: string) => Promise<TerminalSession>
+  stopTask: (id: string) => void
+}
+
+export type TaskSink = {
+  onData: (chunk: string) => void
+  onExit: (exitCode: number, signal: string | null) => void
+}
+
 type Task = TaskInfo & {
-  child: ChildProcess | null
+  running: boolean
   output: string
 }
 
@@ -25,7 +35,7 @@ export type BackgroundTasks = {
   stopAll: () => void
 }
 
-export function backgroundTasks(cwd: string, onChange: (tasks: TaskInfo[], finished: TaskInfo | null) => void): BackgroundTasks {
+export function backgroundTasks(spawner: () => TaskTerminalSpawner | null, cwd: string, onChange: (tasks: TaskInfo[], finished: TaskInfo | null) => void): BackgroundTasks {
   const tasks = new Map<string, Task>()
   let api: ExtensionAPI | null = null
   let streaming = false
@@ -46,41 +56,44 @@ export function backgroundTasks(cwd: string, onChange: (tasks: TaskInfo[], finis
     return [...tasks.values()].map(info).sort((left, right) => right.startedAt - left.startedAt)
   }
 
-  function append(task: Task, chunk: Buffer) {
-    task.output += chunk.toString("utf8")
+  // The pty renders in a terminal for the user, but the buffer feeds the agent
+  // and the output dialogs, so control sequences are stripped.
+  function append(task: Task, chunk: string) {
+    task.output += chunk.replace(ANSI, "")
     if (task.output.length > OUTPUT_LIMIT) task.output = task.output.slice(-OUTPUT_LIMIT)
   }
 
-  function start(command: string, label: string): Task {
+  function finish(task: Task, exitCode: number, signal: string | null) {
+    task.running = false
+    task.endedAt = Date.now()
+    task.exitCode = exitCode
+    if (task.status === "running") task.status = exitCode === 0 ? "done" : "failed"
+    if (signal && task.status !== "stopped") task.status = "failed"
+    onChange(list(), info(task))
+    tell(task)
+  }
+
+  async function start(command: string, label: string): Promise<Task> {
     const task: Task = {
-      id: randomUUID().slice(0, 8),
+      id: "",
       label,
       command,
       status: "running",
       exitCode: null,
       startedAt: Date.now(),
       endedAt: null,
-      child: null,
+      running: true,
       output: "",
     }
-    const shell = process.env.SHELL || "/bin/zsh"
-    // A new process group, so stopping a task also stops what it started.
-    const child = spawn(shell, ["-lc", command], { cwd, detached: true, stdio: ["ignore", "pipe", "pipe"], env: process.env })
-    task.child = child
-    child.stdout?.on("data", (chunk: Buffer) => append(task, chunk))
-    child.stderr?.on("data", (chunk: Buffer) => append(task, chunk))
-    child.on("error", (error) => {
-      append(task, Buffer.from(`\n${error.message}\n`))
-    })
-    child.on("close", (code, signal) => {
-      task.child = null
-      task.endedAt = Date.now()
-      task.exitCode = code
-      if (task.status === "running") task.status = code === 0 ? "done" : "failed"
-      if (signal && task.status !== "stopped") task.status = "failed"
-      onChange(list(), info(task))
-      tell(task)
-    })
+    const terminalTasks = spawner()
+    if (terminalTasks === null) {
+      throw new Error("Background terminals are not available yet.")
+    }
+    const session = await terminalTasks.createTask(command, {
+      onData: (chunk) => append(task, chunk),
+      onExit: (exitCode, signal) => finish(task, exitCode, signal),
+    }, cwd)
+    task.id = session.id
     tasks.set(task.id, task)
     onChange(list(), null)
     return task
@@ -104,22 +117,11 @@ export function backgroundTasks(cwd: string, onChange: (tasks: TaskInfo[], finis
 
   function stop(id: string): boolean {
     const task = tasks.get(id)
-    if (!task?.child?.pid) return false
+    if (!task || !task.running) return false
+    const terminalTasks = spawner()
+    if (terminalTasks === null) return false
     task.status = "stopped"
-    try {
-      process.kill(-task.child.pid, "SIGTERM")
-    } catch {
-      task.child.kill("SIGTERM")
-    }
-    const child = task.child
-    setTimeout(() => {
-      if (child.exitCode !== null || !child.pid) return
-      try {
-        process.kill(-child.pid, "SIGKILL")
-      } catch {
-        // Already gone.
-      }
-    }, 3000)
+    terminalTasks.stopTask(id)
     return true
   }
 
@@ -148,7 +150,10 @@ export function backgroundTasks(cwd: string, onChange: (tasks: TaskInfo[], finis
       }),
       async execute(_id, input) {
         const { command, label } = input as { command: string; label?: string }
-        const task = start(command, label?.trim() || command.slice(0, 60))
+        if (spawner() === null) {
+          return { content: [{ type: "text", text: "Background terminals are not available yet." }], details: { id: "" }, isError: true }
+        }
+        const task = await start(command, label?.trim() || command.slice(0, 60))
         await new Promise((resolve) => setTimeout(resolve, 1500))
         let state = "is running"
         if (task.status !== "running") state = `exited with code ${task.exitCode}`
@@ -211,3 +216,6 @@ function tail(text: string, lines: number): string {
   const parts = text.trimEnd().split("\n")
   return parts.slice(-Math.max(1, lines)).join("\n")
 }
+
+// CSI sequences, OSC titles and charset switches the pty stream carries.
+const ANSI = /\x1b(?:\[[0-9;:?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\))/g

@@ -23,6 +23,7 @@ import type {
   RewindMode,
   RewindResult,
   SlashCommand,
+  TaskInfo,
   TodoItem,
   ToolMessage,
   RuntimeTranscript,
@@ -381,6 +382,11 @@ export class ClaudeRuntime {
   }
 
   stopTask(_id: string): void {}
+
+  // Claude Code chats have no slagent background tasks yet.
+  get tasks(): TaskInfo[] {
+    return []
+  }
 
   dispose(): void {
     this.disposed = true
