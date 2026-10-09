@@ -60,7 +60,7 @@ export function createMobile({
   changesPresenter.start()
 
   const Banner = createConnectionBanner({ connectionStore, mobilePresenter })
-  const ChatList = createMobileChatList({ libraryStore, metaStore, mobileStore, mobilePresenter, Banner })
+  const ChatList = createMobileChatList({ libraryStore, metaStore, mobileStore, mobilePresenter, device, connectionStore, log, Banner })
   const ChatScreen = createMobileChatScreen({ metaStore, mobileStore, mobilePresenter, changesStore, changesPresenter, Banner, Transcript, Composer, PlanOverlay })
   const ChangesScreen = createMobileChangesScreen({ changesStore, changesPresenter, themeStore })
   const Connect = createConnect({ device, log: log.child("connect") })

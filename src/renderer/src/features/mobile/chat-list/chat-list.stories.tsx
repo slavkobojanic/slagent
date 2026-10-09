@@ -1,11 +1,27 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { ComponentType } from "react"
 import { fn } from "storybook/test"
+import { MacPicker } from "@/features/mobile/mac-picker/mac-picker"
 import { MobileChatList } from "@/features/mobile/chat-list/chat-list"
 import { chat } from "@/storybook/sample"
 import { slot } from "@/storybook/slots"
 
 const noBanner: ComponentType = () => null
+
+const macPicker: ComponentType = () => (
+  <MacPicker
+    label="Slavkos-MacBook-Pro"
+    online
+    servers={[
+      { host: "100.64.0.1", port: 8747, token: "t1", name: "Slavkos-MacBook-Pro" },
+      { host: "100.64.0.9", port: 8747, token: "t2", name: "Studio-Mac" },
+    ]}
+    current={{ host: "100.64.0.1", port: 8747, token: "t1" }}
+    open={false}
+    onOpenChange={fn()}
+    onPick={fn()}
+  />
+)
 
 const meta = {
   title: "Features/Mobile/ChatList",
@@ -39,6 +55,7 @@ const meta = {
     onNewChat: fn(),
     onOpenConnection: fn(),
     onDismissError: fn(),
+    MacPicker: macPicker,
     Banner: noBanner,
   },
   parameters: { layout: "fullscreen" },
