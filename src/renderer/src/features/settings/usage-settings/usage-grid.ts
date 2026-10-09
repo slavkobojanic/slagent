@@ -2,7 +2,7 @@ import type { UsageDay } from "@shared/types"
 
 export type UsageMetric = "tokens" | "dollars"
 
-export type UsageSortKey = "model" | "input" | "output" | "cache" | "cost" | "turns" | "share"
+export type UsageSortKey = "model" | "input" | "output" | "cache" | "cost" | "share"
 
 export type UsageSort = { key: UsageSortKey; dir: "asc" | "desc" }
 

@@ -42,16 +42,16 @@ describe("UsageSettingsStore", () => {
     it("can sort by a new column, descending first", () => {
       const store = new UsageSettingsStore()
 
-      store.setSort("turns")
-      expect(store.sort).toEqual({ key: "turns", dir: "desc" })
+      store.setSort("input")
+      expect(store.sort).toEqual({ key: "input", dir: "desc" })
     })
 
     it("can flip the direction of the same column", () => {
       const store = new UsageSettingsStore()
 
-      store.setSort("turns")
-      store.setSort("turns")
-      expect(store.sort).toEqual({ key: "turns", dir: "asc" })
+      store.setSort("input")
+      store.setSort("input")
+      expect(store.sort).toEqual({ key: "input", dir: "asc" })
     })
   })
 
@@ -63,13 +63,13 @@ describe("UsageSettingsStore", () => {
       expect(store.sortedModels.map((model) => model.model)).toEqual(["claude-opus-5-5", "gpt-test"])
     })
 
-    it("can sort by turns, ascending on the second click", () => {
+    it("can sort ascending on the second click of the same column", () => {
       const store = new UsageSettingsStore()
       store.setStats(stats)
-      store.setSort("turns")
-      store.setSort("turns")
+      store.setSort("input")
+      store.setSort("input")
 
-      expect(store.sort).toEqual({ key: "turns", dir: "asc" })
+      expect(store.sort).toEqual({ key: "input", dir: "asc" })
     })
 
     it("can sort models by name", () => {
