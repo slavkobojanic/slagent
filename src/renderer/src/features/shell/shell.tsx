@@ -1,4 +1,4 @@
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 
 export type ShellProps = {
   inert: boolean
@@ -7,7 +7,7 @@ export type ShellProps = {
   MainColumn: ComponentType
   PanelFrame: ComponentType
   TerminalDrawer: ComponentType
-  TerminalBar: ComponentType
+  TerminalBar: ComponentType<{ branch?: ReactNode }>
   Settings: ComponentType
   Models: ComponentType
   CreateSkill: ComponentType

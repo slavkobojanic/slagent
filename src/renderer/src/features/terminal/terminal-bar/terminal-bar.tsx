@@ -1,7 +1,6 @@
 import { Plus, SquareTerminal, X } from "lucide-react"
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
-
 export type TerminalChip = {
   id: string
   title: string
@@ -20,11 +19,12 @@ export type TerminalBarProps = {
   onClose: (id: string) => void
   onCreate: () => void
   onToggle: () => void
+  branch?: ReactNode
 }
 
 // The app-wide terminal tab bar: every shell the user opened and every shell
 // an agent's task owns, in one list. Selecting a chip shows it in the drawer.
-export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreate, onToggle }: TerminalBarProps) {
+export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreate, onToggle, branch }: TerminalBarProps) {
   return (
     <footer aria-label="Terminals" className="flex h-8 shrink-0 items-center gap-2 border-t border-white/10 bg-background px-3 text-xs">
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
@@ -52,6 +52,7 @@ export function TerminalBar({ chips, open, canCreate, onSelect, onClose, onCreat
       >
         {open ? <X className="size-3.5" /> : <SquareTerminal className="size-3.5" />}
       </button>
+      {branch}
     </footer>
   )
 }

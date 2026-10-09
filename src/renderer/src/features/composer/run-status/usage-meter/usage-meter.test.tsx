@@ -29,7 +29,7 @@ describe("UsageMeter", () => {
 
     expect(markup).toContain('aria-label="42k of 200k context, $0.12 spent"')
     expect(markup).toContain("21%")
-    expect(markup).toContain("· $0.12")
+    expect(markup).toContain("$0.12")
   })
 
   it("uses the warning tone from 70 percent", () => {

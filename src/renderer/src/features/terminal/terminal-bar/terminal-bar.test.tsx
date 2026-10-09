@@ -74,4 +74,12 @@ describe("TerminalBar", () => {
     expect(html).toContain('aria-label="Hide terminal"')
     expect(html).toContain('aria-pressed="true"')
   })
+
+  it("can show the branch to the right of the drawer toggle", () => {
+    const html = viewMarkup(<TerminalBar {...base({ branch: <span className="font-mono">feat-status-bar</span> })} />)
+
+    expect(html).toContain("feat-status-bar")
+    expect(html).toContain('aria-label="Show terminal"')
+    expect(html).toContain("font-mono")
+  })
 })
