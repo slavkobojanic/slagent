@@ -76,9 +76,20 @@ export async function uninstallDaemon(): Promise<void> {
 export async function startDaemon(): Promise<void> {
   const status = await daemonStatus()
   if (!status.installed) throw new Error("The daemon is not installed.")
-  // A stale entry from a previous install cannot be bootstrapped twice.
-  await bootout().catch(() => undefined)
-  await launchctl("bootstrap", guiDomain(), plistPath())
+  // launchctl reports a service that is still tearing down from the bootout
+  // above as "5: Input/output error", so a few short retries ride that out.
+  let lastError: unknown = null
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await bootout().catch(() => undefined)
+    try {
+      await launchctl("bootstrap", guiDomain(), plistPath())
+      return
+    } catch (error) {
+      lastError = error
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  }
+  throw lastError ?? new Error("launchctl refused to start the daemon.")
 }
 
 // Unloads the service, which sends the daemon SIGTERM so it can flush first.

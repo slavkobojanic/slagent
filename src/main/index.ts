@@ -369,7 +369,9 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {
   // No window can show a shell, so none of them outlive it.
   terminal?.stop()
-  if (process.platform !== "darwin") app.quit()
+  // Closing the last window is the handover: quitting lets the installed
+  // daemon take the port, and its menu bar icon shows it serving the phone.
+  app.quit()
 })
 
 app.on("before-quit", (event) => {
@@ -388,7 +390,9 @@ app.on("before-quit", (event) => {
 })
 
 // Quitting the app hands the server over to the daemon, when it is installed.
+// Never from the daemon itself: it is already the thing being handed to.
 async function handOffToDaemon(): Promise<void> {
+  if (DAEMON) return
   const status = await daemonStatus().catch(() => null)
   if (status?.installed) await startDaemon().catch((error) => console.error("daemon:", error))
 }
