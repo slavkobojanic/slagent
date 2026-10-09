@@ -35,9 +35,10 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<!-- The Mac is reached over plain ws:// and http:// at its Tailscale IP.
+		     Adding NSAllowsLocalNetworking here would make iOS ignore this key and
+		     block the 100.x addresses. -->
 		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
