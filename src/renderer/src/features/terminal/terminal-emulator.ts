@@ -26,7 +26,7 @@ export type TerminalEmulatorFactory = (options: TerminalEmulatorOptions) => Term
 export function createTerminalEmulator({ theme, onData, onResize, onTitle, onLink }: TerminalEmulatorOptions): TerminalEmulator {
   const terminal = new Terminal({
     theme,
-    fontFamily: '"Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace',
+    fontFamily: '"Monaspace Neon Var", ui-monospace, SFMono-Regular, Menlo, monospace',
     fontSize: 12,
     lineHeight: 1.3,
     cursorBlink: true,

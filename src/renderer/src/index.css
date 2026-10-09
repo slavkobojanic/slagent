@@ -2,7 +2,16 @@
 @import "tw-animate-css";
 @import "streamdown/styles.css";
 @import "@fontsource-variable/geist";
-@import "@fontsource-variable/geist-mono";
+
+/* Monaspace Neon is the app-wide mono font, bundled from the variable webfont
+   release (SIL OFL 1.1, see src/renderer/src/assets/fonts). */
+@font-face {
+  font-family: "Monaspace Neon Var";
+  src: url("./assets/fonts/MonaspaceNeonVar.woff2") format("woff2-variations");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Tailwind must scan Streamdown's compiled output to generate the utility
    classes it ships, including the shiki token colors. */
@@ -16,7 +25,7 @@
 
 @theme inline {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-mono: "Monaspace Neon Var", ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
