@@ -16,6 +16,7 @@ import { createPlanOverlay } from "@/features/transcript/plan-overlay/create"
 import { createSettings } from "@/features/settings/create"
 import { createShell } from "@/features/shell/create"
 import { createTerminal } from "@/features/terminal/create"
+import { createStatusBar } from "@/features/shell/status-bar/create"
 import { createTranscript } from "@/features/transcript/create"
 import { API } from "@/ipc/api"
 import { createLog } from "@/log/log"
@@ -164,14 +165,24 @@ export function createApp(): ComponentType {
   })
   const PermissionsWizard = createPermissionsWizard({ log: log.child("permissions-wizard"), api, window, permissionsStore })
   const PlanOverlay = createPlanOverlay({ api, runStore, panelPresenter, composerPort, log: log.child("plan-overlay") })
-  const TerminalDrawer = createTerminal({
+  const terminal = createTerminal({
     log: log.child("terminal"),
     api,
     window,
+    libraryStore,
     layoutStore,
     layoutPresenter,
     commandRegistry,
     composerPort,
+  })
+  const TerminalDrawer = terminal.Terminal
+  const StatusBar = createStatusBar({
+    log: log.child("status-bar"),
+    api,
+    window,
+    libraryStore,
+    terminalStore: terminal.store,
+    terminalPresenter: terminal.presenter,
   })
   const appCloseStore = new AppCloseStore()
   const AppClose = createAppClose({ api, appCloseStore, log: log.child("app-close") })
@@ -184,6 +195,7 @@ export function createApp(): ComponentType {
     Changes,
     PlanOverlay,
     TerminalDrawer,
+    StatusBar,
     CreateSkill: CreateSkill.CreateSkill,
     log: log.child("shell"),
     api,
