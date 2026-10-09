@@ -9,6 +9,10 @@ function BannerSlot() {
   return <p>Banner</p>
 }
 
+function MacPickerSlot() {
+  return <p>MacPicker</p>
+}
+
 function props(overrides: Partial<MobileChatListProps> = {}): MobileChatListProps {
   return {
     groups: [
@@ -23,6 +27,7 @@ function props(overrides: Partial<MobileChatListProps> = {}): MobileChatListProp
     onNewChat: noop,
     onOpenConnection: noop,
     onDismissError: noop,
+    MacPicker: MacPickerSlot,
     Banner: BannerSlot,
     ...overrides,
   }
@@ -37,6 +42,7 @@ describe("MobileChatList", () => {
     expect(screen.getByRole("button", { name: "New chat in slagent" })).not.toBeNull()
     expect(screen.getByText("No chats yet")).not.toBeNull()
     expect(screen.getByText("Banner")).not.toBeNull()
+    expect(screen.getByText("MacPicker")).not.toBeNull()
   })
 
   it("can show loading when the snapshot has not arrived", () => {

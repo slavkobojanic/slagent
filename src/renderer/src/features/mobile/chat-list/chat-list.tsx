@@ -11,6 +11,8 @@ export type MobileChatListProps = {
   ready: boolean
   opening: string | null
   error: string | null
+  // The connected computer under the title, with its dropdown to switch Macs.
+  MacPicker: ComponentType
   onOpenChat: (projectId: string, chatId: string) => void
   onNewChat: (projectId: string | null) => void
   onOpenConnection: () => void
@@ -18,7 +20,7 @@ export type MobileChatListProps = {
   Banner: ComponentType
 }
 
-export function MobileChatList({ groups, empty, ready, opening, error, onOpenChat, onNewChat, onOpenConnection, onDismissError, Banner }: MobileChatListProps) {
+export function MobileChatList({ groups, empty, ready, opening, error, MacPicker, onOpenChat, onNewChat, onOpenConnection, onDismissError, Banner }: MobileChatListProps) {
   return (
     <div className="mobile-safe-x flex h-full flex-col bg-background text-foreground">
       <header className="mobile-safe-top shrink-0 border-b border-border">
@@ -30,6 +32,9 @@ export function MobileChatList({ groups, empty, ready, opening, error, onOpenCha
           <Button type="button" variant="ghost" size="icon" className="mobile-press" aria-label="New chat" onClick={() => onNewChat(null)}>
             <Plus className="size-5" />
           </Button>
+        </div>
+        <div className="px-4 pb-2">
+          <MacPicker />
         </div>
       </header>
       <Banner />
