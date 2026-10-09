@@ -48,7 +48,7 @@ export function UsageMeter({ usage, error, onCompact }: UsageMeterProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-xs tabular-nums hover:bg-white/10", TONE_CLASS[usage.level])}
+            className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-xs whitespace-nowrap tabular-nums hover:bg-white/10", TONE_CLASS[usage.level])}
             aria-label={usage.ariaLabel}
           >
             <svg viewBox="0 0 16 16" className="size-3.5 -rotate-90" aria-hidden>

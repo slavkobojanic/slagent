@@ -49,6 +49,34 @@ The script finds the app by its bundle id, so it keeps working after you move or
 - **Git.** Review the diff for the last turn or all uncommitted changes, and commit, push and open a pull request (via `gh`) from the right panel.
 - **Search and commands.** Search across every chat from the sidebar, mention files with `@`, and run slash commands from the composer or the command palette.
 
+## iOS app
+
+slagent has an iPhone app that drives the chats on your Mac: open chats, send messages with `@` files, `$` past chats, `/` commands and attachments, answer the agent's questions and approve plans. It is a thin client: the agent still runs on the Mac, and the phone talks to it over the same websocket the desktop windows use.
+
+### Connecting over Tailscale
+
+1. Install [Tailscale](https://tailscale.com) on the Mac and the iPhone, and sign in to the same tailnet on both.
+2. On the Mac, open slagent and go to **Settings → Connect**. Once Tailscale is up (the app notices within about 15 seconds, no restart needed) it shows a QR code.
+3. Scan the code with the iPhone's camera, which opens the app and connects it. Or copy the `ws://100.x.y.z:8747?token=…` address and paste it into the app.
+
+The token in the address is the only key, so share it only with your own devices. The server listens on localhost and on the Mac's Tailscale address, never on other networks. The connection button in the app shows the Mac it is using and lets you switch or forget it.
+
+### Building the iOS app
+
+Requirements: Xcode and an iOS simulator or device.
+
+```bash
+pnpm mobile:sync
+```
+
+```bash
+pnpm mobile:open
+```
+
+`pnpm mobile:sync` builds the web bundle (`vite.mobile.config.ts`, entry `src/renderer/mobile.html`) into `out/mobile` and copies it into the Xcode project in `ios/`. `pnpm mobile:open` opens the project in Xcode, where you pick a team for signing and run it. `pnpm mobile:dev` serves the same bundle at `http://localhost:5180/mobile.html` for working on it in a browser.
+
+The simulator runs on the Mac itself, so connect it to `ws://127.0.0.1:<port>?token=…`: it cannot reach the Mac's own Tailscale address.
+
 ## How slagent works with Pi
 
 Pi is a coding agent toolkit: an agent loop, tools, sessions, extensions and model providers, with its own terminal UI. slagent replaces that terminal UI with a desktop app.
@@ -92,6 +120,7 @@ pnpm dev
 | `src/main` | Electron main process: the agent host, Pi and Claude runtimes, git, MCP, the CLI installer and the updater |
 | `src/main/extensions` | Pi extensions slagent adds (plan mode, subagents, checkpoints and more) |
 | `src/preload` | The bridge that exposes the `window.slagent` API to the UI |
-| `src/renderer` | React UI |
-| `src/shared` | Types and IPC channel names shared by every process |
+| `src/renderer` | React UI, for the desktop (`index.html`) and the iOS app (`mobile.html`) |
+| `src/shared` | Types and the websocket client shared by every process and the iOS app |
+| `ios` | The Capacitor Xcode project for the iOS app |
 | `native/computer` | Swift helper that reads and drives other apps for computer use |

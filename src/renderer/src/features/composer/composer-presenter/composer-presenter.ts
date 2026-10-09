@@ -56,7 +56,7 @@ export class ComposerPresenter {
   // A dialog or menu keeps the focus, so mounting only takes it when none is open.
   attachTextarea = (element: HTMLTextAreaElement | null) => {
     this.textarea = element
-    if (element === null || this.dialogOpen()) {
+    if (element === null || this.store.touch || this.dialogOpen()) {
       return
     }
     this.focus()
@@ -239,7 +239,7 @@ export class ComposerPresenter {
     // The attachments stay with their chat, like the draft text does.
     this.attachmentsPresenter.follow(this.store.draftKey)
     this.restoreDraft()
-    if (this.dialogOpen()) {
+    if (this.store.touch || this.dialogOpen()) {
       return
     }
     this.focus()
@@ -289,6 +289,9 @@ export class ComposerPresenter {
 
   private handleEnter = (event: KeyEventLike) => {
     if (this.store.composing || event.nativeEvent.isComposing || event.shiftKey) {
+      return
+    }
+    if (this.store.touch && !event.metaKey && !event.ctrlKey) {
       return
     }
     event.preventDefault()

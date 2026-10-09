@@ -14,6 +14,10 @@ files:
   - "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
+  # The iOS app's Xcode project and web bundle.
+  - "!ios/**"
+  - "!out/mobile/**"
+  - "!{capacitor.config.ts,vite.mobile.config.ts}"
 extraResources:
   - from: resources/slagent.app
     to: slagent.app

@@ -1,0 +1,14 @@
+/* The phone's notch, home indicator and rounded corners. Tailwind has no
+   utility for env(), so the safe areas live here. */
+.mobile-safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.mobile-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mobile-safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
