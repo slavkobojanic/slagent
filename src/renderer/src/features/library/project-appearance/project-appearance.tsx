@@ -77,11 +77,11 @@ export function ProjectAppearance({ open, projectName, icon, color, busy, error,
           </div>
         </div>
         {error !== null ? (
-          <p role="alert" className="text-xs text-destructive">
+          <p role="alert" className="mt-3 text-xs text-destructive">
             {error}
           </p>
         ) : null}
-        <div className="flex justify-end gap-2">
+        <div className="mt-4 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => onCancel()}>
             Cancel
           </Button>
