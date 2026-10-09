@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { DONE_WINDOW_MS, type ChatSummary } from "@shared/types"
-import { chatDisplayStatus, nextDoneExpiry } from "@/features/library/sidebar/open-project/chat-list/chat-row/chat-row-utils"
+import { chatDisplayStatus, nextDoneExpiry } from "@/lib/chat-status"
 
 function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
   return { id, title: id, pinned: false, pinnedAt: 0, updatedAt: 0, running: false, status: "idle", finishedAt: null, ...overrides }

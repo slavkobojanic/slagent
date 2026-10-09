@@ -15,6 +15,9 @@ export class ComposerStore {
     private readonly libraryStore: LibraryStore,
     private readonly metaStore: MetaStore,
     private readonly runStore: RunStore,
+    // On a phone, Return makes a new line and the send button sends, and opening
+    // a chat leaves the keyboard down until the box is tapped.
+    readonly touch = false,
   ) {
     makeAutoObservable(this)
   }

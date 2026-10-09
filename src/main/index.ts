@@ -492,6 +492,8 @@ app.whenReady().then(async () => {
           if (id === clientId) clientByToken.delete(token)
         }
       },
+      attachmentFile: (parts) => attachmentFile(libraryRoot, parts),
+      onInfo: () => host?.refreshMeta(),
     })
   } catch (error) {
     console.error("api server:", error)
@@ -541,14 +543,23 @@ app.on("before-quit", (event) => {
 function serveAttachment(libraryRoot: string, request: Request): Promise<Response> {
   const url = new URL(request.url)
   if (url.hostname !== "attachment") return Promise.resolve(new Response("Not found", { status: 404 }))
-  const parts = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part))
-  if (parts.length !== 3) return Promise.resolve(new Response("Not found", { status: 404 }))
-  if (parts.some((part) => part.includes("..") || part.includes("/") || part.includes("\\"))) {
+  let parts: string[]
+  try {
+    parts = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part))
+  } catch {
     return Promise.resolve(new Response("Not found", { status: 404 }))
   }
-  const file = join(libraryRoot, "projects", parts[0], "chats", parts[1], "attachments", parts[2])
-  if (!file.startsWith(join(libraryRoot, "projects"))) {
-    return Promise.resolve(new Response("Not found", { status: 404 }))
-  }
+  const file = attachmentFile(libraryRoot, parts)
+  if (!file) return Promise.resolve(new Response("Not found", { status: 404 }))
   return net.fetch(pathToFileURL(file).href).catch(() => new Response("Not found", { status: 404 }))
+}
+
+// [projectId, chatId, file] to the attachment's path, or null when the parts
+// could leave the library's attachment folders.
+function attachmentFile(libraryRoot: string, parts: string[]): string | null {
+  if (parts.length !== 3) return null
+  if (parts.some((part) => !part || part.includes("..") || part.includes("/") || part.includes("\\"))) return null
+  const file = join(libraryRoot, "projects", parts[0]!, "chats", parts[1]!, "attachments", parts[2]!)
+  if (!file.startsWith(join(libraryRoot, "projects"))) return null
+  return file
 }

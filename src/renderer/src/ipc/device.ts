@@ -1,0 +1,127 @@
+import { App } from "@capacitor/app"
+import { Capacitor } from "@capacitor/core"
+import { Keyboard } from "@capacitor/keyboard"
+import { Preferences } from "@capacitor/preferences"
+import { StatusBar, Style } from "@capacitor/status-bar"
+import { socketUrl, type ServerAddress } from "@/lib/server-address"
+
+const ADDRESS_KEY = "slagent:server-address"
+const CLIENT_KEY = "slagent:client-id"
+const PROBE_TIMEOUT_MS = 5000
+
+export type SavedConnection = {
+  address: ServerAddress | null
+  // Stable across launches, so the desktop log can tell this phone's sessions apart.
+  clientId: string
+}
+
+// The phone's side of the mobile app: saved settings, deep links and app
+// lifecycle, through Capacitor's plugins. In a browser the plugins fall back to
+// their web versions (localStorage), so the mobile build also runs in dev.
+// Methods close over the plugins, so a test mock satisfies the type.
+export class Device {
+  readonly native: boolean
+  readonly loadConnection: () => Promise<SavedConnection>
+  readonly saveAddress: (address: ServerAddress | null) => Promise<void>
+  // Whether the desktop app answers at the address with its token.
+  readonly probe: (address: ServerAddress) => Promise<boolean>
+  readonly launchUrl: () => Promise<string | null>
+  readonly onUrlOpen: (listener: (url: string) => void) => () => void
+  readonly onResume: (listener: () => void) => () => void
+  readonly setDarkChrome: (dark: boolean) => void
+  readonly hideKeyboardBar: () => void
+  readonly reload: () => void
+
+  constructor(window: Window) {
+    this.native = Capacitor.isNativePlatform()
+    this.loadConnection = async () => {
+      const [address, clientId] = await Promise.all([Preferences.get({ key: ADDRESS_KEY }), Preferences.get({ key: CLIENT_KEY })])
+      let id = clientId.value ?? ""
+      if (id === "") {
+        id = `phone-${randomId(window)}`
+        await Preferences.set({ key: CLIENT_KEY, value: id })
+      }
+      return { address: parseSaved(address.value), clientId: id }
+    }
+    this.saveAddress = async (address) => {
+      if (address === null) {
+        await Preferences.remove({ key: ADDRESS_KEY })
+        return
+      }
+      await Preferences.set({ key: ADDRESS_KEY, value: JSON.stringify(address) })
+    }
+    // Opens the websocket itself, so any slagent build that accepts the token answers.
+    this.probe = (address) =>
+      new Promise((resolve) => {
+        const socket = new WebSocket(socketUrl(address, `probe-${randomId(window)}`))
+        const finish = (ok: boolean) => {
+          window.clearTimeout(timer)
+          socket.onopen = null
+          socket.onerror = null
+          socket.onclose = null
+          socket.close()
+          resolve(ok)
+        }
+        const timer = window.setTimeout(() => finish(false), PROBE_TIMEOUT_MS)
+        socket.onopen = () => finish(true)
+        socket.onerror = () => finish(false)
+        socket.onclose = () => finish(false)
+      })
+    this.launchUrl = async () => {
+      if (!this.native) {
+        return null
+      }
+      const launch = await App.getLaunchUrl().catch(() => undefined)
+      return launch?.url ?? null
+    }
+    this.onUrlOpen = (listener) => handle(App.addListener("appUrlOpen", (event) => listener(event.url)))
+    this.onResume = (listener) => {
+      // The web build has no app events, so a tab coming back counts as a resume too.
+      const visible = () => {
+        if (window.document.visibilityState === "visible") listener()
+      }
+      window.document.addEventListener("visibilitychange", visible)
+      const resume = handle(App.addListener("resume", listener))
+      return () => {
+        window.document.removeEventListener("visibilitychange", visible)
+        resume()
+      }
+    }
+    this.setDarkChrome = (dark) => {
+      if (!this.native) return
+      void StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(() => undefined)
+    }
+    this.hideKeyboardBar = () => {
+      if (!this.native) return
+      void Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => undefined)
+    }
+    this.reload = () => window.location.reload()
+  }
+}
+
+// Plugin listeners register asynchronously; the disposer removes them once they exist.
+function handle(registration: Promise<{ remove: () => Promise<void> }>): () => void {
+  return () => {
+    void registration.then((listener) => listener.remove()).catch(() => undefined)
+  }
+}
+
+function parseSaved(value: string | null): ServerAddress | null {
+  if (value === null) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(value) as Partial<ServerAddress>
+    if (typeof parsed.host !== "string" || typeof parsed.port !== "number" || typeof parsed.token !== "string") {
+      return null
+    }
+    return { host: parsed.host, port: parsed.port, token: parsed.token }
+  } catch {
+    return null
+  }
+}
+
+function randomId(window: Window): string {
+  const bytes = window.crypto.getRandomValues(new Uint8Array(8))
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("")
+}
