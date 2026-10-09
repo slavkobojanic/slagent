@@ -9,7 +9,7 @@ function project(id: string): ProjectSummary {
 
 function storeWith(library: Partial<LibraryState>): OpenProjectStore {
   const libraryStore = new LibraryStore()
-  libraryStore.setLibrary({ projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, ...library })
+  libraryStore.setLibrary({ projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, ...library, tasks: library.tasks ?? [] })
   return new OpenProjectStore(libraryStore)
 }
 

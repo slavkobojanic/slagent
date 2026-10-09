@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { toast } from "sonner"
 import type { LibraryState, ProjectSummary } from "@shared/types"
 import { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
+import { ProjectAppearanceStore } from "@/features/library/project-appearance/project-appearance-store/project-appearance-store"
 import { ProjectRowPresenter } from "@/features/library/sidebar/project-row/project-row-presenter/project-row-presenter"
 import type { API } from "@/ipc/api"
 import { nullLog } from "@/log/log"
@@ -19,7 +20,7 @@ function project(id: string, overrides: Partial<ProjectSummary> = {}): ProjectSu
 }
 
 function libraryState(overrides: Partial<LibraryState> = {}): LibraryState {
-  return { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, ...overrides }
+  return { projects: [], openProjectId: null, chats: [], chatsByProject: {}, openChatId: null, ...overrides, tasks: overrides.tasks ?? [] }
 }
 
 function commandNamed(registry: CommandRegistry, id: string): Command {
@@ -49,7 +50,7 @@ describe("ProjectRowPresenter", () => {
     vi.spyOn(composer, "focus")
     registry = new CommandRegistry()
     removal = new ProjectRemovalStore()
-    presenter = new ProjectRowPresenter(api, window, libraryStore, composer, registry, removal, nullLog())
+    presenter = new ProjectRowPresenter(api, window, libraryStore, composer, registry, removal, new ProjectAppearanceStore(), nullLog())
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(0)
       return 0

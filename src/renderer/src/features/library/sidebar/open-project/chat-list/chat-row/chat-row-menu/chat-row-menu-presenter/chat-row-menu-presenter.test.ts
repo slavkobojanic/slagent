@@ -77,7 +77,7 @@ describe("ChatRowMenuPresenter", () => {
     })
 
     it("can pin a chat of a project that is not open, naming its project", async () => {
-      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c3")] }, openChatId: null })
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c3")] }, openChatId: null, tasks: [] })
 
       await presenter.handlePin(chat("c3"))
 
@@ -105,7 +105,7 @@ describe("ChatRowMenuPresenter", () => {
     })
 
     it("can carry the project of a chat that is not open", () => {
-      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c3")] }, openChatId: null })
+      libraryStore.setLibrary({ projects: [], openProjectId: "p1", chats: [], chatsByProject: { p2: [chat("c3")] }, openChatId: null, tasks: [] })
 
       presenter.handleDelete(chat("c3"))
 

@@ -20,7 +20,7 @@ function chat(id: string, overrides: Partial<ChatSummary> = {}): ChatSummary {
 }
 
 function libraryState(chats: ChatSummary[] = [], chatsByProject: LibraryState["chatsByProject"] = {}): LibraryState {
-  return { projects: [], openProjectId: "p1", chats, chatsByProject, openChatId: null }
+  return { projects: [], openProjectId: "p1", chats, chatsByProject, openChatId: null, tasks: [] }
 }
 
 describe("ChatRowPresenter", () => {

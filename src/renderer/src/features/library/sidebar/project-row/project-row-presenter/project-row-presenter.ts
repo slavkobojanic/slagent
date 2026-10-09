@@ -1,5 +1,6 @@
 import type { ProjectSummary } from "@shared/types"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
+import type { ProjectAppearanceStore } from "@/features/library/project-appearance/project-appearance-store/project-appearance-store"
 import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
@@ -17,6 +18,7 @@ export class ProjectRowPresenter {
     private readonly composerPort: ComposerPort,
     private readonly commandRegistry: CommandRegistry,
     private readonly projectRemovalStore: ProjectRemovalStore,
+    private readonly projectAppearanceStore: ProjectAppearanceStore,
     private readonly log: Log,
   ) {}
 
@@ -55,6 +57,11 @@ export class ProjectRowPresenter {
   handleRemove = (project: ProjectSummary) => {
     this.log.action("ask-remove-project", { projectId: project.id, name: project.name })
     this.projectRemovalStore.setTarget(project)
+  }
+
+  handleCustomize = (project: ProjectSummary) => {
+    this.log.action("ask-appearance", { projectId: project.id })
+    this.projectAppearanceStore.setTarget(project)
   }
 
   // The composer gets focus even when the draft fails to start, so the user can type straight away.
