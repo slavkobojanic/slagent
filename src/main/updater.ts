@@ -9,7 +9,10 @@ const { autoUpdater } = updater
 
 type Options = {
   // Flush the agent session and stop helpers before the process is replaced by ShipIt.
-  prepareQuit: () => Promise<void>
+  // forUpdate is true when the quit is the install itself: ShipIt refuses to
+  // replace the bundle while any instance of the app is running, so the caller
+  // must not hand the port to the daemon, which runs the same bundle.
+  prepareQuit: (forUpdate: boolean) => Promise<void>
   // A downloaded update waits for a restart; the websocket hub pushes it to clients.
   onReady: (version: string) => void
 }
@@ -19,7 +22,7 @@ const checkInterval = 10 * 60 * 1000
 // Version of the update that has finished downloading and is waiting for a restart.
 let readyVersion: string | null = null
 let restarting = false
-let prepare: (() => Promise<void>) | null = null
+let prepare: ((forUpdate: boolean) => Promise<void>) | null = null
 
 const enabled = () => app.isPackaged && !process.env.SLAGENT_DISABLE_UPDATER
 
@@ -27,8 +30,14 @@ const enabled = () => app.isPackaged && !process.env.SLAGENT_DISABLE_UPDATER
 export async function installUpdate(): Promise<void> {
   if (!readyVersion || restarting || !prepare) return
   restarting = true
-  await prepare()
-  autoUpdater.quitAndInstall()
+  try {
+    await prepare(true)
+    autoUpdater.quitAndInstall()
+  } catch (error) {
+    // The next click must be able to try again instead of silently doing nothing.
+    restarting = false
+    throw error
+  }
 }
 
 // The check behind both the menu item and the settings About page.
