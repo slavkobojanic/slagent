@@ -51,3 +51,7 @@ export const WithDrawerOpen: Story = {
 export const Spawning: Story = {
   args: base({ chips: [userShell], canCreate: false }),
 }
+
+export const WithBranch: Story = {
+  args: base({ chips: [userShell], branch: <span className="font-mono text-white/40">feat-status-bar-and-project-appearance</span> }),
+}

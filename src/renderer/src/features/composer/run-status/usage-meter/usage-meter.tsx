@@ -8,16 +8,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
-const RADIUS = 6
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
-
-// The ring's colour per level. Each is a full class string, so Tailwind generates every one.
-const TONE_CLASS: Record<UsageMeterModel["level"], string> = {
-  normal: "text-white/50",
-  warning: "text-warning",
-  critical: "text-destructive",
-}
-
 export type UsageMeterModel = {
   ringPercent: number
   level: "normal" | "warning" | "critical"
@@ -29,6 +19,13 @@ export type UsageMeterModel = {
   tokensText: string
   allChatsText: string | null
   canCompact: boolean
+}
+
+// The text colour per level. Each is a full class string, so Tailwind generates every one.
+const TONE_CLASS: Record<UsageMeterModel["level"], string> = {
+  normal: "text-white/50",
+  warning: "text-warning",
+  critical: "text-destructive",
 }
 
 export type UsageMeterProps = {
@@ -48,24 +45,11 @@ export function UsageMeter({ usage, error, onCompact }: UsageMeterProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className={cn("flex h-7 items-center gap-1.5 rounded-md px-2 text-xs whitespace-nowrap tabular-nums hover:bg-white/10", TONE_CLASS[usage.level])}
+            className={cn("flex h-8 items-center gap-1.5 rounded-md px-2 text-xs whitespace-nowrap tabular-nums hover:bg-white/10", TONE_CLASS[usage.level])}
             aria-label={usage.ariaLabel}
           >
-            <svg viewBox="0 0 16 16" className="size-3.5 -rotate-90" aria-hidden>
-              <circle cx="8" cy="8" r={RADIUS} fill="none" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
-              <circle
-                cx="8"
-                cy="8"
-                r={RADIUS}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeDasharray={CIRCUMFERENCE}
-                strokeDashoffset={CIRCUMFERENCE * (1 - usage.ringPercent / 100)}
-              />
-            </svg>
             {usage.percentText}
-            {usage.costText !== null ? <span className="text-white/40">· {usage.costText}</span> : null}
+            {usage.costText !== null ? <span className="text-white/40">{usage.costText}</span> : null}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
