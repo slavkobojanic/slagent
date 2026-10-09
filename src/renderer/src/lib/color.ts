@@ -14,4 +14,4 @@ export function contrastText(hex: string): string {
 }
 
 // The fallback accent for terminals that belong to no project.
-export const NEUTRAL_ACCENT = "#9ca3af"
+export const NEUTRAL_ACCENT = "#d1d5db"
