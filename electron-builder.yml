@@ -25,6 +25,8 @@ extraResources:
     to: icon.png
   - from: resources/icon-rounded.png
     to: icon-rounded.png
+  - from: resources/menubar.png
+    to: menubar.png
 # Writes app-update.yml into the bundle and latest-mac.yml next to the zip so the
 # in-app updater can read from the GitHub release feed.
 publish:
