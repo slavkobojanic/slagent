@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import type { ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { projectColor, projectIcon } from "@/components/project-appearance"
+import { contrastText } from "@/lib/color"
 import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import { cn } from "@/lib/utils"
 
@@ -34,9 +35,9 @@ export function ProjectRow({ project, active, collapsed, modKey, onSelect, onNew
           <span
             aria-hidden
             className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border"
-            style={color === null ? undefined : { borderColor: color }}
+            style={color === null ? undefined : { backgroundColor: color, borderColor: color }}
           >
-            <Icon className="size-3" style={color === null ? undefined : { color }} />
+            <Icon className="size-3" style={color === null ? undefined : { color: contrastText(color) }} />
           </span>
         )}
         <span className={cn("truncate", active ? "font-medium" : "text-foreground/80")}>{project.name}</span>
