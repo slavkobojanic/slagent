@@ -1,25 +1,21 @@
 import type { CSSProperties, ReactElement } from "react"
-import { Plus, TerminalSquare, X } from "lucide-react"
 import { ResizeHandle } from "@/components/resize-handle"
-import { Button } from "@/components/ui/button"
 import "./terminal.css"
 
 export type TerminalProps = {
   open: boolean
   height: number
   resizing: boolean
-  tabs: ReactElement[]
   surfaces: ReactElement[]
   empty: boolean
   error: string | null
-  canCreate: boolean
-  onCreate: () => void
-  onClose: () => void
   onResizeStart: (event: PointerEvent) => void
   onResizeReset: () => void
 }
 
-export function Terminal({ open, height, resizing, tabs, surfaces, empty, error, canCreate, onCreate, onClose, onResizeStart, onResizeReset }: TerminalProps) {
+// The drawer's tab bar lives in the bottom bar, so the drawer only shows the
+// active shell's surface.
+export function Terminal({ open, height, resizing, surfaces, empty, error, onResizeStart, onResizeReset }: TerminalProps) {
   return (
     <div
       className="terminal-slot"
@@ -33,25 +29,6 @@ export function Terminal({ open, height, resizing, tabs, surfaces, empty, error,
         className="relative flex min-h-0 flex-col border-t border-white/10 bg-background"
       >
         <ResizeHandle edge="terminal" resizing={resizing} onResizeStart={onResizeStart} onResizeReset={onResizeReset} />
-        <header className="flex h-8 shrink-0 items-center gap-1 border-b border-white/10 px-2">
-          <TerminalSquare className="size-3.5 shrink-0 text-white/40" />
-          <div className="terminal-tabs flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">{tabs}</div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0"
-            aria-label="New terminal tab"
-            title="New terminal tab"
-            disabled={!canCreate}
-            onClick={onCreate}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" className="size-6 shrink-0" aria-label="Hide terminal" title="Hide terminal" onClick={onClose}>
-            <X className="size-3.5" />
-          </Button>
-        </header>
         <div className="relative min-h-0 flex-1">{body(empty, error, surfaces)}</div>
       </section>
     </div>

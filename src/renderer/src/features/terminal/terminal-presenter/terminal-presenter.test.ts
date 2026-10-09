@@ -308,6 +308,16 @@ describe("TerminalPresenter", () => {
       expect(store.tabs).toHaveLength(0)
       expect(store.activeId).toBeNull()
     })
+
+    it("can dismiss a task's tab without killing its shell", () => {
+      const { api, presenter, store } = parts
+      presenter.adoptTask(session("task-1"), false, null)
+
+      presenter.closeTab("task-1")
+
+      expect(api.closeTerminal).not.toHaveBeenCalled()
+      expect(store.tabs).toHaveLength(0)
+    })
   })
 
   describe("handleEvent", () => {
