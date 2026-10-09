@@ -8,7 +8,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        // Shows behind the keyboard's rounded corners; see MainViewController.
+        window?.backgroundColor = .systemBackground
+        window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
@@ -20,5 +22,17 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+    }
+}
+
+// The keyboard resizes the web view, so the strip behind the keyboard's rounded
+// top corners shows this view instead of the page. It follows the light or dark
+// appearance like the page does, rather than a fixed colour.
+class MainViewController: CAPBridgeViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        webView?.backgroundColor = .systemBackground
+        webView?.scrollView.backgroundColor = .systemBackground
     }
 }
