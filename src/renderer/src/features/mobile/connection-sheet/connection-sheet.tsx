@@ -1,3 +1,4 @@
+import { Pencil } from "lucide-react"
 import type { ComponentType } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -64,8 +65,8 @@ export function ConnectionSheet({ open, online, label, renaming, draftNickname, 
                   <p className="truncate font-mono text-sm">{label}</p>
                   <p className="text-xs text-white/50">{online ? "Connected" : "Not connected"}</p>
                 </div>
-                <Button type="button" variant="ghost" size="sm" onClick={onRenameStart}>
-                  Rename
+                <Button type="button" variant="ghost" size="icon" aria-label="Rename" onClick={onRenameStart}>
+                  <Pencil className="size-4" />
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={onForget}>
                   Forget
