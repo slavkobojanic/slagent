@@ -63,7 +63,7 @@ import type { UsageRecord } from "./usage-ledger"
 
 // Pi treats the tools list as an allowlist, so tools from slagent's own
 // extensions are named here too.
-const CODING_TOOLS = [
+export const CODING_TOOLS = [
   "read",
   "bash",
   "edit",
