@@ -231,6 +231,9 @@ export type ToolMessage = {
   isError: boolean
   answers?: AnsweredQuestion[]
   subagent?: SubagentRunState[]
+  // A small model is writing this step's label: the renderer holds the label
+  // line and fades the description in when it lands.
+  labelPending?: boolean
 }
 
 export type ChatMessage = UserMessage | AssistantMessage | ToolMessage

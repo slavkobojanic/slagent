@@ -929,6 +929,7 @@ export class AgentHost {
       describeToolCalls: (calls) => this.describeToolCalls(calls),
       describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt),
       describeWorkingLabel: (user) => this.describeWorkingLabel(user),
+      describable: () => this.smallModel() !== undefined,
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
       },
@@ -1022,6 +1023,7 @@ export class AgentHost {
       describeToolCalls: (calls) => this.describeToolCalls(calls),
       describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt),
       describeWorkingLabel: (user) => this.describeWorkingLabel(user),
+      describable: () => this.smallModel() !== undefined,
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
       },

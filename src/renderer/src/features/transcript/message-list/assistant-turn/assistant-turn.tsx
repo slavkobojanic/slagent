@@ -38,9 +38,17 @@ export function AssistantTurn({
         </Reasoning>
       ) : null}
       {tools}
-      {waiting ? <Shimmer>{workingLabel ?? "Working"}</Shimmer> : null}
+      {waiting ? (workingLabel ? <WorkingLabel label={workingLabel} /> : <Shimmer>Working</Shimmer>) : null}
       {text}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </Message>
+  )
+}
+
+// The small model's phrase for what the reply is doing, faded in over the
+// working shimmer.
+function WorkingLabel({ label }: { label: string }) {
+  return (
+    <p className="animate-in fade-in-0 duration-500 text-muted-foreground">{label}</p>
   )
 }

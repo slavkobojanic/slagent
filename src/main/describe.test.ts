@@ -90,6 +90,7 @@ describe("ToolDescriber", () => {
         return Promise.resolve(labels)
       },
       () => {},
+      () => {},
       10,
     )
     describer.add(seeds("a")[0]!)
@@ -109,6 +110,7 @@ describe("ToolDescriber", () => {
         return Promise.resolve(labels)
       },
       (id, label) => applied.push([id, label]),
+      () => {},
       5,
     )
     describer.add({ id: "a", name: "bash", args: "{}" })
@@ -127,6 +129,7 @@ describe("ToolDescriber", () => {
         return new Promise((resolve) => setTimeout(() => resolve(labels), 20))
       },
       () => {},
+      () => {},
       5,
     )
     describer.add({ id: "a", name: "bash", args: "{}" })
@@ -139,16 +142,46 @@ describe("ToolDescriber", () => {
     describer.stop()
   })
 
-  it("keeps the fallback when describe fails", async () => {
-    const applied: [string, string][] = []
+  it("reports failure when describe fails", async () => {
+    const failed: string[] = []
     const describer = new ToolDescriber(
       () => Promise.reject(new Error("down")),
-      (id, label) => applied.push([id, label]),
+      () => {},
+      (id) => failed.push(id),
       5,
     )
     describer.add({ id: "a", name: "bash", args: "{}" })
     await new Promise((resolve) => setTimeout(resolve, 20))
-    expect(applied).toEqual([])
+    expect(failed).toEqual(["a"])
+    describer.stop()
+  })
+
+  it("reports failure when no model is available", async () => {
+    const failed: string[] = []
+    const describer = new ToolDescriber(
+      () => null,
+      () => {},
+      (id) => failed.push(id),
+      5,
+    )
+    describer.add({ id: "a", name: "bash", args: "{}" })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(failed).toEqual(["a"])
+    describer.stop()
+  })
+
+  it("reports failure for a call the reply does not cover", async () => {
+    const failed: string[] = []
+    const describer = new ToolDescriber(
+      () => Promise.resolve(new Map([["a", "Label a"]])),
+      () => {},
+      (id) => failed.push(id),
+      5,
+    )
+    describer.add({ id: "a", name: "bash", args: "{}" })
+    describer.add({ id: "b", name: "bash", args: "{}" })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(failed).toEqual(["b"])
     describer.stop()
   })
 
@@ -159,6 +192,7 @@ describe("ToolDescriber", () => {
         seen.push(calls)
         return Promise.resolve(new Map())
       },
+      () => {},
       () => {},
       5,
     )
