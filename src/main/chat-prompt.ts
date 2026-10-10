@@ -24,4 +24,5 @@ export const CHAT_TOOLS = [
   "read_chat",
   "ask_user",
   "add_mcp_server",
+  "mcp__*",
 ]
