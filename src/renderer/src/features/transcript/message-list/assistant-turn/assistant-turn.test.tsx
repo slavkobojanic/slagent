@@ -32,6 +32,13 @@ describe("AssistantTurn", () => {
     expect(markup).toContain("Working")
   })
 
+  it("fades the working phrase in once the small model names it", () => {
+    const markup = viewMarkup(<AssistantTurn {...props({ text: null, waiting: true, workingLabel: "Planning the CSV import" })} />)
+
+    expect(markup).toContain("Planning the CSV import")
+    expect(markup).not.toContain("Working")
+  })
+
   it("shows the reasoning as it streams", () => {
     const markup = viewMarkup(<AssistantTurn {...props({ thinking: "Considering the options", thinkingStreaming: true })} />)
 

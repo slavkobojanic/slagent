@@ -135,6 +135,9 @@ export class ToolDescriber {
   constructor(
     private describe: (calls: ToolCallSeed[]) => Promise<Map<string, string>> | null,
     private apply: (id: string, label: string) => void,
+    // Called for each call whose description never arrives, so the fallback
+    // label shows again.
+    private fail: (id: string) => void,
     private delay = 500,
   ) {}
 
@@ -158,13 +161,19 @@ export class ToolDescriber {
     this.pending.clear()
     if (calls.length === 0) return
     const described = this.describe(calls)
-    if (!described) return
+    if (!described) {
+      for (const call of calls) this.fail(call.id)
+      return
+    }
     this.inflight = described
       .then((labels) => {
         for (const [id, label] of labels) this.apply(id, label)
+        for (const call of calls) {
+          if (!labels.has(call.id)) this.fail(call.id)
+        }
       })
       .catch(() => {
-        // The fallback label stays.
+        for (const call of calls) this.fail(call.id)
       })
       .finally(() => {
         this.inflight = null

@@ -146,6 +146,8 @@ export type ChatRuntimeOptions = {
   describeToolCalls?: (calls: ToolCallSeed[]) => Promise<Map<string, string>> | null
   describeThinkingLabel?: (excerpt: string) => Promise<string | null>
   describeWorkingLabel?: (user: string) => Promise<string | null>
+  // Whether a small model is available to write labels at all.
+  describable?: () => boolean
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
@@ -259,8 +261,15 @@ export class ChatRuntime {
       (calls) => this.options.describeToolCalls?.(calls) ?? null,
       (id, label) => {
         const tool = this.findTool(id)
-        if (!tool || !tool.running) return
+        if (!tool) return
         tool.label = label
+        tool.labelPending = false
+        this.emit(false)
+      },
+      (id) => {
+        const tool = this.findTool(id)
+        if (!tool || !tool.labelPending) return
+        tool.labelPending = false
         this.emit(false)
       },
     )
@@ -909,6 +918,7 @@ export class ChatRuntime {
         isError: false,
       }
       this.messages.push(tool)
+      if (this.options.describable?.()) tool.labelPending = true
       this.describer.add({ id: event.toolCallId, name: event.toolName, args: this.toolArgs(event.args) })
       this.emit(false)
       return

@@ -80,22 +80,27 @@ export function toolIcon(name: string): LucideIcon {
   return FileTextIcon
 }
 
-// A step's label: a sentence for bash and questions, the file for a path tool, or the tool's own label.
-export type StepLabel = { kind: "text"; text: string } | { kind: "file"; name: string; path: string }
+// A step's label: a sentence for bash and questions, the file for a path tool,
+// a held line while the small model writes the description, or the tool's own
+// label.
+export type StepLabel =
+  | { kind: "text"; text: string }
+  | { kind: "pending" }
+  | { kind: "file"; name: string; path: string }
 
 export function toolLabel(tool: ToolMessage): StepLabel {
   if (tool.name === "bash") {
-    return { kind: "text", text: bashLabel(tool) }
+    return bashLabel(tool)
   }
   if (tool.name === "ask_user") {
-    return { kind: "text", text: questionLabel(tool) }
+    return questionLabel(tool)
   }
   if (tool.name === "subagent") {
-    return { kind: "text", text: subagentLabel(tool) }
+    return subagentLabel(tool)
   }
   const path = toolPath(tool)
   if (path === null) {
-    return { kind: "text", text: tool.label }
+    return describedLabel(tool, tool.label)
   }
   return { kind: "file", name: tool.name, path }
 }
@@ -109,17 +114,32 @@ function described(tool: ToolMessage): string | null {
   return tool.label
 }
 
-function bashLabel(tool: ToolMessage): string {
+// A non-path tool: the description once it landed, a held line while it is
+// being written, the given fallback otherwise.
+function describedLabel(tool: ToolMessage, fallback: string): StepLabel {
   const label = described(tool)
-  if (label) return label
-  if (tool.running) return "Running command"
-  if (tool.isError) return "Command failed"
-  return "Ran command"
+  if (label) return { kind: "text", text: label }
+  if (tool.labelPending) return { kind: "pending" }
+  return { kind: "text", text: fallback }
 }
 
-function subagentLabel(tool: ToolMessage): string {
+function bashLabel(tool: ToolMessage): StepLabel {
   const label = described(tool)
-  if (label) return label
+  if (label) return { kind: "text", text: label }
+  if (tool.labelPending) return { kind: "pending" }
+  if (tool.running) {
+    return { kind: "text", text: "Running command" }
+  }
+  if (tool.isError) {
+    return { kind: "text", text: "Command failed" }
+  }
+  return { kind: "text", text: "Ran command" }
+}
+
+function subagentLabel(tool: ToolMessage): StepLabel {
+  const label = described(tool)
+  if (label) return { kind: "text", text: label }
+  if (tool.labelPending) return { kind: "pending" }
   try {
     const args = JSON.parse(tool.args) as { agent?: unknown; task?: unknown; tasks?: unknown[] }
     const agents = new Set<string>()
@@ -133,27 +153,28 @@ function subagentLabel(tool: ToolMessage): string {
       }
       tasks += args.tasks.length
     }
-    if (tasks === 0) return tool.label
+    if (tasks === 0) return { kind: "text", text: tool.label }
     const names = [...agents].join(", ")
-    return tasks > 1 ? `subagent: ${tasks} tasks to ${names}` : `subagent: ${names}`
+    return { kind: "text", text: tasks > 1 ? `subagent: ${tasks} tasks to ${names}` : `subagent: ${names}` }
   } catch {
-    return tool.label
+    return { kind: "text", text: tool.label }
   }
 }
 
-function questionLabel(tool: ToolMessage): string {
+function questionLabel(tool: ToolMessage): StepLabel {
   if (tool.running) {
-    return "Waiting for your answer"
+    return { kind: "text", text: "Waiting for your answer" }
   }
   if (tool.isError) {
-    return "Question cancelled"
+    return { kind: "text", text: "Question cancelled" }
   }
   const label = described(tool)
-  if (label) return label
+  if (label) return { kind: "text", text: label }
+  if (tool.labelPending) return { kind: "pending" }
   if (tool.answers?.length === 1) {
-    return "Asked a question"
+    return { kind: "text", text: "Asked a question" }
   }
-  return "Asked questions"
+  return { kind: "text", text: "Asked questions" }
 }
 
 // Which body a step shows: the bash terminal, the answers to a question, the live subagent

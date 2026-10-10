@@ -82,6 +82,27 @@ describe("toolLabel", () => {
     })
   })
 
+  it("holds the line while the small model writes the description", () => {
+    expect(toolLabel(tool({ running: true, label: "bash  npm test", labelPending: true }))).toEqual({ kind: "pending" })
+    expect(toolLabel(tool({ name: "grep", label: "grep  foo", labelPending: true }))).toEqual({ kind: "pending" })
+    expect(toolLabel(tool({ name: "ask_user", label: "ask_user", labelPending: true }))).toEqual({ kind: "pending" })
+  })
+
+  it("keeps the waiting wording for a question while its label is pending", () => {
+    expect(toolLabel(tool({ name: "ask_user", label: "ask_user", labelPending: true, running: true }))).toEqual({
+      kind: "text",
+      text: "Waiting for your answer",
+    })
+  })
+
+  it("never holds a path tool's line", () => {
+    expect(toolLabel(tool({ name: "write", args: JSON.stringify({ path: "a.md" }), label: "write  a.md", labelPending: true }))).toEqual({
+      kind: "file",
+      name: "write",
+      path: "a.md",
+    })
+  })
+
   it("keeps the waiting and cancelled wording for a described question", () => {
     expect(toolLabel(tool({ name: "ask_user", label: "Asked about the database choice", running: true }))).toEqual({
       kind: "text",

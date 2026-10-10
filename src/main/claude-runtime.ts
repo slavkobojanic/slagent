@@ -133,6 +133,8 @@ export type ClaudeRuntimeOptions = {
   describeToolCalls?: (calls: ToolCallSeed[]) => Promise<Map<string, string>> | null
   describeThinkingLabel?: (excerpt: string) => Promise<string | null>
   describeWorkingLabel?: (user: string) => Promise<string | null>
+  // Whether a small model is available to write labels at all.
+  describable?: () => boolean
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
@@ -204,8 +206,15 @@ export class ClaudeRuntime {
       (calls) => this.options.describeToolCalls?.(calls) ?? null,
       (id, label) => {
         const tool = this.findTool(id)
-        if (!tool || !tool.running) return
+        if (!tool) return
         tool.label = label
+        tool.labelPending = false
+        this.emit(false)
+      },
+      (id) => {
+        const tool = this.findTool(id)
+        if (!tool || !tool.labelPending) return
+        tool.labelPending = false
         this.emit(false)
       },
     )
@@ -689,6 +698,7 @@ export class ClaudeRuntime {
       isError: false,
     }
     this.messages.push(tool)
+    if (this.options.describable?.()) tool.labelPending = true
     this.describer.add({ id: block.id, name, args: this.toolArgs(block.input) })
     // Text after a tool call belongs in a new bubble below it. The bubbles before it are done,
     // so they stop showing the working label.
