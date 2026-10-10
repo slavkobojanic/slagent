@@ -1,6 +1,6 @@
-import { fireEvent, render } from "@testing-library/react"
+import { fireEvent, render, act } from "@testing-library/react"
 import { TerminalIcon } from "lucide-react"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { ToolChain, type ToolChainProps } from "@/features/transcript/message-list/assistant-turn/tool-chain/tool-chain"
 import { viewMarkup } from "@/test/view-markup"
 
@@ -81,5 +81,61 @@ describe("ToolChain", () => {
     fireEvent.click(view.getByText("Ran command"))
 
     expect(view.container.innerHTML).toContain("step body")
+  })
+
+  it("collapses a running chain once the steps have been quiet for a moment", () => {
+    vi.useFakeTimers()
+    try {
+      const view = render(<ToolChain {...props()} />)
+
+      expect(view.container.innerHTML).toContain("Running command")
+
+      view.rerender(
+        <ToolChain
+          {...props({
+            steps: [{ id: "t2", icon: TerminalIcon, label: "Running command", active: false, error: false, output: null }],
+          })}
+        />,
+      )
+
+      expect(view.container.innerHTML).toContain("Running command")
+
+      act(() => {
+        vi.advanceTimersByTime(1100)
+      })
+
+      expect(view.container.innerHTML).not.toContain("Running command")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("stays open while a later step keeps running", () => {
+    vi.useFakeTimers()
+    try {
+      const view = render(<ToolChain {...props()} />)
+
+      view.rerender(
+        <ToolChain
+          {...props({
+            steps: [
+              { id: "t1", icon: TerminalIcon, label: "Ran command", active: false, error: false, output: null },
+              { id: "t2", icon: TerminalIcon, label: "Running command", active: true, error: false, output: null },
+            ],
+          })}
+        />,
+      )
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(view.container.innerHTML).toContain("Running command")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 })

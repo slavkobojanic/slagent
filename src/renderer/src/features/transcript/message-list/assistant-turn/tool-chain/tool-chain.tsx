@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { ChainOfThought, ChainOfThoughtContent, ChainOfThoughtHeader, ChainOfThoughtStep } from "@/components/ai-elements/chain-of-thought"
@@ -24,8 +24,26 @@ export type ToolChainProps = {
 }
 
 export function ToolChain({ steps, summary, defaultOpen }: ToolChainProps) {
+  // A chain that mounted while a step ran stays open so the progress shows, and
+  // settles closed once the steps have been quiet for a moment, leaving the
+  // header summary to carry what the turn did. A manual toggle wins.
+  const [userOpen, setUserOpen] = useState<boolean | null>(null)
+  const [autoOpen, setAutoOpen] = useState(defaultOpen)
+  const mountedWhileRunning = useRef(defaultOpen)
+  const anyActive = steps.some((step) => step.active)
+
+  useEffect(() => {
+    if (!mountedWhileRunning.current) return
+    if (anyActive) {
+      setAutoOpen(true)
+      return
+    }
+    const timer = setTimeout(() => setAutoOpen(false), 1000)
+    return () => clearTimeout(timer)
+  }, [anyActive])
+
   return (
-    <ChainOfThought defaultOpen={defaultOpen}>
+    <ChainOfThought open={userOpen ?? autoOpen} onOpenChange={setUserOpen}>
       <ChainOfThoughtHeader>{summary ? <span className="animate-in fade-in-0 duration-500">{summary}</span> : "Tools"}</ChainOfThoughtHeader>
       <ChainOfThoughtContent>
         {steps.map((step) => (
