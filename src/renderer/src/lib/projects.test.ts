@@ -7,10 +7,15 @@ function project(overrides: Partial<ProjectSummary> = {}): ProjectSummary {
 }
 
 describe("sortedProjects", () => {
-  it("can list the most recently opened project first", () => {
-    const projects = [project({ id: "old", lastOpenedAt: 1 }), project({ id: "new", lastOpenedAt: 2 })]
+  it("can list pinned projects first, both groups alphabetical", () => {
+    const projects = [
+      project({ id: "zeta", name: "zeta" }),
+      project({ id: "mango2", name: "mango2", pinned: true, pinnedAt: 1 }),
+      project({ id: "apple", name: "apple" }),
+      project({ id: "mango", name: "mango", pinned: true, pinnedAt: 5 }),
+    ]
 
-    expect(sortedProjects(projects).map((item) => item.id)).toEqual(["new", "old"])
+    expect(sortedProjects(projects).map((item) => item.id)).toEqual(["mango", "mango2", "apple", "zeta"])
   })
 
   it("can leave the input order unchanged", () => {

@@ -13,7 +13,7 @@ function chat(id: string): ChatSummary {
 
 describe("OtherProjectsStore", () => {
   describe("others", () => {
-    it("can list every code project, the open one included, alphabetical so nothing shuffles", () => {
+    it("can list every code project, the open one included, pinned first and both groups alphabetical", () => {
       const libraryStore = new LibraryStore()
       libraryStore.setLibrary({
         projects: [
@@ -29,7 +29,7 @@ describe("OtherProjectsStore", () => {
         openChatId: null, tasks: [],
       })
 
-      expect(new OtherProjectsStore(libraryStore).others.map((item) => item.project.id)).toEqual(["apple", "mango", "mango2", "open", "zebra"])
+      expect(new OtherProjectsStore(libraryStore).others.map((item) => item.project.id)).toEqual(["mango", "mango2", "apple", "open", "zebra"])
     })
 
     it("can mark the open project active and the rest not", () => {
