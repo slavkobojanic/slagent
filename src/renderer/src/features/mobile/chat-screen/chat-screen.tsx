@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button"
 import "@/features/mobile/mobile.css"
 
 // On a tablet the chat list and the diff are docked panes, so the header toggles them instead of
-// going back and pushing the changes screen. Portrait has no right panel: its tabs replace it.
+// going back and pushing the changes screen, and the docked chat list already has the connection
+// button. Portrait has no right panel: its tabs replace it.
 export type MobileChatScreenTablet = {
   onToggleSidebar: () => void
   onTogglePanel: (() => void) | null
@@ -59,9 +60,11 @@ export function MobileChatScreen({ title, projectName, ready, metaError, changes
               </span>
             </Button>
           ) : null}
-          <Button type="button" variant="ghost" size="icon-lg" aria-label="Connection" onClick={onOpenConnection}>
-            <Server className="size-5" />
-          </Button>
+          {tablet === undefined ? (
+            <Button type="button" variant="ghost" size="icon-lg" aria-label="Connection" onClick={onOpenConnection}>
+              <Server className="size-5" />
+            </Button>
+          ) : null}
         </div>
       </header>
       <Banner />
