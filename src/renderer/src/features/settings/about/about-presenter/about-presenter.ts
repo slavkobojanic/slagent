@@ -19,7 +19,7 @@ export class AboutPresenter {
     this.unsubscribe = this.api.onUpdateReady(this.handleUpdateReady)
     this.api
       .appVersion()
-      .then(this.store.setVersion)
+      .then((version) => this.store.setVersion(version))
       .catch((error: unknown) => {
         this.log.debug("load-app-version-failed", { error })
       })
