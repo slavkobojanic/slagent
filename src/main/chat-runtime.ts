@@ -81,6 +81,7 @@ export const CODING_TOOLS = [
   "task_stop",
   "subagent",
   "add_mcp_server",
+  "mcp__*",
 ]
 const IMAGE_TYPES: Record<string, string> = {
   ".png": "image/png",

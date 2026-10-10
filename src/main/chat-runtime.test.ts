@@ -10,4 +10,11 @@ describe("tool allowlists", () => {
   ])("%s projects can use add_mcp_server", (_mode, tools) => {
     expect(tools).toContain("add_mcp_server")
   })
+
+  it.each([
+    ["coding", CODING_TOOLS],
+    ["chat", CHAT_TOOLS],
+  ])("%s projects allow MCP server tools", (_mode, tools) => {
+    expect(tools).toContain("mcp__*")
+  })
 })

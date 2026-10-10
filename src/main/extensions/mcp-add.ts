@@ -1,4 +1,4 @@
-import type { ExtensionFactory, McpServerConfig } from "@earendil-works/pi-coding-agent"
+import type { ExtensionAPI, ExtensionFactory, McpServerConfig } from "@earendil-works/pi-coding-agent"
 import { Type } from "typebox"
 
 // Lets the model add an MCP server the user asked for, instead of sending them
@@ -7,7 +7,10 @@ import { Type } from "typebox"
 export function mcpAddExtension(deps: {
   // Persists the server in slagent's mcp.json; throws with a message for the model.
   addServer: (name: string, config: McpServerConfig) => Promise<void>
+  // How long to wait for the new server's tools to appear; defaults to 10s.
+  connectTimeoutMs?: number
 }): ExtensionFactory {
+  const connectTimeoutMs = deps.connectTimeoutMs ?? 10_000
   return (pi) => {
     pi.registerTool({
       name: "add_mcp_server",
@@ -56,9 +59,9 @@ export function mcpAddExtension(deps: {
           } catch {
             return fail(`"${url}" is not a valid URL.`)
           }
-          config = { url, headers, description }
+          config = { url, headers, description, exposure: "direct" }
         } else {
-          config = { command: (record.command as string).trim(), args: stringList(record.args), env, description }
+          config = { command: (record.command as string).trim(), args: stringList(record.args), env, description, exposure: "direct" }
         }
         try {
           await deps.addServer(name, config)
@@ -71,17 +74,42 @@ export function mcpAddExtension(deps: {
         } catch (error) {
           return fail(`Saved "${name}", but its tools are not in this chat: ${error instanceof Error ? error.message : String(error)}`)
         }
+        const prefix = `mcp__${name.replace(/-/g, "_")}__`
+        const tools = await waitForTools(pi, prefix, connectTimeoutMs)
+        if (tools.length > 0) {
+          const active = new Set(pi.getActiveTools())
+          if (tools.some((tool) => !active.has(tool))) pi.setActiveTools([...active, ...tools])
+          return {
+            details: { name, tools },
+            content: [
+              {
+                type: "text" as const,
+                text: `Added "${name}" and saved it for every future chat. ${tools.length} tools are available now: ${tools.join(", ")}.`,
+              },
+            ],
+          }
+        }
         return {
           details: { name },
           content: [
             {
               type: "text" as const,
-              text: `Added "${name}". Its tools load into this session as they connect (mcp__${name.replace(/-/g, "_")}__<tool>), and it is saved for every future chat. If the server needs OAuth, the user signs in under Settings > MCP.`,
+              text: `Added "${name}" and saved it for every future chat, but no tools connected yet (${prefix}<tool>). If the server needs OAuth, the user signs in under Settings > MCP and its tools load from the next turn.`,
             },
           ],
         }
       },
     })
+  }
+}
+
+// Tools register asynchronously once the server connects, so poll for them.
+async function waitForTools(pi: ExtensionAPI, prefix: string, timeoutMs: number): Promise<string[]> {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const tools = pi.getAllTools().map((tool) => tool.name).filter((name) => name.startsWith(prefix))
+    if (tools.length > 0 || Date.now() >= deadline) return tools
+    await new Promise((resolve) => setTimeout(resolve, 250))
   }
 }
 
