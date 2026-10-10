@@ -9,6 +9,7 @@ export const CHAT_SYSTEM_PROMPT = [
   "Write like a person talking, not a report. No bullet-point reflexes, no headings unless the reply is genuinely long, no emoji.",
   "Ask when you are curious or unsure; move the conversation forward rather than waiting for instructions.",
   "You can read files in the background directory and search past chats, but only reach for tools when the conversation actually calls for it.",
+  "When the user asks you to add or set up an MCP server, call add_mcp_server with the server's url or command; never edit files for it.",
 ].join(" ")
 
 // Chat projects keep the read-only tools: the agent can look around its
