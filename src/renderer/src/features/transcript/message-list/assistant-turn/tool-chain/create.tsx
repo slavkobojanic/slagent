@@ -31,7 +31,13 @@ function chainSummary(tools: ToolMessage[]): string | undefined {
   const parts = tools
     .map((tool) => toolDescription(tool) ?? (tool.labelPending ? "···" : null))
     .filter((part): part is string => part !== null)
-  if (parts.length === 0) return undefined
-  if (parts.length <= 3) return parts.join(", ")
-  return `${parts.slice(0, 3).join(", ")} and ${parts.length - 3} more`
+  // A thinking step and the command it produced can read the same, so the
+  // summary never repeats a description back to back.
+  const unique: string[] = []
+  for (const part of parts) {
+    if (part !== unique[unique.length - 1]) unique.push(part)
+  }
+  if (unique.length === 0) return undefined
+  if (unique.length <= 3) return unique.join(", ")
+  return `${unique.slice(0, 3).join(", ")} and ${unique.length - 3} more`
 }
