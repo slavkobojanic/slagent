@@ -209,7 +209,6 @@ type ReasoningContentProps = ComponentProps<
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 const THOUGHTS_MAX_HEIGHT_PX = 140;
-const THOUGHTS_MIN_HEIGHT_PX = 140;
 // Fade height (20px) for the top/bottom edges.
 
 export const ReasoningContent = memo(
@@ -272,7 +271,7 @@ export const ReasoningContent = memo(
         <div className="relative">
           <div
             ref={scrollRef}
-            style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX, minHeight: THOUGHTS_MIN_HEIGHT_PX }}
+            style={{ maxHeight: THOUGHTS_MAX_HEIGHT_PX }}
             className="overflow-hidden scroll-smooth motion-reduce:scroll-auto"
           >
             <div ref={contentRef}>
