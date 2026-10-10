@@ -1,11 +1,13 @@
 import { makeAutoObservable } from "mobx"
 import { openChatOf } from "@/features/shell/shell-header/chat-title/chat-title-utils"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
-import type { MobileScreen } from "@/features/mobile/mobile-screen"
-
+import type { MobileLayout, MobileScreen } from "@/features/mobile/mobile-screen"
 
 export class MobileStore {
   screen: MobileScreen = "chats"
+  layout: MobileLayout = "phone"
+  // The tablet's docked chat list; the right panel's open state is the shared PanelStore's.
+  sidebarOpen = true
   connectionOpen = false
   // The chat being opened, so its row can show that the tap landed.
   opening: string | null = null
@@ -13,6 +15,10 @@ export class MobileStore {
 
   constructor(private readonly libraryStore: LibraryStore) {
     makeAutoObservable(this)
+  }
+
+  get tablet(): boolean {
+    return this.layout !== "phone"
   }
 
   get chatTitle(): string {
@@ -31,6 +37,14 @@ export class MobileStore {
   setScreen(screen: MobileScreen) {
     this.screen = screen
     this.error = null
+  }
+
+  setLayout(layout: MobileLayout) {
+    this.layout = layout
+  }
+
+  setSidebarOpen(open: boolean) {
+    this.sidebarOpen = open
   }
 
   setOpening(chatId: string | null) {

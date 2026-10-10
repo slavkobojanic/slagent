@@ -40,6 +40,31 @@ function setup() {
 }
 
 describe("MobilePresenter", () => {
+  describe("layout", () => {
+    it("can follow the window when it resizes", () => {
+      const { store, presenter } = setup()
+      presenter.start()
+      window.innerWidth = 820
+      window.innerHeight = 1180
+      window.dispatchEvent(new Event("resize"))
+      expect(store.layout).toBe("portrait")
+      window.innerWidth = 390
+      window.dispatchEvent(new Event("resize"))
+      expect(store.layout).toBe("phone")
+      presenter.stop()
+    })
+  })
+
+  describe("toggleSidebar", () => {
+    it("can close and reopen the docked chat list", () => {
+      const { store, presenter } = setup()
+      presenter.toggleSidebar()
+      expect(store.sidebarOpen).toBe(false)
+      presenter.toggleSidebar()
+      expect(store.sidebarOpen).toBe(true)
+    })
+  })
+
   describe("openChat", () => {
     it("can show the chat once the host has opened it", async () => {
       const { store, api, presenter } = setup()

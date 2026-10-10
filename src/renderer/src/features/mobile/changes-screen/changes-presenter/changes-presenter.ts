@@ -38,13 +38,23 @@ export class MobileChangesPresenter {
           void this.refreshStatus()
         },
       ),
+      // A tablet shows the diff beside the chat, so entering that layout loads it.
+      this.log.reaction(
+        "tablet",
+        () => this.mobileStore.tablet,
+        (tablet) => {
+          if (tablet) {
+            void this.handleRefresh()
+          }
+        },
+      ),
       // The main process publishes git events while the agent changes files, so
       // the open screen follows the edits live and the badge stays current.
       this.api.onEvent((event) => {
         if (event.type !== "git") {
           return
         }
-        if (this.mobileStore.screen === "changes") {
+        if (this.watching) {
           void this.handleRefresh()
           return
         }
@@ -55,7 +65,7 @@ export class MobileChangesPresenter {
         "streaming",
         () => this.runStore.streaming,
         (streaming, wasStreaming) => {
-          if (wasStreaming && !streaming && this.mobileStore.screen !== "chats") {
+          if (wasStreaming && !streaming && (this.mobileStore.tablet || this.mobileStore.screen !== "chats")) {
             void this.handleRefresh()
           }
         },
@@ -69,6 +79,11 @@ export class MobileChangesPresenter {
 
   stop = () => {
     for (const dispose of this.disposers.splice(0)) dispose()
+  }
+
+  // A tablet keeps the diff beside the chat, so it follows the edits like the open changes screen.
+  private get watching(): boolean {
+    return this.mobileStore.tablet || this.mobileStore.screen === "changes"
   }
 
   get projectName(): string | null {

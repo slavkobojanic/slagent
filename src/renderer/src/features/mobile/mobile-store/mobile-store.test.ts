@@ -36,6 +36,26 @@ describe("MobileStore", () => {
     })
   })
 
+  describe("layout", () => {
+    it("can be a phone until the window says otherwise", () => {
+      const store = withLibrary({})
+      expect(store.layout).toBe("phone")
+      expect(store.tablet).toBe(false)
+    })
+
+    it("can be a tablet in either orientation", () => {
+      const store = withLibrary({})
+      store.setLayout("portrait")
+      expect(store.tablet).toBe(true)
+    })
+
+    it("can toggle the docked chat list", () => {
+      const store = withLibrary({})
+      store.setSidebarOpen(false)
+      expect(store.sidebarOpen).toBe(false)
+    })
+  })
+
   describe("setScreen", () => {
     it("can clear the error when the screen changes", () => {
       const store = withLibrary({})
