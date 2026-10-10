@@ -80,9 +80,9 @@ export function toolIcon(name: string): LucideIcon {
   return FileTextIcon
 }
 
-// A step's label: a sentence for bash and questions, the file for a path tool,
-// a held line while the small model writes the description, or the tool's own
-// label.
+// A step's label: the shell-command wording for bash, a sentence for questions,
+// the file for a path tool, a held line while the small model writes the
+// description, or the tool's own label.
 export type StepLabel =
   | { kind: "text"; text: string }
   | { kind: "pending" }
@@ -129,17 +129,18 @@ export function toolDescription(tool: ToolMessage): string | null {
   return described(tool)
 }
 
+// A bash step always reads as the command it is: its model-written description
+// tends to repeat the thinking step it followed, so the description only lives
+// in the collapsed header summary.
 function bashLabel(tool: ToolMessage): StepLabel {
-  const label = described(tool)
-  if (label) return { kind: "text", text: label }
   if (tool.labelPending) return { kind: "pending" }
   if (tool.running) {
-    return { kind: "text", text: "Running command" }
+    return { kind: "text", text: "Running shell command" }
   }
   if (tool.isError) {
-    return { kind: "text", text: "Command failed" }
+    return { kind: "text", text: "Shell command failed" }
   }
-  return { kind: "text", text: "Ran command" }
+  return { kind: "text", text: "Ran shell command" }
 }
 
 function subagentLabel(tool: ToolMessage): StepLabel {
