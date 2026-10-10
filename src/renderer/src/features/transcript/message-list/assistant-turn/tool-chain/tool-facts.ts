@@ -123,6 +123,12 @@ function describedLabel(tool: ToolMessage, fallback: string): StepLabel {
   return { kind: "text", text: fallback }
 }
 
+// The model-written description of one step, or null while it is still the
+// raw fallback: the collapsed chain header summarizes these.
+export function toolDescription(tool: ToolMessage): string | null {
+  return described(tool)
+}
+
 function bashLabel(tool: ToolMessage): StepLabel {
   const label = described(tool)
   if (label) return { kind: "text", text: label }

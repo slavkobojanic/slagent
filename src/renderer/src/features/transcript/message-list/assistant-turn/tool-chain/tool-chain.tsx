@@ -15,15 +15,18 @@ export type ToolStepProps = {
 
 export type ToolChainProps = {
   steps: ToolStepProps[]
+  // Replaces the "Tools" header once the small model has described the steps:
+  // what the collapsed chain reads instead of a bare noun.
+  summary?: string
   // Only read on mount: a turn that is still running opens so its progress shows, and a
   // finished turn starts collapsed.
   defaultOpen: boolean
 }
 
-export function ToolChain({ steps, defaultOpen }: ToolChainProps) {
+export function ToolChain({ steps, summary, defaultOpen }: ToolChainProps) {
   return (
     <ChainOfThought defaultOpen={defaultOpen}>
-      <ChainOfThoughtHeader>Tools</ChainOfThoughtHeader>
+      <ChainOfThoughtHeader>{summary ? <span className="animate-in fade-in-0 duration-500">{summary}</span> : "Tools"}</ChainOfThoughtHeader>
       <ChainOfThoughtContent>
         {steps.map((step) => (
           <ToolStep key={step.id} step={step} />

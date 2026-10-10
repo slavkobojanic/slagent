@@ -167,7 +167,7 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number, labe
   if (duration === undefined) {
     return <p>Thought for a few seconds</p>;
   }
-  return <p>Thought for {duration} seconds</p>;
+  return <p>Thought for {duration === 1 ? "1 second" : `${duration} seconds`}</p>;
 };
 
 export const ReasoningTrigger = memo(

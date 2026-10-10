@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { ToolMessage } from "@shared/types"
 import { FileTextIcon, TerminalIcon } from "lucide-react"
-import { bashCommand, toolIcon, toolLabel, toolOutputKind, toolPath, toolStepOutput } from "@/features/transcript/message-list/assistant-turn/tool-chain/tool-facts"
+import { bashCommand, toolDescription, toolIcon, toolLabel, toolOutputKind, toolPath, toolStepOutput } from "@/features/transcript/message-list/assistant-turn/tool-chain/tool-facts"
 
 function tool(overrides: Partial<ToolMessage> = {}): ToolMessage {
   return {
@@ -215,5 +215,16 @@ describe("toolIcon", () => {
 
   it("can use the file icon for a tool it does not know", () => {
     expect(toolIcon("unknown")).toBe(FileTextIcon)
+  })
+})
+
+describe("toolDescription", () => {
+  it("returns the model-written description", () => {
+    expect(toolDescription(tool({ label: "Running tests in src/main" }))).toBe("Running tests in src/main")
+  })
+
+  it("returns null while the label is still the raw fallback", () => {
+    expect(toolDescription(tool())).toBeNull()
+    expect(toolDescription(tool({ label: "bash" }))).toBeNull()
   })
 })
