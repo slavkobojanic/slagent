@@ -6,14 +6,17 @@ import { TailnetPeers, type TailnetPeersProps } from "./tailnet-peers"
 const PEERS = [
   { name: "personal.tail-scale.ts.net", host: "100.64.0.5", port: 8747, online: true },
   { name: "work.tail-scale.ts.net", host: "100.64.0.9", port: 8747, online: false },
+  { name: "studio.tail-scale.ts.net", host: "100.64.0.7", port: 8747, online: true },
 ]
 const CURRENT = { host: "100.64.0.9", port: 8747, token: "t" }
+const SAVED = { host: "100.64.0.7", port: 8747, token: "t2" }
 
 function props(overrides: Partial<TailnetPeersProps> = {}): TailnetPeersProps {
   return {
     peers: PEERS,
     loading: false,
     current: CURRENT,
+    saved: [SAVED],
     onPick: vi.fn(),
     onRefresh: vi.fn(),
     ...overrides,
@@ -21,21 +24,25 @@ function props(overrides: Partial<TailnetPeersProps> = {}): TailnetPeersProps {
 }
 
 describe("TailnetPeers", () => {
-  it("can list every tailnet machine with its online status and a connect button", () => {
+  it("can list the machines not connected before with a connect button", () => {
     render(<TailnetPeers {...props()} />)
 
     expect(screen.getByText("On your Tailscale network")).not.toBeNull()
     expect(screen.getByText("personal.tail-scale.ts.net")).not.toBeNull()
-    expect(screen.getByText("work.tail-scale.ts.net")).not.toBeNull()
     expect(screen.getAllByRole("button", { name: "Connect" })).toHaveLength(1)
   })
 
-  it("can mark the connected Mac as Active instead of offering a button", () => {
+  it("can leave out the connected Mac", () => {
     render(<TailnetPeers {...props()} />)
 
-    const row = screen.getByText("work.tail-scale.ts.net").closest(".flex.items-center")!
-    expect(row.textContent).toContain("Active")
-    expect(row.querySelector("button")).toBeNull()
+    expect(screen.queryByText("work.tail-scale.ts.net")).toBeNull()
+    expect(screen.queryByText("Active")).toBeNull()
+  })
+
+  it("can leave out Macs already saved, which have their own row", () => {
+    render(<TailnetPeers {...props()} />)
+
+    expect(screen.queryByText("studio.tail-scale.ts.net")).toBeNull()
   })
 
   it("can refresh the list from its heading", () => {
@@ -50,17 +57,15 @@ describe("TailnetPeers", () => {
     expect(markup).toContain("animate-spin")
   })
 
-  it("can show the heading and refresh even when nothing is found", () => {
-    render(<TailnetPeers {...props({ peers: [] })} />)
+  it("can hide the heading when every machine is already connected", () => {
+    render(<TailnetPeers {...props({ saved: [SAVED, { host: "100.64.0.5", port: 8747, token: "t3" }] })} />)
 
-    expect(screen.getByText("On your Tailscale network")).not.toBeNull()
-    expect(screen.getByRole("button", { name: "Refresh" })).not.toBeNull()
-    expect(screen.getByText("No Macs found. Tap refresh to look again.")).not.toBeNull()
+    expect(screen.queryByText("On your Tailscale network")).toBeNull()
   })
 
-  it("can explain the search while it runs with no results yet", () => {
-    render(<TailnetPeers {...props({ peers: [], loading: true })} />)
+  it("can hide the heading when nothing is found", () => {
+    render(<TailnetPeers {...props({ peers: [] })} />)
 
-    expect(screen.getByText("Looking for Macs…")).not.toBeNull()
+    expect(screen.queryByText("On your Tailscale network")).toBeNull()
   })
 })

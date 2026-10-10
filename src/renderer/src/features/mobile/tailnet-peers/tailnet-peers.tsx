@@ -10,6 +10,8 @@ export type TailnetPeersProps = {
   // The Mac the phone is connected to right now, marked Active instead of
   // offering a button.
   current: ServerAddress | null
+  // Macs already listed under "Switch to another Mac", so they are not offered twice.
+  saved: ServerAddress[]
   onPick: (address: ServerAddress) => void
   onRefresh: () => void
 }
@@ -17,8 +19,14 @@ export type TailnetPeersProps = {
 // Every Mac on the tailnet that runs slagent, as the connected Mac sees it, so
 // the sheet shows the whole fleet — personal and work — with the active one
 // marked. Picking another needs no pairing: the tailnet membership is the
-// credential. The heading and its refresh stay up even when nothing is found.
-export function TailnetPeers({ peers, loading, current, onPick, onRefresh }: TailnetPeersProps) {
+// credential. Macs the phone has already connected to are left out, and with none
+// left the whole section, heading included, is hidden.
+export function TailnetPeers({ peers, loading, current, saved, onPick, onRefresh }: TailnetPeersProps) {
+  const known = (peer: TailscalePeer) => [...saved, ...(current === null ? [] : [current])].some((address) => address.host === peer.host && address.port === peer.port)
+  const fresh = peers.filter((peer) => !known(peer))
+  if (fresh.length === 0) {
+    return null
+  }
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -28,8 +36,7 @@ export function TailnetPeers({ peers, loading, current, onPick, onRefresh }: Tai
         </Button>
       </div>
       <div className="space-y-2">
-        {peers.map((peer) => {
-          const active = current !== null && peer.host === current.host && peer.port === current.port
+        {fresh.map((peer) => {
           return (
             <div key={peer.host} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
               <span className={cn("size-2 shrink-0 rounded-full", peer.online ? "bg-success" : "bg-border")} />
@@ -37,21 +44,12 @@ export function TailnetPeers({ peers, loading, current, onPick, onRefresh }: Tai
                 <p className="truncate text-sm">{peer.name}</p>
                 <p className="truncate font-mono text-xs text-white/50">{peer.host}</p>
               </div>
-              {active ? (
-                <span className="flex shrink-0 items-center gap-1.5 text-xs text-foreground/60">
-                  <span className={cn("size-1.5 rounded-full", peer.online ? "bg-success" : "bg-warning")} />
-                  Active
-                </span>
-              ) : (
-                <Button type="button" variant="outline" size="sm" onClick={() => onPick({ host: peer.host, port: peer.port, token: "", name: peer.name })}>
-                  Connect
-                </Button>
-              )}
+              <Button type="button" variant="outline" size="sm" onClick={() => onPick({ host: peer.host, port: peer.port, token: "", name: peer.name })}>
+                Connect
+              </Button>
             </div>
           )
         })}
-        {loading && peers.length === 0 ? <p className="px-3 py-2 text-xs text-foreground/50">Looking for Macs…</p> : null}
-        {!loading && peers.length === 0 ? <p className="px-3 py-2 text-xs text-foreground/50">No Macs found. Tap refresh to look again.</p> : null}
       </div>
     </div>
   )
