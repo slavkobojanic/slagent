@@ -2,6 +2,7 @@ import type { API } from "@/ipc/api"
 import type { Device } from "@/ipc/device"
 import { errorText } from "@/lib/format"
 import type { Log } from "@/log/log"
+import { layoutFor } from "@/features/mobile/mobile-screen"
 import { setKeyboardHeight } from "@/features/mobile/keyboard-height"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { MobileStore } from "@/features/mobile/mobile-store/mobile-store"
@@ -29,6 +30,10 @@ export class MobilePresenter {
     this.disposers.push(this.device.onKeyboardShow((height) => setKeyboardHeight(this.window, height)))
     this.disposers.push(this.device.onKeyboardHide(() => setKeyboardHeight(this.window, 0)))
     this.device.hideKeyboardBar()
+    // Rotation and Split View resize the window, so the layout follows it.
+    this.syncLayout()
+    this.window.addEventListener("resize", this.syncLayout)
+    this.disposers.push(() => this.window.removeEventListener("resize", this.syncLayout))
   }
 
   stop = () => {
@@ -75,6 +80,11 @@ export class MobilePresenter {
     this.store.setScreen(this.store.screen === "changes" ? "chat" : "chats")
   }
 
+  toggleSidebar = () => {
+    this.log.action("toggle-sidebar")
+    this.store.setSidebarOpen(!this.store.sidebarOpen)
+  }
+
   openConnection = () => {
     this.log.action("open-connection")
     this.store.connectionOpen = true
@@ -86,6 +96,10 @@ export class MobilePresenter {
 
   dismissError = () => {
     this.store.setError(null)
+  }
+
+  private syncLayout = () => {
+    this.store.setLayout(layoutFor(this.window.innerWidth, this.window.innerHeight))
   }
 
   // The server starts a reconnected client on its last project with no chat, so a phone that
