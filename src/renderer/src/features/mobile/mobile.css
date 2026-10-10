@@ -77,3 +77,9 @@
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
+
+/* Portrait's tab strip owns the status bar clearance, so the page beneath it (the chat's own
+   header, the panel's body) does not clear it a second time. */
+.mobile-tablet-page .mobile-safe-top {
+  padding-top: 0;
+}
