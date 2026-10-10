@@ -5,6 +5,7 @@ import type { API } from "@/ipc/api"
 import type { Device } from "@/ipc/device"
 import type { Log } from "@/log/log"
 import type { MobileStore } from "@/features/mobile/mobile-store/mobile-store"
+import type { SavedServersStore } from "@/features/mobile/saved-servers/saved-servers-store/saved-servers-store"
 import { TailnetPeers } from "./tailnet-peers"
 import { TailnetPeersPresenter } from "./tailnet-peers-presenter/tailnet-peers-presenter"
 import { TailnetPeersStore } from "./tailnet-peers-store/tailnet-peers-store"
@@ -14,12 +15,14 @@ export function createTailnetPeers({
   device,
   connectionStore,
   mobileStore,
+  savedServers,
   log,
 }: {
   api: API
   device: Device
   connectionStore: ConnectionStore
   mobileStore: MobileStore
+  savedServers: SavedServersStore
   log: Log
 }): ComponentType {
   const store = new TailnetPeersStore()
@@ -32,6 +35,7 @@ export function createTailnetPeers({
         peers={store.peers}
         loading={store.loading}
         current={connectionStore.address}
+        saved={savedServers.servers}
         onPick={presenter.handlePick}
         onRefresh={presenter.handleRefresh}
       />

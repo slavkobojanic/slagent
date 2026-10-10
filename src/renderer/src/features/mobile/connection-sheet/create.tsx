@@ -7,6 +7,7 @@ import type { MobilePresenter } from "@/features/mobile/mobile-presenter/mobile-
 import type { MobileStore } from "@/features/mobile/mobile-store/mobile-store"
 import type { ConnectionPresenter } from "@/state/connection/connection-presenter/connection-presenter"
 import type { ConnectionStore } from "@/state/connection/connection-store/connection-store"
+import { SavedServersStore } from "@/features/mobile/saved-servers/saved-servers-store/saved-servers-store"
 import { createSavedServers } from "@/features/mobile/saved-servers/create"
 import { createTailnetPeers } from "@/features/mobile/tailnet-peers/create"
 import { ConnectionSheet } from "./connection-sheet"
@@ -30,8 +31,9 @@ export function createConnectionSheet({
   log: Log
   Connect: ComponentType
 }): ComponentType {
-  const SavedServers = createSavedServers({ device, connectionStore, log: log.child("saved-servers") })
-  const Tailnet = createTailnetPeers({ api, device, connectionStore, mobileStore, log })
+  const savedServers = new SavedServersStore()
+  const SavedServers = createSavedServers({ device, connectionStore, log: log.child("saved-servers"), store: savedServers })
+  const Tailnet = createTailnetPeers({ api, device, connectionStore, mobileStore, savedServers, log })
 
   return observer(function ConnectionSheetHost() {
     return (
