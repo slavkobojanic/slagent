@@ -7,6 +7,10 @@ export type AssistantTurnProps = {
   messageId: string
   thinking: string | null
   thinkingStreaming: boolean
+  // Short model-written phrases for the working and thinking shimmers, absent
+  // when no small model is set.
+  workingLabel: string | null
+  thinkingLabel: string | null
   tools: ReactNode
   // Whether the reply has started but has no text yet, so the working label shows.
   waiting: boolean
@@ -14,17 +18,27 @@ export type AssistantTurnProps = {
   error: string | null
 }
 
-export function AssistantTurn({ messageId, thinking, thinkingStreaming, tools, waiting, text, error }: AssistantTurnProps) {
+export function AssistantTurn({
+  messageId,
+  thinking,
+  thinkingStreaming,
+  workingLabel,
+  thinkingLabel,
+  tools,
+  waiting,
+  text,
+  error,
+}: AssistantTurnProps) {
   return (
     <Message from="assistant" className="max-w-full" data-message-id={messageId}>
       {thinking ? (
         <Reasoning isStreaming={thinkingStreaming}>
-          <ReasoningTrigger />
+          <ReasoningTrigger label={thinkingLabel ?? undefined} />
           <ReasoningContent>{thinking}</ReasoningContent>
         </Reasoning>
       ) : null}
       {tools}
-      {waiting ? <Shimmer>Working</Shimmer> : null}
+      {waiting ? <Shimmer>{workingLabel ?? "Working"}</Shimmer> : null}
       {text}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </Message>

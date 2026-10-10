@@ -4,7 +4,7 @@ import { AssistantTurn } from "@/features/transcript/message-list/assistant-turn
 const meta = {
   title: "Features/Transcript/AssistantTurn",
   component: AssistantTurn,
-  args: { messageId: "m1", thinking: null, thinkingStreaming: false, tools: null, waiting: false, text: "Done. Every view now has a story.", error: null },
+  args: { messageId: "m1", thinking: null, thinkingStreaming: false, workingLabel: null, thinkingLabel: null, tools: null, waiting: false, text: "Done. Every view now has a story.", error: null },
 } satisfies Meta<typeof AssistantTurn>
 
 export default meta

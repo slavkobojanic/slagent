@@ -35,6 +35,7 @@ import { CHAT_SYSTEM_PROMPT } from "./chat-prompt"
 import { answered, parseQuestions } from "./extensions/ask-user"
 import { personalisationPrompt } from "./extensions/personalisation"
 import { errorMessage, formatValue, toolLabel, truncate } from "./format"
+import { ToolDescriber, type ToolCallSeed } from "./describe"
 import { preparePrompt, type PreparedPrompt, queueDetail } from "./prompt"
 import type { ClaudeModelUsage } from "./usage-ledger"
 
@@ -127,6 +128,11 @@ export type ClaudeRuntimeOptions = {
   onSession: (sessionId: string) => void
   onTitle: (title: string, generated: boolean) => void
   generateTitle: (user: string) => Promise<string | null>
+  // Short model-written labels for tool steps, thinking and the working
+  // shimmer. Optional: without a small model the fallback labels stay.
+  describeToolCalls?: (calls: ToolCallSeed[]) => Promise<Map<string, string>> | null
+  describeThinkingLabel?: (excerpt: string) => Promise<string | null>
+  describeWorkingLabel?: (user: string) => Promise<string | null>
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
@@ -177,6 +183,8 @@ export class ClaudeRuntime {
   private streamed = new Set<string>()
   private lastRunning = false
   private disposed = false
+  private thinkingAsked = false
+  private readonly describer: ToolDescriber
   private effort: EffortLevel
   private pendingEffort: EffortLevel | null = null
   private readonly options: ClaudeRuntimeOptions
@@ -192,6 +200,15 @@ export class ClaudeRuntime {
     this.named = options.named
     this.titleGenerated = options.titleGenerated
     this.sessionId = options.sessionId
+    this.describer = new ToolDescriber(
+      (calls) => this.options.describeToolCalls?.(calls) ?? null,
+      (id, label) => {
+        const tool = this.findTool(id)
+        if (!tool || !tool.running) return
+        tool.label = label
+        this.emit(false)
+      },
+    )
   }
 
   get key(): string {
@@ -390,6 +407,7 @@ export class ClaudeRuntime {
 
   dispose(): void {
     this.disposed = true
+    this.describer.stop()
     this.settleQuestion(null)
     this.input?.close()
     this.abortController?.abort()
@@ -624,7 +642,10 @@ export class ClaudeRuntime {
     const bubble = this.bubbleFor(id)
     this.streamed.add(id)
     if (event.delta.type === "text_delta" && event.delta.text) bubble.text += event.delta.text
-    if (event.delta.type === "thinking_delta" && event.delta.thinking) bubble.thinking += event.delta.thinking
+    if (event.delta.type === "thinking_delta" && event.delta.thinking) {
+      bubble.thinking += event.delta.thinking
+      this.maybeDescribeThinking(bubble)
+    }
     this.emit(false)
   }
 
@@ -668,6 +689,7 @@ export class ClaudeRuntime {
       isError: false,
     }
     this.messages.push(tool)
+    this.describer.add({ id: block.id, name, args: this.toolArgs(block.input) })
     // Text after a tool call belongs in a new bubble below it. The bubbles before it are done,
     // so they stop showing the working label.
     for (const id of this.bubbles.values()) {
@@ -783,7 +805,10 @@ export class ClaudeRuntime {
       error: null,
     }
     this.bubbles.set(apiId, message.id)
+    this.thinkingAsked = false
     this.messages.push(message)
+    // The first bubble of a run names what it is about to do.
+    if (this.bubbles.size === 1) this.requestWorkingLabel(message.id)
     return message
   }
 
@@ -799,6 +824,46 @@ export class ClaudeRuntime {
     this.bubbles.clear()
     this.streamed.clear()
     this.currentStreamId = null
+  }
+
+  // Compact args for the small model that writes step labels.
+  private toolArgs(args: unknown): string {
+    try {
+      return JSON.stringify(args) ?? ""
+    } catch {
+      return ""
+    }
+  }
+
+  // Names what the reply is thinking about, once enough thinking has streamed
+  // to say something. One request per bubble; the label only lands while the
+  // bubble still streams.
+  private maybeDescribeThinking(bubble: AssistantMessage): void {
+    if (this.thinkingAsked || bubble.thinkingLabel || bubble.thinking.length < 200) return
+    this.thinkingAsked = true
+    const id = bubble.id
+    const excerpt = bubble.thinking
+    void (this.options.describeThinkingLabel?.(excerpt) ?? Promise.resolve(null)).then((label) => {
+      if (!label || this.disposed) return
+      const current = this.messages.find((item) => item.id === id)
+      if (current?.role !== "assistant" || !current.streaming || current.thinkingLabel) return
+      current.thinkingLabel = label
+      this.emit(false)
+    })
+  }
+
+  // Names what the reply is about to do, from the latest user message, while
+  // the reply has not produced anything yet.
+  private requestWorkingLabel(id: string): void {
+    const user = [...this.messages].reverse().find((item) => item.role === "user")
+    if (!user || !user.text) return
+    void (this.options.describeWorkingLabel?.(user.text) ?? Promise.resolve(null)).then((label) => {
+      if (!label || this.disposed) return
+      const bubble = this.messages.find((item) => item.id === id)
+      if (bubble?.role !== "assistant" || !bubble.streaming || bubble.text || bubble.thinking) return
+      bubble.workingLabel = label
+      this.emit(false)
+    })
   }
 
   private findTool(id: string): ToolMessage | null {

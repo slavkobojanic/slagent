@@ -152,6 +152,9 @@ type ReasoningTriggerProps = ComponentProps<
   typeof CollapsibleTrigger
 > & {
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
+  // A short model-written phrase naming what is being thought about, shown
+  // in place of "Thinking..." while the reasoning streams.
+  label?: string;
 };
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
@@ -168,7 +171,13 @@ export const ReasoningTrigger = memo(
   ({
     className,
     children,
-    getThinkingMessage = defaultGetThinkingMessage,
+    label,
+    getThinkingMessage = (isStreaming, duration) =>
+      isStreaming && label ? (
+        <Shimmer duration={1}>{label}</Shimmer>
+      ) : (
+        defaultGetThinkingMessage(isStreaming, duration)
+      ),
     ...props
   }: ReasoningTriggerProps) => {
     const { isStreaming, duration } = useReasoning();

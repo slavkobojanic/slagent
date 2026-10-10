@@ -45,6 +45,7 @@ import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
 import { assistantParts, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
+import { ToolDescriber, type ToolCallSeed } from "./describe"
 import { CheckpointStore } from "./checkpoints"
 import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
 import { type BackgroundTasks, backgroundTasks, type TaskTerminalSpawner } from "./extensions/background-tasks"
@@ -140,6 +141,11 @@ export type ChatRuntimeOptions = {
   onExtensions: (extensions: ExtensionInfo[], errors: string[]) => void
   onTitle: (title: string, generated: boolean) => void
   generateTitle: (user: string) => Promise<string | null>
+  // Short model-written labels for tool steps, thinking and the working
+  // shimmer. Optional: without a small model the fallback labels stay.
+  describeToolCalls?: (calls: ToolCallSeed[]) => Promise<Map<string, string>> | null
+  describeThinkingLabel?: (excerpt: string) => Promise<string | null>
+  describeWorkingLabel?: (user: string) => Promise<string | null>
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
@@ -223,6 +229,8 @@ export class ChatRuntime {
   private unsubscribe: (() => void) | null = null
   private sessionToken: object | null = null
   private currentAssistantId: string | null = null
+  private thinkingAsked = false
+  private readonly describer: ToolDescriber
   private pendingModel: AgentModel | null = null
   private pendingEffort: EffortLevel | null = null
   private effort: EffortLevel
@@ -247,6 +255,15 @@ export class ChatRuntime {
       this.options.onTasksChanged()
       if (finished && finished.status !== "stopped") this.options.onTaskFinished(finished)
     })
+    this.describer = new ToolDescriber(
+      (calls) => this.options.describeToolCalls?.(calls) ?? null,
+      (id, label) => {
+        const tool = this.findTool(id)
+        if (!tool || !tool.running) return
+        tool.label = label
+        this.emit(false)
+      },
+    )
   }
 
   taskOutput(id: string): string {
@@ -690,6 +707,7 @@ export class ChatRuntime {
 
   dispose(): void {
     this.questions.cancel()
+    this.describer.stop()
     this.taskTerminal.stopAll()
     this.disposed = true
     this.sessionToken = null
@@ -854,6 +872,7 @@ export class ChatRuntime {
       if (update.type === "thinking_delta") {
         if (bubble.thinking) bubble.thinking += update.delta
         else bubble.thinking = update.delta
+        this.maybeDescribeThinking(bubble)
       }
       this.emit(false)
       return
@@ -890,6 +909,7 @@ export class ChatRuntime {
         isError: false,
       }
       this.messages.push(tool)
+      this.describer.add({ id: event.toolCallId, name: event.toolName, args: this.toolArgs(event.args) })
       this.emit(false)
       return
     }
@@ -996,8 +1016,50 @@ export class ChatRuntime {
       error: null,
     }
     this.currentAssistantId = message.id
+    this.thinkingAsked = false
     this.messages.push(message)
+    this.requestWorkingLabel(message.id)
     return message
+  }
+
+  // Compact args for the small model that writes step labels.
+  private toolArgs(args: unknown): string {
+    try {
+      return JSON.stringify(args) ?? ""
+    } catch {
+      return ""
+    }
+  }
+
+  // Names what the reply is thinking about, once enough thinking has streamed
+  // to say something. One request per bubble; the label only lands while the
+  // bubble still streams.
+  private maybeDescribeThinking(bubble: AssistantMessage): void {
+    if (this.thinkingAsked || bubble.thinkingLabel || bubble.thinking.length < 200) return
+    this.thinkingAsked = true
+    const id = bubble.id
+    const excerpt = bubble.thinking
+    void (this.options.describeThinkingLabel?.(excerpt) ?? Promise.resolve(null)).then((label) => {
+      if (!label || this.disposed) return
+      const current = this.messages.find((item) => item.id === id)
+      if (current?.role !== "assistant" || !current.streaming || current.thinkingLabel) return
+      current.thinkingLabel = label
+      this.emit(false)
+    })
+  }
+
+  // Names what the reply is about to do, from the latest user message, while
+  // the reply has not produced anything yet.
+  private requestWorkingLabel(id: string): void {
+    const user = [...this.messages].reverse().find((item) => item.role === "user")
+    if (!user || !user.text) return
+    void (this.options.describeWorkingLabel?.(user.text) ?? Promise.resolve(null)).then((label) => {
+      if (!label || this.disposed) return
+      const bubble = this.messages.find((item) => item.id === id)
+      if (bubble?.role !== "assistant" || !bubble.streaming || bubble.text || bubble.thinking) return
+      bubble.workingLabel = label
+      this.emit(false)
+    })
   }
 
   private findTool(id: string): ToolMessage | null {

@@ -67,6 +67,32 @@ describe("toolLabel", () => {
     expect(toolLabel(tool({ isError: true }))).toEqual({ kind: "text", text: "Command failed" })
   })
 
+  it("shows the model-written description when the label has one", () => {
+    expect(toolLabel(tool({ label: "Running tests in src/main" }))).toEqual({
+      kind: "text",
+      text: "Running tests in src/main",
+    })
+    expect(toolLabel(tool({ name: "ask_user", label: "Asked about the database choice" }))).toEqual({
+      kind: "text",
+      text: "Asked about the database choice",
+    })
+    expect(toolLabel(tool({ name: "subagent", label: "Exploring with a subagent" }))).toEqual({
+      kind: "text",
+      text: "Exploring with a subagent",
+    })
+  })
+
+  it("keeps the waiting and cancelled wording for a described question", () => {
+    expect(toolLabel(tool({ name: "ask_user", label: "Asked about the database choice", running: true }))).toEqual({
+      kind: "text",
+      text: "Waiting for your answer",
+    })
+    expect(toolLabel(tool({ name: "ask_user", label: "Asked about the database choice", isError: true }))).toEqual({
+      kind: "text",
+      text: "Question cancelled",
+    })
+  })
+
   it("can describe a question that is still waiting", () => {
     expect(toolLabel(tool({ name: "ask_user", running: true }))).toEqual({ kind: "text", text: "Waiting for your answer" })
   })
@@ -74,7 +100,7 @@ describe("toolLabel", () => {
   it("can describe a question with one answer", () => {
     const answers = [{ question: "Which?", selected: ["A"], skipped: false }]
 
-    expect(toolLabel(tool({ name: "ask_user", answers }))).toEqual({ kind: "text", text: "Asked a question" })
+    expect(toolLabel(tool({ name: "ask_user", label: "ask_user", answers }))).toEqual({ kind: "text", text: "Asked a question" })
   })
 
   it("can describe a question that was cancelled", () => {
@@ -90,14 +116,14 @@ describe("toolLabel", () => {
   })
 
   it("can name the agent a subagent task was handed to", () => {
-    expect(toolLabel(tool({ name: "subagent", args: JSON.stringify({ agent: "explore", task: "Find uses of foo" }) })))
+    expect(toolLabel(tool({ name: "subagent", label: "subagent", args: JSON.stringify({ agent: "explore", task: "Find uses of foo" }) })))
       .toEqual({ kind: "text", text: "subagent: explore" })
   })
 
   it("can name every agent of a parallel subagent call", () => {
     const args = JSON.stringify({ tasks: [{ agent: "explore", task: "A" }, { agent: "general", task: "B" }] })
 
-    expect(toolLabel(tool({ name: "subagent", args }))).toEqual({ kind: "text", text: "subagent: 2 tasks to explore, general" })
+    expect(toolLabel(tool({ name: "subagent", label: "subagent", args }))).toEqual({ kind: "text", text: "subagent: 2 tasks to explore, general" })
   })
 
   it("can fall back to the label when subagent arguments do not parse", () => {

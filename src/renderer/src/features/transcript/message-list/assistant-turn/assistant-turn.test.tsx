@@ -7,6 +7,8 @@ function props(overrides: Partial<AssistantTurnProps> = {}): AssistantTurnProps 
     messageId: "a1",
     thinking: null,
     thinkingStreaming: false,
+    workingLabel: null,
+    thinkingLabel: null,
     tools: null,
     waiting: false,
     text: <p>Hello there</p>,
