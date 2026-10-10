@@ -16,7 +16,7 @@ export function mcpAddExtension(deps: {
         "Add an MCP server to slagent from a streamable HTTP url or a stdio command. The server is saved for every future chat and its tools load into the current session.",
       promptSnippet: "Add an MCP server from a link or command",
       promptGuidelines: [
-        "When the user gives an MCP server link and asks to add it, use add_mcp_server with a short name for the server.",
+        "When the user asks to add, set up or wire up an MCP server (a link, a name like Linear, or a command), call add_mcp_server with a short name. Never edit slagent's source or config files for this, and look up the server's url in its docs if you only have a name.",
         "Servers that need OAuth show as needing sign-in in Settings > MCP; tell the user to sign in there.",
       ],
       parameters: Type.Object({
