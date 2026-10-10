@@ -31,6 +31,19 @@ describe("ToolChain", () => {
     expect(markup).not.toContain("Ran command")
   })
 
+  it("summarizes the steps in the header once they are described", () => {
+    const markup = viewMarkup(<ToolChain {...props({ defaultOpen: false, summary: "Reading the README, listing the source files" })} />)
+
+    expect(markup).toContain("Reading the README, listing the source files")
+    expect(markup).not.toContain("Tools")
+  })
+
+  it("fades the summary in", () => {
+    const markup = viewMarkup(<ToolChain {...props({ defaultOpen: false, summary: "Reading the README" })} />)
+
+    expect(markup).toContain("animate-in")
+  })
+
   it("shows a failed step in the destructive colour", () => {
     const markup = viewMarkup(
       <ToolChain {...props({ steps: [{ id: "t1", icon: TerminalIcon, label: "Command failed", active: false, error: true, output: null }] })} />,

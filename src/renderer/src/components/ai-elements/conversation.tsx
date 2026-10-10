@@ -98,7 +98,7 @@ export const ConversationScrollButton = ({
   return (
     <Button
       className={cn(
-        "absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full dark:bg-background dark:hover:bg-muted",
+        "absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background hover:bg-muted",
         className
       )}
       size="icon"
