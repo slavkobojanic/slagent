@@ -25,20 +25,58 @@ type Details = { todos: TodoItem[] }
 
 export function todoExtension(onChange: (todos: TodoItem[]) => void): ExtensionFactory {
   return (pi) => {
+    let todos: TodoItem[] = []
+    let workedThisRun = false
+    let nudgedThisRun = false
+
     function rebuild(ctx: ExtensionContext) {
-      let todos: TodoItem[] = []
+      let rebuilt: TodoItem[] = []
       for (const entry of ctx.sessionManager.getBranch()) {
         if (entry.type !== "message") continue
         const message = entry.message
         if (message.role !== "toolResult" || message.toolName !== "todo") continue
         const details = message.details as Details | undefined
-        if (details && Array.isArray(details.todos)) todos = details.todos
+        if (details && Array.isArray(details.todos)) rebuilt = details.todos
       }
+      todos = rebuilt
       onChange(todos)
     }
 
     pi.on("session_start", (_event, ctx) => rebuild(ctx))
     pi.on("session_tree", (_event, ctx) => rebuild(ctx))
+
+    // The list is only as current as the model's last todo call, and models forget to
+    // re-send it. The reminder inside the tool result never reaches a run that skipped
+    // the tool, so at settle time — the one boundary we control after the model stops —
+    // ask once for a final update. Without this, finished work stays "pending" until
+    // the next turn happens to touch the list again.
+    pi.on("agent_start", () => {
+      workedThisRun = false
+      nudgedThisRun = false
+    })
+    pi.on("tool_execution_end", () => {
+      workedThisRun = true
+    })
+    pi.on("agent_before_settle", (event) => {
+      if (event.outcome !== "completed" || nudgedThisRun || !workedThisRun) return
+      const incomplete = todos.filter((todo) => todo.status !== "completed")
+      if (incomplete.length === 0) return
+      nudgedThisRun = true
+      return {
+        entries: [
+          {
+            type: "custom_message",
+            customType: "todo-nudge",
+            display: false,
+            content:
+              `Your todo list is stale: ${todos.length - incomplete.length}/${todos.length} done. ` +
+              `These items are not completed: ${incomplete.map((todo) => JSON.stringify(todo.text)).join(", ")}. ` +
+              "Send the whole list again with the todo tool now: mark what you finished completed, set the item you are on to in_progress, and leave items you never reached pending.",
+          },
+        ],
+        continue: true,
+      }
+    })
 
     pi.registerTool({
       name: "todo",
@@ -53,14 +91,15 @@ export function todoExtension(onChange: (todos: TodoItem[]) => void): ExtensionF
       parameters: params,
       async execute(_id, input) {
         const raw = (input as { todos?: { text?: unknown; status?: unknown }[] }).todos ?? []
-        const todos: TodoItem[] = []
+        const next: TodoItem[] = []
         for (const item of raw) {
           if (typeof item.text !== "string" || !item.text.trim()) continue
           let status: TodoStatus = "pending"
           if (STATUSES.includes(item.status as TodoStatus)) status = item.status as TodoStatus
-          todos.push({ text: item.text.trim(), status })
+          next.push({ text: item.text.trim(), status })
         }
-        onChange(todos)
+        todos = next
+        onChange(next)
         const done = todos.filter((todo) => todo.status === "completed").length
         const lines = todos.map((todo) => `[${mark(todo.status)}] ${todo.text}`)
         // The tool result is the one channel that reaches the model on every
@@ -68,7 +107,7 @@ export function todoExtension(onChange: (todos: TodoItem[]) => void): ExtensionF
         const reminder = done < todos.length ? "\nKeep this list current: re-send it as items complete, and mark finished items completed before you end your turn." : ""
         return {
           content: [{ type: "text", text: `${done}/${todos.length} done\n${lines.join("\n")}${reminder}` }],
-          details: { todos } satisfies Details,
+          details: { todos: next } satisfies Details,
         }
       },
     })
