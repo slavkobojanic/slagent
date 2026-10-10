@@ -67,9 +67,6 @@ export function SavedServers({ servers, nicknames, editing, draft, onRenameStart
                 <Button type="button" variant="ghost" size="icon" aria-label={`Rename ${addressLabelWith(address, nicknames)}`} onClick={() => onRenameStart(address)}>
                   <Pencil className="size-4" />
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => onPick(address)}>
-                  Connect
-                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -78,6 +75,9 @@ export function SavedServers({ servers, nicknames, editing, draft, onRenameStart
                   onClick={() => onRemove(address)}
                 >
                   <X className="size-4" />
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => onPick(address)}>
+                  Connect
                 </Button>
               </>
             )}
