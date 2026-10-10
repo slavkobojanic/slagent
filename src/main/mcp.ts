@@ -32,6 +32,11 @@ const DEFAULT_SERVERS: Record<string, McpServerConfig> = {
     description:
       "Search Mobbin's library of real screens, flows, and website sections for design references.",
   },
+  linear: {
+    url: "https://mcp.linear.app/mcp",
+    exposure: "direct",
+    description: "Find, create, and update Linear issues, projects, and comments.",
+  },
 }
 
 const PROBE_TIMEOUT_MS = 25_000
