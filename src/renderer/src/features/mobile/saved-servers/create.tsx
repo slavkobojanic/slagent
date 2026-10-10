@@ -11,6 +11,7 @@ export function createSavedServers({
   device,
   connectionStore,
   log,
+  store = new SavedServersStore(),
 }: {
   device: Device
   // The connected Mac is left out of the switch list: it already has its card.
@@ -18,8 +19,9 @@ export function createSavedServers({
   // connected Mac's own label current too.
   connectionStore: ConnectionStore | { address: ServerAddress | null }
   log: Log
+  // Shared with the tailnet list, which leaves out the Macs saved here.
+  store?: SavedServersStore
 }) {
-  const store = new SavedServersStore()
   const presenter = new SavedServersPresenter(store, device, "setNicknames" in connectionStore ? connectionStore : null, log.child("saved-servers"))
   presenter.start()
 
