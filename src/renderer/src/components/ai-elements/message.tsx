@@ -113,6 +113,8 @@ export const MessageResponse = memo(
       )}
       plugins={streamdownPlugins}
       controls={{ code: { download: false } }}
+      // Streamdown's own link-safety modal would swallow link clicks before the LinkPresenter.
+      linkSafety={{ enabled: false }}
       {...props}
     />
   ),
