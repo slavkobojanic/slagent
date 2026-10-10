@@ -50,9 +50,11 @@ export class SavedServersPresenter {
       this.store.setEditing(null)
       return
     }
-    this.log.action("rename-save", { label: addressLabel(address), nickname: this.store.draft })
+    // Closing the box clears the draft, so it is read first.
+    const nickname = this.store.draft
+    this.log.action("rename-save", { label: addressLabel(address), nickname })
     this.store.setEditing(null)
-    await this.device.saveNickname(address, this.store.draft)
+    await this.device.saveNickname(address, nickname)
     await this.reload()
     this.connection?.setNicknames(this.store.nicknames)
   }
