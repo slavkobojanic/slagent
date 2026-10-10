@@ -13,7 +13,7 @@ export type LinkMenuProps = {
 }
 
 const ITEM_CLASS =
-  "flex w-full cursor-default items-center rounded-sm px-2 py-1.5 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+  "flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
 
 // A plain positioned menu instead of a Radix dropdown: the presenter opens it
 // from a document-level listener, so there is no trigger element to anchor to.
