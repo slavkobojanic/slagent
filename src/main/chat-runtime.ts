@@ -80,6 +80,7 @@ const CODING_TOOLS = [
   "task_output",
   "task_stop",
   "subagent",
+  "add_mcp_server",
 ]
 const IMAGE_TYPES: Record<string, string> = {
   ".png": "image/png",
