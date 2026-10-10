@@ -70,4 +70,13 @@ describe("MobileChatScreen", () => {
 
     expect(screen.getByText("Pi failed to start")).not.toBeNull()
   })
+
+  it("can leave the connection button to the docked chat list on a tablet", () => {
+    render(<MobileChatScreen {...props({ tablet: { onToggleSidebar: noop, onTogglePanel: noop } })} />)
+
+    expect(screen.queryByRole("button", { name: "Connection" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Back to chats" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Toggle chats" })).not.toBeNull()
+    expect(screen.getByRole("button", { name: "Toggle side panel" })).not.toBeNull()
+  })
 })
