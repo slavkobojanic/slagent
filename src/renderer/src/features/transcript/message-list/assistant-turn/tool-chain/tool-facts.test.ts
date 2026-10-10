@@ -60,18 +60,18 @@ describe("toolPath", () => {
 
 describe("toolLabel", () => {
   it("can describe a running command", () => {
-    expect(toolLabel(tool({ running: true }))).toEqual({ kind: "text", text: "Running command" })
+    expect(toolLabel(tool({ running: true }))).toEqual({ kind: "text", text: "Running shell command" })
   })
 
   it("can describe a failed command", () => {
-    expect(toolLabel(tool({ isError: true }))).toEqual({ kind: "text", text: "Command failed" })
+    expect(toolLabel(tool({ isError: true }))).toEqual({ kind: "text", text: "Shell command failed" })
+  })
+
+  it("never repeats the thinking description on a bash step", () => {
+    expect(toolLabel(tool({ label: "Running tests in src/main" }))).toEqual({ kind: "text", text: "Ran shell command" })
   })
 
   it("shows the model-written description when the label has one", () => {
-    expect(toolLabel(tool({ label: "Running tests in src/main" }))).toEqual({
-      kind: "text",
-      text: "Running tests in src/main",
-    })
     expect(toolLabel(tool({ name: "ask_user", label: "Asked about the database choice" }))).toEqual({
       kind: "text",
       text: "Asked about the database choice",
