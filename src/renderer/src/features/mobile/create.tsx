@@ -17,8 +17,11 @@ import { createConnect } from "./connect/create"
 import { createConnectionBanner } from "./connection-banner/create"
 import { createConnectionSheet } from "./connection-sheet/create"
 import { createBackSwipe } from "./back-swipe/create"
+import { createTablet } from "./tablet-shell/create"
 import { MobilePresenter } from "./mobile-presenter/mobile-presenter"
 import type { RunStore } from "@/mirror/run-store/run-store"
+import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { MobileShell } from "./mobile-shell"
 import { MobileStore } from "./mobile-store/mobile-store"
 
@@ -32,6 +35,8 @@ export function createMobile({
   connectionStore,
   connectionPresenter,
   runStore,
+  panelStore,
+  panelPresenter,
   Transcript,
   Composer,
   PlanOverlay,
@@ -46,6 +51,8 @@ export function createMobile({
   connectionStore: ConnectionStore
   connectionPresenter: ConnectionPresenter
   runStore: RunStore
+  panelStore: PanelStore
+  panelPresenter: PanelPresenter
   Transcript: ComponentType
   Composer: ComponentType
   PlanOverlay: ComponentType
@@ -67,7 +74,28 @@ export function createMobile({
   const ConnectionSheet = createConnectionSheet({ api, connectionStore, connectionPresenter, mobileStore, mobilePresenter, device, log, Connect })
   const BackSwipe = createBackSwipe({ window, mobileStore, mobilePresenter, log: log.child("back-swipe") })
 
+  const Tablet = createTablet({
+    api,
+    window,
+    metaStore,
+    runStore,
+    themeStore,
+    mobileStore,
+    mobilePresenter,
+    changesStore,
+    changesPresenter,
+    panelStore,
+    panelPresenter,
+    ChatList,
+    ConnectionSheet,
+    Banner,
+    Transcript,
+    Composer,
+    PlanOverlay,
+    log: log.child("tablet"),
+  })
+
   return observer(function MobileHost() {
-    return <MobileShell screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} ConnectionSheet={ConnectionSheet} BackSwipe={BackSwipe} />
+    return <MobileShell layout={mobileStore.layout} Tablet={Tablet} screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} ConnectionSheet={ConnectionSheet} BackSwipe={BackSwipe} />
   })
 }

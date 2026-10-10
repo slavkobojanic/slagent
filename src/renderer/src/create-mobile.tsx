@@ -126,6 +126,8 @@ export function createMobileApp({ window, device, saved }: { window: Window; dev
     connectionStore,
     connectionPresenter,
     runStore,
+    panelStore,
+    panelPresenter,
     Transcript,
     Composer,
     PlanOverlay,

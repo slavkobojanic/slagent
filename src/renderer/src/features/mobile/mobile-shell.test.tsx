@@ -95,4 +95,14 @@ describe("MobileShell", () => {
     expect(screen.queryByText("ChatScreen")).toBeNull()
     expect(screen.getByText("ChatList")).not.toBeNull()
   })
+
+  it("can show the tablet layout instead of the stack", () => {
+    render(
+      <MobileShell layout="landscape" Tablet={named("Tablet")} screen="chats" ChatList={named("ChatList")} ChatScreen={named("ChatScreen")} ChangesScreen={named("ChangesScreen")} ConnectionSheet={named("ConnectionSheet")} BackSwipe={named("BackSwipe")} />,
+    )
+
+    expect(screen.getByText("Tablet")).not.toBeNull()
+    expect(screen.queryByText("ChatList")).toBeNull()
+    expect(screen.queryByText("BackSwipe")).toBeNull()
+  })
 })
