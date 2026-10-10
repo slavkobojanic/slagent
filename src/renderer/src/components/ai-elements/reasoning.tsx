@@ -268,7 +268,8 @@ export const ReasoningContent = memo(
             className="overflow-hidden scroll-smooth motion-reduce:scroll-auto"
           >
             <div ref={contentRef}>
-              <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+              {/* Streamdown's own link-safety modal would swallow link clicks before the LinkPresenter. */}
+              <Streamdown plugins={streamdownPlugins} linkSafety={{ enabled: false }}>{children}</Streamdown>
             </div>
           </div>
           {isScrollable ? (
