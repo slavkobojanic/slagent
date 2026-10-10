@@ -668,7 +668,12 @@ export class ClaudeRuntime {
       isError: false,
     }
     this.messages.push(tool)
-    // Text after a tool call belongs in a new bubble below it.
+    // Text after a tool call belongs in a new bubble below it. The bubbles before it are done,
+    // so they stop showing the working label.
+    for (const id of this.bubbles.values()) {
+      const bubble = this.messages.find((message) => message.id === id)
+      if (bubble?.role === "assistant") bubble.streaming = false
+    }
     this.bubbles.clear()
   }
 
