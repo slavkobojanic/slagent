@@ -12,7 +12,8 @@ export const CHAT_SYSTEM_PROMPT = [
 ].join(" ")
 
 // Chat projects keep the read-only tools: the agent can look around its
-// (app-managed) directory and search past chats, but never writes anything.
+// (app-managed) directory and search past chats, but never writes files. It can
+// still add MCP servers, which only touch slagent's own mcp.json.
 export const CHAT_TOOLS = [
   "read",
   "grep",
@@ -21,4 +22,5 @@ export const CHAT_TOOLS = [
   "search_chats",
   "read_chat",
   "ask_user",
+  "add_mcp_server",
 ]
