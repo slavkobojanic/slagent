@@ -100,17 +100,26 @@ export function toolLabel(tool: ToolMessage): StepLabel {
   return { kind: "file", name: tool.name, path }
 }
 
+// The raw fallback label a runtime builds before the small model describes
+// the step: the tool name alone, or the name, two spaces and a raw argument.
+// Anything else is a model-written description.
+function described(tool: ToolMessage): string | null {
+  if (tool.label === tool.name) return null
+  if (tool.label.startsWith(`${tool.name}  `)) return null
+  return tool.label
+}
+
 function bashLabel(tool: ToolMessage): string {
-  if (tool.running) {
-    return "Running command"
-  }
-  if (tool.isError) {
-    return "Command failed"
-  }
+  const label = described(tool)
+  if (label) return label
+  if (tool.running) return "Running command"
+  if (tool.isError) return "Command failed"
   return "Ran command"
 }
 
 function subagentLabel(tool: ToolMessage): string {
+  const label = described(tool)
+  if (label) return label
   try {
     const args = JSON.parse(tool.args) as { agent?: unknown; task?: unknown; tasks?: unknown[] }
     const agents = new Set<string>()
@@ -139,6 +148,8 @@ function questionLabel(tool: ToolMessage): string {
   if (tool.isError) {
     return "Question cancelled"
   }
+  const label = described(tool)
+  if (label) return label
   if (tool.answers?.length === 1) {
     return "Asked a question"
   }

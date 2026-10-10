@@ -204,6 +204,10 @@ export type AssistantMessage = {
   thinking: string
   streaming: boolean
   error: string | null
+  // Short model-written phrase naming what the reply is doing, shown while it
+  // works and in place of "Thinking...". Absent when no small model is set.
+  workingLabel?: string
+  thinkingLabel?: string
 }
 
 // Live state of one subagent run inside the subagent tool, streamed via the tool's details.

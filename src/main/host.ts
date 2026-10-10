@@ -60,6 +60,7 @@ import { PROJECT_COLORS, PROJECT_ICONS } from "../shared/project-appearance"
 import { parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
 import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
+import { describeThinking, describeToolCalls, describeWorking, type ToolCallSeed } from "./describe"
 import { createSkillFile, draftSkill } from "./skills-create"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { tailscalePeers, type TailscalePeer } from "./tailscale"
@@ -925,6 +926,9 @@ export class AgentHost {
         if (!titleModel) return Promise.resolve(null)
         return generateTitle(runtimeModel, titleModel, user)
       },
+      describeToolCalls: (calls) => this.describeToolCalls(calls),
+      describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt),
+      describeWorkingLabel: (user) => this.describeWorkingLabel(user),
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
       },
@@ -1015,6 +1019,9 @@ export class AgentHost {
         if (!runtimeModel || !titleModel || !this.openRouter.configured) return Promise.resolve(null)
         return generateTitle(runtimeModel, titleModel, user)
       },
+      describeToolCalls: (calls) => this.describeToolCalls(calls),
+      describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt),
+      describeWorkingLabel: (user) => this.describeWorkingLabel(user),
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
       },
@@ -1295,6 +1302,34 @@ export class AgentHost {
       if (model) return routeModel(model, this.routing)
     }
     return undefined
+  }
+
+  // Descriptions for tool steps, thinking and the working shimmer come from
+  // the same small OpenRouter model that names chats, so without a key the
+  // runtimes keep their instant fallback labels.
+  private smallModel(): { runtime: ModelRuntime; model: AgentModel } | undefined {
+    if (!this.openRouter.configured) return undefined
+    const model = this.titleModel()
+    if (!model || !this.modelRuntime) return undefined
+    return { runtime: this.modelRuntime, model }
+  }
+
+  private describeToolCalls(calls: ToolCallSeed[]): Promise<Map<string, string>> | null {
+    const small = this.smallModel()
+    if (!small) return null
+    return describeToolCalls(small.runtime, small.model, calls)
+  }
+
+  private describeThinkingLabel(excerpt: string): Promise<string | null> {
+    const small = this.smallModel()
+    if (!small) return Promise.resolve(null)
+    return describeThinking(small.runtime, small.model, excerpt)
+  }
+
+  private describeWorkingLabel(user: string): Promise<string | null> {
+    const small = this.smallModel()
+    if (!small) return Promise.resolve(null)
+    return describeWorking(small.runtime, small.model, user)
   }
 
   private catalog(): AppMeta["models"] {

@@ -33,6 +33,8 @@ export function createAssistantTurn({
         messageId={turn.id}
         thinking={assistant?.thinking || null}
         thinkingStreaming={assistant?.streaming ?? false}
+        workingLabel={assistant?.workingLabel ?? null}
+        thinkingLabel={assistant?.thinkingLabel ?? null}
         tools={<ToolChain tools={turn.tools} />}
         waiting={waitingForText(assistant, turn.tools)}
         text={assistant?.text ? <Response messageId={assistant.id} text={assistant.text} streaming={assistant.streaming} /> : null}
