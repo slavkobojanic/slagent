@@ -9,4 +9,10 @@ describe("ImageChip", () => {
     expect(markup).toContain('src="blob:shot"')
     expect(markup).toContain('aria-label="Remove shot.png"')
   })
+
+  it("can open the image in a lightbox from a button named after it", () => {
+    const markup = viewMarkup(<ImageChip name="shot.png" url="blob:shot" onRemove={vi.fn()} />)
+
+    expect(markup).toContain('aria-label="View shot.png"')
+  })
 })
