@@ -1,5 +1,6 @@
 import { makeAutoObservable } from "mobx"
 import type { ChatSummary, ProjectSummary } from "@shared/types"
+import { sortedProjects } from "@/lib/projects"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 
 export type OtherProject = { project: ProjectSummary; active: boolean }
@@ -35,14 +36,13 @@ export class OtherProjectsStore {
     }
   }
 
-  // Every code project, alphabetical so rows never shuffle as projects are opened or pinned. The
-  // open one carries `active` and keeps its expanded chat list; "chat" projects live in the "No
-  // project" group instead.
+  // Every code project, pinned first and both groups alphabetical so rows never shuffle as
+  // projects are opened or pinned. The open one carries `active` and keeps its expanded chat list;
+  // "chat" projects live in the "No project" group instead.
   get others(): OtherProject[] {
     const { projects, openProjectId } = this.libraryStore.library
-    return projects
+    return sortedProjects(projects)
       .filter((project) => (project.mode ?? "code") === "code")
-      .sort((left, right) => left.name.localeCompare(right.name))
       .map((project) => ({ project, active: project.id === openProjectId }))
   }
 

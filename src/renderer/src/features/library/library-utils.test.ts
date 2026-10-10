@@ -122,10 +122,15 @@ describe("libraryContext", () => {
 })
 
 describe("sortedProjects", () => {
-  it("can list the most recently opened project first", () => {
-    const projects = [project("old", { lastOpenedAt: 1 }), project("new", { lastOpenedAt: 9 })]
+  it("can list pinned projects first, both groups alphabetical", () => {
+    const projects = [
+      project("zeta", { lastOpenedAt: 9 }),
+      project("mango2", { pinned: true, pinnedAt: 1 }),
+      project("apple"),
+      project("mango", { pinned: true, pinnedAt: 5 }),
+    ]
 
-    expect(sortedProjects(projects).map((item) => item.id)).toEqual(["new", "old"])
+    expect(sortedProjects(projects).map((item) => item.id)).toEqual(["mango", "mango2", "apple", "zeta"])
   })
 })
 

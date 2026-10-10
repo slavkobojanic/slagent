@@ -27,7 +27,8 @@ export type OtherProjectsProps = {
   reduceMotion: boolean
 }
 
-// "No project" first, then every code project under a Projects heading, alphabetically. Rows
+// "No project" first, then every code project under a Projects heading, pinned first and both
+// groups alphabetically. Rows
 // collapse on click; opening a chat or starting a new one switches the project.
 // Observed because the collapse reads (`isCollapsed`) happen right here, not in the host above:
 // without tracking, toggling a row's chevron would update the store but never re-render.
