@@ -141,6 +141,115 @@ describe("TerminalStore", () => {
     })
   })
 
+  describe("tab groups", () => {
+    it("can keep a new tab ungrouped", () => {
+      const store = new TerminalStore()
+
+      store.addTab(session("a"))
+
+      expect(store.tabs[0]?.groupId).toBeNull()
+      expect(store.activeGroup.map((tab) => tab.id)).toEqual(["a"])
+    })
+
+    it("can join two tabs into a group and show both with the active one", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+      store.addTab(session("b"))
+
+      store.groupWith("a", "b")
+
+      expect(store.tabs.map((tab) => tab.groupId)).toEqual(["g1", "g1"])
+      expect(store.activeGroup.map((tab) => tab.id)).toEqual(["a", "b"])
+    })
+
+    it("can add a split to a tab that is already grouped", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+      store.addTab(session("b"))
+      store.groupWith("a", "b")
+      store.addTab(session("c"))
+
+      store.groupWith("b", "c")
+
+      expect(store.tabs.map((tab) => tab.groupId)).toEqual(["g1", "g1", "g1"])
+    })
+
+    it("can show only the active tab when a solo tab is selected", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+      store.addTab(session("b"))
+      store.groupWith("a", "b")
+      store.addTab(session("c"))
+
+      store.setActive("c")
+
+      expect(store.activeGroup.map((tab) => tab.id)).toEqual(["c"])
+    })
+
+    it("can default a group's split to half and clamp a dragged ratio", () => {
+      const store = new TerminalStore()
+
+      expect(store.splitRatio("g1")).toBe(0.5)
+
+      store.setSplitRatio("g1", 0.05)
+      expect(store.splitRatio("g1")).toBe(0.2)
+
+      store.setSplitRatio("g1", 0.95)
+      expect(store.splitRatio("g1")).toBe(0.8)
+
+      store.setSplitRatio("g1", 0.6)
+      expect(store.splitRatio("g1")).toBe(0.6)
+    })
+  })
+
+  describe("rename", () => {
+    it("can start renaming with the tab's title as the draft", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+
+      store.setRenaming("a")
+
+      expect(store.renamingId).toBe("a")
+      expect(store.renameDraft).toBe("zsh")
+    })
+
+    it("can save a custom title that the shell can no longer overwrite", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+      store.setRenaming("a")
+      store.setRenameDraft("dev shell")
+
+      store.renameTab("a", store.renameDraft)
+      store.setTitle("a", "~/code/app")
+
+      expect(store.tabs[0]?.title).toBe("dev shell")
+      expect(store.tabs[0]?.customTitle).toBe(true)
+    })
+
+    it("can keep the current title when the rename is blank", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+      store.setRenaming("a")
+      store.setRenameDraft("   ")
+
+      store.renameTab("a", store.renameDraft)
+
+      expect(store.tabs[0]?.title).toBe("zsh")
+      expect(store.tabs[0]?.customTitle).toBe(false)
+      expect(store.renamingId).toBeNull()
+    })
+
+    it("can stop renaming when the tab closes", () => {
+      const store = new TerminalStore()
+      store.addTab(session("a"))
+      store.setRenaming("a")
+
+      store.removeTab("a")
+
+      expect(store.renamingId).toBeNull()
+    })
+  })
+
   describe("revealTab", () => {
     it("can open the drawer over an existing tab", () => {
       const store = new TerminalStore()

@@ -443,4 +443,195 @@ describe("TerminalPresenter", () => {
       expect(store.tabs[0]?.exited).toBe(true)
     })
   })
+
+  describe("split commands", () => {
+    it("can register the split with the Cmd+D shortcut", () => {
+      const { commands, presenter } = parts
+
+      presenter.start()
+
+      const command = commands.commands.find((item) => item.id === "terminal.split")
+      expect(command?.shortcut).toEqual({ key: "d", mod: true })
+    })
+
+    it("can register the rename with the Cmd+R shortcut", () => {
+      const { commands, presenter } = parts
+
+      presenter.start()
+
+      const command = commands.commands.find((item) => item.id === "terminal.rename")
+      expect(command?.shortcut).toEqual({ key: "r", mod: true })
+    })
+
+    it("can only offer the split while the drawer has an active tab", async () => {
+      const { commands, store, presenter } = parts
+      presenter.start()
+
+      const split = commands.commands.find((item) => item.id === "terminal.split")
+      expect(split?.enabled?.()).toBe(false)
+
+      presenter.toggle()
+      await flush()
+      expect(split?.enabled?.()).toBe(true)
+
+      store.setOpen(false)
+      expect(split?.enabled?.()).toBe(false)
+    })
+
+    it("can start renaming the active tab from the command", async () => {
+      const { commands, store, presenter } = parts
+      presenter.start()
+      presenter.toggle()
+      await flush()
+
+      commands.run("terminal.rename")
+
+      expect(store.renamingId).toBe("a")
+      expect(store.renameDraft).toBe("zsh")
+    })
+  })
+
+  describe("splitRight", () => {
+    it("can spawn a shell and join it with the active one as a group", async () => {
+      const { api, store, presenter } = parts
+      presenter.toggle()
+      await flush()
+      api.createTerminal.mockResolvedValue(session("b"))
+
+      await presenter.splitRight()
+
+      expect(store.tabs.map((tab) => tab.id)).toEqual(["a", "b"])
+      expect(store.tabs[0]?.groupId).toBe("g1")
+      expect(store.tabs[1]?.groupId).toBe("g1")
+      expect(store.activeId).toBe("b")
+    })
+
+    it("can add the split to a tab that is already grouped", async () => {
+      const { api, store, presenter } = parts
+      presenter.toggle()
+      await flush()
+      api.createTerminal.mockResolvedValue(session("b"))
+      await presenter.splitRight()
+      api.createTerminal.mockResolvedValue(session("c"))
+
+      await presenter.splitRight()
+
+      expect(store.tabs.map((tab) => tab.groupId)).toEqual(["g1", "g1", "g1"])
+    })
+
+    it("can refuse a split while one is spawning", async () => {
+      const { api, store, presenter } = parts
+      store.setBusy(true)
+      store.setOpen(true)
+
+      await presenter.splitRight()
+
+      expect(api.createTerminal).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("pane menu", () => {
+    it("can split the pane the user right-clicked, even in the background", async () => {
+      const { api, store, presenter } = parts
+      presenter.toggle()
+      await flush()
+      api.createTerminal.mockResolvedValue(session("b"))
+      await presenter.create()
+      api.createTerminal.mockResolvedValue(session("c"))
+
+      presenter.handleMenuSplit("a")
+      await flush()
+
+      expect(store.activeId).toBe("c")
+      expect(store.tabs.map((tab) => tab.id)).toEqual(["a", "b", "c"])
+      expect(store.tabs[0]?.groupId).toBe("g1")
+      expect(store.tabs[2]?.groupId).toBe("g1")
+    })
+    it("can rename the pane the user right-clicked", () => {
+      const { store, presenter } = parts
+      store.addTab(session("a"))
+      store.setActive("b")
+      store.addTab(session("b"))
+
+      presenter.handleMenuRename("a")
+
+      expect(store.renamingId).toBe("a")
+    })
+
+    it("can close the pane the user right-clicked", () => {
+      const { api, store, presenter } = parts
+      store.addTab(session("a"))
+      store.addTab(session("b"))
+
+      presenter.handleMenuClose("a")
+
+      expect(api.closeTerminal).toHaveBeenCalledWith("a")
+      expect(store.tabs.map((tab) => tab.id)).toEqual(["b"])
+    })
+  })
+
+  describe("rename", () => {
+    it("can save the draft as the tab's custom title", async () => {
+      const { store, presenter } = parts
+      await presenter.create()
+      presenter.renameActive()
+      store.setRenameDraft("dev shell")
+
+      presenter.handleRenameSave("a")
+
+      expect(store.tabs[0]?.title).toBe("dev shell")
+      expect(store.renamingId).toBeNull()
+    })
+
+    it("can cancel the rename and keep the shell's title", () => {
+      const { store, presenter } = parts
+      store.addTab(session("a"))
+      presenter.renameActive()
+      store.setRenameDraft("dev shell")
+
+      presenter.handleRenameCancel()
+
+      expect(store.tabs[0]?.title).toBe("zsh")
+      expect(store.renamingId).toBeNull()
+    })
+  })
+
+  describe("handleDividerDragStart", () => {
+    it("can drag a group's divider and store the pointer's share of the row", () => {
+      const { store, presenter } = parts
+      const row = document.createElement("div")
+      const divider = document.createElement("div")
+      row.appendChild(divider)
+      document.body.appendChild(row)
+      vi.spyOn(row, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 300))
+
+      presenter.handleDividerDragStart("g1", {
+        button: 0,
+        clientX: 100,
+        preventDefault: () => undefined,
+        currentTarget: divider,
+      })
+      window.dispatchEvent(new PointerEvent("pointermove", { clientX: 300 }))
+      window.dispatchEvent(new PointerEvent("pointerup"))
+      row.remove()
+
+      expect(store.splitRatio("g1")).toBe(0.75)
+    })
+
+    it("can ignore a drag that does not start on the row", () => {
+      const { store, presenter } = parts
+      const detached = document.createElement("div")
+
+      presenter.handleDividerDragStart("g1", {
+        button: 0,
+        clientX: 100,
+        preventDefault: () => undefined,
+        currentTarget: detached,
+      })
+      window.dispatchEvent(new PointerEvent("pointermove", { clientX: 300 }))
+      window.dispatchEvent(new PointerEvent("pointerup"))
+
+      expect(store.splitRatio("g1")).toBe(0.5)
+    })
+  })
 })

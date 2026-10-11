@@ -16,9 +16,14 @@ type Shell = {
   element: HTMLDivElement | null
 }
 
+type PressEvent = Pick<PointerEvent, "button" | "clientX" | "preventDefault">
+
+type DividerEvent = PressEvent & { currentTarget: Element }
+
 export class TerminalPresenter {
   private unsubscribe: (() => void) | null = null
   private unregister: (() => void) | null = null
+  private unregisterCommands: (() => void)[] = []
   private observer: ResizeObserver | null = null
   private themeWatcher: MutationObserver | null = null
   private readonly shells = new Map<string, Shell>()
@@ -52,11 +57,33 @@ export class TerminalPresenter {
       shortcut: { key: "j", mod: true },
       run: this.toggle,
     })
+    this.unregisterCommands = [
+      this.commandRegistry.register({
+        id: "terminal.split",
+        label: "Split the terminal right",
+        group: "Actions",
+        shortcut: { key: "d", mod: true },
+        enabled: () => this.store.canSplit,
+        run: () => void this.splitRight(),
+      }),
+      this.commandRegistry.register({
+        id: "terminal.rename",
+        label: "Rename the terminal tab",
+        group: "Actions",
+        shortcut: { key: "r", mod: true },
+        enabled: () => this.store.canRename,
+        run: this.renameActive,
+      }),
+    ]
   }
 
   stop = () => {
     this.unregister?.()
     this.unregister = null
+    for (const unregister of this.unregisterCommands) {
+      unregister()
+    }
+    this.unregisterCommands = []
     this.unsubscribe?.()
     this.unsubscribe = null
     this.observer?.disconnect()
@@ -132,6 +159,86 @@ export class TerminalPresenter {
     }
     this.shells.set(session.id, { emulator: this.buildEmulator(session), element: null })
     this.store.addTab(session)
+  }
+
+  // Spawns a shell and puts it to the right of the active one, both joined as
+  // one tab group. The drawer then shows the two shells side by side.
+  splitRight = async () => {
+    const active = this.store.active
+    if (active === null || !this.store.canSplit) {
+      return
+    }
+    this.log.action("split-right", { id: active.id })
+    this.store.setBusy(true)
+    const session = await this.spawnShell()
+    this.store.setBusy(false)
+    if (session === null) {
+      return
+    }
+    this.shells.set(session.id, { emulator: this.buildEmulator(session), element: null })
+    this.store.addTab(session, "user", null)
+    this.store.groupWith(active.id, session.id)
+  }
+
+  // Opens the pane's menu items for the shell the user right-clicked. Radix's
+  // context menu anchors itself at the cursor, so only the actions are stored.
+  handleMenuSplit = (id: string) => {
+    this.store.setActive(id)
+    void this.splitRight()
+  }
+
+  handleMenuRename = (id: string) => {
+    this.store.setRenaming(id)
+  }
+
+  handleMenuClose = (id: string) => {
+    this.closeTab(id)
+  }
+
+  // Cmd+R from the terminal or the bar: rename the tab the user is looking at.
+  renameActive = () => {
+    if (this.store.activeId === null) {
+      return
+    }
+    this.store.setRenaming(this.store.activeId)
+  }
+
+  handleRenameSave = (id: string) => {
+    this.log.action("rename-tab", { id })
+    this.store.renameTab(id, this.store.renameDraft)
+  }
+
+  handleRenameCancel = () => {
+    this.store.cancelRename()
+  }
+
+  setRenameDraft = (value: string) => {
+    this.store.setRenameDraft(value)
+  }
+
+  // Drags the divider between a group's panes. The divider's parent is the
+  // pane row, so the ratio is the pointer's share of the row's width.
+  handleDividerDragStart = (groupId: string, event: DividerEvent) => {
+    if (event.button !== 0) {
+      return
+    }
+    event.preventDefault()
+    const row = event.currentTarget.parentElement
+    if (row === null) {
+      return
+    }
+    const move = (next: PointerEvent) => {
+      const rect = row.getBoundingClientRect()
+      this.store.setSplitRatio(groupId, (next.clientX - rect.left) / rect.width)
+    }
+    const end = () => {
+      this.window.removeEventListener("pointermove", move)
+      this.window.removeEventListener("pointerup", end)
+      this.window.removeEventListener("pointercancel", end)
+    }
+    this.window.addEventListener("pointermove", move)
+    this.window.addEventListener("pointerup", end)
+    this.window.addEventListener("pointercancel", end)
   }
 
   select = (id: string) => {
