@@ -12,6 +12,7 @@ const meta = {
     ChatTitle: slot("ChatTitle"),
     UpdateButton: slot("UpdateButton"),
     ModelButton: slot("ModelButton"),
+    EditorToggle: slot("EditorToggle"),
     PanelToggle: slot("PanelToggle"),
     SettingsButton: slot("SettingsButton"),
   },

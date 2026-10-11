@@ -13,6 +13,7 @@ import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-present
 import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { createChatTitle } from "./chat-title/create"
 import { createModelButton } from "./model-button/create"
+import { createEditorToggle } from "./editor-toggle/create"
 import { createPanelToggle } from "./panel-toggle/create"
 import { createProjectMenu } from "./project-menu/create"
 import type { ProjectMenuStore } from "./project-menu/project-menu-store/project-menu-store"
@@ -58,6 +59,7 @@ export function createShellHeader({
   const ChatTitle = createChatTitle({ libraryStore })
   const UpdateButton = createUpdateButton({ api, updateButtonStore, log: log.child("update-button") })
   const ModelButton = createModelButton({ metaStore, runStore, overlayStore, log: log.child("model-button") })
+  const EditorToggle = createEditorToggle({ metaStore, layoutStore, layoutPresenter })
   const PanelToggle = createPanelToggle({ api, metaStore, panelStore, panelPresenter, log: log.child("panel-toggle") })
   const SettingsButton = createSettingsButton({ mcpStore, overlayStore, log: log.child("settings-button") })
   const macos = api.platform === "darwin"
@@ -71,6 +73,7 @@ export function createShellHeader({
         ChatTitle={ChatTitle}
         UpdateButton={UpdateButton}
         ModelButton={ModelButton}
+        EditorToggle={EditorToggle}
         PanelToggle={PanelToggle}
         SettingsButton={SettingsButton}
       />

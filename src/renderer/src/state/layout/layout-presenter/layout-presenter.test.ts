@@ -290,4 +290,20 @@ describe("LayoutPresenter", () => {
       expect(store.sidebarWidth).toBe(296)
     })
   })
+
+  describe("toggleEditorMode", () => {
+    it("can switch editor mode on from chat mode", () => {
+      presenter.toggleEditorMode()
+
+      expect(store.editorMode).toBe(true)
+    })
+
+    it("can switch editor mode back off", () => {
+      store.setEditorMode(true)
+
+      presenter.toggleEditorMode()
+
+      expect(store.editorMode).toBe(false)
+    })
+  })
 })
