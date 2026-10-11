@@ -231,6 +231,7 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     enableDaemon: () => call<Result<"enableDaemon">>("enableDaemon"),
     disableDaemon: () => call<Result<"disableDaemon">>("disableDaemon"),
     setPersonalisation: (value) => call<void>("setPersonalisation", value),
+    setEditorPrefs: (value) => call<void>("setEditorPrefs", value),
     pickContextFiles: () => call<Result<"pickContextFiles">>("pickContextFiles"),
     createTerminal: () => call<Result<"createTerminal">>("terminalCreate"),
     writeTerminal: (id, data) => client.send("writeTerminal", [id, data]),

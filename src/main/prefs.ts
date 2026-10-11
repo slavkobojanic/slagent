@@ -17,6 +17,14 @@ import {
   type PersonalisationExplanation,
   type PersonalisationTone,
 } from "../shared/types"
+import {
+  DEFAULT_EDITOR_PREFS,
+  EDITOR_FONT_SIZE,
+  EDITOR_PACKS,
+  EDITOR_TAB_SIZE,
+  type EditorExtensionPref,
+  type EditorPrefs,
+} from "../shared/editor"
 
 export type Prefs = {
   cwd?: string
@@ -25,6 +33,7 @@ export type Prefs = {
   routing?: ModelRouting
   effort?: EffortLevel
   personalisation?: Personalisation
+  editor?: EditorPrefs
 }
 
 const ROUTINGS: ModelRouting[] = ["speed", "cost", "balance"]
@@ -112,6 +121,46 @@ function legacyCommitStrategy(ask: boolean | null, often: boolean | null): Perso
   return null
 }
 
+// Editor settings drive which code loads and which extensions run, so every field is
+// clamped or filtered and an unknown pack or malformed extension is dropped.
+export function parseEditorPrefs(input: unknown): EditorPrefs {
+  if (typeof input !== "object" || input === null) return { ...DEFAULT_EDITOR_PREFS, packs: [...DEFAULT_EDITOR_PREFS.packs], extensions: [] }
+  const record = input as Record<string, unknown>
+  const int = (key: string, fallback: number, range: { min: number; max: number }): number => {
+    const value = record[key]
+    if (typeof value !== "number" || !Number.isFinite(value)) return fallback
+    return Math.min(range.max, Math.max(range.min, Math.round(value)))
+  }
+  const flag = (key: string, fallback: boolean): boolean => (typeof record[key] === "boolean" ? (record[key] as boolean) : fallback)
+  const known = new Set(EDITOR_PACKS.map((pack) => pack.id))
+  const packs = Array.isArray(record.packs)
+    ? [...new Set(record.packs.filter((id): id is string => typeof id === "string" && known.has(id)))]
+    : [...DEFAULT_EDITOR_PREFS.packs]
+  const extensions: EditorExtensionPref[] = []
+  if (Array.isArray(record.extensions)) {
+    for (const entry of record.extensions) {
+      if (typeof entry !== "object" || entry === null) continue
+      const item = entry as Record<string, unknown>
+      if (typeof item.id !== "string" || !EXTENSION_ID.test(item.id)) continue
+      if (typeof item.version !== "string" || !EXTENSION_VERSION.test(item.version)) continue
+      if (extensions.some((existing) => existing.id === item.id)) continue
+      extensions.push({ id: item.id, version: item.version, enabled: item.enabled !== false })
+    }
+  }
+  return {
+    fontSize: int("fontSize", DEFAULT_EDITOR_PREFS.fontSize, EDITOR_FONT_SIZE),
+    tabSize: int("tabSize", DEFAULT_EDITOR_PREFS.tabSize, EDITOR_TAB_SIZE),
+    wordWrap: flag("wordWrap", DEFAULT_EDITOR_PREFS.wordWrap),
+    minimap: flag("minimap", DEFAULT_EDITOR_PREFS.minimap),
+    packs,
+    extensions,
+  }
+}
+
+// publisher.name, as on Open VSX. The id becomes a folder name, so nothing else gets through.
+const EXTENSION_ID = /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9._-]*$/i
+const EXTENSION_VERSION = /^[0-9][0-9a-z.+-]*$/i
+
 export async function readPrefs(file: string): Promise<Prefs> {
   try {
     const raw = await readFile(file, "utf8")
@@ -126,6 +175,7 @@ export async function readPrefs(file: string): Promise<Prefs> {
     if (typeof record.personalisation === "object" && record.personalisation !== null) {
       prefs.personalisation = parsePersonalisation(record.personalisation)
     }
+    if (typeof record.editor === "object" && record.editor !== null) prefs.editor = parseEditorPrefs(record.editor)
     return prefs
   } catch {
     return {}
