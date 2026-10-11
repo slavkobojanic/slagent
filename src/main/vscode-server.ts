@@ -25,6 +25,10 @@ export function serverArgs(options: { port: number; token: string; dataDir: stri
     options.dataDir,
     "--extensions-dir",
     join(options.dataDir, "extensions"),
+    // A closed editor frame leaves its extension host behind for the whole grace period (3 hours by
+    // default), and a stale one still holds the bridge port, so it is kept short.
+    "--reconnection-grace-time",
+    "15",
     "--accept-server-license-terms",
     "--disable-telemetry",
   ]
@@ -54,18 +58,30 @@ export type VscodeServerDeps = {
   // Applied by the bridge when it starts, so the first paint already has the user's settings.
   settings?: () => Record<string, unknown>
   spawn?: (command: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv }) => ChildProcess
-  freePort?: () => Promise<number>
+  // Takes a preferred port, or none for any free one.
+  freePort?: (preferred?: number) => Promise<number>
   fetch?: typeof fetch
   token?: () => string
   timeoutMs?: number
   bridgeTimeoutMs?: number
 }
 
-export function freePort(): Promise<number> {
+// The editor's origin is its port, and the workbench keeps its web storage per origin (settings,
+// extensions installed in the browser), so a fixed port keeps that storage across launches.
+export const EDITOR_PORT = 47821
+
+export function freePort(preferred = 0): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer()
-    server.once("error", reject)
-    server.listen(0, "127.0.0.1", () => {
+    server.once("error", (error) => {
+      if (preferred === 0) {
+        reject(error)
+        return
+      }
+      // The preferred port is taken, so any free one will do.
+      resolve(freePort(0))
+    })
+    server.listen(preferred, "127.0.0.1", () => {
       const address = server.address()
       server.close(() => (typeof address === "object" && address ? resolve(address.port) : reject(new Error("no port"))))
     })
@@ -149,7 +165,7 @@ export class VscodeServer {
   private async launch(): Promise<Running> {
     const pickPort = this.deps.freePort ?? freePort
     const makeToken = this.deps.token ?? (() => randomBytes(24).toString("hex"))
-    const [port, bridgePort] = [await pickPort(), await pickPort()]
+    const [port, bridgePort] = [await pickPort(EDITOR_PORT), await pickPort()]
     const token = makeToken()
     const bridgeToken = makeToken()
     const child = (this.deps.spawn ?? nodeSpawn)(join(this.deps.dist, "node"), serverArgs({ port, token, dataDir: this.deps.dataDir }), {

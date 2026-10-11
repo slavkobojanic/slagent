@@ -5,6 +5,6 @@ import { EditorFrame } from "./editor-frame"
 
 export function createEditorFrame({ Editor, layoutStore }: { Editor: ComponentType; layoutStore: LayoutStore }): ComponentType {
   return observer(function EditorFrameHost() {
-    return <EditorFrame editorMode={layoutStore.editorMode} Editor={Editor} />
+    return <EditorFrame editorMode={layoutStore.editorMode} editorOpened={layoutStore.editorOpened} Editor={Editor} />
   })
 }

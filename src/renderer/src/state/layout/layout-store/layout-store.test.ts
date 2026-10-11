@@ -39,6 +39,16 @@ describe("LayoutStore", () => {
       expect(new LayoutStore().editorMode).toBe(false)
     })
 
+    it("can remember the editor was opened after it closes", () => {
+      const store = new LayoutStore()
+      expect(store.editorOpened).toBe(false)
+
+      store.setEditorMode(true)
+      store.setEditorMode(false)
+
+      expect(store.editorOpened).toBe(true)
+    })
+
     it("can switch editor mode on and off", () => {
       const store = new LayoutStore()
 

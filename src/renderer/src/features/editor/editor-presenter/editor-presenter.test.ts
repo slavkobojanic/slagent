@@ -147,15 +147,16 @@ describe("EditorPresenter", () => {
       presenter.stop()
     })
 
-    it("can drop the page when editor mode closes", async () => {
-      const { presenter, layoutStore, store } = setup()
+    it("can keep the page when editor mode closes so the frame is not rebuilt", async () => {
+      const { presenter, api, layoutStore, store } = setup()
       layoutStore.setEditorMode(true)
       presenter.start()
       await vi.waitFor(() => expect(store.url).toBe(URL_A))
 
       layoutStore.setEditorMode(false)
 
-      expect(store.url).toBeNull()
+      expect(store.url).toBe(URL_A)
+      expect(api.getEditorUrl).toHaveBeenCalledTimes(1)
       presenter.stop()
     })
   })
