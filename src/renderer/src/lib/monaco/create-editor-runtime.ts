@@ -12,7 +12,7 @@ import getKeybindingsServiceOverride from "@codingame/monaco-vscode-keybindings-
 import getLanguagesServiceOverride from "@codingame/monaco-vscode-languages-service-override"
 import getTextmateServiceOverride from "@codingame/monaco-vscode-textmate-service-override"
 import getThemeServiceOverride from "@codingame/monaco-vscode-theme-service-override"
-import type { EditorEvents, EditorHandle, EditorRuntime, EditorThemeMode, EditorThemes, EditorViewOptions } from "@/features/editor/editor-runtime"
+import type { EditorEvents, EditorHandle, EditorRuntime, EditorThemeMode, EditorViewOptions } from "@/features/editor/editor-runtime"
 import { PACK_LOADERS } from "./language-packs"
 import { THEME_NAMES } from "./editor-theme"
 
@@ -48,110 +48,107 @@ export async function createEditorRuntime(): Promise<EditorRuntime> {
 
   const themeService = await getService(IWorkbenchThemeService)
   const loadedPacks = new Set<string>()
-  let themesRegistered = false
-  let current: { editor: monaco.editor.IStandaloneCodeEditor; events: EditorEvents } | null = null
+  const registeredThemes = new Set<EditorThemeMode>()
+  const models = new Map<string, monaco.editor.ITextModel>()
+  const listeners = new Map<string, monaco.IDisposable>()
+  let editor: monaco.editor.IStandaloneCodeEditor | null = null
+  let events: EditorEvents | null = null
+
+  const activePath = (): string | null => editor?.getModel()?.uri.fsPath ?? null
 
   // Vim's :w and :wq run these commands from the extension host.
-  const activePath = (): string | null => current?.editor.getModel()?.uri.fsPath ?? null
   CommandsRegistry.registerCommand("workbench.action.files.save", () => {
     const path = activePath()
-    if (current && path) current.events.onSave(path)
+    if (path) events?.onSave(path)
   })
   CommandsRegistry.registerCommand("workbench.action.closeActiveEditor", () => {
     const path = activePath()
-    if (current && path) current.events.onClose(path)
+    if (path) events?.onClose(path)
   })
 
   // defineTheme does not exist with the VS Code theme service, so each mode is contributed as a
   // theme extension and selected by label.
-  const registerThemes = async (themes: EditorThemes) => {
-    const entries: [EditorThemeMode, string][] = [
-      ["dark", "vs-dark"],
-      ["light", "vs"],
-    ]
-    for (const [mode, uiTheme] of entries) {
-      const extension = registerExtension(
-        {
-          name: `slagent-theme-${mode}`,
-          publisher: "slagent",
-          version: "1.0.0",
-          engines: { vscode: "*" },
-          contributes: { themes: [{ id: `slagent-${mode}`, label: THEME_NAMES[mode], uiTheme, path: `./themes/${mode}.json` }] },
-        },
-        ExtensionHostKind.LocalProcess,
-      )
-      extension.registerFileUrl(`/themes/${mode}.json`, URL.createObjectURL(new Blob([themes[mode]], { type: "application/json" })))
-      await extension.whenReady()
-    }
+  const registerTheme = async (mode: EditorThemeMode, themeJson: string) => {
+    const extension = registerExtension(
+      {
+        name: `slagent-theme-${mode}`,
+        publisher: "slagent",
+        version: "1.0.0",
+        engines: { vscode: "*" },
+        contributes: { themes: [{ id: `slagent-${mode}`, label: THEME_NAMES[mode], uiTheme: mode === "dark" ? "vs-dark" : "vs", path: `./themes/${mode}.json` }] },
+      },
+      ExtensionHostKind.LocalProcess,
+    )
+    extension.registerFileUrl(`/themes/${mode}.json`, URL.createObjectURL(new Blob([themeJson], { type: "application/json" })))
+    await extension.whenReady()
   }
 
   return {
-    mount: (host, events, options): EditorHandle => {
-      const editor = monaco.editor.create(host, {
+    mount: (host, handlers, options): EditorHandle => {
+      const widget = monaco.editor.create(host, {
         ...editorOptions(options),
         model: null,
         automaticLayout: true,
         scrollBeyondLastLine: false,
         padding: { top: 8, bottom: 8 },
       })
-      current = { editor, events }
-      const models = new Map<string, monaco.editor.ITextModel>()
-      const listeners = new Map<string, monaco.IDisposable>()
-      const save = editor.addAction({
+      editor = widget
+      events = handlers
+      const save = widget.addAction({
         id: "slagent.save",
         label: "Save",
         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
         run: () => {
           const path = activePath()
-          if (path) events.onSave(path)
+          if (path) handlers.onSave(path)
         },
       })
 
-      const handle: EditorHandle = {
+      return {
         open: (path, contents) => {
-          const uri = monaco.Uri.file(path)
-          let model = monaco.editor.getModel(uri)
+          let model = models.get(path)
           if (!model) {
-            model = monaco.editor.createModel(contents, undefined, uri)
-            listeners.set(path, model.onDidChangeContent(() => events.onChange(path)))
+            model = monaco.editor.createModel(contents, undefined, monaco.Uri.file(path))
+            listeners.set(
+              path,
+              model.onDidChangeContent(() => events?.onChange(path)),
+            )
+            models.set(path, model)
           }
-          models.set(path, model)
-          editor.setModel(model)
+          widget.setModel(model)
         },
         show: (path) => {
           const model = models.get(path)
-          if (model) editor.setModel(model)
+          if (model) widget.setModel(model)
         },
         close: (path) => {
           listeners.get(path)?.dispose()
           listeners.delete(path)
           const model = models.get(path)
           models.delete(path)
-          if (editor.getModel() === model) editor.setModel(null)
+          if (model && widget.getModel() === model) widget.setModel(null)
           model?.dispose()
         },
         read: (path) => models.get(path)?.getValue() ?? null,
-        focus: () => editor.focus(),
+        replace: (path, contents) => models.get(path)?.setValue(contents),
+        focus: () => widget.focus(),
         dispose: () => {
           save.dispose()
-          for (const listener of listeners.values()) listener.dispose()
-          for (const model of models.values()) model.dispose()
-          editor.dispose()
-          if (current?.editor === editor) current = null
+          widget.dispose()
+          if (editor === widget) editor = null
         },
       }
-      return handle
     },
 
     setOptions: (options) => {
-      current?.editor.updateOptions(editorOptions(options))
-      current?.editor.getModel()?.updateOptions({ tabSize: options.tabSize })
+      editor?.updateOptions(editorOptions(options))
+      editor?.getModel()?.updateOptions({ tabSize: options.tabSize })
     },
 
-    setTheme: async (themes, mode) => {
-      if (!themesRegistered) {
-        themesRegistered = true
-        await registerThemes(themes)
+    setTheme: async (mode, themeJson) => {
+      if (!registeredThemes.has(mode)) {
+        registeredThemes.add(mode)
+        await registerTheme(mode, themeJson)
       }
       const themeList = await themeService.getColorThemes()
       const target = themeList.find((theme) => theme.label === THEME_NAMES[mode])

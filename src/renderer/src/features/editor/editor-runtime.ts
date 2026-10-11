@@ -4,22 +4,20 @@ export type EditorViewOptions = Pick<EditorPrefs, "fontSize" | "tabSize" | "word
 
 export type EditorThemeMode = "dark" | "light"
 
-// Theme files for both modes as VS Code theme JSON text.
-export type EditorThemes = Record<EditorThemeMode, string>
-
 export type EditorEvents = {
   onChange: (path: string) => void
   onSave: (path: string) => void
   onClose: (path: string) => void
 }
 
-// One mounted editor. Files are keyed by absolute path; each keeps its own model, so undo history
-// and the cursor survive switching tabs.
+// One mounted editor widget. Files are keyed by absolute path. Their models belong to the runtime,
+// so unsaved edits and undo history outlive the widget and come back when it is mounted again.
 export type EditorHandle = {
   open: (path: string, contents: string) => void
   show: (path: string) => void
   close: (path: string) => void
   read: (path: string) => string | null
+  replace: (path: string, contents: string) => void
   focus: () => void
   dispose: () => void
 }
@@ -28,7 +26,9 @@ export type EditorHandle = {
 export type EditorRuntime = {
   mount: (host: HTMLElement, events: EditorEvents, options: EditorViewOptions) => EditorHandle
   setOptions: (options: EditorViewOptions) => void
-  setTheme: (themes: EditorThemes, mode: EditorThemeMode) => Promise<void>
+  // Only the active mode's theme tokens can be read, so each mode's theme JSON is supplied the
+  // first time that mode is shown.
+  setTheme: (mode: EditorThemeMode, themeJson: string) => Promise<void>
   // Loads each pack's grammars once. A pack switched off only stops loading on the next launch.
   loadPacks: (ids: string[]) => Promise<void>
 }

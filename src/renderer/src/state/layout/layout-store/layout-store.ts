@@ -47,9 +47,15 @@ export class LayoutStore {
   diffWidth = LAYOUT_EDGES.diff.fallback
   terminalHeight = LAYOUT_EDGES.terminal.fallback
   resizing: ResizeEdge | null = null
+  // Editor mode puts the editor in the centre and moves the chat to the right.
+  editorMode = false
 
   constructor() {
     makeAutoObservable(this)
+  }
+
+  setEditorMode(on: boolean) {
+    this.editorMode = on
   }
 
   setSidebarOpen(open: boolean) {
