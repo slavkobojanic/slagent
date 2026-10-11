@@ -1,6 +1,6 @@
 {
   "name": "slagent",
-  "version": "0.5.10",
+  "version": "0.6.0",
   "private": true,
   "description": "Desktop coding agent harness built on Pi",
   "type": "module",
