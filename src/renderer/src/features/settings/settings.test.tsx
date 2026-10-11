@@ -22,6 +22,10 @@ function PersonalisationSection() {
   return <p>Personalisation section</p>
 }
 
+function EditorSection() {
+  return <p>Editor section</p>
+}
+
 function McpSection() {
   return <p>MCP section</p>
 }
@@ -58,6 +62,7 @@ function renderDialog(overrides: Partial<SettingsProps> = {}) {
       TitleModel={TitleSection}
       ProviderRouting={ProviderSection}
       PersonalisationSettings={PersonalisationSection}
+      EditorSettings={EditorSection}
       McpSettings={McpSection}
       CliSettings={CliSection}
       Usage={UsageSection}
@@ -98,6 +103,14 @@ describe("Settings", () => {
     expect(screen.getByText("Personalisation section")).not.toBeNull()
     expect(screen.queryByText("Theme section")).toBeNull()
     expect(activeTab()).toBe("Personalisation")
+  })
+
+  it("can show only the editor section when it is the active tab", () => {
+    renderDialog({ tab: "editor" })
+
+    expect(screen.getByText("Editor section")).not.toBeNull()
+    expect(screen.queryByText("Theme section")).toBeNull()
+    expect(activeTab()).toBe("Editor")
   })
 
   it("can show only the MCP section when it is the active tab", () => {

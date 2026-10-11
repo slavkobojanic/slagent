@@ -1,1 +1,1 @@
-export type SettingsTab = "general" | "personalisation" | "connect" | "mcp" | "cli" | "usage" | "about"
+export type SettingsTab = "general" | "personalisation" | "connect" | "editor" | "mcp" | "cli" | "usage" | "about"

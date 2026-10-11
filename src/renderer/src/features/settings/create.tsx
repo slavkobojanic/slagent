@@ -11,6 +11,7 @@ import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { createAbout } from "./about/create"
 import { createCliSettings } from "./cli-settings/create"
 import { createConnectSettings } from "./connect-settings/create"
+import { createEditorSettings } from "./editor-settings/create"
 import { createMcpSettings } from "./mcp-settings/create"
 import { createLinkPreference } from "./link-preference/create"
 import { createOpenRouterKey } from "./openrouter-key/create"
@@ -62,6 +63,7 @@ export function createSettings({
     settingsStore,
     log: log.child("personalisation-settings"),
   })
+  const EditorSettings = createEditorSettings({ api, metaStore, log: log.child("editor-settings") })
   const McpSettings = createMcpSettings({ api, metaStore, overlayStore, mcpStore, log: log.child("mcp-settings") })
   const CliSettings = createCliSettings({ api, overlayStore, settingsStore, log: log.child("cli-settings") })
   const Usage = createUsageSettings({ api, log: log.child("usage-settings") })
@@ -83,6 +85,7 @@ export function createSettings({
         TitleModel={TitleModel}
         ProviderRouting={ProviderRouting}
         PersonalisationSettings={PersonalisationSettings}
+        EditorSettings={EditorSettings}
         McpSettings={McpSettings}
         CliSettings={CliSettings}
         Usage={Usage}
