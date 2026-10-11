@@ -13,6 +13,7 @@ const base: EditorProps = {
   ],
   activePath: "/p/a.ts",
   banner: null,
+  FileTree: () => <nav>file tree</nav>,
   hostRef: noop,
   onSelectTab: noop,
   onCloseTab: noop,
@@ -37,6 +38,17 @@ describe("Editor", () => {
     const markup = viewMarkup(<Editor {...base} />)
 
     expect(markup.match(/aria-label="Unsaved changes"/g)).toHaveLength(1)
+  })
+
+  it("can show the file tree beside the editor", () => {
+    const markup = viewMarkup(<Editor {...base} />)
+
+    expect(markup).toContain("<nav>file tree</nav>")
+    expect(markup.indexOf("file tree")).toBeLessThan(markup.indexOf("a.ts"))
+  })
+
+  it("can keep the file tree when no file is open", () => {
+    expect(viewMarkup(<Editor {...base} tabs={[]} activePath={null} />)).toContain("file tree")
   })
 
   it("can offer a way back to the chat", () => {

@@ -631,6 +631,12 @@ export type FileView = {
   truncated: boolean
 }
 
+// One entry of a project folder, as the editor's file tree lists it.
+export type DirectoryEntry = {
+  name: string
+  dir: boolean
+}
+
 export type WriteFileResult =
   | { ok: true; mtime: number; size: number }
   | { ok: false; reason: "outside-project" | "not-file" | "conflict" | "failed"; message: string; mtime?: number }
@@ -698,6 +704,7 @@ export type SlagentApi = {
   openInEditor: (path: string) => Promise<boolean>
   readFile: (path: string) => Promise<FileView | null>
   writeFile: (path: string, contents: string, expectedMtime: number) => Promise<WriteFileResult>
+  listDirectory: (path: string) => Promise<DirectoryEntry[] | null>
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   editMessage: (id: string, text: string) => Promise<void>

@@ -12,6 +12,7 @@ import type { AgentHost } from "./host"
 import { cliStatus, installCli, uninstallCli } from "./cli"
 import type { ComputerUse } from "./computer"
 import { openInEditor, readFileView, writeFileView } from "./editor"
+import { listProjectDirectory } from "./list-directory"
 import type { McpManager } from "./mcp"
 import { parsePrompt } from "./prompt"
 import { parseReply } from "./extensions/ask-user"
@@ -190,6 +191,8 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return openInEditor(host.getCwd(), str(params[0]))
       case "readFile":
         return readFileView(host.getCwd(), str(params[0]))
+      case "listDirectory":
+        return listProjectDirectory(host.getCwd(), str(params[0]))
       case "writeFile":
         return writeFileView(host.getCwd(), str(params[0]), str(params[1]), Number(params[2]))
       case "getPermissions":

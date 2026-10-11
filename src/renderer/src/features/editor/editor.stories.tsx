@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { fn } from "storybook/test"
 import { Editor } from "@/features/editor/editor"
+import { fill } from "@/storybook/slots"
 
 const meta = {
   title: "Features/Editor/Editor",
@@ -15,6 +16,7 @@ const meta = {
     ],
     activePath: "/p/src/a.ts",
     banner: null,
+    FileTree: fill("FileTree"),
     hostRef: fn(),
     onSelectTab: fn(),
     onCloseTab: fn(),

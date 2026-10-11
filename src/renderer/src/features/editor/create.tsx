@@ -8,6 +8,7 @@ import type { EditorPort } from "@/state/editor-port/editor-port"
 import type { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { Editor } from "./editor"
+import { createFileTree } from "./file-tree/create"
 import { EditorPresenter } from "./editor-presenter/editor-presenter"
 import { EditorStore } from "./editor-store/editor-store"
 
@@ -32,6 +33,7 @@ export function createEditor({
   const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, loadEditorRuntime, log)
   presenter.start()
   editorPort.attach(presenter.openFile)
+  const FileTree = createFileTree({ api, metaStore, layoutStore, editorStore: store, editorPort, log: log.child("file-tree") })
 
   return observer(function EditorHost() {
     return (
@@ -41,6 +43,7 @@ export function createEditor({
         tabs={store.tabItems}
         activePath={store.activePath}
         banner={store.banner}
+        FileTree={FileTree}
         hostRef={presenter.attachHost}
         onSelectTab={presenter.selectTab}
         onCloseTab={presenter.closeTab}
