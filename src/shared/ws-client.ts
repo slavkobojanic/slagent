@@ -190,6 +190,7 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     openExternal: local.openExternal ?? ((url) => call<void>("openExternal", url)),
     openInEditor: (path) => call<boolean>("openInEditor", path),
     readFile: (path) => call<Result<"readFile">>("readFile", path),
+    writeFile: (path, contents, expectedMtime) => call<Result<"writeFile">>("writeFile", path, contents, expectedMtime),
     setQueueMode: (id, mode) => call<void>("setQueueMode", id, mode),
     removeQueued: (id) => call<void>("removeQueued", id),
     editMessage: (id, text) => call<void>("editMessage", id, text),
