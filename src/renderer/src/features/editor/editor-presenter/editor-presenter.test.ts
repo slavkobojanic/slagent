@@ -46,6 +46,7 @@ function fakeRuntime() {
     setOptions: vi.fn(),
     setTheme: vi.fn(async () => {}),
     loadPacks: vi.fn(async () => {}),
+    setExtensions: vi.fn(async () => []),
   }
   const type = (path: string, text: string) => {
     contents.set(path, text)
@@ -67,7 +68,7 @@ function fakeWindow(token = "#123456") {
 
 function setup() {
   const store = new EditorStore()
-  const api = createMockInstance<API>(["writeFile", "readFile"])
+  const api = createMockInstance<API>(["writeFile", "readFile", "readEditorExtension"])
   const themeStore = new ThemeStore()
   const metaStore = new MetaStore()
   const layoutStore = new LayoutStore()
@@ -481,6 +482,91 @@ describe("EditorPresenter", () => {
       await vi.waitFor(() => expect(runtime.setOptions).toHaveBeenCalledWith(expect.objectContaining({ fontSize: 20 })))
 
       expect(runtime.loadPacks).toHaveBeenLastCalledWith(["java"])
+      presenter.stop()
+    })
+  })
+
+  describe("extensions", () => {
+    const vim = { id: "vscodevim.vim", version: "1.32.4", enabled: true }
+    const payload = (id: string) => ({ id, version: "1.0.0", manifest: { name: id }, files: ["package.json"], baseUrl: `http://localhost:1/${id}` })
+
+    it("can register the enabled extensions when the runtime boots", async () => {
+      const { presenter, api, metaStore, runtime, store } = setup()
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
+      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
+
+      presenter.attachHost(document.createElement("div"))
+      await vi.waitFor(() => expect(store.status).toBe("ready"))
+
+      expect(api.readEditorExtension).toHaveBeenCalledWith("vscodevim.vim")
+      expect(runtime.setExtensions).toHaveBeenCalledWith([payload("vscodevim.vim")])
+    })
+
+    it("can leave a disabled extension out", async () => {
+      const { presenter, api, metaStore, runtime, store } = setup()
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [{ ...vim, enabled: false }] } } as AppMeta)
+
+      presenter.attachHost(document.createElement("div"))
+      await vi.waitFor(() => expect(store.status).toBe("ready"))
+
+      expect(api.readEditorExtension).not.toHaveBeenCalled()
+      expect(runtime.setExtensions).toHaveBeenCalledWith([])
+    })
+
+    it("can skip an extension that is no longer on disk", async () => {
+      const { presenter, api, metaStore, runtime, store } = setup()
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
+      vi.mocked(api.readEditorExtension).mockResolvedValue(null)
+
+      presenter.attachHost(document.createElement("div"))
+      await vi.waitFor(() => expect(store.status).toBe("ready"))
+
+      expect(runtime.setExtensions).toHaveBeenCalledWith([])
+    })
+
+    it("can keep going when reading one extension fails", async () => {
+      const { presenter, api, metaStore, runtime, store } = setup()
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim, { id: "other.ext", version: "1.0.0", enabled: true }] } } as AppMeta)
+      vi.mocked(api.readEditorExtension).mockRejectedValueOnce(new Error("gone")).mockResolvedValueOnce(payload("other.ext"))
+
+      presenter.attachHost(document.createElement("div"))
+      await vi.waitFor(() => expect(store.status).toBe("ready"))
+
+      expect(runtime.setExtensions).toHaveBeenCalledWith([payload("other.ext")])
+    })
+
+    it("can still mount when an extension fails to start", async () => {
+      const { presenter, api, metaStore, runtime, store } = setup()
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
+      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
+      vi.mocked(runtime.setExtensions).mockResolvedValue([{ id: "vscodevim.vim", message: "bad manifest" }])
+
+      presenter.attachHost(document.createElement("div"))
+      await vi.waitFor(() => expect(store.status).toBe("ready"))
+
+      expect(runtime.mount).toHaveBeenCalled()
+    })
+
+    it("can register a newly installed extension when the settings change", async () => {
+      const { presenter, api, metaStore, runtime } = await mounted()
+      presenter.start()
+      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
+
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
+      await vi.waitFor(() => expect(runtime.setExtensions).toHaveBeenLastCalledWith([payload("vscodevim.vim")]))
+
+      presenter.stop()
+    })
+
+    it("can drop an extension when it is switched off", async () => {
+      const { presenter, api, metaStore, runtime } = await mounted()
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
+      presenter.start()
+      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
+
+      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [{ ...vim, enabled: false }] } } as AppMeta)
+      await vi.waitFor(() => expect(runtime.setExtensions).toHaveBeenLastCalledWith([]))
+
       presenter.stop()
     })
   })

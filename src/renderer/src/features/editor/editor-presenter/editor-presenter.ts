@@ -1,5 +1,5 @@
 import { compareStructural } from "mobx"
-import { DEFAULT_EDITOR_PREFS, type EditorPrefs } from "@shared/editor"
+import { DEFAULT_EDITOR_PREFS, type EditorExtensionPayload, type EditorPrefs } from "@shared/editor"
 import type { FileView } from "@shared/types"
 import type { EditorEvents, EditorHandle, EditorRuntime, EditorViewOptions, LoadEditorRuntime } from "@/features/editor/editor-runtime"
 import type { EditorStore } from "@/features/editor/editor-store/editor-store"
@@ -283,6 +283,7 @@ export class EditorPresenter {
     const runtime = await this.log.span("load-runtime", this.loadRuntime)
     await runtime.loadPacks(this.prefs().packs)
     await this.setTheme(runtime)
+    await this.syncExtensions(runtime)
     return runtime
   }
 
@@ -306,6 +307,26 @@ export class EditorPresenter {
   }
 
   // The theme presenter flips the html class in its own reaction, so the tokens are read a frame later.
+  private syncExtensions = async (runtime: EditorRuntime) => {
+    const payloads: EditorExtensionPayload[] = []
+    for (const extension of this.prefs().extensions) {
+      if (!extension.enabled) {
+        continue
+      }
+      try {
+        const payload = await this.api.readEditorExtension(extension.id)
+        if (payload !== null) {
+          payloads.push(payload)
+        }
+      } catch (error) {
+        this.log.warn("read-extension-failed", { id: extension.id, error })
+      }
+    }
+    for (const failure of await runtime.setExtensions(payloads)) {
+      this.log.warn("extension-failed", failure)
+    }
+  }
+
   private applyTheme = () => {
     const pending = this.runtime
     if (pending === null) {
@@ -325,6 +346,7 @@ export class EditorPresenter {
       .then(async (runtime) => {
         runtime.setOptions(this.viewOptions())
         await runtime.loadPacks(this.prefs().packs)
+        await this.syncExtensions(runtime)
       })
       .catch((error: unknown) => this.log.warn("prefs-failed", { error }))
   }

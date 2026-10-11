@@ -1,4 +1,4 @@
-import type { EditorPrefs } from "@shared/editor"
+import type { EditorExtensionPayload, EditorPrefs } from "@shared/editor"
 
 export type EditorViewOptions = Pick<EditorPrefs, "fontSize" | "tabSize" | "wordWrap" | "minimap"> & { fontFamily: string }
 
@@ -31,6 +31,14 @@ export type EditorRuntime = {
   setTheme: (mode: EditorThemeMode, themeJson: string) => Promise<void>
   // Loads each pack's grammars once. A pack switched off only stops loading on the next launch.
   loadPacks: (ids: string[]) => Promise<void>
+  // Makes the running extensions exactly this list: registers new ones, drops ones that are gone.
+  // Resolves with the extensions that failed to start, so one bad extension never blocks the rest.
+  setExtensions: (extensions: EditorExtensionPayload[]) => Promise<EditorExtensionFailure[]>
+}
+
+export type EditorExtensionFailure = {
+  id: string
+  message: string
 }
 
 export type LoadEditorRuntime = () => Promise<EditorRuntime>

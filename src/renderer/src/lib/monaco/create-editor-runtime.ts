@@ -1,7 +1,7 @@
 import "@codingame/monaco-vscode-theme-defaults-default-extension"
 import * as monaco from "monaco-editor"
-import { getService, IWorkbenchThemeService, initialize } from "@codingame/monaco-vscode-api"
-import { ExtensionHostKind, registerExtension } from "@codingame/monaco-vscode-api/extensions"
+import { getService, IExtensionService, IWorkbenchThemeService, initialize } from "@codingame/monaco-vscode-api"
+import { ExtensionHostKind, registerExtension, type IExtensionManifest } from "@codingame/monaco-vscode-api/extensions"
 import { CommandsRegistry } from "@codingame/monaco-vscode-api/vscode/vs/platform/commands/common/commands"
 import EditorWorker from "@codingame/monaco-vscode-api/workers/editor.worker?worker"
 import TextMateWorker from "@codingame/monaco-vscode-textmate-service-override/worker?worker"
@@ -13,7 +13,7 @@ import getKeybindingsServiceOverride from "@codingame/monaco-vscode-keybindings-
 import getLanguagesServiceOverride from "@codingame/monaco-vscode-languages-service-override"
 import getTextmateServiceOverride from "@codingame/monaco-vscode-textmate-service-override"
 import getThemeServiceOverride from "@codingame/monaco-vscode-theme-service-override"
-import type { EditorEvents, EditorHandle, EditorRuntime, EditorThemeMode, EditorViewOptions } from "@/features/editor/editor-runtime"
+import type { EditorEvents, EditorExtensionFailure, EditorHandle, EditorRuntime, EditorThemeMode, EditorViewOptions } from "@/features/editor/editor-runtime"
 import { PACK_LOADERS } from "./language-packs"
 import { THEME_NAMES } from "./editor-theme"
 
@@ -48,6 +48,8 @@ export async function createEditorRuntime(): Promise<EditorRuntime> {
   })
 
   const themeService = await getService(IWorkbenchThemeService)
+  const extensionService = await getService(IExtensionService)
+  const installed = new Map<string, { version: string; dispose: () => Promise<void> }>()
   const loadedPacks = new Set<string>()
   const registeredThemes = new Set<EditorThemeMode>()
   const models = new Map<string, monaco.editor.ITextModel>()
@@ -154,6 +156,32 @@ export async function createEditorRuntime(): Promise<EditorRuntime> {
       const themeList = await themeService.getColorThemes()
       const target = themeList.find((theme) => theme.label === THEME_NAMES[mode])
       if (target) await themeService.setColorTheme(target, undefined)
+    },
+
+    setExtensions: async (payloads) => {
+      const failures: EditorExtensionFailure[] = []
+      const wanted = new Map(payloads.map((payload) => [payload.id.toLowerCase(), payload]))
+      for (const [id, entry] of installed) {
+        if (wanted.get(id)?.version === entry.version) continue
+        await entry.dispose().catch(() => undefined)
+        installed.delete(id)
+      }
+      for (const [id, payload] of wanted) {
+        if (installed.has(id)) continue
+        try {
+          // The worker host runs web extensions; each file the extension reads is mapped to its url.
+          const extension = registerExtension(payload.manifest as unknown as IExtensionManifest, ExtensionHostKind.LocalWebWorker)
+          for (const file of payload.files) extension.registerFileUrl(`/${file}`, `${payload.baseUrl}/${file}`)
+          installed.set(id, { version: payload.version, dispose: () => extension.dispose() })
+          await extension.whenReady()
+        } catch (error) {
+          installed.delete(id)
+          failures.push({ id: payload.id, message: error instanceof Error ? error.message : String(error) })
+        }
+      }
+      // Extensions registered after startup still need the startup event to wake the ones waiting on it.
+      await extensionService.activateByEvent("onStartupFinished")
+      return failures
     },
 
     loadPacks: async (ids) => {
