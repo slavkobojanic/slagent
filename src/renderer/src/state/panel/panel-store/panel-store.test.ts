@@ -8,6 +8,7 @@ const file: FileView = {
   line: 3,
   contents: "",
   size: 0,
+  mtime: 1000,
   binary: false,
   truncated: false,
 }

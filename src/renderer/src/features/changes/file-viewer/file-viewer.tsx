@@ -10,7 +10,7 @@ export type FileViewerProps = {
   ready: boolean
   themeType: "light" | "dark"
   scrollRef: (element: HTMLDivElement | null) => void
-  onEdit: () => void
+  onEdit: (() => void) | null
   onOpenInEditor: () => void
 }
 
@@ -23,10 +23,12 @@ export function FileViewer({ file, sizeLabel, ready, themeType, scrollRef, onEdi
           {file.line ? <span className="text-white/40">:{file.line}</span> : null}
         </span>
         <span className="shrink-0 text-white/40 tabular-nums">{sizeLabel}</span>
-        <Button type="button" variant="ghost" size="xs" className="gap-1" onClick={onEdit}>
-          <PencilIcon className="size-3" />
-          Edit
-        </Button>
+        {onEdit === null ? null : (
+          <Button type="button" variant="ghost" size="xs" className="gap-1" onClick={onEdit}>
+            <PencilIcon className="size-3" />
+            Edit
+          </Button>
+        )}
         <Button type="button" variant="ghost" size="xs" className="gap-1" onClick={onOpenInEditor}>
           <ExternalLinkIcon className="size-3" />
           Open in editor

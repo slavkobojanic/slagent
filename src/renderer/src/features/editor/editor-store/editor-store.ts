@@ -1,6 +1,5 @@
 import { makeAutoObservable } from "mobx"
-
-export type EditorStatus = "idle" | "loading" | "ready" | "failed"
+import type { EditorBanner, EditorStatus, EditorTabItem } from "@/features/editor/editor-types"
 
 export type EditorTab = {
   // The project-relative path shown in the tab; absolutePath is the identity.
@@ -13,20 +12,6 @@ export type EditorTab = {
   // Set when the file changed on disk after it was opened, with the mtime found there.
   conflictMtime: number | null
   error: string | null
-}
-
-// What sits above the editor, most urgent first.
-export type EditorBanner =
-  | { kind: "closing"; name: string }
-  | { kind: "conflict"; name: string }
-  | { kind: "error"; message: string }
-  | { kind: "notice"; message: string }
-
-export type EditorTabItem = {
-  absolutePath: string
-  path: string
-  name: string
-  dirty: boolean
 }
 
 export class EditorStore {

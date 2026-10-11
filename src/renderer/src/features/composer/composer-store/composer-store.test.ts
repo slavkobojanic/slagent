@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import { describe, expect, it } from "vitest"
 import { EMPTY_PERSONALISATION, type AppMeta, type ChatMessage } from "@shared/types"
 import { ComposerStore } from "@/features/composer/composer-store/composer-store"
@@ -25,6 +26,7 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
     titleModelId: null,
     titleModels: [],
     personalisation: EMPTY_PERSONALISATION,
+    editor: DEFAULT_EDITOR_PREFS,
     ...overrides,
   }
 }

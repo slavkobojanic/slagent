@@ -25,7 +25,7 @@ function fakeFetch(registry: Registry) {
   if (!registry.omitChecksum) files.sha256 = `${API}/vscodevim/vim/${version}/file/vim.sha256`
   return async (url: string): Promise<Response> => {
     if (url === `${API}/vscodevim/vim`) return Response.json({ version, files })
-    if (url === files.download) return new Response(registry.archive as BodyInit)
+    if (url === files.download) return new Response(registry.archive as unknown as ConstructorParameters<typeof Response>[0])
     if (url === files.sha256) return new Response(`${sha}  vim.vsix\n`)
     return new Response("nope", { status: 404 })
   }

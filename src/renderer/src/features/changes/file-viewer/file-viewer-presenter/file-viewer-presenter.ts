@@ -33,7 +33,7 @@ export class FileViewerPresenter {
     private readonly api: API,
     private readonly window: Window,
     private readonly loadHighlighter: () => Promise<boolean>,
-    private readonly editorPort: EditorPort,
+    private readonly editorPort: EditorPort | null,
     private readonly log: Log,
   ) {}
 
@@ -74,7 +74,7 @@ export class FileViewerPresenter {
       return
     }
     this.log.action("edit", { path: file.absolutePath })
-    this.editorPort.open(file)
+    this.editorPort?.open(file)
   }
 
   handleOpenInEditor = () => {

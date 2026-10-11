@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { toast } from "sonner"
 import { EMPTY_PERSONALISATION, type AppMeta, type ChatMessage, type ChatSearchResult, type DiffComment, type FileMatch, type SlashCommand } from "@shared/types"
@@ -45,6 +46,7 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
     titleModelId: null,
     titleModels: [],
     personalisation: EMPTY_PERSONALISATION,
+    editor: DEFAULT_EDITOR_PREFS,
     ...overrides,
   }
 }

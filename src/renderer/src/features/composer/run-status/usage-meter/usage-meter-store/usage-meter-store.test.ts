@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import { describe, expect, it } from "vitest"
 import { EMPTY_PERSONALISATION, type AppMeta, type UsageState, type UsageTotals } from "@shared/types"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
@@ -37,6 +38,7 @@ function metaWith(usageTotals: UsageTotals): AppMeta {
     titleModelId: null,
     titleModels: [],
     personalisation: EMPTY_PERSONALISATION,
+    editor: DEFAULT_EDITOR_PREFS,
   }
 }
 
