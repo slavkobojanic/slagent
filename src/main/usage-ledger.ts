@@ -94,10 +94,19 @@ export class UsageLedger {
 
   private migrate(): void {
     const row = this.db.prepare("PRAGMA user_version").get()! as { user_version: number }
+    // Each step bumps the version in its own transaction, and a newer database is
+    // left alone, so an older build opening it cannot roll the version back.
     for (let v = Number(row.user_version); v < SCHEMA_VERSION; v++) {
-      this.db.exec(MIGRATIONS[v]!)
+      this.db.exec("BEGIN")
+      try {
+        this.db.exec(MIGRATIONS[v]!)
+        this.db.exec(`PRAGMA user_version = ${v + 1}`)
+        this.db.exec("COMMIT")
+      } catch (error) {
+        this.db.exec("ROLLBACK")
+        throw error
+      }
     }
-    this.db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`)
   }
 
   private statement(sql: string): StatementSync {
