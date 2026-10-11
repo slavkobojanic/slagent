@@ -338,6 +338,7 @@ app.whenReady().then(async () => {
   editorServer = new VscodeServer({
     dist: distDir({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath(), platform: process.platform, arch: process.arch }),
     dataDir: join(app.getPath("userData"), "vscode-server"),
+    preferredPort: Number(process.env.SLAGENT_EDITOR_PORT) || undefined,
     settings: () => editorSettings(host?.getEditorPrefs() ?? parseEditorPrefs(null)),
   })
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ["http://127.0.0.1/*"] }, (details, callback) => {

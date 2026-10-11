@@ -154,6 +154,25 @@ describe("VscodeServer", () => {
     expect(spawn).toHaveBeenCalledTimes(1)
   })
 
+  it("can try the preferred port first", async () => {
+    const asked: Array<number | undefined> = []
+    const server = new VscodeServer({
+      dist: "/d",
+      dataDir: "/x",
+      preferredPort: 5555,
+      spawn: () => new FakeChild() as unknown as ChildProcess,
+      freePort: async (preferred) => {
+        asked.push(preferred)
+        return 4000 + asked.length
+      },
+      fetch: (async () => new Response("x")) as unknown as typeof fetch,
+    })
+
+    await server.url("/p")
+
+    expect(asked).toEqual([5555, undefined])
+  })
+
   it("can launch the bundled node with the bridge's port and token in its environment", async () => {
     const { server, spawn } = setup()
 
