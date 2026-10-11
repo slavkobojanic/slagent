@@ -1,3 +1,4 @@
+import type { ComponentType } from "react"
 import { EDITOR_FONT_SIZE, EDITOR_TAB_SIZE } from "@shared/editor"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +11,7 @@ export type EditorSettingsProps = {
   wordWrap: boolean
   minimap: boolean
   packs: PackRow[]
+  Extensions: ComponentType
   error: string | null
   onFontSize: (value: number) => void
   onTabSize: (value: number) => void
@@ -18,7 +20,7 @@ export type EditorSettingsProps = {
   onTogglePack: (id: string) => void
 }
 
-export function EditorSettings({ fontSize, tabSize, wordWrap, minimap, packs, error, onFontSize, onTabSize, onWordWrap, onMinimap, onTogglePack }: EditorSettingsProps) {
+export function EditorSettings({ fontSize, tabSize, wordWrap, minimap, packs, Extensions, error, onFontSize, onTabSize, onWordWrap, onMinimap, onTogglePack }: EditorSettingsProps) {
   return (
     <div className="space-y-6">
       <section className="space-y-2">
@@ -61,6 +63,7 @@ export function EditorSettings({ fontSize, tabSize, wordWrap, minimap, packs, er
           </p>
         )}
       </section>
+      <Extensions />
       <section className="space-y-2">
         <h2 className="text-sm font-medium">Language packs</h2>
         <p className="text-sm text-white/60">Syntax highlighting for each language. A pack you switch off stops loading the next time the app starts.</p>

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { fn } from "storybook/test"
 import { EditorSettings } from "@/features/settings/editor-settings/editor-settings"
+import { slot } from "@/storybook/slots"
 
 const meta = {
   title: "Features/Settings/EditorSettings",
@@ -16,6 +17,7 @@ const meta = {
       { id: "java", label: "Java", languages: "Java", enabled: false },
       { id: "rust", label: "Rust", languages: "Rust", enabled: false },
     ],
+    Extensions: slot("Extensions"),
     error: null,
     onFontSize: fn(),
     onTabSize: fn(),
