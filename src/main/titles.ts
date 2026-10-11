@@ -8,6 +8,7 @@ type Model = NonNullable<ReturnType<ModelRuntime["getModel"]>>
 // the default. They all run through OpenRouter, so naming a chat never spends
 // the chat's own model, which may be an expensive one.
 export const TITLE_MODELS: TitleModelOption[] = [
+  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B" },
   { id: "deepseek/deepseek-v4-flash-0731", name: "DeepSeek V4 Flash (0731)" },
   { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash" },
   { id: "google/gemini-3.5-flash-lite", name: "Gemini 3.5 Flash Lite" },
