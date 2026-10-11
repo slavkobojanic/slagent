@@ -1,0 +1,14 @@
+diff --git a/src/vs/server/node/webClientServer.ts b/src/vs/server/node/webClientServer.ts
+index ebbfe1c5..74d13767 100644
+--- a/src/vs/server/node/webClientServer.ts
++++ b/src/vs/server/node/webClientServer.ts
+@@ -239,7 +239,8 @@ export class WebClientServer {
+ 		}
+ 
+ 		const normalizedPathname = decodeURIComponent(resourcePath); // support paths that are uri-encoded (e.g. spaces => %20)
+-		const path = normalize(normalizedPathname);
++		// slagent: the route is /web-extension-resource/<host>/<path>, so the leading slash must go before the host is read.
++		const path = normalize(normalizedPathname).replace(/^\/+/, '');
+ 		const uri = URI.parse(path).with({
+ 			scheme: this._webExtensionResourceUrlTemplate.scheme,
+ 			authority: path.substring(0, path.indexOf('/')),

@@ -12,6 +12,9 @@ const product = JSON.parse(await readFile(join(dist, "product.json"), "utf8"))
 const overrides = JSON.parse(await readFile(join(here, "product.overrides.json"), "utf8"))
 product.extensionsGallery = overrides.extensionsGallery
 product.configurationDefaults = { ...product.configurationDefaults, ...overrides.configurationDefaults }
+// Without the Copilot extension there is no GitHub sign-in provider, so the account config that
+// would wait for one is dropped.
+delete product.defaultChatAgent
 await writeFile(join(dist, "product.json"), `${JSON.stringify(product, null, 2)}\n`)
 
 // Our own chat, terminal, notebooks and sign-in replace these.
