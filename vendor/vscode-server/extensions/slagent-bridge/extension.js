@@ -6,6 +6,10 @@ const http = require("node:http")
 const COMMAND = /^workbench\.(view|action)\.[A-Za-z0-9.]+$/
 const SETTING = /^(editor|workbench|files|window)\.[A-Za-z0-9.]+$/
 
+// Colours belong to the theme, which the user can change. An override here would sit on top of every
+// theme, and a colour that is not #hex is read as pure red, so none is accepted.
+const THEME_SETTINGS = new Set(["workbench.colorTheme", "workbench.colorCustomizations", "editor.tokenColorCustomizations"])
+
 const routes = {
   // { path, line? }: shows a file, optionally on a line.
   "/open": async ({ path, line }) => {
@@ -22,13 +26,24 @@ const routes = {
   "/settings": async ({ values }) => {
     const config = vscode.workspace.getConfiguration()
     for (const [key, value] of Object.entries(values ?? {})) {
-      if (!SETTING.test(key)) throw new Error(`setting not allowed: ${key}`)
+      if (!SETTING.test(key) || THEME_SETTINGS.has(key)) throw new Error(`setting not allowed: ${key}`)
       await config.update(key, value, vscode.ConfigurationTarget.Global)
     }
   },
 }
 
+// Earlier versions pushed colour overrides into the user's settings. They stay stored, hide theme
+// changes and can render as red, so they are removed once.
+async function clearOldThemeOverrides(context) {
+  const flag = "slagent.themeOverridesCleared"
+  if (context.globalState.get(flag)) return
+  const config = vscode.workspace.getConfiguration()
+  for (const key of THEME_SETTINGS) await config.update(key, undefined, vscode.ConfigurationTarget.Global)
+  await context.globalState.update(flag, true)
+}
+
 exports.activate = (context) => {
+  void clearOldThemeOverrides(context).catch(() => undefined)
   const port = Number(process.env.SLAGENT_BRIDGE_PORT)
   const token = process.env.SLAGENT_BRIDGE_TOKEN
   if (!port || !token) return
