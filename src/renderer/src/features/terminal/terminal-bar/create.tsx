@@ -28,10 +28,15 @@ export function createTerminalBar({
         chips={barStore.chips}
         open={barStore.open}
         canCreate={barStore.canCreate}
+        renamingId={store.renamingId}
+        renameDraft={store.renameDraft}
         onSelect={barPresenter.handleSelect}
         onClose={barPresenter.handleClose}
         onCreate={barPresenter.handleCreate}
         onToggle={barPresenter.handleToggle}
+        onRenameDraftChange={barPresenter.handleRenameDraft}
+        onRenameSave={barPresenter.handleRenameSave}
+        onRenameCancel={barPresenter.handleRenameCancel}
       />
     )
   })

@@ -3,7 +3,8 @@ import type { TerminalPresenter } from "@/features/terminal/terminal-presenter/t
 import type { Log } from "@/log/log"
 
 // Runs the bottom bar: selecting a chip reveals its terminal in the drawer,
-// adopting a task's shell on first click, and the create and toggle controls.
+// adopting a task's shell on first click, and the create, toggle and rename
+// controls.
 export class TerminalBarPresenter {
   constructor(
     private readonly store: TerminalBarStore,
@@ -42,5 +43,19 @@ export class TerminalBarPresenter {
   handleToggle = () => {
     this.log.action("toggle-terminal", { open: !this.store.open })
     this.terminalPresenter.toggle()
+  }
+
+  // The rename field lives on the chip; the terminal store keeps the draft so
+  // the drawer's Cmd+R and the bar share one state.
+  handleRenameDraft = (value: string) => {
+    this.terminalPresenter.setRenameDraft(value)
+  }
+
+  handleRenameSave = (id: string) => {
+    this.terminalPresenter.handleRenameSave(id)
+  }
+
+  handleRenameCancel = () => {
+    this.terminalPresenter.handleRenameCancel()
   }
 }

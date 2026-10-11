@@ -3,18 +3,23 @@ import type { TerminalChip } from "@/features/terminal/terminal-bar/terminal-bar
 import { TerminalBar, type TerminalBarProps } from "@/features/terminal/terminal-bar/terminal-bar"
 import { viewMarkup } from "@/test/view-markup"
 
-const chip: TerminalChip = { id: "terminal-1", title: "zsh", active: true, exited: false, origin: "user", color: null }
-const task: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6" }
+const chip: TerminalChip = { id: "terminal-1", title: "zsh", active: true, exited: false, origin: "user", color: null, groupId: null }
+const task: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6", groupId: null }
 
 function base(overrides: Partial<TerminalBarProps> = {}): TerminalBarProps {
   return {
     chips: [],
     open: false,
     canCreate: true,
+    renamingId: null,
+    renameDraft: "",
     onSelect: vi.fn(),
     onClose: vi.fn(),
     onCreate: vi.fn(),
     onToggle: vi.fn(),
+    onRenameDraftChange: vi.fn(),
+    onRenameSave: vi.fn(),
+    onRenameCancel: vi.fn(),
     ...overrides,
   }
 }
@@ -57,7 +62,7 @@ describe("TerminalBar", () => {
   })
 
   it("can ellipse a long command and show the full one on hover", () => {
-    const long: TerminalChip = { id: "task-9", title: "pnpm storybook dev -p 6006 --ci", active: false, exited: false, origin: "task", color: null }
+    const long: TerminalChip = { id: "task-9", title: "pnpm storybook dev -p 6006 --ci", active: false, exited: false, origin: "task", color: null, groupId: null }
     const html = viewMarkup(<TerminalBar {...base({ chips: [long] })} />)
 
     expect(html).toContain("pnpm storybook dev …")
@@ -96,5 +101,33 @@ describe("TerminalBar", () => {
     expect(html).toContain("feat-status-bar")
     expect(html).toContain('aria-label="Show terminal"')
     expect(html).toContain("font-mono")
+  })
+
+  it("can join the chips of a tab group into one element with linked corners", () => {
+    const left: TerminalChip = { ...task, groupId: "g1" }
+    const right: TerminalChip = { ...chip, active: false, groupId: "g1" }
+    const html = viewMarkup(<TerminalBar {...base({ chips: [left, right] })} />)
+
+    // The group is one container whose corners carry the rounding, while a
+    // solo chip keeps its own.
+    expect(html).toContain("border border-white/10")
+    expect(html).toContain("overflow-hidden")
+    expect(html).toContain("border-l border-white/10")
+  })
+
+  it("can keep solo chips apart from the groups", () => {
+    const grouped: TerminalChip = { ...task, groupId: "g1" }
+    const html = viewMarkup(<TerminalBar {...base({ chips: [grouped, chip] })} />)
+
+    // Two separate rows: the group container does not swallow the solo pill.
+    expect((html.match(/border border-white\/10/g) ?? []).length).toBe(1)
+  })
+
+  it("can rename the tab in place over the chip", () => {
+    const html = viewMarkup(<TerminalBar {...base({ chips: [chip], renamingId: chip.id, renameDraft: "dev shell" })} />)
+
+    expect(html).toContain('aria-label="Terminal tab name"')
+    expect(html).toContain('value="dev shell"')
+    expect(html).not.toContain('>zsh</span>')
   })
 })

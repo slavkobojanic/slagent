@@ -38,6 +38,7 @@ export class TerminalBarStore {
       exited: tab.exited,
       origin: tab.origin,
       color: tab.origin === "task" ? colours.get(this.taskFor(tab.id)?.projectId ?? "") ?? null : null,
+      groupId: tab.groupId,
     }))
     for (const task of this.library.library.tasks) {
       if (this.dismissed.has(task.id)) continue
@@ -49,6 +50,7 @@ export class TerminalBarStore {
         exited: task.status !== "running",
         origin: "task",
         color: colours.get(task.projectId) ?? null,
+        groupId: null,
       })
     }
     return chips
@@ -81,4 +83,6 @@ export type TerminalChip = {
   exited: boolean
   origin: "user" | "task"
   color: string | null
+  // Chips sharing a group join into one tab-group element in the bar.
+  groupId: string | null
 }

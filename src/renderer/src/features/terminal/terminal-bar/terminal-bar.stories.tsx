@@ -3,9 +3,9 @@ import { fn } from "storybook/test"
 import type { TerminalChip } from "@/features/terminal/terminal-bar/terminal-bar"
 import { TerminalBar, type TerminalBarProps } from "@/features/terminal/terminal-bar/terminal-bar"
 
-const userShell: TerminalChip = { id: "terminal-1", title: "~/projects/slagent", active: true, exited: false, origin: "user", color: "#3b82f6" }
-const running: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6" }
-const finished: TerminalChip = { id: "task-2", title: "tests", active: false, exited: true, origin: "task", color: "#3b82f6" }
+const userShell: TerminalChip = { id: "terminal-1", title: "~/projects/slagent", active: true, exited: false, origin: "user", color: "#3b82f6", groupId: null }
+const running: TerminalChip = { id: "task-1", title: "dev server", active: false, exited: false, origin: "task", color: "#3b82f6", groupId: null }
+const finished: TerminalChip = { id: "task-2", title: "tests", active: false, exited: true, origin: "task", color: "#3b82f6", groupId: null }
 
 // One shell per project colour, none selected: how the wash reads side by side.
 const projectColours = ["#ef4444", "#f97316", "#22c55e", "#3b82f6", "#a855f7", "#ec4899"]
@@ -16,6 +16,7 @@ const perProject: TerminalChip[] = projectColours.map((color, index) => ({
   exited: false,
   origin: "task",
   color,
+  groupId: null,
 }))
 
 function base(overrides: Partial<TerminalBarProps> = {}): TerminalBarProps {
@@ -23,10 +24,15 @@ function base(overrides: Partial<TerminalBarProps> = {}): TerminalBarProps {
     chips: [],
     open: false,
     canCreate: true,
+    renamingId: null,
+    renameDraft: "",
     onSelect: fn(),
     onClose: fn(),
     onCreate: fn(),
     onToggle: fn(),
+    onRenameDraftChange: fn(),
+    onRenameSave: fn(),
+    onRenameCancel: fn(),
     ...overrides,
   }
 }
@@ -65,6 +71,20 @@ export const WithDrawerOpen: Story = {
 
 export const Spawning: Story = {
   args: base({ chips: [userShell], canCreate: false }),
+}
+
+export const TabGroup: Story = {
+  args: base({
+    chips: [
+      userShell,
+      { ...userShell, id: "terminal-2", title: "node", active: false, groupId: "g1" },
+      { ...userShell, id: "terminal-3", title: "vitest", active: false, groupId: "g1" },
+    ],
+  }),
+}
+
+export const Renaming: Story = {
+  args: base({ chips: [userShell, running], renamingId: "terminal-1", renameDraft: "dev shell" }),
 }
 
 export const WithBranch: Story = {
