@@ -3,7 +3,10 @@ import { randomBytes } from "node:crypto"
 import { createServer } from "node:net"
 import { join } from "node:path"
 import type { EditorPrefs } from "../shared/editor"
+import { errorData } from "./app-log"
 import { forgetServer, recordServer, stopStaleServer } from "./stale-server"
+
+const TAIL_LINES = 20
 
 export type BridgeRoute = "/open" | "/command" | "/settings"
 
@@ -67,6 +70,8 @@ export type VscodeServerDeps = {
   token?: () => string
   timeoutMs?: number
   bridgeTimeoutMs?: number
+  // Every diagnostic from the server lifecycle: start, exit, and its own output.
+  onEvent?: (level: "info" | "warn", event: string, data: Record<string, unknown>) => void
 }
 
 // The editor's origin is its port, and the workbench keeps its web storage per origin (settings,
@@ -167,32 +172,65 @@ export class VscodeServer {
   }
 
   private async launch(): Promise<Running> {
+    const log = this.deps.onEvent ?? (() => undefined)
     // A server from a launch that was killed would still hold the stable port.
-    await stopStaleServer(this.deps.dataDir).catch(() => undefined)
+    await stopStaleServer(this.deps.dataDir).catch((error) => log("warn", "stale-server", errorData(error)))
     const pickPort = this.deps.freePort ?? freePort
     const makeToken = this.deps.token ?? (() => randomBytes(24).toString("hex"))
     const [port, bridgePort] = [await pickPort(this.deps.preferredPort ?? EDITOR_PORT), await pickPort()]
     const token = makeToken()
     const bridgeToken = makeToken()
+    log("info", "start", { dist: this.deps.dist, port, bridgePort, dataDir: this.deps.dataDir })
     const child = (this.deps.spawn ?? nodeSpawn)(join(this.deps.dist, "node"), serverArgs({ port, token, dataDir: this.deps.dataDir }), {
       cwd: this.deps.dist,
       env: { ...process.env, SLAGENT_BRIDGE_PORT: String(bridgePort), SLAGENT_BRIDGE_TOKEN: bridgeToken, SLAGENT_SETTINGS: JSON.stringify(this.deps.settings?.() ?? {}) },
     })
+    // Reading the output both feeds the log and keeps the pipes drained; a
+    // server blocked on a full stdout buffer would never become ready.
+    const tail: string[] = []
+    this.pipe(child.stdout, "info", tail, log)
+    this.pipe(child.stderr, "warn", tail, log)
     void recordServer(this.deps.dataDir, child.pid).catch(() => undefined)
     const exited = new Promise<never>((_, reject) => {
-      child.once("error", (error) => reject(error))
-      child.once("exit", (code) => {
+      child.once("error", (error) => {
+        log("warn", "spawn-failed", errorData(error))
+        reject(error)
+      })
+      child.once("exit", (code, signal) => {
         this.running = null
         this.current = null
-        reject(new Error(`The editor server stopped (exit ${code ?? "unknown"}).`))
+        log("warn", "exit", { code, signal, tail: tail.join("\n") })
+        reject(new Error(`The editor server stopped (exit ${code ?? signal ?? "unknown"}).`))
       })
     })
     await Promise.race([this.waitUntilReady(port), exited]).catch((error: unknown) => {
       child.kill()
       throw error
     })
+    log("info", "ready", { port })
     this.current = { port, token }
     return { port, token, bridgePort, bridgeToken, child }
+  }
+
+  // Splits a stream into lines, keeps the last few for the exit report, and
+  // forwards each to the log.
+  private pipe(stream: NodeJS.ReadableStream | null, level: "info" | "warn", tail: string[], log: NonNullable<VscodeServerDeps["onEvent"]>): void {
+    if (!stream) return
+    let pending = ""
+    stream.setEncoding("utf8")
+    stream.on("data", (chunk: string) => {
+      pending += chunk
+      for (;;) {
+        const end = pending.indexOf("\n")
+        if (end < 0) break
+        const line = pending.slice(0, end).trim()
+        pending = pending.slice(end + 1)
+        if (!line) continue
+        tail.push(line)
+        if (tail.length > TAIL_LINES) tail.shift()
+        log(level, "output", { line })
+      }
+    })
   }
 
   private async waitUntilReady(port: number): Promise<void> {

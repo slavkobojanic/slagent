@@ -6,7 +6,8 @@ import type { TerminalEvent } from "../shared/types"
 import { AgentHost } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
 import { McpManager } from "./mcp"
-import { setApplicationMenu } from "./menu"
+import { appLog } from "./app-log"
+import { saveLogsFromMenu, setApplicationMenu } from "./menu"
 import { TerminalManager } from "./terminal"
 import { startApiServer, type ApiServer } from "./server"
 import { createCallHandler, systemOpenExternal } from "./calls"
@@ -117,16 +118,18 @@ function createWindow(): BrowserWindow {
   })
 
   win.webContents.on("preload-error", (_event, preloadPath, error) => {
-    console.error("preload-error", preloadPath, error)
+    appLog().fail("preload", "error", error, { preloadPath })
   })
 
   win.webContents.on("did-fail-load", (_event, code, description) => {
-    console.error("did-fail-load", code, description)
+    // A frame that reloads while it navigates fails with -3; that is normal.
+    if (code === -3) return
+    appLog().error("window", "load-failed", { code, description })
   })
 
   win.webContents.on("console-message", (event) => {
     if (event.level !== "error") return
-    console.error("renderer", event.message)
+    appLog().error("renderer", "console", { message: event.message })
   })
 
   if (devServerUrl) {
@@ -212,7 +215,7 @@ async function openFolderFromSystem(folder: string): Promise<void> {
   if (!clientId) return
   await requireHost()
     .openFolder(clientId, folder)
-    .catch((error) => console.error("open folder:", error))
+    .catch((error) => appLog().fail("host", "open-folder-failed", error, { folder }))
 }
 
 const calls = createCallHandler({
@@ -280,7 +283,7 @@ app.whenReady().then(async () => {
   // it finish writing before the app binds, so the phone keeps one address.
   const daemon = await daemonStatus().catch(() => null)
   if (daemon?.installed) {
-    await stopDaemon().catch((error) => console.error("daemon:", error))
+    await stopDaemon().catch((error) => appLog().fail("daemon", "stop-failed", error))
     await waitDaemonPortFree(8747, 10_000)
   }
 
@@ -294,7 +297,7 @@ app.whenReady().then(async () => {
     configPath: join(app.getPath("userData"), "mcp.json"),
     openUrl: (url) => shell.openExternal(url),
   })
-  await mcp.start().catch((error) => console.error("mcp:", error))
+  await mcp.start().catch((error) => appLog().fail("mcp", "start-failed", error))
 
   host = new AgentHost(
     join(app.getPath("userData"), "settings.json"),
@@ -341,6 +344,7 @@ app.whenReady().then(async () => {
     dataDir: join(app.getPath("userData"), "vscode-server"),
     preferredPort: Number(process.env.SLAGENT_EDITOR_PORT) || undefined,
     settings: () => editorSettings(host?.getEditorPrefs() ?? parseEditorPrefs(null)),
+    onEvent: (level, event, data) => appLog()[level]("vscode-server", event, data),
   })
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ["http://127.0.0.1/*"] }, (details, callback) => {
     callback({ requestHeaders: withEditorCookie(details.url, details.requestHeaders, editorServer?.endpoint ?? null) })
@@ -366,10 +370,10 @@ app.whenReady().then(async () => {
       onInfo: () => host?.refreshMeta(),
     })
   } catch (error) {
-    console.error("api server:", error)
+    appLog().fail("api-server", "start-failed", error)
   }
 
-  setApplicationMenu(() => createWindow())
+  setApplicationMenu(() => createWindow(), () => void saveLogsFromMenu())
   createWindow()
   started = host.start()
   for (const folder of pendingFolders.splice(0)) void openFolderFromSystem(folder)
@@ -385,7 +389,7 @@ app.whenReady().then(async () => {
         // ShipIt refuses to replace the bundle while any instance of the app is
         // running, so the daemon (the same executable) has to leave first; the
         // plist stays, and the next normal quit hands the port over again.
-        await stopDaemon().catch((error) => console.error("daemon:", error))
+        await stopDaemon().catch((error) => appLog().fail("daemon", "stop-failed", error))
         await waitDaemonPortFree(8747, 10_000)
       } else {
         await handOffToDaemon()
@@ -428,7 +432,7 @@ app.on("before-quit", (event) => {
 async function handOffToDaemon(): Promise<void> {
   if (DAEMON) return
   const status = await daemonStatus().catch(() => null)
-  if (status?.installed) await startDaemon().catch((error) => console.error("daemon:", error))
+  if (status?.installed) await startDaemon().catch((error) => appLog().fail("daemon", "start-failed", error))
 }
 
 function serveRenderer(request: Request): Promise<Response> {

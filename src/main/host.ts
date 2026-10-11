@@ -56,6 +56,7 @@ import { ComputerGate } from "./computer-gate"
 import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
+import { appLog } from "./app-log"
 import { PROJECT_COLORS, PROJECT_ICONS } from "../shared/project-appearance"
 import { parseEditorPrefs, parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
 import type { EditorPrefs } from "../shared/editor"
@@ -183,7 +184,7 @@ export class AgentHost {
     void this.run(async () => {
       const initial = await this.initialProject()
       if (initial) await this.openProjectUnlocked(session, initial.id)
-    }).catch((error) => console.error("initial project:", error))
+    }).catch((error) => appLog().fail("host", "initial-project-failed", error))
   }
 
   // Something outside the host's own state changed, like the server's address.
@@ -223,8 +224,8 @@ export class AgentHost {
       this.personalisation = this.prefs.personalisation ?? { ...EMPTY_PERSONALISATION }
       this.editor = this.prefs.editor ?? parseEditorPrefs(null)
       await this.library.load()
-      void runUsageBackfill({ ledger: this.usage, library: this.library }).catch((error) => console.error("usage backfill:", error))
-      void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
+      void runUsageBackfill({ ledger: this.usage, library: this.library }).catch((error) => appLog().fail("usage", "backfill-failed", error))
+      void this.library.indexMissingChats().catch((error) => appLog().fail("search-index", "index-failed", error))
       await importShellEnv("OPENROUTER_API_KEY")
       this.modelRuntime = await ModelRuntimeClass.create({ refreshOnCreate: false })
       this.models = this.catalog()
@@ -1357,7 +1358,7 @@ export class AgentHost {
           purpose,
         )
       } catch (error) {
-        console.error("usage record:", error)
+        appLog().fail("usage", "record-failed", error)
       }
     }
   }

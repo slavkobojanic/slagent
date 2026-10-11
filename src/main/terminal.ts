@@ -5,6 +5,7 @@ import { basename, dirname, join } from "node:path"
 import { spawn, type IPty } from "node-pty"
 import type { TerminalEvent, TerminalSession } from "../shared/types"
 import { importShellPath } from "./shell-env"
+import { appLog } from "./app-log"
 
 // Output and exit callbacks a background task's terminal reports to.
 export type TaskSink = {
@@ -127,7 +128,7 @@ export class TerminalManager {
       if (statSync(helper).mode & 0o111) return
       chmodSync(helper, 0o755)
     } catch (error) {
-      console.error("terminal spawn-helper:", error)
+      appLog().warn("terminal", "spawn-helper-chmod-failed", { message: String(error) })
     }
   }
 

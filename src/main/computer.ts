@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { createInterface } from "node:readline"
 import { existsSync } from "node:fs"
 import { desktopCapturer, systemPreferences } from "electron"
+import { appLog } from "./app-log"
 
 export type ComputerPermissions = {
   accessibility: boolean
@@ -80,7 +81,7 @@ export class ComputerUse {
     lines.on("line", (line) => this.receive(line))
     child.stderr.on("data", (chunk: Buffer) => {
       const text = chunk.toString().trim()
-      if (text) console.error("computer-use", text)
+      if (text) appLog().warn("computer-use", "stderr", { message: text })
     })
     child.on("exit", () => {
       if (this.child !== child) return

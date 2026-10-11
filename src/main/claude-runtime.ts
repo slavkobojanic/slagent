@@ -33,6 +33,7 @@ import type {
 } from "../shared/types"
 import { CHAT_SYSTEM_PROMPT } from "./chat-prompt"
 import { answered, parseQuestions } from "./extensions/ask-user"
+import { appLog } from "./app-log"
 import { personalisationPrompt } from "./extensions/personalisation"
 import { errorMessage, formatValue, toolLabel, truncate } from "./format"
 import { ToolDescriber, type ToolCallSeed } from "./describe"
@@ -744,7 +745,7 @@ export class ClaudeRuntime {
       // A subscription isn't billed per token, so its cost estimate is not a cost.
       this.options.onModelUsage(message.modelUsage ?? {}, !this.subscription)
     } catch (error) {
-      console.error("usage record:", error)
+      appLog().fail("usage", "record-failed", error)
     }
     if (message.is_error) {
       const detail = "errors" in message && message.errors?.length ? message.errors.join("\n") : null

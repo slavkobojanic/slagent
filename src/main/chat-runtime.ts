@@ -17,6 +17,7 @@ import {
   SettingsManager,
 } from "@earendil-works/pi-coding-agent"
 import type { AssistantMessage as PiAssistantMessage, ImageContent } from "@earendil-works/pi-ai"
+import { appLog } from "./app-log"
 import type {
   AssistantMessage,
   ChatMessage,
@@ -171,7 +172,7 @@ function mcpServersExtension(servers: Record<string, McpServerConfig>): Extensio
       try {
         pi.registerMcpServer(name, config)
       } catch (error) {
-        console.error(`mcp: could not register ${name}:`, error)
+        appLog().fail("mcp", "register-failed", error, { name })
       }
     }
   }
@@ -370,7 +371,7 @@ export class ChatRuntime {
         key: `pi:${this.chatId}:${message.responseId ?? message.timestamp}`,
       })
     } catch (error) {
-      console.error("usage record:", error)
+      appLog().fail("usage", "record-failed", error)
     }
   }
 

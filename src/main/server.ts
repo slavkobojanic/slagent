@@ -11,6 +11,7 @@ import { dirname, extname } from "node:path"
 import { hostname, networkInterfaces } from "node:os"
 import { WebSocket, WebSocketServer } from "ws"
 import type { ServerInfo, TerminalEvent, UiEvent, WsClientMessage, WsServerMessage } from "../shared/types"
+import { appLog } from "./app-log"
 
 const DEFAULT_PORT = 8747
 const PORT_ATTEMPTS = 20
@@ -220,7 +221,7 @@ export async function startApiServer(options: ApiServerOptions): Promise<ApiServ
         failedIp = null
       } catch (error) {
         failedIp = ip
-        console.error("tailscale listener:", error)
+        appLog().fail("tailscale", `listener-failed:${ip}`, error)
       }
     }
     options.onInfo(info())

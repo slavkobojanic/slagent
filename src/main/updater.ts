@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog } from "electron"
 import updater from "electron-updater"
 import type { UpdateCheckResult } from "../shared/types"
 import { appVersion } from "./version"
+import { appLog } from "./app-log"
 
 // electron-updater is CommonJS and exposes `autoUpdater` through a getter, so default-import
 // the module and destructure rather than relying on Node's named-export detection.
@@ -55,7 +56,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
     }
     return { status: "up-to-date", version: appVersion }
   } catch (error) {
-    console.error("updater:", error)
+    appLog().fail("updater", "check-failed", error)
     return { status: "error", message: error instanceof Error ? error.message : String(error) }
   }
 }
@@ -114,14 +115,14 @@ export function startUpdater({ prepareQuit, onReady }: Options): void {
   autoUpdater.autoInstallOnAppQuit = true
 
   autoUpdater.on("error", (error) => {
-    console.error("updater:", error)
+    appLog().error("updater", "update-error", { message: String(error) })
   })
   autoUpdater.on("update-downloaded", (info) => {
     readyVersion = info.version
     onReady(info.version)
   })
 
-  const check = () => void autoUpdater.checkForUpdates().catch((error) => console.error("updater:", error))
+  const check = () => void autoUpdater.checkForUpdates().catch((error) => appLog().fail("updater", "check-failed", error))
   check()
   setInterval(check, checkInterval)
 }

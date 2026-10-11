@@ -4,6 +4,7 @@ import { homedir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import type { ChatMessage } from "../shared/types"
 import { SearchIndex, type SearchHit } from "./search-index"
+import { appLog } from "./app-log"
 
 export type StoredProject = {
   id: string
@@ -351,7 +352,7 @@ export class Library {
     try {
       work(this.search)
     } catch (error) {
-      console.error("search index:", error)
+      appLog().fail("search-index", "update-failed", error)
     }
   }
 
