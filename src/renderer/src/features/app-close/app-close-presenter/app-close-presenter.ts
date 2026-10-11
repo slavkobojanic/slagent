@@ -3,6 +3,8 @@ import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 
 export class AppClosePresenter {
+  private unsubscribe: (() => void) | null = null
+
   constructor(
     private readonly store: AppCloseStore,
     private readonly api: API,
@@ -10,10 +12,15 @@ export class AppClosePresenter {
   ) {}
 
   start = () => {
-    return this.api.onCloseRequest(() => {
+    this.unsubscribe = this.api.onCloseRequest(() => {
       this.log.action("close-requested")
       this.store.setOpen(true)
     })
+  }
+
+  stop = () => {
+    this.unsubscribe?.()
+    this.unsubscribe = null
   }
 
   handleCancel = () => {
