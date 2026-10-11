@@ -158,7 +158,6 @@
       visibility 200ms linear;
   }
 }
-}
 
 /* While a pane is dragged its width follows the pointer, so its slot and aside drop the
    width transition. */
