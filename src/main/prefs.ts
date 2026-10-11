@@ -23,6 +23,8 @@ import {
   EDITOR_PACKS,
   EDITOR_TAB_SIZE,
   type EditorExtensionPref,
+  isExtensionId,
+  isExtensionVersion,
   type EditorPrefs,
 } from "../shared/editor"
 
@@ -141,8 +143,7 @@ export function parseEditorPrefs(input: unknown): EditorPrefs {
     for (const entry of record.extensions) {
       if (typeof entry !== "object" || entry === null) continue
       const item = entry as Record<string, unknown>
-      if (typeof item.id !== "string" || !EXTENSION_ID.test(item.id)) continue
-      if (typeof item.version !== "string" || !EXTENSION_VERSION.test(item.version)) continue
+      if (!isExtensionId(item.id) || !isExtensionVersion(item.version)) continue
       if (extensions.some((existing) => existing.id === item.id)) continue
       extensions.push({ id: item.id, version: item.version, enabled: item.enabled !== false })
     }
@@ -156,10 +157,6 @@ export function parseEditorPrefs(input: unknown): EditorPrefs {
     extensions,
   }
 }
-
-// publisher.name, as on Open VSX. The id becomes a folder name, so nothing else gets through.
-const EXTENSION_ID = /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9._-]*$/i
-const EXTENSION_VERSION = /^[0-9][0-9a-z.+-]*$/i
 
 export async function readPrefs(file: string): Promise<Prefs> {
   try {
