@@ -1,12 +1,12 @@
-import { useState } from "react"
 import { Check } from "lucide-react"
 
-// The remembered decision, mirroring LinkStore's preference.
 export type LinkMenuProps = {
   url: string
   x: number
   y: number
   preference: "browser" | "copy" | null
+  remember?: boolean
+  onRememberChange?: (remember: boolean) => void
   onOpen: (url: string, remember: boolean) => void
   onCopy: (url: string, remember: boolean) => void
   onAskEveryTime: () => void
@@ -15,12 +15,7 @@ export type LinkMenuProps = {
 const ITEM_CLASS =
   "flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
 
-// A plain positioned menu instead of a Radix dropdown: the presenter opens it
-// from a document-level listener, so there is no trigger element to anchor to.
-export function LinkMenu({ url, x, y, preference, onOpen, onCopy, onAskEveryTime }: LinkMenuProps) {
-  // The checkbox starts unchecked on every open, so remembering stays an
-  // explicit opt-in for the choice picked next.
-  const [remember, setRemember] = useState(false)
+export function LinkMenu({ url, x, y, preference, remember = false, onRememberChange, onOpen, onCopy, onAskEveryTime }: LinkMenuProps) {
   return (
     <div
       data-link-menu
@@ -34,7 +29,7 @@ export function LinkMenu({ url, x, y, preference, onOpen, onCopy, onAskEveryTime
         Copy link
       </button>
       <div className="-mx-1 my-1 h-px bg-border" />
-      <button type="button" role="checkbox" aria-checked={remember} className={ITEM_CLASS} onClick={() => setRemember(!remember)}>
+      <button type="button" role="checkbox" aria-checked={remember} className={ITEM_CLASS} onClick={() => onRememberChange?.(!remember)}>
         <span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-white/25 aria-checked:border-transparent aria-checked:bg-primary aria-checked:text-primary-foreground">
           {remember ? <Check className="size-3" /> : null}
         </span>

@@ -1,19 +1,18 @@
 import { XIcon } from "lucide-react"
-import { useState } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 export type ImageChipProps = {
   name: string
   url: string
   onRemove: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function ImageChip({ name, url, onRemove }: ImageChipProps) {
-  const [open, setOpen] = useState(false)
-
+export function ImageChip({ name, url, onRemove, open = false, onOpenChange }: ImageChipProps) {
   return (
     <span className="relative inline-block">
-      <button type="button" className="block cursor-zoom-in" aria-label={`View ${name}`} onClick={() => setOpen(true)}>
+      <button type="button" className="block cursor-zoom-in" aria-label={`View ${name}`} onClick={() => onOpenChange?.(true)}>
         <img src={url} alt={name} className="block h-auto max-h-32 w-auto max-w-full rounded-lg" />
       </button>
       <button
@@ -24,12 +23,12 @@ export function ImageChip({ name, url, onRemove }: ImageChipProps) {
       >
         <XIcon className="size-2.5" />
       </button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           hideClose
           aria-describedby={undefined}
           className="flex w-auto max-w-[90vw] items-center justify-center border-0 bg-transparent p-0"
-          onClick={() => setOpen(false)}
+          onClick={() => onOpenChange?.(false)}
         >
           <DialogTitle className="sr-only">{name}</DialogTitle>
           <img src={url} alt={name} className="block max-h-[90vh] max-w-[90vw] rounded-lg object-contain" />
