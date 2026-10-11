@@ -73,6 +73,19 @@ export class SuggestionsPresenter {
     this.commandRequest += 1
   }
 
+  attachList = (element: HTMLDivElement | null) => {
+    if (element === null) return
+    const active = this.store.active
+    const row = element.children[active] as HTMLElement | undefined
+    if (row === undefined) return
+    const top = row.offsetTop
+    if (top < element.scrollTop) {
+      element.scrollTop = top
+    } else if (top + row.offsetHeight > element.scrollTop + element.clientHeight) {
+      element.scrollTop = top + row.offsetHeight - element.clientHeight
+    }
+  }
+
   // The menus follow the trigger under the caret. They stay closed while the history search is open.
   sync = (text: string, caret: number) => {
     if (this.promptHistoryStore.searching) {

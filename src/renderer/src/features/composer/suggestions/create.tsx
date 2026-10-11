@@ -26,6 +26,7 @@ export function createSuggestions({
         active={suggestionsStore.active}
         onHover={suggestionsPresenter.hover}
         onChoose={composerPresenter.chooseSuggestion}
+        attachList={suggestionsPresenter.attachList}
       />
     )
   })
