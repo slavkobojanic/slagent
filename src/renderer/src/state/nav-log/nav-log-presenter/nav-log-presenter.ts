@@ -23,11 +23,11 @@ export class NavLogPresenter {
       return
     }
     this.disposers.push(
-      reaction(this.project, (to, from) => this.log.info("project", { from, to }), { equals: samePlace }),
-      reaction(this.chat, (to, from) => this.log.info("chat", { from, to }), { equals: samePlace }),
-      reaction(this.panel, (to, from) => this.log.info("panel", { from, to })),
-      reaction(this.file, (to, from) => this.log.info("file", { from, to })),
-      reaction(this.overlay, (to, from) => this.log.info("overlay", { from, to })),
+      this.log.reaction("nav:project", this.project, (to, from) => this.log.info("project", { from, to }), { equals: samePlace }),
+      this.log.reaction("nav:chat", this.chat, (to, from) => this.log.info("chat", { from, to }), { equals: samePlace }),
+      this.log.reaction("nav:panel", this.panel, (to, from) => this.log.info("panel", { from, to })),
+      this.log.reaction("nav:file", this.file, (to, from) => this.log.info("file", { from, to })),
+      this.log.reaction("nav:overlay", this.overlay, (to, from) => this.log.info("overlay", { from, to })),
     )
   }
 

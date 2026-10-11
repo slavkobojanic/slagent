@@ -72,7 +72,8 @@ export class ChatSwitchPresenter {
     this.finishSwitch({ superseded: true })
     const pending: PendingSwitch = { end: this.log.time("switch", { chatId }), dispose: () => undefined }
     this.pending = pending
-    pending.dispose = when(
+    pending.dispose = this.log.reaction(
+      "switch:complete",
       () => this.libraryStore.openChatId === chatId && this.runStore.transcriptChatId === chatId,
       () => {
         if (this.pending === pending) {

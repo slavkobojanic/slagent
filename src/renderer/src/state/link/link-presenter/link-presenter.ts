@@ -153,7 +153,7 @@ export class LinkPresenter {
     }
   }
 
-  private resolveWebLink(href: string, event: MouseEvent) {
+  private resolveWebLink = (href: string, event: MouseEvent) => {
     const preference = this.store.preference
     if (preference === "browser") {
       this.openWebLink(href)
@@ -166,12 +166,12 @@ export class LinkPresenter {
     this.openMenu(href, event)
   }
 
-  private openWebLink(url: string) {
+  private openWebLink = (url: string) => {
     this.log.action("open-external", { url })
     void this.api.openExternal(url)
   }
 
-  private async copyLink(url: string) {
+  private copyLink = async (url: string) => {
     this.log.action("copy-link", { url })
     try {
       await this.window.navigator.clipboard.writeText(url)
@@ -182,14 +182,14 @@ export class LinkPresenter {
     }
   }
 
-  private openMenu(url: string, event: MouseEvent) {
+  private openMenu = (url: string, event: MouseEvent) => {
     this.log.action("open-link-menu", { url })
     const x = Math.min(event.clientX, this.window.innerWidth - MENU_WIDTH)
     const y = Math.min(event.clientY, this.window.innerHeight - MENU_HEIGHT)
     this.store.openMenu({ url, x: Math.max(0, x), y: Math.max(0, y) })
   }
 
-  private remember(preference: LinkPreference | null) {
+  private remember = (preference: LinkPreference | null) => {
     this.log.action("remember-link-preference", { preference })
     this.store.setPreference(preference)
     try {
