@@ -1,8 +1,9 @@
 import { Plus, Server } from "lucide-react"
+import { cloneElement } from "react"
 import type { ComponentType } from "react"
 import { Button } from "@/components/ui/button"
 import type { ChatGroup } from "@/features/mobile/chat-list/chat-list-items"
-import { MobileChatRow } from "./mobile-chat-row/mobile-chat-row"
+import { createMobileChatRow } from "./mobile-chat-row/create"
 import "@/features/mobile/mobile.css"
 
 export type MobileChatListProps = {
@@ -87,9 +88,12 @@ function Body({
             <p className="px-4 py-2 text-sm text-foreground/40">No chats yet</p>
           ) : (
             <ul className="divide-y divide-border">
-              {group.items.map((item) => (
-                <MobileChatRow key={item.chat.id} item={item} opening={opening === item.chat.id} onOpen={onOpenChat} />
-              ))}
+              {group.items.map((item) =>
+                cloneElement(
+                  createMobileChatRow({ item, opening: opening === item.chat.id, onOpen: onOpenChat }),
+                  { key: item.chat.id }
+                )
+              )}
             </ul>
           )}
         </section>
