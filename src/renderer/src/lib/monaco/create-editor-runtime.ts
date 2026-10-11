@@ -4,6 +4,7 @@ import { getService, IWorkbenchThemeService, initialize } from "@codingame/monac
 import { ExtensionHostKind, registerExtension } from "@codingame/monaco-vscode-api/extensions"
 import { CommandsRegistry } from "@codingame/monaco-vscode-api/vscode/vs/platform/commands/common/commands"
 import EditorWorker from "@codingame/monaco-vscode-api/workers/editor.worker?worker"
+import TextMateWorker from "@codingame/monaco-vscode-textmate-service-override/worker?worker"
 import extensionHostWorkerUrl from "@codingame/monaco-vscode-api/workers/extensionHost.worker?worker&url"
 import getConfigurationServiceOverride from "@codingame/monaco-vscode-configuration-service-override"
 import getExtensionsServiceOverride from "@codingame/monaco-vscode-extensions-service-override"
@@ -30,7 +31,7 @@ function editorOptions({ fontSize, tabSize, wordWrap, minimap, fontFamily }: Edi
 export async function createEditorRuntime(): Promise<EditorRuntime> {
   // The extension host worker is handed to an iframe by URL, so it needs getWorkerUrl rather than getWorker.
   self.MonacoEnvironment = {
-    getWorker: () => new EditorWorker(),
+    getWorker: (_id: string, label: string) => (label === "TextMateWorker" ? new TextMateWorker() : new EditorWorker()),
     getWorkerUrl: (_id: string, label: string) =>
       label === "extensionHostWorkerMain" ? new URL(extensionHostWorkerUrl, location.href).toString() : undefined,
     getWorkerOptions: () => ({ type: "module" }),
