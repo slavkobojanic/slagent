@@ -1,0 +1,27 @@
+{
+  "extensionsGallery": {
+    "serviceUrl": "https://open-vsx.org/vscode/gallery",
+    "itemUrl": "https://open-vsx.org/vscode/item",
+    "resourceUrlTemplate": "https://open-vsx.org/vscode/unpkg/{publisher}/{name}/{version}/{path}",
+    "controlUrl": "",
+    "nlsBaseUrl": "",
+    "publisherUrl": ""
+  },
+  "configurationDefaults": {
+    "workbench.activityBar.location": "hidden",
+    "workbench.statusBar.visible": false,
+    "workbench.startupEditor": "none",
+    "workbench.tips.enabled": false,
+    "workbench.layoutControl.enabled": false,
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "window.commandCenter": false,
+    "chat.disableAIFeatures": true,
+    "security.workspace.trust.enabled": false,
+    "extensions.verifySignature": false,
+    "extensions.autoUpdate": false,
+    "editor.minimap.enabled": false,
+    "breadcrumbs.enabled": false,
+    "telemetry.telemetryLevel": "off",
+    "update.mode": "none"
+  }
+}

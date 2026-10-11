@@ -1,0 +1,11 @@
+{
+  "name": "slagent-bridge",
+  "displayName": "Slagent bridge",
+  "description": "Lets the slagent app drive this workbench over a token-protected loopback endpoint.",
+  "publisher": "slagent",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.100.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "extensionKind": ["workspace"]
+}
