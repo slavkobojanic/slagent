@@ -1,5 +1,4 @@
-/* Claude's brand colour for the Claude Code mark. Tailwind has no token for it, so the mark
-   takes it from this rule. The view that shows the mark imports this file. */
+/* Claude's brand colour for the Claude Code mark. */
 .claude-brand {
-  color: #d97757;
+  color: var(--color-claude-brand);
 }

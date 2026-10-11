@@ -28,8 +28,8 @@ export function MobileDiffList({ files, emptyText, themeType, onOpenFile }: Mobi
                 {file.path}
               </button>
             )}
-            <span className="shrink-0 text-emerald-500">+{file.added}</span>
-            <span className="shrink-0 pr-3 text-red-500">-{file.removed}</span>
+            <span className="shrink-0 text-success">+{file.added}</span>
+            <span className="shrink-0 pr-3 text-destructive">-{file.removed}</span>
           </header>
           <PatchDiff
             patch={file.patch}

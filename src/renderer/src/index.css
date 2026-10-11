@@ -45,11 +45,14 @@
   --color-warning: var(--warning);
   --color-info: var(--info);
   --color-border: var(--border);
+  --color-claude-brand: #d97757;
   --color-input: var(--input);
   --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
+  --size-lightbox-w: 90vw;
+  --size-lightbox-h: 90vh;
   /* The settings dialog: at least 860px, but never wider than the window allows. */
   --container-settings: min(53.75rem, calc(100vw - 2rem));
 }

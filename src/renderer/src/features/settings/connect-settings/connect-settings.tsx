@@ -55,10 +55,10 @@ function Body({ server, qr, onCopy }: Pick<ConnectSettingsProps, "server" | "qr"
               role="img"
               aria-label="QR code for the slagent iOS app"
               viewBox={`-4 -4 ${qr.size + 8} ${qr.size + 8}`}
-              className="size-32 shrink-0 rounded-lg bg-[#fff]"
+              className="size-32 shrink-0 rounded-lg bg-white"
               shapeRendering="crispEdges"
             >
-              <path d={qr.path} className="fill-[#000]" />
+              <path d={qr.path} className="fill-black" />
             </svg>
             <div className="min-w-0 space-y-1">
               <p className="text-sm font-medium">Scan with your iPhone</p>
