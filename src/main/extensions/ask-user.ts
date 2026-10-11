@@ -90,14 +90,16 @@ export function askUser(hooks: AskUserHooks): AskUserControl {
       name: ASK_USER,
       label: "Ask user",
       description:
-        "Ask the user one to four multiple-choice questions and wait for the answers. The user can also write their own answer, add a note, or skip.",
+        "Ask the user one to four multiple-choice questions and wait for the answers. The user can also write their own answer, add a note, or skip. This is the only way to ask the user anything while working: questions written in your reply text do not reach them as answerable prompts.",
       promptSnippet: "Ask the user a multiple-choice question and wait for the answer",
       promptGuidelines: [
-        "Use ask_user only for decisions that are the user's to make and that change what you do next. Pick sensible defaults yourself.",
+        "Every question for the user goes through ask_user — never as prose at the end of a reply, and never as a numbered list of questions in your message text. If you catch yourself writing a question mark addressed to the user outside this tool, put it in a tool call instead.",
+        "Ask only for decisions that are the user's to make and that change what you do next; pick sensible defaults for everything else and say which default you picked.",
         "Mark the option you would choose as recommended.",
         "When options are visual, show them: html for UI mockups, image for screenshots or diagrams, preview for code. Visual options are shown as three large cards side by side, so offer at most 3 and pick the strongest. Put shared context, such as a screenshot of the current state, on the question itself.",
         "Keep html self-contained, with inline styles, and size it for a panel about 400px wide. An image must be a URL or an image file on disk, so save a screenshot to a file before passing its path.",
         "Ask all related questions in one call instead of one at a time.",
+        "If a skill or format asks you to present numbered questions in your reply, still deliver each round through ask_user: one tool call per round, with the round's questions as its questions.",
       ],
       parameters: params,
       executionMode: "sequential",
