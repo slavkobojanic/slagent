@@ -25,5 +25,6 @@ export default defineConfig({
       },
     },
     plugins: [react(), tailwindcss()],
+    worker: { format: "es" },
   },
 })
