@@ -24,8 +24,8 @@ export const THEME_NAMES: Record<EditorThemeType, string> = {
   light: "Slagent Light",
 }
 
-// Builds the editor theme from the app's theme tokens, as the browser computed them, so the
-// editor follows the same palette as the rest of the interface in both modes.
+// Builds the VS Code colour theme from the app's theme tokens, so the editor follows the same
+// palette as the rest of the interface. The build turns this into the bundled Slagent themes.
 export function editorTheme(type: EditorThemeType, read: (token: string) => string): EditorThemeJson {
   const background = read("--background")
   const foreground = read("--foreground")
@@ -174,21 +174,5 @@ export function editorTheme(type: EditorThemeType, read: (token: string) => stri
       { scope: ["markup.italic"], settings: { fontStyle: "italic" } },
       { scope: ["invalid"], settings: { foreground: read("--destructive") } },
     ],
-  }
-}
-
-// The workbench's default themes the customisations sit on, by the mode they match.
-const BASE_THEMES: Record<EditorThemeType, string> = { dark: "Dark Modern", light: "Light Modern" }
-
-// The workbench settings that carry our theme: a base theme per mode, then our colours and syntax
-// colours over it. These are pushed to the editor through its bridge.
-export function workbenchTheme(type: EditorThemeType, read: (token: string) => string): Record<string, unknown> {
-  const theme = editorTheme(type, read)
-  return {
-    "workbench.colorTheme": BASE_THEMES[type],
-    // Pills, like the terminal bar's chips, instead of tabs joined to the editor.
-    "workbench.experimental.modernUIEditorTabStyle": "pill",
-    "workbench.colorCustomizations": theme.colors,
-    "editor.tokenColorCustomizations": { textMateRules: theme.tokenColors.map(({ scope, settings }) => ({ scope, settings })) },
   }
 }

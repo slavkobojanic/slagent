@@ -193,7 +193,7 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     getEditorUrl: () => call<string>("getEditorUrl"),
     openEditorFile: (path) => call<boolean>("openEditorFile", path),
     runEditorCommand: (id) => call<void>("runEditorCommand", id),
-    setEditorTheme: (values) => call<void>("setEditorTheme", values),
+    setColorScheme: (scheme) => call<void>("setColorScheme", scheme),
     setQueueMode: (id, mode) => call<void>("setQueueMode", id, mode),
     removeQueued: (id) => call<void>("removeQueued", id),
     editMessage: (id, text) => call<void>("editMessage", id, text),

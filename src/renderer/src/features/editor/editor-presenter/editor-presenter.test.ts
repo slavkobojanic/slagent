@@ -24,11 +24,11 @@ const file = (overrides: Partial<FileView> = {}): FileView => ({
 
 function setup(cwd = "/p") {
   const store = new EditorStore()
-  const api = createMockInstance<API>(["getEditorUrl", "openEditorFile", "runEditorCommand", "setEditorTheme"])
+  const api = createMockInstance<API>(["getEditorUrl", "openEditorFile", "runEditorCommand", "setColorScheme"])
   vi.mocked(api.getEditorUrl).mockResolvedValue(URL_A)
   vi.mocked(api.openEditorFile).mockResolvedValue(true)
   vi.mocked(api.runEditorCommand).mockResolvedValue(undefined)
-  vi.mocked(api.setEditorTheme).mockResolvedValue(undefined)
+  vi.mocked(api.setColorScheme).mockResolvedValue(undefined)
   const themeStore = new ThemeStore()
   const metaStore = new MetaStore()
   metaStore.setMeta({ cwd } as AppMeta)
@@ -162,8 +162,8 @@ describe("EditorPresenter", () => {
   })
 
   describe("frame messages", () => {
-    it("can send the shape CSS and push the theme once the frame is ready", async () => {
-      const { presenter, api, store } = setup()
+    it("can send the shape CSS once the frame is ready", async () => {
+      const { presenter, store } = setup()
       presenter.start()
       await presenter.openFile(file())
       const frame = attachedFrame(presenter)
@@ -172,7 +172,6 @@ describe("EditorPresenter", () => {
       announce(frame.contentWindow)
 
       expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: "slagent-css" }), "http://127.0.0.1:4000")
-      expect(api.setEditorTheme).toHaveBeenCalledWith(expect.objectContaining({ "workbench.colorTheme": expect.any(String) }))
       expect(store.url).toBe(URL_A)
       presenter.stop()
     })
@@ -192,56 +191,46 @@ describe("EditorPresenter", () => {
     })
 
     it("can carry on when the fonts cannot be loaded", async () => {
-      const { presenter, api, loadFonts } = setup()
+      const { presenter, loadFonts } = setup()
       loadFonts.mockRejectedValue(new Error("offline"))
       presenter.start()
       await presenter.openFile(file())
       const frame = attachedFrame(presenter)
+      const post = vi.spyOn(frame.contentWindow as Window, "postMessage")
 
       announce(frame.contentWindow)
 
-      await vi.waitFor(() => expect(api.setEditorTheme).toHaveBeenCalled())
-      presenter.stop()
-    })
-
-    it("can ask the editor to use the app's monospace font", async () => {
-      const { presenter, api } = setup()
-      presenter.start()
-      await presenter.openFile(file())
-      const frame = attachedFrame(presenter)
-
-      announce(frame.contentWindow)
-
-      expect(api.setEditorTheme).toHaveBeenCalledWith(expect.objectContaining({ "editor.fontFamily": expect.any(String) }))
+      await vi.waitFor(() => expect(loadFonts).toHaveBeenCalled())
+      expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: "slagent-css" }), "http://127.0.0.1:4000")
       presenter.stop()
     })
 
     it("can ignore a message from another window", async () => {
-      const { presenter, api } = setup()
+      const { presenter, loadFonts } = setup()
       presenter.start()
       await presenter.openFile(file())
       attachedFrame(presenter)
 
       announce(window)
 
-      expect(api.setEditorTheme).not.toHaveBeenCalled()
+      expect(loadFonts).not.toHaveBeenCalled()
       presenter.stop()
     })
 
     it("can ignore a message that is not the ready signal", async () => {
-      const { presenter, api } = setup()
+      const { presenter, loadFonts } = setup()
       presenter.start()
       await presenter.openFile(file())
       const frame = attachedFrame(presenter)
 
       announce(frame.contentWindow, "something-else")
 
-      expect(api.setEditorTheme).not.toHaveBeenCalled()
+      expect(loadFonts).not.toHaveBeenCalled()
       presenter.stop()
     })
 
     it("can ignore messages after it stops", async () => {
-      const { presenter, api } = setup()
+      const { presenter, loadFonts } = setup()
       presenter.start()
       await presenter.openFile(file())
       const frame = attachedFrame(presenter)
@@ -249,34 +238,46 @@ describe("EditorPresenter", () => {
 
       announce(frame.contentWindow)
 
-      expect(api.setEditorTheme).not.toHaveBeenCalled()
+      expect(loadFonts).not.toHaveBeenCalled()
     })
   })
 
-  describe("theme", () => {
-    it("can push the new theme when the app theme flips", async () => {
+  describe("colour scheme", () => {
+    it("can hand the app's theme choice to the window when it starts", () => {
       const { presenter, api, themeStore } = setup()
-      presenter.start()
-      await presenter.openFile(file())
-      const rAF = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
-        callback(0)
-        return 0
-      })
-
       themeStore.setPreference("dark")
 
-      expect(api.setEditorTheme).toHaveBeenLastCalledWith(expect.objectContaining({ "workbench.colorTheme": "Dark Modern" }))
-      rAF.mockRestore()
+      presenter.start()
+
+      expect(api.setColorScheme).toHaveBeenCalledWith("dark")
       presenter.stop()
     })
 
-    it("can leave the editor alone when it is not running", () => {
+    it("can follow the system by default", () => {
+      const { presenter, api } = setup()
+
+      presenter.start()
+
+      expect(api.setColorScheme).toHaveBeenCalledWith("system")
+      presenter.stop()
+    })
+
+    it("can pass on a change of the app's theme choice", () => {
       const { presenter, api, themeStore } = setup()
       presenter.start()
 
-      themeStore.setPreference("dark")
+      themeStore.setPreference("light")
 
-      expect(api.setEditorTheme).not.toHaveBeenCalled()
+      expect(api.setColorScheme).toHaveBeenLastCalledWith("light")
+      presenter.stop()
+    })
+
+    it("can carry on when the window refuses the scheme", () => {
+      const { presenter, api, themeStore } = setup()
+      vi.mocked(api.setColorScheme).mockRejectedValue(new Error("no"))
+      presenter.start()
+
+      expect(() => themeStore.setPreference("dark")).not.toThrow()
       presenter.stop()
     })
   })

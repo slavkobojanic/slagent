@@ -695,7 +695,8 @@ export type SlagentApi = {
   getEditorUrl: () => Promise<string>
   openEditorFile: (path: string) => Promise<boolean>
   runEditorCommand: (id: string) => Promise<void>
-  setEditorTheme: (values: Record<string, unknown>) => Promise<void>
+  // Sets the window's colour scheme, which the editor's auto-detected theme follows.
+  setColorScheme: (scheme: "system" | "light" | "dark") => Promise<void>
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   editMessage: (id: string, text: string) => Promise<void>

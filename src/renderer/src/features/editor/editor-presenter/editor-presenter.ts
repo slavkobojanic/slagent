@@ -3,7 +3,6 @@ import type { EditorStore } from "@/features/editor/editor-store/editor-store"
 import type { API } from "@/ipc/api"
 import { EDITOR_FRAME_CSS } from "@/lib/editor-frame-css"
 import type { EditorFont } from "@/lib/editor-fonts"
-import { workbenchTheme } from "@/lib/editor-theme"
 import { errorText } from "@/lib/format"
 import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
@@ -36,7 +35,8 @@ export class EditorPresenter {
     this.disposers = [
       // The editor server runs only while editor mode is open, and the page is per project.
       this.log.reaction("root", this.rootKey, this.handleRootChange, { fireImmediately: true }),
-      this.log.reaction("theme", () => this.themeStore.resolved, this.applyTheme),
+      // The editor follows the window's colour scheme, so the app's own choice is handed to it.
+      this.log.reaction("scheme", () => this.themeStore.preference, this.applyScheme, { fireImmediately: true }),
       () => this.window.removeEventListener("message", this.handleMessage),
     ]
   }
@@ -131,7 +131,6 @@ export class EditorPresenter {
     }
     this.postCss()
     void this.postFonts()
-    this.pushTheme()
   }
 
   private postCss = () => {
@@ -157,24 +156,9 @@ export class EditorPresenter {
     }
   }
 
-  private readToken = (token: string): string => {
-    const styles = this.window.getComputedStyle(this.window.document.documentElement)
-    return styles.getPropertyValue(token).trim()
-  }
-
-  private pushTheme = () => {
-    // The editor uses the app's monospace font, which the frame is sent in postFonts.
-    const values = { ...workbenchTheme(this.themeStore.resolved, this.readToken), "editor.fontFamily": this.readToken("--font-mono") }
-    this.api.setEditorTheme(values).catch((error: unknown) => {
-      this.log.warn("theme-failed", { error })
+  private applyScheme = (scheme: "system" | "light" | "dark") => {
+    this.api.setColorScheme(scheme).catch((error: unknown) => {
+      this.log.warn("scheme-failed", { error })
     })
-  }
-
-  // The theme presenter flips the html class in its own reaction, so tokens are read a frame later.
-  private applyTheme = () => {
-    if (this.store.url === null) {
-      return
-    }
-    this.window.requestAnimationFrame(this.pushTheme)
   }
 }
