@@ -22,8 +22,6 @@ const file = (overrides: Partial<FileView> = {}): FileView => ({
   ...overrides,
 })
 
-const frames: HTMLIFrameElement[] = []
-
 function setup(cwd = "/p") {
   const store = new EditorStore()
   const api = createMockInstance<API>(["getEditorUrl", "openEditorFile", "runEditorCommand", "setEditorTheme"])
@@ -42,7 +40,6 @@ function setup(cwd = "/p") {
 function attachedFrame(presenter: EditorPresenter): HTMLIFrameElement {
   const frame = document.createElement("iframe")
   document.body.append(frame)
-  frames.push(frame)
   presenter.attachFrame(frame)
   return frame
 }
@@ -52,7 +49,7 @@ function announce(source: MessageEventSource | null, type = "slagent-ready") {
 }
 
 afterEach(() => {
-  for (const frame of frames.splice(0)) frame.remove()
+  document.body.replaceChildren()
 })
 
 describe("EditorPresenter", () => {
