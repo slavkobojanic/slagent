@@ -22,7 +22,7 @@ This file is the source of truth. Do not invent a different state, folder, styli
 | Layer | Job | Not allowed |
 | --- | --- | --- |
 | **Store** | Observable state, derived getters, rule getters. Mutate through its own methods when a write has invariants. | IPC, DOM, `window`, React, calling another store's methods |
-| **Presenter** | Methods only: IPC calls, cross-store writes, DOM and window listeners, timers, clipboard. May assign fields on **its own** store when a setter would be a pure one-liner (`this.store.menuOpen = false`). Injected stores stay method-only. | Getters, view models, JSX, assigning fields on **injected** stores |
+| **Presenter** | Methods only: IPC calls, cross-store writes, DOM and window listeners, timers, clipboard. Callbacks from the view are `handleX` (e.g. `handleSave`, `handleCancel`); other commands use verbs (`start`, `stop`, `attachScroll`). May assign fields on **its own** store when a setter would be a pure one-liner (`this.store.menuOpen = false`). Injected stores stay method-only. | Getters, view models, JSX, assigning fields on **injected** stores |
 | **View** (`name.tsx`) | Render props. Calls the callbacks it receives. | Hooks, stores, presenters, IPC, `window`, formatting rules |
 | **Owning `create.tsx`** | Called **once** at boot. Constructs store and presenter, starts the presenter, and returns a stable component. `observer` iff it reads a store. | Called during render, styling the view, business rules |
 | **Assemble `create.tsx`** | Re-runnable. Returns a `ReactElement`. Composes already-built pieces. | Store, presenter, IPC, `observer` |
@@ -38,9 +38,9 @@ Dumb units (a row, a pill, a label) are `name.tsx` with classes inline. No `crea
 ## Two kinds of `create.tsx`
 
 - **Owning:** called once at boot, returns a **component**. A slice's `create.tsx` is always owning. It may construct a store and presenter, call `presenter.start()`, and wrap the view in `observer` when it reads a store. Slot-only composers that read no store are not `observer`.
-- **Assemble:** no store, no presenter. May run again when data changes. Returns a **`ReactElement`**.
+- **Assemble:** no store, no presenter. May run again when data changes. Returns a **`ReactElement`**. Used for stateless, dumb rows in a list: the state lives on the list owner's unit (keyed by row id if needed), not on the row itself.
 
-Never call an owning `create` during React render. Assemble `create` is usually called from an owning observer during its render.
+Never call an owning `create` during React render. Assemble `create` is usually called from an owning observer during its render, mapped over a list: `rows={data.map((item) => createRow({ item }))}`.
 
 ## Composition
 
@@ -173,11 +173,12 @@ Comments record a non-obvious *why* (an ordering constraint, an Electron or brow
 - State styling uses attributes. shadcn and Radix set `data-state`, so style it with `data-[state=open]:` variants. Do not toggle classes in JS to reflect state.
 - Variants: `cva` lives in `components/ui/*`. A feature view with its own variants may use `cva` while one feature uses them. Move it to `components/` once two features need it.
 - **Grid:** Tailwind's spacing scale is the baseline. The base is 4px (`--spacing: 0.25rem` at the default 16px root). Use `p-1`, `gap-2`, `h-8`, and so on. Arbitrary values (`p-[13px]`, `w-[360px]`) are not allowed in feature code. `check:spc` enforces this. If a value is a real design token, add it to `@theme` in `index.css` and use the utility.
-- **Colour:** semantic tokens only (`bg-background`, `text-muted-foreground`, `border-border`, `bg-destructive`). No raw hex, no `oklch()`, no `rgb()` in views. Status colours use `text-success`/`bg-success`, `text-warning`/`bg-warning` and `text-info`/`bg-info`, defined in `index.css` for both themes.
+- **Colour:** semantic tokens only (`bg-background`, `text-muted-foreground`, `border-border`, `bg-destructive`). Dark-only app, so `white/NN` opacity ramps (`text-white/50`, `border-white/10`) are allowed and common. No raw hex, no `oklch()`, no `rgb()` in views. No named palette colours (`emerald-500`, `red-500`; use `text-success`/`text-destructive` instead). Status colours use `text-success`/`bg-success`, `text-warning`/`bg-warning` and `text-info`/`bg-info`, defined in `index.css` for both themes.
 - **Type:** Tailwind's `text-*` scale. Do not add arbitrary font sizes.
 - **Inline `style`** only for data that changes at runtime (a measured width from a store, an accent colour from a project). Never for static values.
 - **Icons:** `lucide-react`. Size with classes (`size-4`).
 - **Dark mode:** the `dark` class on `<html>`, set by `state/theme-presenter.ts`. Views never read the theme. Components that need it (Pierre, Sonner) receive it as a prop from an owning host.
+- **Feature `.css` files:** allowed for keyframes (`@animate-*`), third-party selectors (xterm/streamdown internals, `::highlight`), `@starting-style`, and global layout rules that span multiple units (`body.resizing`). Feature `.css` files are imported by `index.css`, not by views. Raw hex, `rgb()`, `oklch()` and arbitrary pixel values stay in feature `.css` only; move new tokens to `@theme` in `index.css`.
 
 ## Testing
 
@@ -641,11 +642,12 @@ export function createApp(): ComponentType {
 - Transport call, DOM listener, clipboard, or timer? Presenter method (arrow), started and stopped in the presenter.
 - Own-store pure one-liner? The presenter may assign the field. Injected store? Call a method.
 - View takes a model when the owner would only unwrap fields. Formatted or derived values come as primitives from the owning store.
-- New presenter → trailing `log: Log` constructor parameter. `log.action` in intent handlers, `log.reaction` for reactions, `log.warn` on caught errors. Never `console`.
+- New presenter → trailing `log: Log` constructor parameter. Methods are `handleX` for view callbacks (e.g. `handleSave`), verbs for others (e.g. `start`, `attachScroll`). `log.action` in intent handlers, `log.reaction` for reactions, `log.warn` on caught errors. Never `console`.
+- Row-level state in lists? State lives on the list owner's unit, not the row. Row creates can be assemble (element-returning, mapped by the owner), or owning component-returning creates. Do not build a store per row.
 - Global keyboard shortcut? Register a command in `shared.commands`. Do not add a window-level `keydown` listener in a feature. An element's own `onKeyDown` (a card or a field handling its keys while it has focus) is a view prop and is fine.
 - A hook in a view? Stop. Move the state to a store, the effect to a presenter, the ref to a callback ref, the context to props.
-- Styling: Tailwind classes plus `cn()`. Spacing from the scale. Colours from tokens. No arbitrary values, no template-built classes, no CSS modules.
-- Guard first, happy path last. Same outcome, one condition.
+- Styling: Tailwind classes plus `cn()`. Spacing from the scale. Colours from tokens (`white/NN` on dark-only, no hex/rgb/oklch/named). No arbitrary values, no template-built classes, no CSS modules.
+- Guard first, happy path last. Same outcome, one condition. Rule getters: guard-then-`return true`, not `return x !== ""`.
 - Test per the Testing section. Not `create.tsx`.
 
 ## Updating these guidelines
