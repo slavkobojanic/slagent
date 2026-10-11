@@ -54,6 +54,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # VS Code's build needs Node 24; the app build goes back to Node 22 right after.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+
+      - name: Build the editor server
+        env:
+          # Lets the build download VS Code's bundled debugger extensions without GitHub's anonymous rate limit.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./vendor/vscode-server/build.sh
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - run: pnpm typecheck
 
       - name: Build slagent.app

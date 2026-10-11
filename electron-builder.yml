@@ -15,9 +15,13 @@ files:
   - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
   # The iOS app's Xcode project and web bundle.
+  # The editor server is shipped as an extra resource below, not inside the app archive.
+  - "!vendor/**"
   - "!ios/**"
   - "!out/mobile/**"
   - "!{capacitor.config.ts,vite.mobile.config.ts}"
+# Copies the editor's VS Code server into the app before it is signed; see the script for why.
+afterPack: scripts/after-pack.cjs
 extraResources:
   - from: resources/slagent.app
     to: slagent.app
