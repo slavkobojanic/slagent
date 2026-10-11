@@ -44,6 +44,9 @@ export class API implements SlagentApi {
   readonly readFile: SlagentApi["readFile"]
   readonly writeFile: SlagentApi["writeFile"]
   readonly listDirectory: SlagentApi["listDirectory"]
+  readonly getEditorUrl: SlagentApi["getEditorUrl"]
+  readonly openEditorFile: SlagentApi["openEditorFile"]
+  readonly runEditorCommand: SlagentApi["runEditorCommand"]
   readonly setQueueMode: SlagentApi["setQueueMode"]
   readonly removeQueued: SlagentApi["removeQueued"]
   readonly editMessage: SlagentApi["editMessage"]
@@ -136,6 +139,9 @@ export class API implements SlagentApi {
     this.openInEditor = (path) => bridge.openInEditor(path)
     this.readFile = (path) => bridge.readFile(path)
     this.listDirectory = (path) => bridge.listDirectory(path)
+    this.getEditorUrl = () => bridge.getEditorUrl()
+    this.openEditorFile = (path) => bridge.openEditorFile(path)
+    this.runEditorCommand = (id) => bridge.runEditorCommand(id)
     this.writeFile = (path, contents, expectedMtime) => bridge.writeFile(path, contents, expectedMtime)
     this.setQueueMode = (id, mode) => bridge.setQueueMode(id, mode)
     this.removeQueued = (id) => bridge.removeQueued(id)

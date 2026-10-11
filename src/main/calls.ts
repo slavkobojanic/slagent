@@ -11,7 +11,8 @@ import type { EditorPrefs } from "../shared/editor"
 import type { AgentHost } from "./host"
 import { cliStatus, installCli, uninstallCli } from "./cli"
 import type { ComputerUse } from "./computer"
-import { openInEditor, readFileView, writeFileView } from "./editor"
+import { openInEditor, readFileView, resolveEditorFile, writeFileView } from "./editor"
+import { editorSettings, type VscodeServer } from "./vscode-server"
 import { listProjectDirectory } from "./list-directory"
 import type { McpManager } from "./mcp"
 import { parsePrompt } from "./prompt"
@@ -31,6 +32,7 @@ export type CallDeps = {
   host: () => AgentHost
   computer: () => ComputerUse | null
   mcp: () => McpManager | null
+  editor: () => VscodeServer | null
   terminal: () => TerminalManager | null
   // File pickers, permission panes and closing windows exist only in the
   // desktop app; the daemon answers the rest from anywhere.
@@ -62,6 +64,12 @@ export function createCallHandler(deps: CallDeps): CallHandler {
     const host = deps.host()
     const needDesktop = (): void => {
       if (!deps.desktop) throw new Error("Open the slagent app for this.")
+    }
+    const requireEditor = (): VscodeServer => {
+      needDesktop()
+      const editor = deps.editor()
+      if (!editor) throw new Error("The editor is not available.")
+      return editor
     }
     switch (method) {
       case "getSnapshot":
@@ -238,8 +246,22 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return uninstallCli()
       case "setPersonalisation":
         return host.setPersonalisation(params[0] as Personalisation)
-      case "setEditorPrefs":
-        return host.setEditorPrefs(params[0] as EditorPrefs)
+      case "setEditorPrefs": {
+        await host.setEditorPrefs(params[0] as EditorPrefs)
+        const editor = deps.editor()
+        if (editor?.started) await editor.post("/settings", { values: editorSettings(host.getEditorPrefs()) }).catch(() => undefined)
+        return
+      }
+      case "getEditorUrl":
+        return requireEditor().url(host.getCwd())
+      case "openEditorFile": {
+        const target = await resolveEditorFile(host.getCwd(), str(params[0]))
+        if (!target) return false
+        await requireEditor().post("/open", target)
+        return true
+      }
+      case "runEditorCommand":
+        return requireEditor().post("/command", { id: str(params[0]) })
       case "searchEditorExtensions":
         return host.searchEditorExtensions(str(params[0]))
       case "installEditorExtension":

@@ -1,0 +1,173 @@
+import { spawn as nodeSpawn, type ChildProcess } from "node:child_process"
+import { randomBytes } from "node:crypto"
+import { createServer } from "node:net"
+import { join } from "node:path"
+import type { EditorPrefs } from "../shared/editor"
+
+export type BridgeRoute = "/open" | "/command" | "/settings"
+
+// Where the built server lives: next to the app's resources when packaged, in vendor/ in development.
+export function distDir(options: { packaged: boolean; resourcesPath: string; appPath: string; platform: string; arch: string }): string {
+  if (options.packaged) return join(options.resourcesPath, "vscode-server")
+  return join(options.appPath, "vendor", "vscode-server", "dist", `${options.platform}-${options.arch}`)
+}
+
+export function serverArgs(options: { port: number; token: string; dataDir: string }): string[] {
+  return [
+    "out/server-main.js",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(options.port),
+    "--connection-token",
+    options.token,
+    "--server-data-dir",
+    options.dataDir,
+    "--extensions-dir",
+    join(options.dataDir, "extensions"),
+    "--accept-server-license-terms",
+    "--disable-telemetry",
+  ]
+}
+
+// The page the editor frame loads. The folder opens as the workbench's workspace.
+export function workbenchUrl(options: { port: number; token: string; folder: string }): string {
+  const url = new URL(`http://127.0.0.1:${options.port}/`)
+  url.searchParams.set("tkn", options.token)
+  if (options.folder) url.searchParams.set("folder", options.folder)
+  return url.toString()
+}
+
+// The settings slagent owns, in the workbench's own names.
+export function editorSettings(prefs: EditorPrefs): Record<string, unknown> {
+  return {
+    "editor.fontSize": prefs.fontSize,
+    "editor.tabSize": prefs.tabSize,
+    "editor.wordWrap": prefs.wordWrap ? "on" : "off",
+    "editor.minimap.enabled": prefs.minimap,
+  }
+}
+
+export type VscodeServerDeps = {
+  dist: string
+  dataDir: string
+  // Applied by the bridge when it starts, so the first paint already has the user's settings.
+  settings?: () => Record<string, unknown>
+  spawn?: (command: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv }) => ChildProcess
+  freePort?: () => Promise<number>
+  fetch?: typeof fetch
+  token?: () => string
+  timeoutMs?: number
+  bridgeTimeoutMs?: number
+}
+
+export function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.once("error", reject)
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address()
+      server.close(() => (typeof address === "object" && address ? resolve(address.port) : reject(new Error("no port"))))
+    })
+  })
+}
+
+type Running = { port: number; token: string; bridgePort: number; bridgeToken: string; child: ChildProcess }
+
+// Runs the vendored VS Code server for the editor. It starts on first use, listens on loopback only,
+// and every request needs a random token; the bridge extension inside it has its own.
+export class VscodeServer {
+  private running: Promise<Running> | null = null
+
+  constructor(private readonly deps: VscodeServerDeps) {}
+
+  // The url for the editor frame, starting the server when it is not running yet.
+  async url(folder: string): Promise<string> {
+    const { port, token } = await this.start()
+    return workbenchUrl({ port, token, folder })
+  }
+
+  async post(route: BridgeRoute, body: Record<string, unknown>): Promise<void> {
+    const { bridgePort, bridgeToken } = await this.start()
+    const request = this.deps.fetch ?? fetch
+    // The bridge only starts listening once the workbench has connected, which can be after the
+    // server is up, so a refused connection is retried for a while.
+    const deadline = Date.now() + (this.deps.bridgeTimeoutMs ?? 30_000)
+    for (;;) {
+      let response: Response
+      try {
+        response = await request(`http://127.0.0.1:${bridgePort}${route}`, {
+          method: "POST",
+          headers: { "x-slagent-token": bridgeToken },
+          body: JSON.stringify(body),
+        })
+      } catch (error) {
+        if (Date.now() > deadline) throw error
+        await new Promise((resolve) => setTimeout(resolve, 300))
+        continue
+      }
+      if (!response.ok) throw new Error(`The editor refused the request (${response.status}).`)
+      return
+    }
+  }
+
+  get started(): boolean {
+    return this.running !== null
+  }
+
+  stop(): void {
+    const running = this.running
+    this.running = null
+    void running?.then(({ child }) => child.kill()).catch(() => undefined)
+  }
+
+  private start(): Promise<Running> {
+    if (this.running === null) {
+      this.running = this.launch().catch((error: unknown) => {
+        // A failed start can be tried again by the next request.
+        this.running = null
+        throw error
+      })
+    }
+    return this.running
+  }
+
+  private async launch(): Promise<Running> {
+    const pickPort = this.deps.freePort ?? freePort
+    const makeToken = this.deps.token ?? (() => randomBytes(24).toString("hex"))
+    const [port, bridgePort] = [await pickPort(), await pickPort()]
+    const token = makeToken()
+    const bridgeToken = makeToken()
+    const child = (this.deps.spawn ?? nodeSpawn)(join(this.deps.dist, "node"), serverArgs({ port, token, dataDir: this.deps.dataDir }), {
+      cwd: this.deps.dist,
+      env: { ...process.env, SLAGENT_BRIDGE_PORT: String(bridgePort), SLAGENT_BRIDGE_TOKEN: bridgeToken, SLAGENT_SETTINGS: JSON.stringify(this.deps.settings?.() ?? {}) },
+    })
+    const exited = new Promise<never>((_, reject) => {
+      child.once("error", (error) => reject(error))
+      child.once("exit", (code) => {
+        this.running = null
+        reject(new Error(`The editor server stopped (exit ${code ?? "unknown"}).`))
+      })
+    })
+    await Promise.race([this.waitUntilReady(port), exited]).catch((error: unknown) => {
+      child.kill()
+      throw error
+    })
+    return { port, token, bridgePort, bridgeToken, child }
+  }
+
+  private async waitUntilReady(port: number): Promise<void> {
+    const request = this.deps.fetch ?? fetch
+    const deadline = Date.now() + (this.deps.timeoutMs ?? 30_000)
+    for (;;) {
+      try {
+        const response = await request(`http://127.0.0.1:${port}/version`)
+        if (response.ok) return
+      } catch {
+        // Not listening yet.
+      }
+      if (Date.now() > deadline) throw new Error("The editor server did not start in time.")
+      await new Promise((resolve) => setTimeout(resolve, 150))
+    }
+  }
+}
