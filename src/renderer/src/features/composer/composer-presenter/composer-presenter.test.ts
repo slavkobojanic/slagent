@@ -134,7 +134,7 @@ function harness(meta: AppMeta = openMeta, log: Log = nullLog(), touch = false) 
   const suggestions = new SuggestionsStore()
   const suggestionsPresenter = new SuggestionsPresenter(suggestions, history, api, window, nullLog())
   const onBuiltin = vi.fn()
-  const presenter = new ComposerPresenter(store, new PromptHistoryPresenter(history, window, nullLog()), suggestionsPresenter, attachments, reviewPresenter, api, commands, port, window, log, onBuiltin)
+  const presenter = new ComposerPresenter(store, new PromptHistoryPresenter(history, window, nullLog()), suggestionsPresenter, attachments, reviewPresenter, api, commands, port, window, onBuiltin, log)
   return { mirror, review, reviewPresenter, store, history, suggestions, suggestionsPresenter, attachments, attachmentStore, api, commands, port, presenter, onBuiltin }
 }
 

@@ -15,7 +15,10 @@ export class PermissionsStore {
     if (this.permissions === null) {
       return true
     }
-    return !this.permissions.accessibility || !this.permissions.screenRecording
+    if (this.permissions.accessibility && this.permissions.screenRecording) {
+      return false
+    }
+    return true
   }
 
   setPermissions(value: ComputerPermissions | null) {

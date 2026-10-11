@@ -57,11 +57,17 @@ export class TerminalStore {
   }
 
   get canSplit(): boolean {
-    return this.open && this.activeId !== null && !this.busy
+    if (!this.open || this.activeId === null || this.busy) {
+      return false
+    }
+    return true
   }
 
   get canRename(): boolean {
-    return this.open && this.activeId !== null
+    if (!this.open || this.activeId === null) {
+      return false
+    }
+    return true
   }
 
   // Every tab that shares the active tab's group, in tab order; the drawer

@@ -15,7 +15,10 @@ export class AboutStore {
   }
 
   get canInstall(): boolean {
-    return this.readyVersion !== null && !this.installing
+    if (this.readyVersion === null || this.installing) {
+      return false
+    }
+    return true
   }
 
   setVersion(version: string | null) {

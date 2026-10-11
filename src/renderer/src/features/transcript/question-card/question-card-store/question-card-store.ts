@@ -16,7 +16,10 @@ export function emptyDraft(): QuestionDraft {
 }
 
 function isComplete(draft: QuestionDraft): boolean {
-  return draft.selected.length > 0 || draft.other.trim() !== ""
+  if (draft.selected.length > 0 || draft.other.trim() !== "") {
+    return true
+  }
+  return false
 }
 
 function clampFrameHeight(height: number): number {

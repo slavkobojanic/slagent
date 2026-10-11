@@ -9,7 +9,10 @@ export class AppCloseStore {
   }
 
   get canConfirm(): boolean {
-    return !this.busy
+    if (this.busy) {
+      return false
+    }
+    return true
   }
 
   setOpen(value: boolean) {

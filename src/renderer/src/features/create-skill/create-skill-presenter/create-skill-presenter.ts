@@ -5,7 +5,7 @@ import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { API } from "@/ipc/api"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
-import type { CreateSkillStore } from "../create-skill-store/create-skill-store"
+import type { CreateSkillStore } from "./create-skill-store/create-skill-store"
 
 // A skill folder name: kebab-case, no dots or slashes, so the path stays inside the skills directory.
 export function isValidSkillName(name: string): boolean {

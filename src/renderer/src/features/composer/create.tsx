@@ -71,8 +71,8 @@ export function createComposer({
     commandRegistry,
     composerPort,
     window,
-    log,
     onBuiltin,
+    log,
   )
 
   const RunStatus = createRunStatus({ api, window, runStore, log: log.child("run-status") })

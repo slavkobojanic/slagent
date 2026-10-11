@@ -49,8 +49,8 @@ export class ComposerPresenter {
     private readonly commandRegistry: CommandRegistry,
     private readonly composerPort: ComposerPort,
     private readonly window: Window,
+    private readonly onBuiltin: BuiltinRunner | undefined,
     private readonly log: Log,
-    private readonly onBuiltin?: BuiltinRunner,
   ) {}
 
   // A dialog or menu keeps the focus, so mounting only takes it when none is open.

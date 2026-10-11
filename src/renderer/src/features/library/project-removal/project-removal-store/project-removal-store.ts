@@ -15,10 +15,10 @@ export class ProjectRemovalStore {
   }
 
   get confirmed(): boolean {
-    if (this.target === null) {
+    if (this.target === null || this.typed !== this.target.name) {
       return false
     }
-    return this.typed === this.target.name
+    return true
   }
 
   get canConfirm(): boolean {

@@ -27,11 +27,17 @@ export class ConnectSettingsStore {
   }
 
   get canEnable(): boolean {
-    return !this.busy && this.daemon?.installed === false
+    if (this.busy || this.daemon?.installed !== false) {
+      return false
+    }
+    return true
   }
 
   get canDisable(): boolean {
-    return !this.busy && this.daemon?.installed === true
+    if (this.busy || this.daemon?.installed !== true) {
+      return false
+    }
+    return true
   }
 
   setDaemon(status: DaemonStatus) {
