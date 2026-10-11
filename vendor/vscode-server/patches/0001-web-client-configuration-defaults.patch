@@ -1,0 +1,13 @@
+diff --git a/src/vs/server/node/webClientServer.ts b/src/vs/server/node/webClientServer.ts
+index ebbfe1c5..3a1126c4 100644
+--- a/src/vs/server/node/webClientServer.ts
++++ b/src/vs/server/node/webClientServer.ts
+@@ -423,6 +423,8 @@ export class WebClientServer {
+ 			enabledExtensionProposedApi: this._environmentService.args['enable-proposed-api'],
+ 			folderUri: resolveWorkspaceURI(this._environmentService.args['default-folder']),
+ 			workspaceUri: resolveWorkspaceURI(this._environmentService.args['default-workspace']),
++			// slagent: lets product.json ship default settings to the web workbench.
++			configurationDefaults: this._productService.configurationDefaults,
+ 			productConfiguration,
+ 			callbackRoute: callbackRoute
+ 		};

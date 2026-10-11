@@ -1,0 +1,15 @@
+diff --git a/build/lib/copilot.ts b/build/lib/copilot.ts
+index 69375085..af06f8a7 100644
+--- a/build/lib/copilot.ts
++++ b/build/lib/copilot.ts
+@@ -270,7 +270,9 @@ export function prepareBuiltInCopilotRipgrepShim(platform: string, arch: string,
+ 	const copilotBase = path.join(extensionNodeModules, '@github', 'copilot');
+ 	const copilotSdkBase = path.join(copilotBase, 'sdk');
+ 	if (!fs.existsSync(copilotSdkBase)) {
+-		throw new Error(`[prepareBuiltInCopilotRipgrepShim] Copilot SDK directory not found at ${copilotSdkBase}`);
++		// slagent: the Copilot extension is not part of this distribution.
++		console.warn(`[prepareBuiltInCopilotRipgrepShim] Copilot SDK directory not found at ${copilotSdkBase}, skipping`);
++		return;
+ 	}
+ 	materializeBuiltInCopilotSdkPlatformFiles(copilotPackagePlatformArch, tgrepPlatformArch, copilotBase, appNodeModulesDir, options);
+ 	pruneNonTargetCopilotSdkPrebuilds(copilotPackagePlatformArch, path.join(copilotSdkBase, 'prebuilds'), copilotPlatforms);

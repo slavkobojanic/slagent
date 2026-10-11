@@ -1,0 +1,28 @@
+diff --git a/src/vs/code/browser/workbench/workbench.html b/src/vs/code/browser/workbench/workbench.html
+index f5ab37af..98b1f7f7 100644
+--- a/src/vs/code/browser/workbench/workbench.html
++++ b/src/vs/code/browser/workbench/workbench.html
+@@ -89,6 +89,23 @@
+ 		const baseUrl = new URL(document.getElementById('vscode-workbench-web-base-url').getAttribute('data-settings'), window.location.origin).toString();
+ 		globalThis._VSCODE_FILE_ROOT = baseUrl + '/out/';
+ 	</script>
++	<script nonce="{{WORKBENCH_SCRIPT_NONCE}}">
++		// slagent: the host app that frames this workbench restyles it by posting CSS.
++		// Only the parent frame is listened to.
++		(function () {
++			if (window.parent === window) { return; }
++			const style = document.createElement('style');
++			style.id = 'slagent-theme';
++			document.head.appendChild(style);
++			window.addEventListener('message', function (event) {
++				const data = event.data;
++				if (event.source === window.parent && data && data.type === 'slagent-css' && typeof data.css === 'string') {
++					style.textContent = data.css;
++				}
++			});
++			window.parent.postMessage({ type: 'slagent-ready' }, '*');
++		})();
++	</script>
+ 	<script nonce="{{WORKBENCH_SCRIPT_NONCE}}">
+ 		performance.mark('code/willLoadWorkbenchMain');
+ 	</script>
