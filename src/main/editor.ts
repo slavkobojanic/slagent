@@ -1,6 +1,7 @@
 import { open, stat } from "node:fs/promises"
 import { isAbsolute, relative, resolve, sep } from "node:path"
-import type { FileView } from "../shared/types"
+import type { FileView, WriteFileResult } from "../shared/types"
+import { writeProjectFile } from "./write-file"
 import { app, shell } from "electron"
 
 // Editors that open file:line from a URL. The first one installed wins.
@@ -42,10 +43,12 @@ export async function readFileView(cwd: string, raw: string): Promise<FileView |
   const file = resolveTarget(cwd, target.path)
   if (!file) return null
   let size = 0
+  let mtime = 0
   try {
     const info = await stat(file)
     if (!info.isFile()) return null
     size = info.size
+    mtime = info.mtimeMs
   } catch {
     return null
   }
@@ -68,9 +71,17 @@ export async function readFileView(cwd: string, raw: string): Promise<FileView |
     line: target.line ?? null,
     contents: binary ? "" : bytes.toString("utf8"),
     size,
+    mtime,
     binary,
     truncated: size > VIEW_LIMIT,
   }
+}
+
+export async function writeFileView(cwd: string, raw: string, contents: string, expectedMtime: number): Promise<WriteFileResult> {
+  const target = parseTarget(raw)
+  const file = target.path ? resolveTarget(cwd, target.path) : null
+  if (!file) return { ok: false, reason: "not-file", message: "That path is not a file." }
+  return writeProjectFile(cwd, file, contents, expectedMtime)
 }
 
 // Returns false when the path is not a file in or under cwd, so callers can

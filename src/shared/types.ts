@@ -623,9 +623,14 @@ export type FileView = {
   line: number | null
   contents: string
   size: number
+  mtime: number
   binary: boolean
   truncated: boolean
 }
+
+export type WriteFileResult =
+  | { ok: true; mtime: number; size: number }
+  | { ok: false; reason: "outside-project" | "not-file" | "conflict" | "failed"; message: string; mtime?: number }
 
 export type ModelChange = {
   applied: boolean
@@ -689,6 +694,7 @@ export type SlagentApi = {
   openExternal: (url: string) => Promise<void>
   openInEditor: (path: string) => Promise<boolean>
   readFile: (path: string) => Promise<FileView | null>
+  writeFile: (path: string, contents: string, expectedMtime: number) => Promise<WriteFileResult>
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   editMessage: (id: string, text: string) => Promise<void>

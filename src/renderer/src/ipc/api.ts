@@ -42,6 +42,7 @@ export class API implements SlagentApi {
   readonly openExternal: SlagentApi["openExternal"]
   readonly openInEditor: SlagentApi["openInEditor"]
   readonly readFile: SlagentApi["readFile"]
+  readonly writeFile: SlagentApi["writeFile"]
   readonly setQueueMode: SlagentApi["setQueueMode"]
   readonly removeQueued: SlagentApi["removeQueued"]
   readonly editMessage: SlagentApi["editMessage"]
@@ -128,6 +129,7 @@ export class API implements SlagentApi {
     this.openExternal = (url) => bridge.openExternal(url)
     this.openInEditor = (path) => bridge.openInEditor(path)
     this.readFile = (path) => bridge.readFile(path)
+    this.writeFile = (path, contents, expectedMtime) => bridge.writeFile(path, contents, expectedMtime)
     this.setQueueMode = (id, mode) => bridge.setQueueMode(id, mode)
     this.removeQueued = (id) => bridge.removeQueued(id)
     this.editMessage = (id, text) => bridge.editMessage(id, text)
