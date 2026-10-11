@@ -1,13 +1,16 @@
 diff --git a/src/vs/server/node/webClientServer.ts b/src/vs/server/node/webClientServer.ts
-index ebbfe1c5..3a1126c4 100644
+index ebbfe1c5..967d8a3a 100644
 --- a/src/vs/server/node/webClientServer.ts
 +++ b/src/vs/server/node/webClientServer.ts
-@@ -423,6 +423,8 @@ export class WebClientServer {
+@@ -423,6 +423,11 @@ export class WebClientServer {
  			enabledExtensionProposedApi: this._environmentService.args['enable-proposed-api'],
  			folderUri: resolveWorkspaceURI(this._environmentService.args['default-folder']),
  			workspaceUri: resolveWorkspaceURI(this._environmentService.args['default-workspace']),
 +			// slagent: lets product.json ship default settings to the web workbench.
 +			configurationDefaults: this._productService.configurationDefaults,
++			// slagent: the workbench runs in a cross-site frame where the token cookie is not kept, so it
++			// gets the token here. This page is only served to a client that already has the token.
++			connectionToken: this._connectionToken.type !== ServerConnectionTokenType.None ? this._connectionToken.value : undefined,
  			productConfiguration,
  			callbackRoute: callbackRoute
  		};
