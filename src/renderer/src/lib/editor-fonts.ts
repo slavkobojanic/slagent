@@ -1,3 +1,4 @@
+import interUrl from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url"
 import geistUrl from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url"
 import monaspaceUrl from "@/assets/fonts/MonaspaceNeonVar.woff2?url"
 
@@ -9,6 +10,7 @@ export type EditorFont = {
 
 const FONTS = [
   { family: "Geist Variable", weight: "100 900", url: geistUrl },
+  { family: "Inter Variable", weight: "100 900", url: interUrl },
   { family: "Monaspace Neon Var", weight: "100 800", url: monaspaceUrl },
 ]
 
