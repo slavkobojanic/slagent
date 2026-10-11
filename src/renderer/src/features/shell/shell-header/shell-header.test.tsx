@@ -16,6 +16,7 @@ const base: ShellHeaderProps = {
   ChatTitle: slot("chat title"),
   UpdateButton: slot("update button"),
   ModelButton: slot("model button"),
+  EditorToggle: slot("editor toggle"),
   PanelToggle: slot("panel toggle"),
   SettingsButton: slot("settings button"),
 }

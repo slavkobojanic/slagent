@@ -72,6 +72,11 @@ export class LayoutPresenter {
     }
   }
 
+  toggleEditorMode = () => {
+    this.log.action("toggle-editor-mode", { on: !this.store.editorMode })
+    this.store.setEditorMode(!this.store.editorMode)
+  }
+
   handleResizeReset = (edge: ResizeEdge) => {
     this.log.action("reset-size", { edge })
     this.store.setSize(edge, this.clamp(edge, LAYOUT_EDGES[edge].fallback))

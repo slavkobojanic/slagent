@@ -9,11 +9,12 @@ export type ShellHeaderProps = {
   ChatTitle: ComponentType
   UpdateButton: ComponentType
   ModelButton: ComponentType
+  EditorToggle: ComponentType
   PanelToggle: ComponentType
   SettingsButton: ComponentType
 }
 
-export function ShellHeader({ macos, SidebarToggle, ProjectMenu, ChatTitle, UpdateButton, ModelButton, PanelToggle, SettingsButton }: ShellHeaderProps) {
+export function ShellHeader({ macos, SidebarToggle, ProjectMenu, ChatTitle, UpdateButton, ModelButton, EditorToggle, PanelToggle, SettingsButton }: ShellHeaderProps) {
   return (
     <header className={cn("drag flex h-12 shrink-0 items-center gap-2 border-b border-foreground/10 pr-3", macos ? "pl-20" : "pl-4")}>
       <SidebarToggle />
@@ -24,6 +25,7 @@ export function ShellHeader({ macos, SidebarToggle, ProjectMenu, ChatTitle, Upda
       <div className="no-drag ml-auto flex items-center gap-1">
         <UpdateButton />
         <ModelButton />
+        <EditorToggle />
         <PanelToggle />
         <SettingsButton />
       </div>
