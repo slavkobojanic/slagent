@@ -4,7 +4,7 @@ slagent's editor is VS Code itself: the open source web server from [microsoft/v
 (`reh-web`), built here with a small patch set and shown in an iframe in editor mode.
 
 - `VERSION` the upstream tag we build.
-- `patches/` changes to upstream source, applied in order by `build.sh`. Keep them small; each one is a rebase cost on upgrade.
+- `patches/` changes to upstream source, applied in order by `build.sh`. Keep them small; each one is a rebase cost on upgrade. Four today: default settings and connection token for the web client, skipping the Copilot post-step, the host page CSS and font channel, and the Open VSX resource proxy host fix.
 - `product.overrides.json` Open VSX gallery and default settings (hidden chrome, no AI features, no telemetry).
 - `extensions/slagent-bridge/` built-in extension the app uses to open files, run view commands and update settings.
 - `finish.mjs` merges the overrides, removes extensions we do not ship and adds the bridge.
