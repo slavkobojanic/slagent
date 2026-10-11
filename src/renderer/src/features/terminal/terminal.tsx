@@ -1,6 +1,6 @@
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactElement } from "react"
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
 import { ResizeHandle } from "@/components/resize-handle"
+import { Pane } from "./pane"
 import "./terminal.css"
 
 export type TerminalPane = {
@@ -124,55 +124,3 @@ function shareOf(pane: TerminalPane, panes: TerminalPane[], splitRatio: (groupId
   return `${splitRatio(pane.groupId) * 100}%`
 }
 
-type PaneProps = {
-  pane: TerminalPane
-  previous: TerminalPane | undefined
-  share: string | undefined
-  onSelect: (id: string) => void
-  onMenuSplit: (id: string) => void
-  onMenuRename: (id: string) => void
-  onMenuClose: (id: string) => void
-  onDividerStart: (groupId: string, event: ReactPointerEvent) => void
-}
-
-function Pane({ pane, previous, share, onSelect, onMenuSplit, onMenuRename, onMenuClose, onDividerStart }: PaneProps) {
-  const grouped = pane.groupId !== null && previous !== undefined && previous.groupId === pane.groupId
-  return (
-    <>
-      {grouped && previous !== undefined ? <Divider groupId={pane.groupId ?? ""} onDividerStart={onDividerStart} /> : null}
-      <div
-        data-pane={pane.id}
-        className="relative h-full min-h-0 min-w-0"
-        style={share === undefined ? { flex: "1 1 0%" } : { flex: `0 0 ${share}` }}
-        onPointerDown={() => onSelect(pane.id)}
-      >
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <div className="h-full min-h-0">{pane.surface}</div>
-          </ContextMenuTrigger>
-          <ContextMenuContent>
-            <ContextMenuItem onSelect={() => onMenuSplit(pane.id)}>Split right</ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem onSelect={() => onMenuRename(pane.id)}>Rename</ContextMenuItem>
-            <ContextMenuItem variant="destructive" onSelect={() => onMenuClose(pane.id)}>
-              Close
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      </div>
-    </>
-  )
-}
-
-function Divider({ groupId, onDividerStart }: { groupId: string; onDividerStart: (groupId: string, event: ReactPointerEvent) => void }) {
-  return (
-    <div
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Resize split"
-      title="Drag to resize"
-      onPointerDown={(event) => onDividerStart(groupId, event)}
-      className="group relative z-10 w-px shrink-0 cursor-col-resize touch-none bg-white/10 before:absolute before:inset-y-0 before:-left-1 before:-right-1 before:content-[''] hover:bg-white/25"
-    />
-  )
-}
