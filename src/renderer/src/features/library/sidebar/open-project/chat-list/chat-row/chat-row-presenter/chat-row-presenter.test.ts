@@ -38,7 +38,7 @@ describe("ChatRowPresenter", () => {
       new LibraryStore(),
       new RunStore(),
       api,
-      new PanelPresenter(new PanelStore(), api, nullLog()),
+      new PanelPresenter(new PanelStore(), api, null, nullLog()),
       new ReviewPresenter(new ReviewStore(), nullLog()),
       nullLog(),
     )

@@ -22,6 +22,8 @@
     "editor.minimap.enabled": false,
     "breadcrumbs.enabled": false,
     "telemetry.telemetryLevel": "off",
-    "update.mode": "none"
+    "update.mode": "none",
+    "workbench.editor.enablePreview": false,
+    "editor.fontLigatures": true
   }
 }

@@ -1,7 +1,7 @@
 import { makeAutoObservable } from "mobx"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
-import type { PanelStore, RightTab } from "@/state/panel/panel-store/panel-store"
+import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 
 export class ChangesStore {
   constructor(
@@ -23,11 +23,8 @@ export class ChangesStore {
     return this.plan !== null
   }
 
-  // The panel store keeps the tab the user picked; a file or plan tab with nothing behind it shows the changes.
-  get showing(): RightTab {
-    if (this.panelStore.tab === "file" && this.panelStore.viewedFile !== null) {
-      return "file"
-    }
+  // The panel store keeps the tab the user picked; a plan tab with nothing behind it shows the changes.
+  get showing(): "changes" | "plan" {
     if (this.panelStore.tab === "plan" && this.hasPlan) {
       return "plan"
     }
@@ -39,14 +36,6 @@ export class ChangesStore {
       return false
     }
     return true
-  }
-
-  get fileTab(): { name: string; path: string } | null {
-    const file = this.panelStore.viewedFile
-    if (file === null) {
-      return null
-    }
-    return { name: file.path.split("/").pop() ?? file.path, path: file.path }
   }
 
   get hasFolder(): boolean {

@@ -9,10 +9,8 @@ export function createChangesTabs({ changesStore, changesPresenter }: { changesS
     return (
       <ChangesTabs
         showing={changesStore.showing}
-        file={changesStore.fileTab}
         hasPlan={changesStore.hasPlan}
         onTab={changesPresenter.handleTab}
-        onCloseFile={changesPresenter.handleCloseFile}
         onClose={changesPresenter.handleClose}
       />
     )

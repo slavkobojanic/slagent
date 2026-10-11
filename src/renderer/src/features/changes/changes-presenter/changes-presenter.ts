@@ -58,12 +58,6 @@ export class ChangesPresenter {
     this.panelPresenter.setOpen(false)
   }
 
-  handleCloseFile = () => {
-    this.log.action("close-file", { path: this.panelStore.viewedFile?.path })
-    this.panelStore.setViewedFile(null)
-    this.panelPresenter.selectTab("changes")
-  }
-
   handleResizeStart = (event: Pick<PointerEvent, "button" | "clientX" | "clientY" | "preventDefault">) => {
     this.layoutPresenter.handleResizeStart("diff", event)
   }

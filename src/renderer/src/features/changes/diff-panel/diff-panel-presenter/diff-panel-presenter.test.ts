@@ -1,6 +1,6 @@
 import { toast } from "sonner"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { makeFile, makeStatus, makeTranscript, SAMPLE_DIFF } from "@/features/changes/changes-fixtures"
+import { makeStatus, makeTranscript, SAMPLE_DIFF } from "@/features/changes/changes-fixtures"
 import { ChangesStore } from "@/features/changes/changes-store/changes-store"
 import { DiffPanelStore } from "@/features/changes/diff-panel/diff-panel-store/diff-panel-store"
 import type { API } from "@/ipc/api"
@@ -26,7 +26,7 @@ function setup(log: Log = nullLog()) {
   const store = new DiffPanelStore()
   const api = createMockInstance<API>(["gitStatus", "gitDiff", "gitCommit", "gitPush", "gitPullRequest", "gitCommitMessage", "openExternal", "onEvent"])
   api.onEvent.mockReturnValue(() => undefined)
-  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), nullLog())
+  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), null, nullLog())
   vi.spyOn(panelPresenter, "openFile").mockResolvedValue(undefined)
   const review = new ReviewPresenter(new ReviewStore(), nullLog())
   vi.spyOn(review, "addDiffComment")
@@ -72,18 +72,6 @@ describe("DiffPanelPresenter", () => {
       await flush()
 
       expect(api.gitStatus).toHaveBeenCalledTimes(1)
-    })
-
-    it("can leave the diff alone when the panel opens on the file tab with a file open", async () => {
-      const { panel, api, presenter } = parts
-      presenter.start()
-
-      panel.setViewedFile(makeFile())
-      panel.setTab("file")
-      panel.setOpen(true)
-      await flush()
-
-      expect(api.gitStatus).not.toHaveBeenCalled()
     })
 
     it("can reload the diff when a run ends while the diff is on screen", async () => {

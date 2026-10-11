@@ -60,7 +60,7 @@ export function createShellHeader({
   const UpdateButton = createUpdateButton({ api, updateButtonStore, log: log.child("update-button") })
   const ModelButton = createModelButton({ metaStore, runStore, overlayStore, log: log.child("model-button") })
   const EditorToggle = createEditorToggle({ metaStore, layoutStore, layoutPresenter })
-  const PanelToggle = createPanelToggle({ api, metaStore, panelStore, panelPresenter, log: log.child("panel-toggle") })
+  const PanelToggle = createPanelToggle({ api, metaStore, panelStore, panelPresenter, layoutStore, log: log.child("panel-toggle") })
   const SettingsButton = createSettingsButton({ mcpStore, overlayStore, log: log.child("settings-button") })
   const macos = api.platform === "darwin"
 

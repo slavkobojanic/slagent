@@ -64,7 +64,7 @@ export function createTabletPanelBodies({
     return plan ? <PlanDocument plan={plan} /> : <Empty text="No plan yet. Ask the agent to plan and it appears here." />
   })
 
-  const FileViewer = createFileViewer({ api, window, panelStore, themeStore, editorPort: null, log: log.child("file-viewer") })
+  const FileViewer = createFileViewer({ api, window, panelStore, themeStore, log: log.child("file-viewer") })
   const Source = observer(function TabletSourceHost() {
     return panelStore.viewedFile === null ? <Empty text="Tap a file in the diff or a path in the chat to read it here." /> : <FileViewer />
   })

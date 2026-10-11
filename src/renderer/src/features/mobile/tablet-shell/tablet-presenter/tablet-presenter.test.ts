@@ -9,7 +9,7 @@ import { createMockInstance } from "@/test/create-mock-instance"
 function setup() {
   const panelStore = new PanelStore()
   const api = createMockInstance<API>(["readFile"])
-  const panelPresenter = new PanelPresenter(panelStore, api, nullLog())
+  const panelPresenter = new PanelPresenter(panelStore, api, null, nullLog())
   const presenter = new TabletPresenter(panelStore, panelPresenter, nullLog())
   return { panelStore, api, presenter }
 }

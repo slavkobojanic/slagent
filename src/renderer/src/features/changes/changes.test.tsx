@@ -8,7 +8,6 @@ function panel(overrides: Partial<ChangesProps> = {}): ChangesProps {
     showing: "changes",
     Tabs: () => <div role="tablist">Tabs</div>,
     DiffPanel: () => <p>The diff</p>,
-    FileViewer: () => <p>File body</p>,
     PlanDocument: () => <p>The plan</p>,
     onResizeStart: vi.fn(),
     onResizeReset: vi.fn(),
@@ -24,7 +23,6 @@ describe("Changes", () => {
     expect(markup).toContain('role="tablist"')
     expect(markup).toContain("The diff")
     expect(markup).not.toContain("The plan")
-    expect(markup).not.toContain("File body")
   })
 
   it("can render the resize handle inside the aside, before the tab strip", () => {
@@ -44,13 +42,6 @@ describe("Changes", () => {
     const markup = viewMarkup(<Changes {...panel({ showing: "plan" })} />)
 
     expect(markup).toContain("The plan")
-    expect(markup).not.toContain("The diff")
-  })
-
-  it("can show the open file while the file tab shows", () => {
-    const markup = viewMarkup(<Changes {...panel({ showing: "file" })} />)
-
-    expect(markup).toContain("File body")
     expect(markup).not.toContain("The diff")
   })
 })

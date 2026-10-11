@@ -4,7 +4,6 @@ import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { RunStore } from "@/mirror/run-store/run-store"
-import type { EditorPort } from "@/state/editor-port/editor-port"
 import type { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import type { LayoutPresenter } from "@/state/layout/layout-presenter/layout-presenter"
 import type { LayoutStore } from "@/state/layout/layout-store/layout-store"
@@ -18,7 +17,6 @@ import { ChangesPresenter } from "./changes-presenter/changes-presenter"
 import { ChangesStore } from "./changes-store/changes-store"
 import { createChangesTabs } from "./changes-tabs/create"
 import { createDiffPanel } from "./diff-panel/create"
-import { createFileViewer } from "./file-viewer/create"
 import { createPlanDocument } from "./plan-document/create"
 
 export function createChanges({
@@ -34,7 +32,6 @@ export function createChanges({
   reviewPresenter,
   themeStore,
   commandRegistry,
-  editorPort,
   log,
 }: {
   api: API
@@ -49,7 +46,6 @@ export function createChanges({
   reviewPresenter: ReviewPresenter
   themeStore: ThemeStore
   commandRegistry: CommandRegistry
-  editorPort: EditorPort
   log: Log
 }): ComponentType {
   const changesStore = new ChangesStore(panelStore, runStore, metaStore)
@@ -58,7 +54,6 @@ export function createChanges({
 
   const ChangesTabs = createChangesTabs({ changesStore, changesPresenter })
   const DiffPanel = createDiffPanel({ api, window, runStore, panelPresenter, reviewStore, reviewPresenter, themeStore, changesStore, log: log.child("diff-panel") })
-  const FileViewer = createFileViewer({ api, window, panelStore, themeStore, editorPort, log: log.child("file-viewer") })
   const PlanDocument = createPlanDocument({ changesStore })
 
   return observer(function ChangesHost() {
@@ -68,7 +63,6 @@ export function createChanges({
         showing={changesStore.showing}
         Tabs={ChangesTabs}
         DiffPanel={DiffPanel}
-        FileViewer={FileViewer}
         PlanDocument={PlanDocument}
         onResizeStart={changesPresenter.handleResizeStart}
         onResizeReset={changesPresenter.handleResizeReset}

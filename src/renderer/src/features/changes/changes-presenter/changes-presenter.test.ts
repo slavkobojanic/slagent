@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { makeFile, makeMeta } from "@/features/changes/changes-fixtures"
+import { makeMeta } from "@/features/changes/changes-fixtures"
 import { ChangesPresenter } from "./changes-presenter"
 import { ChangesStore } from "@/features/changes/changes-store/changes-store"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
@@ -17,7 +17,7 @@ function setup() {
   const panel = new PanelStore()
   const meta = new MetaStore()
   const store = new ChangesStore(panel, new RunStore(), meta)
-  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), nullLog())
+  const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), null, nullLog())
   vi.spyOn(panelPresenter, "selectTab")
   vi.spyOn(panelPresenter, "setOpen")
   const layout = new LayoutPresenter(new LayoutStore(), window, nullLog())
@@ -99,8 +99,7 @@ describe("ChangesPresenter", () => {
       const { meta, panel, panelPresenter, commands, presenter } = parts
       meta.setMeta(makeMeta("/work/app"))
       presenter.start()
-      panel.setViewedFile(makeFile())
-      panel.setTab("file")
+      panel.setTab("plan")
       panel.setOpen(true)
 
       commands.run("changes.toggle")
@@ -137,21 +136,6 @@ describe("ChangesPresenter", () => {
       presenter.handleClose()
 
       expect(panelPresenter.setOpen).toHaveBeenCalledWith(false)
-    })
-  })
-
-  describe("handleCloseFile", () => {
-    it("can forget the open file and go back to the changes tab without closing the panel", () => {
-      const { panel, panelPresenter, presenter } = parts
-      panel.setViewedFile(makeFile())
-      panel.setTab("file")
-      panel.setOpen(true)
-
-      presenter.handleCloseFile()
-
-      expect(panel.viewedFile).toBeNull()
-      expect(panelPresenter.selectTab).toHaveBeenCalledWith("changes")
-      expect(panelPresenter.setOpen).not.toHaveBeenCalled()
     })
   })
 

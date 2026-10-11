@@ -12,7 +12,7 @@ describe("PanelTogglePresenter", () => {
 
   beforeEach(() => {
     panelStore = new PanelStore()
-    presenter = new PanelTogglePresenter(panelStore, new PanelPresenter(panelStore, createMockInstance<API>([]), nullLog()), nullLog())
+    presenter = new PanelTogglePresenter(panelStore, new PanelPresenter(panelStore, createMockInstance<API>([]), null, nullLog()), nullLog())
   })
 
   describe("toggle", () => {
