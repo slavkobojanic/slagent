@@ -44,7 +44,21 @@ describe("LinkMenu", () => {
 
   it("reports a remembered copy when the box is checked first", () => {
     const onCopy = vi.fn()
-    render(<LinkMenu {...props({ onCopy })} />)
+    // The view is pure, so the test holds the remember value the way the owning create does.
+    let remember = false
+    const menu = () => (
+      <LinkMenu
+        {...props({
+          onCopy,
+          remember,
+          onRememberChange: (value) => {
+            remember = value
+            view.rerender(menu())
+          },
+        })}
+      />
+    )
+    const view = render(menu())
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Remember this choice" }))
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }))
@@ -54,7 +68,20 @@ describe("LinkMenu", () => {
 
   it("keeps the checkbox state while the menu stays open", () => {
     const onOpen = vi.fn()
-    render(<LinkMenu {...props({ onOpen })} />)
+    let remember = false
+    const menu = () => (
+      <LinkMenu
+        {...props({
+          onOpen,
+          remember,
+          onRememberChange: (value) => {
+            remember = value
+            view.rerender(menu())
+          },
+        })}
+      />
+    )
+    const view = render(menu())
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Remember this choice" }))
     expect(screen.getByRole("checkbox", { name: "Remember this choice" }).getAttribute("aria-checked")).toBe("true")

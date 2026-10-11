@@ -87,6 +87,10 @@ export class LinkPresenter {
     this.handleClose()
   }
 
+  handleRememberChange = (remember: boolean) => {
+    this.store.setRemember(remember)
+  }
+
   // The settings view changes the remembered decision without a menu open.
   setPreference = (preference: LinkPreference | null) => {
     this.remember(preference)
@@ -186,7 +190,7 @@ export class LinkPresenter {
     this.log.action("open-link-menu", { url })
     const x = Math.min(event.clientX, this.window.innerWidth - MENU_WIDTH)
     const y = Math.min(event.clientY, this.window.innerHeight - MENU_HEIGHT)
-    this.store.openMenu({ url, x: Math.max(0, x), y: Math.max(0, y) })
+    this.store.openMenu({ url, x: Math.max(0, x), y: Math.max(0, y), remember: false })
   }
 
   private remember = (preference: LinkPreference | null) => {

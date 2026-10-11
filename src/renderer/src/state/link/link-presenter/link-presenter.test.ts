@@ -100,7 +100,7 @@ describe("LinkPresenter", () => {
 
       expect(openExternal).not.toHaveBeenCalled()
       expect(event.defaultPrevented).toBe(true)
-      expect(store.menu).toEqual({ url: "https://example.com/docs", x: 0, y: 0 })
+      expect(store.menu).toEqual({ url: "https://example.com/docs", x: 0, y: 0, remember: false })
     })
 
     it("opens a web link in the browser when that decision is remembered", () => {
@@ -146,7 +146,7 @@ describe("LinkPresenter", () => {
 
       expect(openExternal).not.toHaveBeenCalled()
       expect(event.defaultPrevented).toBe(true)
-      expect(store.menu).toEqual({ url: "https://example.com/docs", x: 0, y: 0 })
+      expect(store.menu).toEqual({ url: "https://example.com/docs", x: 0, y: 0, remember: false })
     })
 
     it("ignores a right-click on anything but a web link", () => {
@@ -162,7 +162,7 @@ describe("LinkPresenter", () => {
     const url = "https://example.com/docs"
 
     beforeEach(() => {
-      store.openMenu({ url, x: 10, y: 10 })
+      store.openMenu({ url, x: 10, y: 10, remember: false })
     })
 
     it("can open the link and close the menu", () => {
@@ -238,7 +238,7 @@ describe("LinkPresenter", () => {
   describe("dismissal", () => {
     beforeEach(() => {
       document.body.innerHTML = '<div data-link-menu><button type="button">Open</button></div><p>elsewhere</p>'
-      store.openMenu({ url: "https://example.com/docs", x: 10, y: 10 })
+      store.openMenu({ url: "https://example.com/docs", x: 10, y: 10, remember: false })
     })
 
     it("closes on a pointerdown outside the menu", () => {

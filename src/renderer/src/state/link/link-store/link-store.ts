@@ -6,6 +6,8 @@ export type LinkMenu = {
   url: string
   x: number
   y: number
+  // The checkbox while the menu stays open: remembers the picked choice with the click that follows.
+  remember: boolean
 }
 
 // How a clicked web link resolves once the user has remembered a decision.
@@ -24,6 +26,11 @@ export class LinkStore {
 
   openMenu(menu: LinkMenu) {
     this.menu = menu
+  }
+
+  setRemember(remember: boolean) {
+    if (this.menu === null) return
+    this.menu.remember = remember
   }
 
   closeMenu() {
