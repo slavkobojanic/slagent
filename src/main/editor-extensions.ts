@@ -179,7 +179,7 @@ async function listFiles(dir: string, prefix = ""): Promise<string[]> {
   return found
 }
 
-export async function readInstalled(root: string, id: string, version: string): Promise<EditorExtensionPayload | null> {
+export async function readInstalled(root: string, id: string, version: string, serverUrl: string): Promise<EditorExtensionPayload | null> {
   if (!isExtensionId(id) || !isExtensionVersion(version)) return null
   const dir = extensionDir(root, id, version)
   try {
@@ -189,7 +189,7 @@ export async function readInstalled(root: string, id: string, version: string): 
   }
   const manifest = await readManifest(dir)
   const files = await listFiles(dir)
-  return { id, version, manifest, files, baseUrl: `slagent://ext/${id.toLowerCase()}/${version}` }
+  return { id, version, manifest, files, baseUrl: `${serverUrl}/${id.toLowerCase()}/${version}` }
 }
 
 export async function removeInstalled(root: string, id: string): Promise<void> {

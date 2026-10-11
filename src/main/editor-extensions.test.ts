@@ -179,26 +179,26 @@ describe("readInstalled and removeInstalled", () => {
   })
 
   it("can describe an installed extension for the editor", async () => {
-    const payload = await readInstalled(root, "vscodevim.vim", "1.2.3")
+    const payload = await readInstalled(root, "vscodevim.vim", "1.2.3", "http://localhost:9")
 
-    expect(payload).toMatchObject({ id: "vscodevim.vim", version: "1.2.3", baseUrl: "slagent://ext/vscodevim.vim/1.2.3" })
+    expect(payload).toMatchObject({ id: "vscodevim.vim", version: "1.2.3", baseUrl: "http://localhost:9/vscodevim.vim/1.2.3" })
     expect(payload?.files.sort()).toEqual(["out/web.js", "package.json", "themes/a.json"])
     expect(payload?.manifest.browser).toBe("./out/web.js")
   })
 
   it("can return null for an extension that is not installed", async () => {
-    expect(await readInstalled(root, "other.ext", "1.0.0")).toBeNull()
+    expect(await readInstalled(root, "other.ext", "1.0.0", "http://localhost:9")).toBeNull()
   })
 
   it("can return null for an id or version that could escape the folder", async () => {
-    expect(await readInstalled(root, "../x", "1.0.0")).toBeNull()
-    expect(await readInstalled(root, "vscodevim.vim", "../1")).toBeNull()
+    expect(await readInstalled(root, "../x", "1.0.0", "http://localhost:9")).toBeNull()
+    expect(await readInstalled(root, "vscodevim.vim", "../1", "http://localhost:9")).toBeNull()
   })
 
   it("can remove an installed extension", async () => {
     await removeInstalled(root, "vscodevim.vim")
 
-    expect(await readInstalled(root, "vscodevim.vim", "1.2.3")).toBeNull()
+    expect(await readInstalled(root, "vscodevim.vim", "1.2.3", "http://localhost:9")).toBeNull()
   })
 
   it("can ignore an invalid id when removing", async () => {

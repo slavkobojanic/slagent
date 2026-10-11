@@ -237,6 +237,14 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return host.setPersonalisation(params[0] as Personalisation)
       case "setEditorPrefs":
         return host.setEditorPrefs(params[0] as EditorPrefs)
+      case "searchEditorExtensions":
+        return host.searchEditorExtensions(str(params[0]))
+      case "installEditorExtension":
+        return host.installEditorExtension(str(params[0]))
+      case "uninstallEditorExtension":
+        return host.uninstallEditorExtension(str(params[0]))
+      case "readEditorExtension":
+        return host.readEditorExtension(str(params[0]))
       case "pickContextFiles": {
         needDesktop()
         return host.pickContextFiles()
