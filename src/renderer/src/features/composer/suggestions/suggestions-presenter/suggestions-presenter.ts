@@ -27,7 +27,7 @@ export class SuggestionsPresenter {
   private chatRequest = 0
   private commandRequest = 0
   // The command last chosen from the slash menu, wherever it sits in the box now.
-  private commandToken: string | null = null
+  private chosenCommand: SlashCommand | null = null
 
   constructor(
     private readonly store: SuggestionsStore,
@@ -158,12 +158,12 @@ export class SuggestionsPresenter {
   }
 
   reset = () => {
-    this.commandToken = null
+    this.chosenCommand = null
     this.store.resetAfterSend()
   }
 
   resetForChat = () => {
-    this.commandToken = null
+    this.chosenCommand = null
     this.store.resetForChat()
   }
 
@@ -200,7 +200,7 @@ export class SuggestionsPresenter {
     this.log.action("choose-command", { command: command.insert })
     const token = `${command.insert} `
     apply(`${text.slice(0, trigger.start)}${token}${text.slice(caret).trimStart()}`, trigger.start + token.length)
-    this.commandToken = command.insert
+    this.chosenCommand = command
     this.store.closeSlash()
     this.store.closeHash()
   }
@@ -208,19 +208,31 @@ export class SuggestionsPresenter {
   // Pi only runs a slash command from the start of the prompt, so a command chosen
   // mid-sentence moves to the front when the prompt is sent.
   hoistCommand = (text: string): string => {
-    const token = this.commandToken
-    if (token === null || !text.includes(token)) {
-      this.commandToken = null
+    const command = this.chosenCommand
+    if (command === null) {
+      return text
+    }
+    const token = command.insert
+    if (!text.includes(token)) {
+      this.chosenCommand = null
       return text
     }
     const start = text.indexOf(token)
+    // Already leading: nothing to move.
+    if (start === 0) {
+      const rest = text.slice(token.length).trim()
+      return rest === "" ? token : `${token} ${rest}`
+    }
     const before = text.slice(0, start)
     let after = text.slice(start + token.length)
-    // The token was inserted with a trailing space, so drop the doubled one.
-    if (/\s$/.test(before) && /^\s/.test(after)) {
+    // A model-facing command takes the token's place in the sentence, spaces and
+    // all. A builtin leaves nothing behind, so drop the doubled space its
+    // insertion left.
+    const word = command.kind === "builtin" ? "" : command.name
+    if (word === "" && /\s$/.test(before) && /^\s/.test(after)) {
       after = after.replace(/^\s/, "")
     }
-    const rest = `${before}${after}`.trim()
+    const rest = `${before}${word}${after}`.trim()
     return rest === "" ? token : `${token} ${rest}`
   }
 

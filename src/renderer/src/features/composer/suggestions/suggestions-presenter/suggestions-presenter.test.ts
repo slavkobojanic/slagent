@@ -11,6 +11,7 @@ const file: FileMatch = { path: "src/a.ts", name: "a.ts" }
 const other: FileMatch = { path: "src/ab.ts", name: "ab.ts" }
 const chat: ChatSearchResult = { projectId: "p1", projectName: "Work", chatId: "c1", title: "Plan", snippet: "", messageId: null, updatedAt: 1 }
 const command: SlashCommand = { name: "review", insert: "/review", description: "Review the diff", kind: "skill" }
+const builtin: SlashCommand = { name: "Create skill", insert: "#create-skill", description: "Turn the last exchange into a reusable skill", kind: "builtin" }
 
 function keyEvent(key: string, shiftKey = false): MenuKeyEvent {
   return { key, shiftKey, preventDefault: vi.fn() }
@@ -346,8 +347,24 @@ describe("SuggestionsPresenter", () => {
       const apply = vi.fn()
       presenter.choose(0, "please /re", 10, apply)
 
-      expect(presenter.hoistCommand("please /review fix the bug")).toBe("/review please fix the bug")
+      expect(presenter.hoistCommand("please /review fix the bug")).toBe("/review please review fix the bug")
       expect(presenter.hoistCommand("done")).toBe("done")
+    })
+
+    it("can hoist a command without leaving a hole in the sentence", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: { query: "rev", start: 9 } })
+      store.setCommands([command])
+      presenter.choose(0, "can you /rev", 13, vi.fn())
+
+      expect(presenter.hoistCommand("can you /review this?")).toBe("/review can you review this?")
+    })
+
+    it("can drop a builtin command from the sentence when hoisting it", () => {
+      store.setTriggers({ mention: null, chatMention: null, slash: null, hash: { query: "cre", start: 8 } })
+      store.setCommands([builtin])
+      presenter.choose(0, "please #cre", 13, vi.fn())
+
+      expect(presenter.hoistCommand("please #create-skill do it")).toBe("#create-skill please do it")
     })
 
     it("can hoist a command only once", () => {

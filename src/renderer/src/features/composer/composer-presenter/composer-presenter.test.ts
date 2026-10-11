@@ -264,7 +264,7 @@ describe("ComposerPresenter", () => {
       await flush()
 
       expect(api.prompt).toHaveBeenCalledTimes(1)
-      expect(api.prompt.mock.calls[0]?.[0]).toMatchObject({ text: "/review please fix the bug" })
+      expect(api.prompt.mock.calls[0]?.[0]).toMatchObject({ text: "/review please review fix the bug" })
     })
 
     it("can run a built-in command instead of sending a prompt", async () => {
