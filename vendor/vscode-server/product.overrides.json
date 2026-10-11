@@ -24,6 +24,7 @@
     "telemetry.telemetryLevel": "off",
     "update.mode": "none",
     "workbench.editor.enablePreview": false,
-    "editor.fontLigatures": true
+    "editor.fontLigatures": true,
+    "workbench.experimental.modernUIEditorTabStyle": "pill"
   }
 }
