@@ -1,135 +1,126 @@
-import { fireEvent, render, act } from "@testing-library/react"
-import { TerminalIcon } from "lucide-react"
+import { act, fireEvent, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { ToolChain, type ToolChainProps } from "@/features/transcript/message-list/assistant-turn/tool-chain/tool-chain"
 import { viewMarkup } from "@/test/view-markup"
+import type { ToolMessage } from "@shared/types"
+import { createToolChain } from "@/features/transcript/message-list/assistant-turn/tool-chain/create"
 
-function props(overrides: Partial<ToolChainProps> = {}): ToolChainProps {
-  return {
-    steps: [
-      { id: "t1", icon: TerminalIcon, label: "Ran command", active: false, error: false, output: <span>step body</span> },
-      { id: "t2", icon: TerminalIcon, label: "Running command", active: true, error: false, output: null },
-    ],
-    defaultOpen: true,
-    ...overrides,
-  }
+// A bash tool renders its output inline, and its raw "bash  command" label describes nothing, so
+// the collapsed header reads "Tools" instead of a summary built from the labels.
+function tool(id: string, overrides: Partial<ToolMessage> = {}): ToolMessage {
+  return { id, role: "tool", name: "bash", label: "bash  npm test", args: "", output: "step body", images: [], running: false, isError: false, ...overrides }
+}
+
+function create() {
+  type Deps = Parameters<typeof createToolChain>[0]
+  return createToolChain({ window, panelPresenter: { openFile: vi.fn() } as unknown as Deps["panelPresenter"] })
 }
 
 describe("ToolChain", () => {
   it("lists each step under the Tools header with its label", () => {
-    const markup = viewMarkup(<ToolChain {...props()} />)
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1"), tool("t2", { running: true })]} turnId="turn" />)
 
     expect(markup).toContain("Tools")
-    expect(markup).toContain("Ran command")
-    expect(markup).toContain("Running command")
+    expect(markup).toContain("Ran shell command")
+    expect(markup).toContain("Running shell command")
   })
 
   it("collapses the steps when it starts closed", () => {
-    const markup = viewMarkup(<ToolChain {...props({ defaultOpen: false })} />)
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1")]} turnId="turn" />)
 
     expect(markup).toContain("Tools")
-    expect(markup).not.toContain("Ran command")
+    expect(markup).not.toContain("Ran shell command")
   })
 
   it("summarizes the steps in the header once they are described", () => {
-    const markup = viewMarkup(<ToolChain {...props({ defaultOpen: false, summary: "Reading the README, listing the source files" })} />)
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1", { narration: "Reading the README, listing the source files" })]} turnId="turn" />)
 
     expect(markup).toContain("Reading the README, listing the source files")
     expect(markup).not.toContain("Tools")
   })
 
   it("fades the summary in", () => {
-    const markup = viewMarkup(<ToolChain {...props({ defaultOpen: false, summary: "Reading the README" })} />)
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1", { narration: "Reading the README" })]} turnId="turn" />)
 
     expect(markup).toContain("animate-in")
   })
 
   it("shows a failed step in the destructive colour", () => {
-    const markup = viewMarkup(
-      <ToolChain {...props({ steps: [{ id: "t1", icon: TerminalIcon, label: "Command failed", active: false, error: true, output: null }] })} />,
-    )
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1", { running: true, isError: true })]} turnId="turn" />)
 
-    expect(markup).toContain("Command failed")
+    expect(markup).toContain("step body")
     expect(markup).toContain("text-destructive")
   })
 
   it("hides the output of a finished step", () => {
-    const markup = viewMarkup(<ToolChain {...props()} />)
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1")]} turnId="turn" />)
 
     expect(markup).not.toContain("step body")
   })
 
   it("shows the output of a running step", () => {
-    const markup = viewMarkup(
-      <ToolChain {...props({ steps: [{ id: "t1", icon: TerminalIcon, label: "Running command", active: true, error: false, output: <span>step body</span> }] })} />,
-    )
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1", { running: true })]} turnId="turn" />)
 
     expect(markup).toContain("step body")
   })
 
   it("keeps the output of a failed step open", () => {
-    const markup = viewMarkup(
-      <ToolChain {...props({ steps: [{ id: "t1", icon: TerminalIcon, label: "Command failed", active: false, error: true, output: <span>boom</span> }] })} />,
-    )
+    const Chain = create()
+    const markup = viewMarkup(<Chain tools={[tool("t1", { running: true, isError: true })]} turnId="turn" />)
 
-    expect(markup).toContain("boom")
+    expect(markup).toContain("step body")
   })
 
   it("re-opens a finished step's output when you click it", () => {
-    const view = render(<ToolChain {...props()} />)
+    const Chain = create()
+    const view = render(<Chain tools={[tool("t1"), tool("t2", { running: true })]} turnId="turn" />)
 
-    fireEvent.click(view.getByText("Ran command"))
+    fireEvent.click(view.getByText("Ran shell command"))
 
     expect(view.container.innerHTML).toContain("step body")
   })
 
-  it("collapses a running chain once the steps have been quiet for a moment", () => {
+  it("collapses a running chain once the steps have been quiet for a moment", async () => {
     vi.useFakeTimers()
     try {
-      const view = render(<ToolChain {...props()} />)
+      const Chain = create()
+      const view = render(<Chain tools={[tool("t1", { running: true })]} turnId="turn" />)
 
-      expect(view.container.innerHTML).toContain("Running command")
+      expect(view.container.innerHTML).toContain("Running shell command")
 
-      view.rerender(
-        <ToolChain
-          {...props({
-            steps: [{ id: "t2", icon: TerminalIcon, label: "Running command", active: false, error: false, output: null }],
-          })}
-        />,
-      )
+      view.rerender(<Chain tools={[tool("t1")]} turnId="turn" />)
 
-      expect(view.container.innerHTML).toContain("Running command")
+      expect(view.container.innerHTML).toContain("Ran shell command")
 
-      act(() => {
+      await act(async () => {
         vi.advanceTimersByTime(1100)
       })
 
-      expect(view.container.innerHTML).not.toContain("Running command")
+      expect(view.container.innerHTML).not.toContain("Ran shell command")
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it("stays open while a later step keeps running", () => {
+  it("stays open while a later step keeps running", async () => {
     vi.useFakeTimers()
     try {
-      const view = render(<ToolChain {...props()} />)
+      const Chain = create()
+      const view = render(<Chain tools={[tool("t1", { running: true })]} turnId="turn" />)
 
-      view.rerender(
-        <ToolChain
-          {...props({
-            steps: [
-              { id: "t1", icon: TerminalIcon, label: "Ran command", active: false, error: false, output: null },
-              { id: "t2", icon: TerminalIcon, label: "Running command", active: true, error: false, output: null },
-            ],
-          })}
-        />,
-      )
-      act(() => {
+      view.rerender(<Chain tools={[tool("t1"), tool("t2", { running: true })]} turnId="turn" />)
+
+      await act(async () => {
         vi.advanceTimersByTime(2000)
       })
 
-      expect(view.container.innerHTML).toContain("Running command")
+      expect(view.container.innerHTML).toContain("Running shell command")
     } finally {
       vi.useRealTimers()
     }

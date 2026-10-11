@@ -1,51 +1,60 @@
-import type { Log } from "@/log/log"
 import type { ToolChainStore } from "@/features/transcript/message-list/assistant-turn/tool-chain/tool-chain-store/tool-chain-store"
 
+// How long the steps stay quiet before a running chain settles closed.
+const QUIET_MS = 1000
+
 export class ToolChainPresenter {
-  private timer: ReturnType<typeof setTimeout> | null = null
-  private mountedWhileRunning: boolean
+  private timers = new Map<string, ReturnType<typeof setTimeout>>()
 
   constructor(
     private readonly store: ToolChainStore,
     private readonly window: Window,
-    mountedWhileRunning: boolean,
-    private readonly log: Log,
-  ) {
-    this.mountedWhileRunning = mountedWhileRunning
+  ) {}
+
+  mount = (id: string, mountedWhileRunning: boolean) => {
+    if (this.store.isMounted(id)) return
+    this.store.mount(id, mountedWhileRunning)
   }
 
-  handleAnyActiveChange = (anyActive: boolean) => {
-    if (!this.mountedWhileRunning) return
+  handleOpenChange = (id: string, value: boolean | null) => {
+    this.store.setUserOpen(id, value)
+  }
+
+  // A chain that mounted while a step ran stays open so the progress shows, and settles closed
+  // once the steps have been quiet for a moment, leaving the header summary to carry what the
+  // turn did. A manual toggle wins.
+  handleAnyActiveChange = (id: string, anyActive: boolean) => {
+    if (!this.store.mountedWhileRunning(id)) return
+    this.clearTimer(id)
     if (anyActive) {
-      if (this.timer !== null) {
-        this.window.clearTimeout(this.timer)
-        this.timer = null
-      }
-      this.store.setAutoOpen(true)
+      this.store.setAutoOpen(id, true)
       return
     }
-    this.timer = this.window.setTimeout(() => {
-      this.store.setAutoOpen(false)
-      this.timer = null
-    }, 1000)
+    this.timers.set(
+      id,
+      this.window.setTimeout(() => {
+        this.timers.delete(id)
+        this.store.setAutoOpen(id, false)
+      }, QUIET_MS),
+    )
   }
 
-  handleStepActiveChange = (stepId: string, active: boolean) => {
-    if (active) {
-      this.store.setStepExpanded(stepId, false)
-    }
-  }
-
-  toggleStepExpanded = (stepId: string, output: boolean, active: boolean, error: boolean) => {
+  toggleStepExpanded = (id: string, stepId: string, output: boolean, active: boolean, error: boolean) => {
     if (output && !active && !error) {
-      this.store.toggleStep(stepId)
+      this.store.toggleStep(id, stepId)
     }
   }
 
   stop = () => {
-    if (this.timer !== null) {
-      this.window.clearTimeout(this.timer)
-      this.timer = null
+    for (const id of [...this.timers.keys()]) {
+      this.clearTimer(id)
     }
+  }
+
+  private clearTimer(id: string) {
+    const timer = this.timers.get(id)
+    if (timer === undefined) return
+    this.window.clearTimeout(timer)
+    this.timers.delete(id)
   }
 }

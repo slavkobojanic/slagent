@@ -22,7 +22,7 @@ export function createAssistantTurn({
   log: Log
 }): ComponentType<{ turn: Turn }> {
   const Response = createResponse({ window, runStore, CommentableResponse, log: log.child("response") })
-  const ToolChain = createToolChain({ panelPresenter })
+  const ToolChain = createToolChain({ window, panelPresenter })
 
   // The message list hands every turn a new object on each transcript event; comparing the
   // messages inside keeps a long chat from re-rendering every turn while one streams.
@@ -35,7 +35,7 @@ export function createAssistantTurn({
         thinkingStreaming={assistant?.streaming ?? false}
         workingLabel={assistant?.workingLabel ?? null}
         thinkingLabel={assistant?.thinkingLabel ?? null}
-        tools={<ToolChain tools={turn.tools} />}
+        tools={<ToolChain tools={turn.tools} turnId={turn.id} />}
         waiting={waitingForText(assistant, turn.tools)}
         text={assistant?.text ? <Response messageId={assistant.id} text={assistant.text} streaming={assistant.streaming} /> : null}
         error={assistant?.error ?? null}

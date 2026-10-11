@@ -1,40 +1,63 @@
 import { makeAutoObservable } from "mobx"
 
+// The open and step state of one tool chain. One component hosts every turn's chain, so the
+// state is keyed by the turn instead of living on the component.
+type ChainState = {
+  // A chain that mounted while a step ran stays open so the progress shows, and settles closed
+  // once the steps have been quiet; a chain that mounted on a finished turn never auto-opens.
+  mountedWhileRunning: boolean
+  userOpen: boolean | null
+  autoOpen: boolean
+  expandedSteps: Map<string, boolean>
+}
+
 export class ToolChainStore {
-  userOpen: boolean | null = null
-  autoOpen = false
-  expandedSteps = new Map<string, boolean>()
+  private chains = new Map<string, ChainState>()
 
   constructor() {
     makeAutoObservable(this)
   }
 
-  get open(): boolean {
-    return this.userOpen ?? this.autoOpen
+  isMounted(id: string): boolean {
+    return this.chains.has(id)
   }
 
-  setUserOpen(value: boolean | null) {
-    this.userOpen = value
+  mount(id: string, mountedWhileRunning: boolean) {
+    this.chains.set(id, { mountedWhileRunning, userOpen: null, autoOpen: mountedWhileRunning, expandedSteps: new Map() })
   }
 
-  setAutoOpen(value: boolean) {
-    this.autoOpen = value
+  mountedWhileRunning(id: string): boolean {
+    return this.chains.get(id)?.mountedWhileRunning ?? false
   }
 
-  toggleStep(stepId: string) {
-    const current = this.expandedSteps.get(stepId) ?? false
-    this.expandedSteps.set(stepId, !current)
+  open(id: string): boolean {
+    const chain = this.chains.get(id)
+    if (chain === undefined) return false
+    return chain.userOpen ?? chain.autoOpen
   }
 
-  setStepExpanded(stepId: string, expanded: boolean) {
-    this.expandedSteps.set(stepId, expanded)
+  setUserOpen(id: string, value: boolean | null) {
+    this.chainOf(id).userOpen = value
   }
 
-  getStepExpanded(stepId: string): boolean {
-    return this.expandedSteps.get(stepId) ?? false
+  setAutoOpen(id: string, value: boolean) {
+    this.chainOf(id).autoOpen = value
   }
 
-  collapseAllSteps() {
-    this.expandedSteps.clear()
+  stepExpanded(id: string, stepId: string): boolean {
+    return this.chains.get(id)?.expandedSteps.get(stepId) ?? false
+  }
+
+  toggleStep(id: string, stepId: string) {
+    const chain = this.chainOf(id)
+    chain.expandedSteps.set(stepId, !(chain.expandedSteps.get(stepId) ?? false))
+  }
+
+  private chainOf(id: string): ChainState {
+    const chain = this.chains.get(id)
+    if (chain !== undefined) return chain
+    const fresh: ChainState = { mountedWhileRunning: false, userOpen: null, autoOpen: false, expandedSteps: new Map() }
+    this.chains.set(id, fresh)
+    return fresh
   }
 }

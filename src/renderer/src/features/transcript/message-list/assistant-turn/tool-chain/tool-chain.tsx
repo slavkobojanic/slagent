@@ -24,6 +24,9 @@ export type ToolChainProps = {
 
 export function ToolChain({ steps, summary, open, onOpenChange, onAnyActiveChange, getStepExpanded, onToggleStep }: ToolChainProps) {
   const anyActive = steps.some((step) => step.active)
+  // The host settles a chain that mounted while a step ran closed once the steps go quiet, and
+  // this is where it learns whether a step still runs.
+  onAnyActiveChange?.(anyActive)
 
   return (
     <ChainOfThought open={open} onOpenChange={onOpenChange}>

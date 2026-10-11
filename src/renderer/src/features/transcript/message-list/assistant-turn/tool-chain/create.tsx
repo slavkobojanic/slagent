@@ -3,15 +3,23 @@ import { observer } from "mobx-react-lite"
 import type { ToolMessage } from "@shared/types"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import { ToolChain } from "./tool-chain"
+import { ToolChainPresenter } from "./tool-chain-presenter/tool-chain-presenter"
+import { ToolChainStore } from "./tool-chain-store/tool-chain-store"
 import { toolDescription, toolIcon, toolLabel, toolStepOutput } from "./tool-facts"
 import { ToolLabel } from "./tool-label"
 import { ToolStepOutput } from "./tool-step-output"
 
-export function createToolChain({ panelPresenter }: { panelPresenter: PanelPresenter }): ComponentType<{ tools: ToolMessage[] }> {
-  return observer(function ToolChainHost({ tools }: { tools: ToolMessage[] }) {
+export function createToolChain({ window, panelPresenter }: { window: Window; panelPresenter: PanelPresenter }): ComponentType<{ tools: ToolMessage[]; turnId: string }> {
+  const store = new ToolChainStore()
+  const presenter = new ToolChainPresenter(store, window)
+
+  return observer(function ToolChainHost({ tools, turnId }: { tools: ToolMessage[]; turnId: string }) {
     if (tools.length === 0) {
       return null
     }
+    // The chain's open state is keyed by the turn and mounts once, so re-renders while the
+    // turn streams never reset it.
+    presenter.mount(turnId, tools.some((tool) => tool.running))
     const steps = tools.map((tool) => ({
       id: tool.id,
       icon: toolIcon(tool.name),
@@ -20,7 +28,17 @@ export function createToolChain({ panelPresenter }: { panelPresenter: PanelPrese
       error: tool.isError,
       output: <ToolStepOutput output={toolStepOutput(tool)} />,
     }))
-    return <ToolChain steps={steps} summary={chainSummary(tools)} defaultOpen={tools.some((tool) => tool.running)} />
+    return (
+      <ToolChain
+        steps={steps}
+        summary={chainSummary(tools)}
+        open={store.open(turnId)}
+        onOpenChange={(value) => presenter.handleOpenChange(turnId, value)}
+        onAnyActiveChange={(anyActive) => presenter.handleAnyActiveChange(turnId, anyActive)}
+        getStepExpanded={(stepId) => store.stepExpanded(turnId, stepId)}
+        onToggleStep={(stepId, output, active, error) => presenter.toggleStepExpanded(turnId, stepId, output, active, error)}
+      />
+    )
   })
 }
 
