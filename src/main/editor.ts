@@ -84,6 +84,16 @@ export async function writeFileView(cwd: string, raw: string, contents: string, 
   return writeProjectFile(cwd, file, contents, expectedMtime)
 }
 
+// An existing file the editor can show, with its line, or null for anything else.
+export async function resolveEditorFile(cwd: string, raw: string): Promise<{ path: string; line?: number } | null> {
+  const target = parseTarget(raw)
+  const file = target.path ? resolveTarget(cwd, target.path) : null
+  if (!file) return null
+  const info = await stat(file).catch(() => null)
+  if (!info?.isFile()) return null
+  return target.line ? { path: file, line: target.line } : { path: file }
+}
+
 // Returns false when the path is not a file in or under cwd, so callers can
 // ignore inline code that only looks like a path.
 export async function openInEditor(cwd: string, raw: string): Promise<boolean> {

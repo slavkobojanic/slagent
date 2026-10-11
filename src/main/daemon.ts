@@ -73,6 +73,7 @@ export async function runDaemon(): Promise<void> {
     },
     computer: () => null,
     mcp: () => mcp,
+    editor: () => null,
     terminal: () => terminal,
     desktop: false,
     openExternal: systemOpenExternal,

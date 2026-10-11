@@ -32,6 +32,11 @@ exports.activate = (context) => {
   const port = Number(process.env.SLAGENT_BRIDGE_PORT)
   const token = process.env.SLAGENT_BRIDGE_TOKEN
   if (!port || !token) return
+  try {
+    void routes["/settings"]({ values: JSON.parse(process.env.SLAGENT_SETTINGS || "{}") })
+  } catch {
+    // Bad settings from the host are ignored; the workbench keeps its defaults.
+  }
   const server = http.createServer((request, response) => {
     const route = request.method === "POST" ? routes[request.url ?? ""] : undefined
     if (!route || request.headers["x-slagent-token"] !== token) {

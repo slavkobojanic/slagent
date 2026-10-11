@@ -677,6 +677,10 @@ export class AgentHost {
     this.publishMeta(null)
   }
 
+  getEditorPrefs(): EditorPrefs {
+    return this.editor
+  }
+
   setExtensionServerUrl(url: string | null): void {
     this.extensionServerUrl = url
   }
