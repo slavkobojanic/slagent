@@ -1,6 +1,9 @@
 import type { UsageModelStats } from "@shared/types"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { formatCost, formatTokens } from "@/lib/format"
+import { ModelName } from "./model-name"
+import { SpendShareBar } from "./spend-share-bar"
+import { SortHeader } from "./sort-header"
 import type { UsageSort, UsageSortKey } from "./usage-grid"
 
 export type ModelTableProps = {
@@ -10,9 +13,6 @@ export type ModelTableProps = {
   onSort: (key: "model" | "input" | "output" | "cache" | "cost" | "share") => void
 }
 
-const SHARE_CLASSES = ["bg-info", "bg-success", "bg-warning", "bg-destructive", "bg-primary", "bg-white/40"] as const
-
-// Lifetime spend per model, sortable, with a stacked spend-share bar above.
 export function ModelTable({ models, totalCost, sort, onSort }: ModelTableProps) {
   return (
     <TooltipProvider>
@@ -58,46 +58,6 @@ export function ModelTable({ models, totalCost, sort, onSort }: ModelTableProps)
         </table>
       </div>
     </TooltipProvider>
-  )
-}
-
-// The model column shares the row with five numbers, so the name is capped
-// and the full id opens in a tooltip when it is long enough to truncate.
-function ModelName({ name }: { name: string }) {
-  const content = <span className="block truncate">{name}</span>
-  if (name.length <= 18) return content
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{content}</TooltipTrigger>
-      <TooltipContent className="max-w-64 break-all">{name}</TooltipContent>
-    </Tooltip>
-  )
-}
-
-function SpendShareBar({ models, totalCost }: { models: UsageModelStats[]; totalCost: number }) {
-  const shares = models.map((model, index) => ({ model, share: model.cost / totalCost, color: SHARE_CLASSES[index % SHARE_CLASSES.length]! }))
-  return (
-    <div aria-label="Share of spend by model" className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
-      {shares.map(({ model, share, color }) => (
-        <Tooltip key={model.model}>
-          <TooltipTrigger asChild>
-            <span className={`${color}`} style={{ width: `${Math.max(share * 100, 1)}%` }} />
-          </TooltipTrigger>
-          <TooltipContent>
-            {model.model} · {percent(share)}
-          </TooltipContent>
-        </Tooltip>
-      ))}
-    </div>
-  )
-}
-
-function SortHeader({ label, active, dir, onSort }: { label: string; active: boolean; dir: "asc" | "desc"; onSort: () => void }) {
-  return (
-    <button type="button" className={active ? "text-white" : "hover:text-white"} onClick={onSort}>
-      {label}
-      {active ? (dir === "asc" ? " ↑" : " ↓") : null}
-    </button>
   )
 }
 
