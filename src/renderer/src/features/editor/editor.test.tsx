@@ -5,97 +5,60 @@ import { viewMarkup } from "@/test/view-markup"
 const noop = () => {}
 
 const base: EditorProps = {
+  url: "http://127.0.0.1:4000/?tkn=abc&folder=%2Fp",
   status: "ready",
   error: null,
-  tabs: [
-    { absolutePath: "/p/a.ts", path: "src/a.ts", name: "a.ts", dirty: false },
-    { absolutePath: "/p/b.ts", path: "src/b.ts", name: "b.ts", dirty: true },
-  ],
-  activePath: "/p/a.ts",
-  banner: null,
-  FileTree: () => <nav>file tree</nav>,
-  hostRef: noop,
-  onSelectTab: noop,
-  onCloseTab: noop,
-  onAnswerClose: noop,
-  onReload: noop,
-  onOverwrite: noop,
-  onDismiss: noop,
+  frameRef: noop,
+  onFrameLoad: noop,
+  onCommand: noop,
+  onRetry: noop,
   onExit: noop,
 }
 
 describe("Editor", () => {
-  it("can show a tab per open file and select the active one", () => {
+  it("can show the workbench in a frame", () => {
     const markup = viewMarkup(<Editor {...base} />)
 
-    expect(markup).toContain(">a.ts<")
-    expect(markup).toContain(">b.ts<")
-    expect(markup).toMatch(/aria-selected="true"[^>]*title="src\/a.ts"/)
-    expect(markup).toMatch(/aria-selected="false"[^>]*title="src\/b.ts"/)
+    expect(markup).toContain("<iframe")
+    expect(markup).toContain('src="http://127.0.0.1:4000/?tkn=abc&amp;folder=%2Fp"')
   })
 
-  it("can mark a tab with unsaved changes", () => {
+  it("can offer a button for each of the workbench's views", () => {
     const markup = viewMarkup(<Editor {...base} />)
 
-    expect(markup.match(/aria-label="Unsaved changes"/g)).toHaveLength(1)
-  })
-
-  it("can show the file tree beside the editor", () => {
-    const markup = viewMarkup(<Editor {...base} />)
-
-    expect(markup).toContain("<nav>file tree</nav>")
-    expect(markup.indexOf("file tree")).toBeLessThan(markup.indexOf("a.ts"))
-  })
-
-  it("can keep the file tree when no file is open", () => {
-    expect(viewMarkup(<Editor {...base} tabs={[]} activePath={null} />)).toContain("file tree")
+    for (const label of ["Files", "Search", "Source control", "Run and debug", "Extensions"]) {
+      expect(markup).toContain(`aria-label="${label}"`)
+    }
   })
 
   it("can offer a way back to the chat", () => {
     expect(viewMarkup(<Editor {...base} />)).toContain("Back to chat")
   })
 
-  it("can show an empty state when no file is open", () => {
-    const markup = viewMarkup(<Editor {...base} tabs={[]} activePath={null} />)
+  it("can cover the frame while it loads and lock the view buttons", () => {
+    const markup = viewMarkup(<Editor {...base} status="loading" />)
 
-    expect(markup).toContain("Open a file from the chat or the changes list to edit it.")
+    expect(markup).toContain("Loading the editor")
+    expect(markup).toContain('aria-label="Files"')
+    expect(markup).toMatch(/disabled=""[^>]*aria-label="Files"|aria-label="Files"[^>]*disabled=""/)
   })
 
-  it("can cover the editor while it loads", () => {
-    expect(viewMarkup(<Editor {...base} status="loading" />)).toContain("Loading editor")
+  it("can say the editor is starting before it has a page", () => {
+    const markup = viewMarkup(<Editor {...base} url={null} status="loading" />)
+
+    expect(markup).toContain("Starting the editor")
+    expect(markup).not.toContain("<iframe")
   })
 
-  it("can show why the editor failed to start", () => {
-    const markup = viewMarkup(<Editor {...base} status="failed" error="no worker" />)
+  it("can show why the editor failed and offer to retry", () => {
+    const markup = viewMarkup(<Editor {...base} url={null} status="failed" error="The editor server stopped (exit 1)." />)
 
-    expect(markup).toContain("no worker")
+    expect(markup).toContain("The editor server stopped (exit 1).")
+    expect(markup).toContain("Try again")
+    expect(markup).toContain('role="alert"')
   })
 
-  it("can ask before closing a tab with unsaved changes", () => {
-    const markup = viewMarkup(<Editor {...base} banner={{ kind: "closing", name: "b.ts" }} />)
-
-    expect(markup).toContain("Save changes to b.ts before closing?")
-    expect(markup).toContain("Discard")
-  })
-
-  it("can offer reload or overwrite on a conflict", () => {
-    const markup = viewMarkup(<Editor {...base} banner={{ kind: "conflict", name: "a.ts" }} />)
-
-    expect(markup).toContain("a.ts changed on disk since you opened it.")
-    expect(markup).toContain("Reload from disk")
-    expect(markup).toContain("Overwrite")
-  })
-
-  it("can show an error banner", () => {
-    const markup = viewMarkup(<Editor {...base} banner={{ kind: "error", message: "disk full" }} />)
-
-    expect(markup).toContain("disk full")
-    expect(markup).toContain("text-destructive")
-  })
-
-  it("can show a plain notice banner", () => {
-    const markup = viewMarkup(<Editor {...base} tabs={[]} activePath={null} banner={{ kind: "notice", message: "logo.png is a binary file." }} />)
-
-    expect(markup).toContain("logo.png is a binary file.")
+  it("can fall back to a plain message when the failure has no text", () => {
+    expect(viewMarkup(<Editor {...base} url={null} status="failed" />)).toContain("The editor could not start.")
   })
 })

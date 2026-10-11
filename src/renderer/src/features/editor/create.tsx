@@ -1,14 +1,12 @@
 import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import type { API } from "@/ipc/api"
-import { loadEditorRuntime } from "@/lib/monaco/load-editor-runtime"
 import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { EditorPort } from "@/state/editor-port/editor-port"
 import type { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { Editor } from "./editor"
-import { createFileTree } from "./file-tree/create"
 import { EditorPresenter } from "./editor-presenter/editor-presenter"
 import { EditorStore } from "./editor-store/editor-store"
 
@@ -30,27 +28,20 @@ export function createEditor({
   log: Log
 }): ComponentType {
   const store = new EditorStore()
-  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, loadEditorRuntime, log)
+  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, log)
   presenter.start()
   editorPort.attach(presenter.openFile)
-  const FileTree = createFileTree({ api, metaStore, layoutStore, editorStore: store, editorPort, log: log.child("file-tree") })
 
   return observer(function EditorHost() {
     return (
       <Editor
+        url={store.url}
         status={store.status}
         error={store.error}
-        tabs={store.tabItems}
-        activePath={store.activePath}
-        banner={store.banner}
-        FileTree={FileTree}
-        hostRef={presenter.attachHost}
-        onSelectTab={presenter.selectTab}
-        onCloseTab={presenter.closeTab}
-        onAnswerClose={presenter.answerClose}
-        onReload={presenter.reloadActive}
-        onOverwrite={presenter.overwriteActive}
-        onDismiss={presenter.dismissNotice}
+        frameRef={presenter.attachFrame}
+        onFrameLoad={presenter.handleFrameLoad}
+        onCommand={presenter.runCommand}
+        onRetry={presenter.retry}
         onExit={presenter.exit}
       />
     )

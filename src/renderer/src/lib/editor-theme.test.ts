@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { editorTheme, THEME_NAMES, withAlpha } from "@/lib/monaco/editor-theme"
+import { editorTheme, THEME_NAMES, withAlpha, workbenchTheme } from "@/lib/editor-theme"
 
 function tokenReader(token: string): string {
   const fixed: Record<string, string> = { "--foreground": "#ffffff", "--background": "#000000" }
@@ -64,5 +64,32 @@ describe("editorTheme", () => {
     const comment = editorTheme("dark", tokenReader).tokenColors.find((rule) => rule.scope.includes("comment"))
 
     expect(comment?.settings.fontStyle).toBe("italic")
+  })
+})
+
+describe("workbenchTheme", () => {
+  it("can pick the base theme for the mode", () => {
+    expect(workbenchTheme("dark", tokenReader)["workbench.colorTheme"]).toBe("Dark Modern")
+    expect(workbenchTheme("light", tokenReader)["workbench.colorTheme"]).toBe("Light Modern")
+  })
+
+  it("can carry our colours over the base theme", () => {
+    const colors = workbenchTheme("dark", tokenReader)["workbench.colorCustomizations"] as Record<string, string>
+
+    expect(colors["editor.background"]).toBe("#000000")
+    expect(colors["sideBar.background"]).toBe("#000000")
+    expect(colors["tab.activeBackground"]).toBe("value:--muted")
+  })
+
+  it("can carry our syntax colours as text mate rules", () => {
+    const tokens = workbenchTheme("dark", tokenReader)["editor.tokenColorCustomizations"] as { textMateRules: { scope: string[] }[] }
+
+    expect(tokens.textMateRules.some((rule) => rule.scope.includes("keyword"))).toBe(true)
+  })
+
+  it("can leave the chrome flat by clearing the tab borders", () => {
+    const colors = workbenchTheme("dark", tokenReader)["workbench.colorCustomizations"] as Record<string, string>
+
+    expect(colors["tab.border"]).toBe("#00000000")
   })
 })

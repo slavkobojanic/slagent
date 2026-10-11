@@ -7,7 +7,6 @@ const file = {
   line: 12,
   contents: "export type AppMeta = {\n  ready: boolean\n}",
   size: 4096,
-  mtime: 1000,
   binary: false,
   truncated: false,
 }

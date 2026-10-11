@@ -79,6 +79,48 @@ export function editorTheme(type: EditorThemeType, read: (token: string) => stri
       "minimap.background": background,
       "diffEditor.insertedTextBackground": withAlpha(read("--success"), 0.18),
       "diffEditor.removedTextBackground": withAlpha(read("--destructive"), 0.18),
+      "foreground": foreground,
+      "sideBar.background": background,
+      "sideBar.foreground": foreground,
+      "sideBar.border": border,
+      "sideBarTitle.foreground": muted,
+      "sideBarSectionHeader.background": background,
+      "sideBarSectionHeader.foreground": foreground,
+      "sideBarSectionHeader.border": border,
+      "editorGroup.border": border,
+      "editorGroupHeader.tabsBackground": background,
+      "editorGroupHeader.tabsBorder": border,
+      "editorGroupHeader.noTabsBackground": background,
+      "tab.activeBackground": read("--muted"),
+      "tab.activeForeground": foreground,
+      "tab.inactiveBackground": background,
+      "tab.inactiveForeground": muted,
+      "tab.hoverBackground": accent,
+      "tab.border": "#00000000",
+      "tab.activeBorder": "#00000000",
+      "tab.activeBorderTop": "#00000000",
+      "tab.unfocusedActiveBackground": read("--muted"),
+      "panel.background": background,
+      "panel.border": border,
+      "titleBar.activeBackground": background,
+      "titleBar.activeForeground": foreground,
+      "titleBar.border": border,
+      "activityBar.background": background,
+      "activityBar.foreground": foreground,
+      "activityBar.border": border,
+      "list.inactiveSelectionBackground": read("--muted"),
+      "list.focusOutline": "#00000000",
+      "list.focusAndSelectionOutline": "#00000000",
+      "button.background": read("--primary"),
+      "button.foreground": read("--background"),
+      "button.hoverBackground": withAlpha(read("--primary"), 0.85),
+      "textLink.foreground": read("--info"),
+      "badge.background": read("--primary"),
+      "badge.foreground": read("--background"),
+      "widget.border": border,
+      "menu.background": popover,
+      "menu.foreground": foreground,
+      "menu.selectionBackground": accent,
       "statusBar.background": background,
       "statusBar.foreground": muted,
       "statusBar.border": border,
@@ -109,5 +151,19 @@ export function editorTheme(type: EditorThemeType, read: (token: string) => stri
       { scope: ["markup.italic"], settings: { fontStyle: "italic" } },
       { scope: ["invalid"], settings: { foreground: read("--destructive") } },
     ],
+  }
+}
+
+// The workbench's default themes the customisations sit on, by the mode they match.
+const BASE_THEMES: Record<EditorThemeType, string> = { dark: "Dark Modern", light: "Light Modern" }
+
+// The workbench settings that carry our theme: a base theme per mode, then our colours and syntax
+// colours over it. These are pushed to the editor through its bridge.
+export function workbenchTheme(type: EditorThemeType, read: (token: string) => string): Record<string, unknown> {
+  const theme = editorTheme(type, read)
+  return {
+    "workbench.colorTheme": BASE_THEMES[type],
+    "workbench.colorCustomizations": theme.colors,
+    "editor.tokenColorCustomizations": { textMateRules: theme.tokenColors.map(({ scope, settings }) => ({ scope, settings })) },
   }
 }
