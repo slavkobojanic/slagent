@@ -1,0 +1,14 @@
+diff --git a/src/vs/workbench/browser/parts/sidebar/sidebarPart.ts b/src/vs/workbench/browser/parts/sidebar/sidebarPart.ts
+index cd93a447..925437eb 100644
+--- a/src/vs/workbench/browser/parts/sidebar/sidebarPart.ts
++++ b/src/vs/workbench/browser/parts/sidebar/sidebarPart.ts
+@@ -45,7 +45,8 @@ export class SidebarPart extends AbstractPaneCompositePart {
+ 
+ 	//#region IView
+ 
+-	readonly minimumWidth: number = 170;
++	// slagent: the explorer keeps a fixed minimum in the editor's narrow column.
++	readonly minimumWidth: number = 200;
+ 	readonly maximumWidth: number = Number.POSITIVE_INFINITY;
+ 	readonly minimumHeight: number = 0;
+ 	readonly maximumHeight: number = Number.POSITIVE_INFINITY;
