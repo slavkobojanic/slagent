@@ -78,7 +78,7 @@ describe("workbenchTheme", () => {
 
     expect(colors["editor.background"]).toBe("#000000")
     expect(colors["sideBar.background"]).toBe("#000000")
-    expect(colors["tab.activeBackground"]).toBe("value:--muted")
+    expect(colors["tab.activeBackground"]).toBe("value:--primary")
   })
 
   it("can carry our syntax colours as text mate rules", () => {
@@ -95,11 +95,47 @@ describe("workbenchTheme", () => {
 })
 
 describe("workbenchTheme tabs", () => {
-  it("can flatten the connected tab strip so no tab variant stays grey", () => {
+  it("can flatten the connected tab strip behind the tabs", () => {
     const colors = workbenchTheme("light", tokenReader)["workbench.colorCustomizations"] as Record<string, string>
 
     expect(colors["editorGroupHeader.connectedTabsBackground"]).toBe("#000000")
-    expect(colors["tab.unfocusedInactiveBackground"]).toBe("#000000")
-    expect(colors["tab.selectedBackground"]).toBe("value:--muted")
+    expect(colors["tab.unfocusedInactiveBackground"]).toBe("value:--muted")
+    expect(colors["tab.selectedBackground"]).toBe("value:--primary")
   })
 })
+
+describe("workbenchTheme tab colours", () => {
+  const colors = () => workbenchTheme("light", tokenReader)["workbench.colorCustomizations"] as Record<string, string>
+
+  it("can fill the selected tab with the primary colour and its text colour", () => {
+    expect(colors()["tab.activeBackground"]).toBe("value:--primary")
+    expect(colors()["tab.activeForeground"]).toBe("value:--primary-foreground")
+  })
+
+  it("can show other tabs light with the normal text colour", () => {
+    expect(colors()["tab.inactiveBackground"]).toBe("value:--muted")
+    expect(colors()["tab.inactiveForeground"]).toBe("#ffffff")
+  })
+
+  it("can keep the same look when the editor group is not focused", () => {
+    expect(colors()["tab.unfocusedActiveBackground"]).toBe("value:--primary")
+    expect(colors()["tab.unfocusedInactiveBackground"]).toBe("value:--muted")
+  })
+})
+
+describe("workbenchTheme pill tabs", () => {
+  const values = () => workbenchTheme("light", tokenReader)
+
+  it("can ask for pill tabs", () => {
+    expect(values()["workbench.experimental.modernUIEditorTabStyle"]).toBe("pill")
+  })
+
+  it("can fill the selected pill with the primary colour and the unselected ones with the muted colour", () => {
+    const colors = values()["workbench.colorCustomizations"] as Record<string, string>
+
+    expect(colors["modernEditorTab.activeBackground"]).toBe("value:--primary")
+    expect(colors["modernEditorTab.activeForeground"]).toBe("value:--primary-foreground")
+    expect(colors["modernEditorTab.inactiveBackground"]).toBe("value:--muted")
+  })
+})
+
