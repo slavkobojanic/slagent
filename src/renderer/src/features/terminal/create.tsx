@@ -2,6 +2,7 @@ import type { ComponentType } from "react"
 import { observer } from "mobx-react-lite"
 import { createTerminalEmulator } from "@/features/terminal/terminal-emulator"
 import { Terminal } from "./terminal"
+import type { TerminalPane } from "./terminal"
 import { TerminalPresenter } from "./terminal-presenter/terminal-presenter"
 import { TerminalStore } from "./terminal-store/terminal-store"
 import { TerminalView } from "./terminal-view/terminal-view"
@@ -38,21 +39,37 @@ export function createTerminal({
   presenter.start()
 
   const TerminalHost = observer(function TerminalHost() {
-    const surfaces = store.tabs.map((tab) => (
-      <TerminalView key={tab.id} active={tab.id === store.activeId} onAttach={(element) => presenter.attachSession(tab.id, element)} />
-    ))
+    // The active group's tabs sit side by side; every other tab stays mounted
+    // and hidden so its scrollback survives.
+    const visible = new Set(store.activeGroup.map((tab) => tab.id))
+    const panes: TerminalPane[] = store.activeGroup.map((tab) => ({
+      id: tab.id,
+      groupId: tab.groupId,
+      surface: surface(tab.id),
+    }))
+    const hiddenSurfaces = store.tabs.filter((tab) => !visible.has(tab.id)).map((tab) => surface(tab.id))
     return (
       <Terminal
         open={store.open}
         height={layoutStore.terminalHeight}
         resizing={layoutStore.resizing === "terminal"}
-        surfaces={surfaces}
-        empty={store.empty}
+        panes={panes}
+        hiddenSurfaces={hiddenSurfaces}
+        splitRatio={(groupId) => store.splitRatio(groupId)}
         error={store.error}
+        onPaneSelect={presenter.select}
+        onMenuSplit={presenter.handleMenuSplit}
+        onMenuRename={presenter.handleMenuRename}
+        onMenuClose={presenter.handleMenuClose}
+        onDividerStart={presenter.handleDividerDragStart}
         onResizeStart={presenter.handleResizeStart}
         onResizeReset={presenter.handleResizeReset}
       />
     )
+
+    function surface(id: string) {
+      return <TerminalView key={id} active={visible.has(id)} onAttach={(element) => presenter.attachSession(id, element)} />
+    }
   })
 
   // The drawer's tab bar is the app-wide bottom bar, fed by the same store.
