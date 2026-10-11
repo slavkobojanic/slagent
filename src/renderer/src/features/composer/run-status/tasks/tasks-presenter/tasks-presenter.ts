@@ -30,6 +30,7 @@ export class TasksPresenter {
       return
     }
     this.started = true
+    this.store.setNow(this.window.Date.now())
     this.disposers = [
       this.log.reaction("any-running", () => this.store.anyRunning, this.handleRunningChange, { fireImmediately: true }),
       this.log.reaction("viewed", this.viewed, this.handleViewedChange, { equals: compareStructural, fireImmediately: true }),

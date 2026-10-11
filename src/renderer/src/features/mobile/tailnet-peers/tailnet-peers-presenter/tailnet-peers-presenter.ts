@@ -52,6 +52,13 @@ export class TailnetPeersPresenter {
     void this.handleRefresh()
   }
 
+  stop = () => {
+    for (const dispose of this.disposers) {
+      dispose()
+    }
+    this.disposers = []
+  }
+
   handleRefresh = async () => {
     if (!this.connection.online) {
       return

@@ -15,10 +15,14 @@ export class TasksStore {
   viewing: TaskInfo | null = null
   output = ""
   error: string | null = null
-  now = Date.now()
+  now = 0
 
   constructor(private readonly run: RunStore) {
     makeAutoObservable(this)
+  }
+
+  setNow(time: number) {
+    this.now = time
   }
 
   get anyRunning(): boolean {
