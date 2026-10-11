@@ -80,6 +80,7 @@ function areaOf(file) {
 function check(node, file, area, report) {
   if (ts.isCallExpression(node)) {
     checkCall(node, area, report)
+    checkObserver(node, area, report)
   } else if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
     checkModule(node, file, area, report)
   } else if (ts.isExpressionStatement(node)) {
@@ -131,6 +132,19 @@ function checkModule(node, file, area, report) {
   }
   if (area.viewHome && segments.some((s) => SUFFIX.test(s) || ["ipc", "mirror", "state"].includes(s))) {
     report(node, "view-layer-imports", `view imports "${spec}"; views take props only`)
+  }
+  if (area.viewHome && spec.startsWith("@/features/")) {
+    const parts = spec.split("/")
+    const pathParts = file.split(sep)
+    const featuresIdx = pathParts.findIndex((p) => p === "features")
+    const myFeature = featuresIdx >= 0 ? pathParts[featuresIdx + 1] : ""
+    const importFeature = parts[2]
+    if (importFeature && importFeature !== myFeature) {
+      report(node, "no-cross-feature-imports", `view imports from @/features/${importFeature}; avoid cross-feature imports`)
+    }
+  }
+  if (area.viewHome && spec === "@/lib/format") {
+    report(node, "view-formatting-purity", `view imports format utilities; pass formatted values as props`)
   }
   if (!area.isStore && !area.isPresenter) {
     return
@@ -255,6 +269,16 @@ function checkViewOnly(node, area, report) {
   const name = node.name.text
   if (name.charAt(0) === name.charAt(0).toUpperCase()) {
     report(node, "one-component-per-view", `extra component ${name}; views should have one exported component per file`)
+  }
+}
+
+function checkObserver(node, area, report) {
+  if (!area.viewHome) {
+    return
+  }
+  const name = calleeName(node)
+  if (name === "observer") {
+    report(node, "no-observer-in-views", `observer() wraps a view; views take props only, no reaction to stores`)
   }
 }
 
