@@ -59,6 +59,7 @@ import { CHAT_SYSTEM_PROMPT, CHAT_TOOLS } from "./chat-prompt"
 import { todoExtension } from "./extensions/todo"
 import { chatHistoryExtension } from "./extensions/chat-history"
 import { mcpAddExtension } from "./extensions/mcp-add"
+import { diagnosticsExtension } from "./extensions/diagnostics"
 import { preparePrompt, queueDetail } from "./prompt"
 import type { Library } from "./library"
 import type { UsageRecord } from "./usage-ledger"
@@ -464,6 +465,7 @@ export class ChatRuntime {
       toolNames = [...CODING_TOOLS, ...COMPUTER_TOOL_NAMES]
       customTools = computerTools(this.options.computer, this.options.gate)
       extensionFactories.push(focusGuard)
+      extensionFactories.push({ name: "slagent-diagnostics", hidden: true, factory: diagnosticsExtension(this.options.cwd) })
     }
 
     const agentDir = getAgentDir()

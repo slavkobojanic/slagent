@@ -1,15 +1,18 @@
 import { randomUUID } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { delimiter, join } from "node:path"
+import { delimiter, join, resolve } from "node:path"
 import {
   type CanUseTool,
+  type HookInput,
+  type Options,
   type PermissionResult,
   type Query,
   query,
   type SDKMessage,
   type SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk"
+import { diagnostics, formatDiagnostics } from "./diagnostics"
 import type {
   AssistantMessage,
   ChatMessage,
@@ -487,6 +490,7 @@ export class ClaudeRuntime {
         includePartialMessages: true,
         permissionMode: this.planEnabled ? "plan" : "default",
         canUseTool: this.canUseTool,
+        hooks: this.diagnosticsHooks(),
         // Render fresh on every request, so a recreated process picks up the
         // current personalisation even though the conversation resumes. Chat
         // projects replace the coding preset with the conversational prompt;
@@ -538,6 +542,33 @@ export class ClaudeRuntime {
       return { behavior: "deny", message: PLAN_SUBMITTED }
     }
     return { behavior: "allow", updatedInput: input }
+  }
+
+  // The same diagnostics loop the Pi runtime gets from its extension: after an
+  // edit lands, tsserver's current errors for the file ride along as context.
+  private diagnosticsHooks(): Options["hooks"] {
+    if (this.options.mode === "chat") return undefined
+    return {
+      PostToolUse: [
+        {
+          matcher: "Edit|Write|MultiEdit|NotebookEdit",
+          hooks: [async (input: HookInput) => this.diagnoseHook(input)],
+        },
+      ],
+    }
+  }
+
+  private async diagnoseHook(input: HookInput) {
+    const result: { hookSpecificOutput?: { hookEventName: "PostToolUse"; additionalContext?: string } } = {
+      hookSpecificOutput: { hookEventName: "PostToolUse" },
+    }
+    if (input.hook_event_name !== "PostToolUse") return result
+    const path = toolInputPath(input.tool_input)
+    if (!path || toolFailed(input.tool_response)) return result
+    const absolute = resolve(this.options.cwd, path)
+    const found = await diagnostics.diagnose(this.options.cwd, absolute)
+    if (found.length > 0) result.hookSpecificOutput!.additionalContext = formatDiagnostics(this.options.cwd, absolute, found)
+    return result
   }
 
   private readPlan(input: Record<string, unknown>): string {
@@ -1078,6 +1109,21 @@ function claudeError(error: unknown): string {
   if (/ENOENT|spawn/i.test(text)) return "Claude Code isn't installed. Install it and sign in with `claude`, then try again."
   if (/login|auth|401/i.test(text)) return "Claude Code isn't signed in. Run `claude` in a terminal and sign in, then try again."
   return text
+}
+
+function toolInputPath(toolInput: unknown): string | null {
+  if (typeof toolInput !== "object" || toolInput === null) return null
+  const record = toolInput as Record<string, unknown>
+  for (const key of ["file_path", "notebook_path", "path"]) {
+    const value = record[key]
+    if (typeof value === "string" && value !== "") return value
+  }
+  return null
+}
+
+function toolFailed(toolResponse: unknown): boolean {
+  if (typeof toolResponse !== "object" || toolResponse === null) return false
+  return (toolResponse as { is_error?: unknown }).is_error === true
 }
 
 // Apps opened from the Dock get a bare PATH, so the user's own install is
