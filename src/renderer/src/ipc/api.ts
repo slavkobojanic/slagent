@@ -42,11 +42,10 @@ export class API implements SlagentApi {
   readonly openExternal: SlagentApi["openExternal"]
   readonly openInEditor: SlagentApi["openInEditor"]
   readonly readFile: SlagentApi["readFile"]
-  readonly writeFile: SlagentApi["writeFile"]
-  readonly listDirectory: SlagentApi["listDirectory"]
   readonly getEditorUrl: SlagentApi["getEditorUrl"]
   readonly openEditorFile: SlagentApi["openEditorFile"]
   readonly runEditorCommand: SlagentApi["runEditorCommand"]
+  readonly setEditorTheme: SlagentApi["setEditorTheme"]
   readonly setQueueMode: SlagentApi["setQueueMode"]
   readonly removeQueued: SlagentApi["removeQueued"]
   readonly editMessage: SlagentApi["editMessage"]
@@ -89,10 +88,6 @@ export class API implements SlagentApi {
   readonly disableDaemon: SlagentApi["disableDaemon"]
   readonly setPersonalisation: SlagentApi["setPersonalisation"]
   readonly setEditorPrefs: SlagentApi["setEditorPrefs"]
-  readonly searchEditorExtensions: SlagentApi["searchEditorExtensions"]
-  readonly installEditorExtension: SlagentApi["installEditorExtension"]
-  readonly uninstallEditorExtension: SlagentApi["uninstallEditorExtension"]
-  readonly readEditorExtension: SlagentApi["readEditorExtension"]
   readonly pickContextFiles: SlagentApi["pickContextFiles"]
   readonly createTerminal: SlagentApi["createTerminal"]
   readonly writeTerminal: SlagentApi["writeTerminal"]
@@ -138,11 +133,10 @@ export class API implements SlagentApi {
     this.openExternal = (url) => bridge.openExternal(url)
     this.openInEditor = (path) => bridge.openInEditor(path)
     this.readFile = (path) => bridge.readFile(path)
-    this.listDirectory = (path) => bridge.listDirectory(path)
     this.getEditorUrl = () => bridge.getEditorUrl()
     this.openEditorFile = (path) => bridge.openEditorFile(path)
     this.runEditorCommand = (id) => bridge.runEditorCommand(id)
-    this.writeFile = (path, contents, expectedMtime) => bridge.writeFile(path, contents, expectedMtime)
+    this.setEditorTheme = (values) => bridge.setEditorTheme(plain(values))
     this.setQueueMode = (id, mode) => bridge.setQueueMode(id, mode)
     this.removeQueued = (id) => bridge.removeQueued(id)
     this.editMessage = (id, text) => bridge.editMessage(id, text)
@@ -184,10 +178,6 @@ export class API implements SlagentApi {
     this.disableDaemon = () => bridge.disableDaemon()
     this.setPersonalisation = (value) => bridge.setPersonalisation(plain(value))
     this.setEditorPrefs = (value) => bridge.setEditorPrefs(plain(value))
-    this.searchEditorExtensions = (query) => bridge.searchEditorExtensions(query)
-    this.installEditorExtension = (id) => bridge.installEditorExtension(id)
-    this.uninstallEditorExtension = (id) => bridge.uninstallEditorExtension(id)
-    this.readEditorExtension = (id) => bridge.readEditorExtension(id)
     this.pickContextFiles = () => bridge.pickContextFiles()
     this.createTerminal = () => bridge.createTerminal()
     this.writeTerminal = (id, data) => bridge.writeTerminal(id, data)

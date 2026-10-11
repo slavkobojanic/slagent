@@ -20,11 +20,7 @@ import {
 import {
   DEFAULT_EDITOR_PREFS,
   EDITOR_FONT_SIZE,
-  EDITOR_PACKS,
   EDITOR_TAB_SIZE,
-  type EditorExtensionPref,
-  isExtensionId,
-  isExtensionVersion,
   type EditorPrefs,
 } from "../shared/editor"
 
@@ -123,10 +119,9 @@ function legacyCommitStrategy(ask: boolean | null, often: boolean | null): Perso
   return null
 }
 
-// Editor settings drive which code loads and which extensions run, so every field is
-// clamped or filtered and an unknown pack or malformed extension is dropped.
+// Editor settings reach the workbench's own configuration, so every field is clamped or type checked.
 export function parseEditorPrefs(input: unknown): EditorPrefs {
-  if (typeof input !== "object" || input === null) return { ...DEFAULT_EDITOR_PREFS, packs: [...DEFAULT_EDITOR_PREFS.packs], extensions: [] }
+  if (typeof input !== "object" || input === null) return { ...DEFAULT_EDITOR_PREFS }
   const record = input as Record<string, unknown>
   const int = (key: string, fallback: number, range: { min: number; max: number }): number => {
     const value = record[key]
@@ -134,27 +129,11 @@ export function parseEditorPrefs(input: unknown): EditorPrefs {
     return Math.min(range.max, Math.max(range.min, Math.round(value)))
   }
   const flag = (key: string, fallback: boolean): boolean => (typeof record[key] === "boolean" ? (record[key] as boolean) : fallback)
-  const known = new Set(EDITOR_PACKS.map((pack) => pack.id))
-  const packs = Array.isArray(record.packs)
-    ? [...new Set(record.packs.filter((id): id is string => typeof id === "string" && known.has(id)))]
-    : [...DEFAULT_EDITOR_PREFS.packs]
-  const extensions: EditorExtensionPref[] = []
-  if (Array.isArray(record.extensions)) {
-    for (const entry of record.extensions) {
-      if (typeof entry !== "object" || entry === null) continue
-      const item = entry as Record<string, unknown>
-      if (!isExtensionId(item.id) || !isExtensionVersion(item.version)) continue
-      if (extensions.some((existing) => existing.id === item.id)) continue
-      extensions.push({ id: item.id, version: item.version, enabled: item.enabled !== false })
-    }
-  }
   return {
     fontSize: int("fontSize", DEFAULT_EDITOR_PREFS.fontSize, EDITOR_FONT_SIZE),
     tabSize: int("tabSize", DEFAULT_EDITOR_PREFS.tabSize, EDITOR_TAB_SIZE),
     wordWrap: flag("wordWrap", DEFAULT_EDITOR_PREFS.wordWrap),
     minimap: flag("minimap", DEFAULT_EDITOR_PREFS.minimap),
-    packs,
-    extensions,
   }
 }
 

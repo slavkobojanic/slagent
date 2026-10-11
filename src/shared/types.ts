@@ -1,4 +1,4 @@
-import type { EditorExtensionPayload, EditorExtensionResult, EditorPrefs } from "./editor"
+import type { EditorPrefs } from "./editor"
 
 // Transport contract for the websocket server in the main process. Every client
 // (Electron window, the future mobile app) speaks it over one socket.
@@ -626,20 +626,9 @@ export type FileView = {
   line: number | null
   contents: string
   size: number
-  mtime: number
   binary: boolean
   truncated: boolean
 }
-
-// One entry of a project folder, as the editor's file tree lists it.
-export type DirectoryEntry = {
-  name: string
-  dir: boolean
-}
-
-export type WriteFileResult =
-  | { ok: true; mtime: number; size: number }
-  | { ok: false; reason: "outside-project" | "not-file" | "conflict" | "failed"; message: string; mtime?: number }
 
 export type ModelChange = {
   applied: boolean
@@ -703,11 +692,10 @@ export type SlagentApi = {
   openExternal: (url: string) => Promise<void>
   openInEditor: (path: string) => Promise<boolean>
   readFile: (path: string) => Promise<FileView | null>
-  writeFile: (path: string, contents: string, expectedMtime: number) => Promise<WriteFileResult>
-  listDirectory: (path: string) => Promise<DirectoryEntry[] | null>
   getEditorUrl: () => Promise<string>
   openEditorFile: (path: string) => Promise<boolean>
   runEditorCommand: (id: string) => Promise<void>
+  setEditorTheme: (values: Record<string, unknown>) => Promise<void>
   setQueueMode: (id: string, mode: QueueMode) => Promise<void>
   removeQueued: (id: string) => Promise<void>
   editMessage: (id: string, text: string) => Promise<void>
@@ -754,10 +742,6 @@ export type SlagentApi = {
   disableDaemon: () => Promise<DaemonStatus>
   setPersonalisation: (value: Personalisation) => Promise<void>
   setEditorPrefs: (value: EditorPrefs) => Promise<void>
-  searchEditorExtensions: (query: string) => Promise<EditorExtensionResult[]>
-  installEditorExtension: (id: string) => Promise<void>
-  uninstallEditorExtension: (id: string) => Promise<void>
-  readEditorExtension: (id: string) => Promise<EditorExtensionPayload | null>
   // Opens a file picker and returns the picked text files with their contents.
   pickContextFiles: () => Promise<PinnedFile[]>
   // Spawns a shell in the project folder and returns its session.
