@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { MessagesSquareIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EditorBanner } from "@/features/editor/editor-banner/editor-banner"
@@ -11,6 +11,7 @@ export type EditorProps = {
   tabs: EditorTabItem[]
   activePath: string | null
   banner: Banner | null
+  FileTree: ComponentType
   hostRef: (element: HTMLDivElement | null) => void
   onSelectTab: (absolutePath: string) => void
   onCloseTab: (absolutePath: string) => void
@@ -44,6 +45,7 @@ export function Editor({
   tabs,
   activePath,
   banner,
+  FileTree,
   hostRef,
   onSelectTab,
   onCloseTab,
@@ -54,7 +56,9 @@ export function Editor({
   onExit,
 }: EditorProps) {
   return (
-    <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+    <section aria-label="Editor" className="flex min-h-0 min-w-0 flex-1 bg-background">
+      <FileTree />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-10 shrink-0 items-center gap-1 border-b border-white/10 px-2" role="tablist">
         {tabs.map((tab) => (
           <EditorTab
@@ -74,6 +78,7 @@ export function Editor({
       </div>
       {banner === null ? null : <EditorBanner banner={banner} onAnswerClose={onAnswerClose} onReload={onReload} onOverwrite={onOverwrite} onDismiss={onDismiss} />}
       {surface({ status, error, tabs, hostRef })}
+      </div>
     </section>
   )
 }
