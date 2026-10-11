@@ -1,4 +1,4 @@
-import { dialog, shell } from "electron"
+import { dialog, nativeTheme, shell } from "electron"
 import type {
   CreateSkillInput,
   DraftSkillInput,
@@ -257,8 +257,14 @@ export function createCallHandler(deps: CallDeps): CallHandler {
       }
       case "runEditorCommand":
         return requireEditor().post("/command", { id: str(params[0]) })
-      case "setEditorTheme":
-        return requireEditor().post("/settings", { values: params[0] ?? {} })
+      case "setColorScheme": {
+        needDesktop()
+        // The editor follows the system scheme, so the window takes the app's own choice instead.
+        const scheme = params[0]
+        if (scheme !== "system" && scheme !== "light" && scheme !== "dark") throw new Error("Unknown colour scheme.")
+        nativeTheme.themeSource = scheme
+        return
+      }
       case "pickContextFiles": {
         needDesktop()
         return host.pickContextFiles()

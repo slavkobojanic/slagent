@@ -25,6 +25,11 @@
     "update.mode": "none",
     "workbench.editor.enablePreview": false,
     "editor.fontLigatures": true,
-    "workbench.experimental.modernUIEditorTabStyle": "pill"
+    "workbench.experimental.modernUIEditorTabStyle": "pill",
+    "window.autoDetectColorScheme": true,
+    "workbench.preferredLightColorTheme": "Slagent Light",
+    "workbench.preferredDarkColorTheme": "Slagent Dark",
+    "workbench.colorTheme": "Slagent Light",
+    "editor.fontFamily": "\"Monaspace Neon Var\", ui-monospace, monospace"
   }
 }

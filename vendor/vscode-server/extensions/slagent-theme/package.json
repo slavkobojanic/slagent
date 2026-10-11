@@ -1,0 +1,14 @@
+{
+  "name": "slagent-theme",
+  "displayName": "Slagent themes",
+  "description": "The slagent palette for the editor. The theme files are generated from the app's tokens when the editor is built.",
+  "publisher": "slagent",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.100.0" },
+  "contributes": {
+    "themes": [
+      { "label": "Slagent Light", "uiTheme": "vs", "path": "./themes/slagent-light.json" },
+      { "label": "Slagent Dark", "uiTheme": "vs-dark", "path": "./themes/slagent-dark.json" }
+    ]
+  }
+}
