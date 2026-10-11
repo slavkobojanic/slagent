@@ -1,7 +1,5 @@
-import { describe, expect, it, vi } from "vitest"
-import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
-import type { AppMeta, FileView, WriteFileResult } from "@shared/types"
-import type { EditorEvents, EditorHandle, EditorRuntime } from "@/features/editor/editor-runtime"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import type { AppMeta, FileView } from "@shared/types"
 import { EditorStore } from "@/features/editor/editor-store/editor-store"
 import type { API } from "@/ipc/api"
 import { nullLog } from "@/log/log"
@@ -11,574 +9,286 @@ import { ThemeStore } from "@/state/theme/theme-store/theme-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 import { EditorPresenter } from "./editor-presenter"
 
-const file = (name: string, overrides: Partial<FileView> = {}): FileView => ({
-  path: name,
-  absolutePath: `/p/${name}`,
+const URL_A = "http://127.0.0.1:4000/?tkn=abc&folder=%2Fp"
+
+const file = (overrides: Partial<FileView> = {}): FileView => ({
+  path: "src/a.ts",
+  absolutePath: "/p/src/a.ts",
   line: null,
-  contents: `${name} body`,
-  size: 10,
-  mtime: 100,
+  contents: "",
+  size: 0,
   binary: false,
   truncated: false,
   ...overrides,
 })
 
-function fakeRuntime() {
-  const contents = new Map<string, string>()
-  let events: EditorEvents | null = null
-  const handle: EditorHandle = {
-    open: vi.fn((path: string, text: string) => void contents.set(path, text)),
-    show: vi.fn(),
-    close: vi.fn((path: string) => void contents.delete(path)),
-    read: vi.fn((path: string) => contents.get(path) ?? null),
-    replace: vi.fn((path: string, text: string) => {
-      contents.set(path, text)
-      events?.onChange(path)
-    }),
-    focus: vi.fn(),
-    dispose: vi.fn(),
-  }
-  const runtime: EditorRuntime = {
-    mount: vi.fn((_host, handlers) => {
-      events = handlers
-      return handle
-    }),
-    setOptions: vi.fn(),
-    setTheme: vi.fn(async () => {}),
-    loadPacks: vi.fn(async () => {}),
-    setExtensions: vi.fn(async () => []),
-  }
-  const type = (path: string, text: string) => {
-    contents.set(path, text)
-    events?.onChange(path)
-  }
-  return { runtime, handle, type, events: () => events }
-}
+const frames: HTMLIFrameElement[] = []
 
-function fakeWindow(token = "#123456") {
-  return {
-    document: { documentElement: {} },
-    getComputedStyle: () => ({ getPropertyValue: () => token }),
-    requestAnimationFrame: (callback: () => void) => {
-      callback()
-      return 0
-    },
-  } as unknown as Window
-}
-
-function setup() {
+function setup(cwd = "/p") {
   const store = new EditorStore()
-  const api = createMockInstance<API>(["writeFile", "readFile", "readEditorExtension"])
+  const api = createMockInstance<API>(["getEditorUrl", "openEditorFile", "runEditorCommand", "setEditorTheme"])
+  vi.mocked(api.getEditorUrl).mockResolvedValue(URL_A)
+  vi.mocked(api.openEditorFile).mockResolvedValue(true)
+  vi.mocked(api.runEditorCommand).mockResolvedValue(undefined)
+  vi.mocked(api.setEditorTheme).mockResolvedValue(undefined)
   const themeStore = new ThemeStore()
   const metaStore = new MetaStore()
+  metaStore.setMeta({ cwd } as AppMeta)
   const layoutStore = new LayoutStore()
-  const fake = fakeRuntime()
-  const loadRuntime = vi.fn(async () => fake.runtime)
-  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, fakeWindow(), loadRuntime, nullLog())
-  return { store, api, themeStore, metaStore, layoutStore, loadRuntime, presenter, ...fake }
+  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, nullLog())
+  return { store, api, themeStore, metaStore, layoutStore, presenter }
 }
 
-async function mounted() {
-  const context = setup()
-  context.presenter.openFile(file("a.ts"))
-  context.presenter.attachHost(document.createElement("div"))
-  await vi.waitFor(() => expect(context.store.status).toBe("ready"))
-  return context
+function attachedFrame(presenter: EditorPresenter): HTMLIFrameElement {
+  const frame = document.createElement("iframe")
+  document.body.append(frame)
+  frames.push(frame)
+  presenter.attachFrame(frame)
+  return frame
 }
+
+function announce(source: MessageEventSource | null, type = "slagent-ready") {
+  window.dispatchEvent(new MessageEvent("message", { data: { type }, source }))
+}
+
+afterEach(() => {
+  for (const frame of frames.splice(0)) frame.remove()
+})
 
 describe("EditorPresenter", () => {
   describe("openFile", () => {
-    it("can open a tab and switch the layout to editor mode", () => {
-      const { presenter, store, layoutStore } = setup()
+    it("can switch to editor mode, start the server and open the file at its path", async () => {
+      const { presenter, api, layoutStore, store } = setup()
 
-      presenter.openFile(file("a.ts"))
+      await presenter.openFile(file())
 
-      expect(store.tabs.map((tab) => tab.absolutePath)).toEqual(["/p/a.ts"])
-      expect(store.activePath).toBe("/p/a.ts")
       expect(layoutStore.editorMode).toBe(true)
+      expect(store.url).toBe(URL_A)
+      expect(api.openEditorFile).toHaveBeenCalledWith("/p/src/a.ts")
     })
 
-    it("can reuse the tab when the same file opens again", () => {
-      const { presenter, store } = setup()
-      presenter.openFile(file("a.ts"))
-      presenter.openFile(file("b.ts"))
-
-      presenter.openFile(file("a.ts"))
-
-      expect(store.tabs).toHaveLength(2)
-      expect(store.activePath).toBe("/p/a.ts")
-    })
-
-    it("can refuse a binary file with a notice", () => {
-      const { presenter, store } = setup()
-
-      presenter.openFile(file("logo.png", { binary: true, contents: "" }))
-
-      expect(store.tabs).toEqual([])
-      expect(store.notice).toBe("logo.png is a binary file.")
-    })
-
-    it("can refuse a truncated file with a notice", () => {
-      const { presenter, store } = setup()
-
-      presenter.openFile(file("big.log", { truncated: true }))
-
-      expect(store.tabs).toEqual([])
-      expect(store.notice).toBe("big.log is too large to edit.")
-    })
-  })
-
-  describe("attachHost", () => {
-    it("can load the runtime, load the packs and set the theme before mounting", async () => {
-      const { runtime, store, loadRuntime, themeStore, presenter } = setup()
-      themeStore.setPreference("light")
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("ready"))
-
-      expect(loadRuntime).toHaveBeenCalledTimes(1)
-      expect(runtime.loadPacks).toHaveBeenCalledWith(DEFAULT_EDITOR_PREFS.packs)
-      expect(runtime.setTheme).toHaveBeenCalledWith("light", expect.stringContaining('"Slagent Light"'))
-      expect(runtime.mount).toHaveBeenCalled()
-    })
-
-    it("can open the tabs that were waiting for the editor", async () => {
-      const { handle } = await mounted()
-
-      expect(handle.open).toHaveBeenCalledWith("/p/a.ts", "a.ts body")
-      expect(handle.show).toHaveBeenCalledWith("/p/a.ts")
-    })
-
-    it("can put a load failure on the store", async () => {
-      const { presenter, store, loadRuntime } = setup()
-      loadRuntime.mockRejectedValueOnce(new Error("no worker"))
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("failed"))
-
-      expect(store.error).toBe("no worker")
-    })
-
-    it("can retry the load on the next mount after a failure", async () => {
-      const { presenter, store, loadRuntime } = setup()
-      loadRuntime.mockRejectedValueOnce(new Error("no worker"))
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("failed"))
-
-      presenter.attachHost(null)
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("ready"))
-
-      expect(loadRuntime).toHaveBeenCalledTimes(2)
-    })
-
-    it("can skip mounting when the host went away while the runtime loaded", async () => {
-      const { presenter, runtime, loadRuntime } = setup()
-      presenter.attachHost(document.createElement("div"))
-
-      presenter.attachHost(null)
-      await vi.waitFor(() => expect(loadRuntime).toHaveBeenCalled())
-      await Promise.resolve()
-
-      expect(runtime.mount).not.toHaveBeenCalled()
-    })
-
-    it("can dispose the editor widget when the host unmounts", async () => {
-      const { presenter, handle } = await mounted()
-
-      presenter.attachHost(null)
-
-      expect(handle.dispose).toHaveBeenCalled()
-    })
-
-    it("can show the open tabs again on a remount without recreating their models", async () => {
-      const { presenter, handle } = await mounted()
-      presenter.attachHost(null)
-      vi.mocked(handle.open).mockClear()
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(handle.show).toHaveBeenCalledTimes(2))
-
-      expect(handle.open).not.toHaveBeenCalled()
-    })
-  })
-
-  describe("dirty tracking", () => {
-    it("can mark a tab dirty when its contents differ from the saved ones", async () => {
-      const { store, type } = await mounted()
-
-      type("/p/a.ts", "edited")
-
-      expect(store.tab("/p/a.ts")?.dirty).toBe(true)
-    })
-
-    it("can mark a tab clean again when the edit is undone", async () => {
-      const { store, type } = await mounted()
-      type("/p/a.ts", "edited")
-
-      type("/p/a.ts", "a.ts body")
-
-      expect(store.tab("/p/a.ts")?.dirty).toBe(false)
-    })
-  })
-
-  describe("save", () => {
-    it("can write the contents with the mtime it read the file at", async () => {
-      const { presenter, api, type } = await mounted()
-      vi.mocked(api.writeFile).mockResolvedValue({ ok: true, mtime: 200, size: 6 })
-      type("/p/a.ts", "edited")
-
-      await presenter.save("/p/a.ts")
-
-      expect(api.writeFile).toHaveBeenCalledWith("/p/a.ts", "edited", 100)
-    })
-
-    it("can mark the tab clean with the new mtime after a save", async () => {
-      const { presenter, api, store, type } = await mounted()
-      vi.mocked(api.writeFile).mockResolvedValue({ ok: true, mtime: 200, size: 6 })
-      type("/p/a.ts", "edited")
-
-      await presenter.save("/p/a.ts")
-
-      expect(store.tab("/p/a.ts")).toMatchObject({ dirty: false, mtime: 200, savedContents: "edited", saving: false })
-    })
-
-    it("can stay dirty when more typing landed during the save", async () => {
-      const { presenter, api, store, type } = await mounted()
-      vi.mocked(api.writeFile).mockImplementation(async () => {
-        type("/p/a.ts", "edited more")
-        return { ok: true, mtime: 200, size: 6 }
-      })
-      type("/p/a.ts", "edited")
-
-      await presenter.save("/p/a.ts")
-
-      expect(store.tab("/p/a.ts")?.dirty).toBe(true)
-    })
-
-    it("can record the on-disk mtime when the file changed underneath", async () => {
-      const { presenter, api, store, type } = await mounted()
-      vi.mocked(api.writeFile).mockResolvedValue({ ok: false, reason: "conflict", message: "changed", mtime: 555 })
-      type("/p/a.ts", "edited")
-
-      await presenter.save("/p/a.ts")
-
-      expect(store.tab("/p/a.ts")?.conflictMtime).toBe(555)
-      expect(store.tab("/p/a.ts")?.dirty).toBe(true)
-    })
-
-    it("can put another refusal on the tab", async () => {
-      const { presenter, api, store } = await mounted()
-      const refusal: WriteFileResult = { ok: false, reason: "outside-project", message: "Only files inside the open project can be saved." }
-      vi.mocked(api.writeFile).mockResolvedValue(refusal)
-
-      await presenter.save("/p/a.ts")
-
-      expect(store.tab("/p/a.ts")?.error).toBe(refusal.message)
-    })
-
-    it("can put a thrown error on the tab and clear the saving flag", async () => {
-      const { presenter, api, store } = await mounted()
-      vi.mocked(api.writeFile).mockRejectedValue(new Error("offline"))
-
-      await presenter.save("/p/a.ts")
-
-      expect(store.tab("/p/a.ts")).toMatchObject({ error: "offline", saving: false })
-    })
-
-    it("can ignore a second save while one is in flight", async () => {
-      const { presenter, api, store } = await mounted()
-      vi.mocked(api.writeFile).mockReturnValue(new Promise(() => {}))
-      void presenter.save("/p/a.ts")
-
-      await presenter.save("/p/a.ts")
-
-      expect(api.writeFile).toHaveBeenCalledTimes(1)
-      expect(store.tab("/p/a.ts")?.saving).toBe(true)
-    })
-
-    it("can save from the editor's own save command", async () => {
-      const { api, events, type } = await mounted()
-      vi.mocked(api.writeFile).mockResolvedValue({ ok: true, mtime: 200, size: 6 })
-      type("/p/a.ts", "edited")
-
-      events()?.onSave("/p/a.ts")
-
-      expect(api.writeFile).toHaveBeenCalledWith("/p/a.ts", "edited", 100)
-    })
-  })
-
-  describe("overwrite", () => {
-    it("can write again with the mtime found during the conflict", async () => {
-      const { presenter, api, store, type } = await mounted()
-      vi.mocked(api.writeFile).mockResolvedValueOnce({ ok: false, reason: "conflict", message: "changed", mtime: 555 })
-      type("/p/a.ts", "edited")
-      await presenter.save("/p/a.ts")
-      vi.mocked(api.writeFile).mockResolvedValueOnce({ ok: true, mtime: 600, size: 6 })
-
-      await presenter.overwrite("/p/a.ts")
-
-      expect(api.writeFile).toHaveBeenLastCalledWith("/p/a.ts", "edited", 555)
-      expect(store.tab("/p/a.ts")).toMatchObject({ dirty: false, conflictMtime: null, mtime: 600 })
-    })
-  })
-
-  describe("active tab shortcuts", () => {
-    it("can reload the active tab from disk", async () => {
-      const { presenter, api } = await mounted()
-      vi.mocked(api.readFile).mockResolvedValue(file("a.ts", { contents: "from disk", mtime: 300 }))
-
-      await presenter.reloadActive()
-
-      expect(api.readFile).toHaveBeenCalledWith("/p/a.ts")
-    })
-
-    it("can overwrite the active tab", async () => {
-      const { presenter, api, type } = await mounted()
-      vi.mocked(api.writeFile).mockResolvedValueOnce({ ok: false, reason: "conflict", message: "changed", mtime: 555 })
-      type("/p/a.ts", "edited")
-      await presenter.save("/p/a.ts")
-      vi.mocked(api.writeFile).mockResolvedValueOnce({ ok: true, mtime: 600, size: 6 })
-
-      await presenter.overwriteActive()
-
-      expect(api.writeFile).toHaveBeenLastCalledWith("/p/a.ts", "edited", 555)
-    })
-
-    it("can do nothing when no tab is active", async () => {
+    it("can open the file on its line", async () => {
       const { presenter, api } = setup()
 
-      await presenter.reloadActive()
-      await presenter.overwriteActive()
+      await presenter.openFile(file({ line: 12 }))
 
-      expect(api.readFile).not.toHaveBeenCalled()
-      expect(api.writeFile).not.toHaveBeenCalled()
-    })
-  })
-
-  describe("reloadFromDisk", () => {
-    it("can replace the editor contents and stay clean", async () => {
-      const { presenter, api, store, handle, type } = await mounted()
-      vi.mocked(api.readFile).mockResolvedValue(file("a.ts", { contents: "from disk", mtime: 300 }))
-      type("/p/a.ts", "edited")
-
-      await presenter.reloadFromDisk("/p/a.ts")
-
-      expect(handle.replace).toHaveBeenCalledWith("/p/a.ts", "from disk")
-      expect(store.tab("/p/a.ts")).toMatchObject({ dirty: false, mtime: 300, savedContents: "from disk" })
+      expect(api.openEditorFile).toHaveBeenCalledWith("/p/src/a.ts:12")
     })
 
-    it("can report a file that can no longer be read as text", async () => {
-      const { presenter, api, store } = await mounted()
-      vi.mocked(api.readFile).mockResolvedValue(null)
+    it("can start the server only once for several files", async () => {
+      const { presenter, api } = setup()
 
-      await presenter.reloadFromDisk("/p/a.ts")
+      await presenter.openFile(file())
+      await presenter.openFile(file({ absolutePath: "/p/b.ts" }))
 
-      expect(store.tab("/p/a.ts")?.error).toBe("The file can no longer be read as text.")
-    })
-  })
-
-  describe("closeTab", () => {
-    it("can close a clean tab straight away", async () => {
-      const { presenter, store, handle } = await mounted()
-
-      presenter.closeTab("/p/a.ts")
-
-      expect(store.tabs).toEqual([])
-      expect(handle.close).toHaveBeenCalledWith("/p/a.ts")
+      expect(api.getEditorUrl).toHaveBeenCalledTimes(1)
+      expect(api.openEditorFile).toHaveBeenCalledTimes(2)
     })
 
-    it("can ask before closing a tab with unsaved edits", async () => {
-      const { presenter, store, type } = await mounted()
-      type("/p/a.ts", "edited")
-
-      presenter.closeTab("/p/a.ts")
-
-      expect(store.closing).toBe("/p/a.ts")
-      expect(store.tabs).toHaveLength(1)
-    })
-
-    it("can close from the vim close command", async () => {
-      const { events, store } = await mounted()
-
-      events()?.onClose("/p/a.ts")
-
-      expect(store.tabs).toEqual([])
-    })
-  })
-
-  describe("answerClose", () => {
-    async function closing() {
-      const context = await mounted()
-      context.type("/p/a.ts", "edited")
-      context.presenter.closeTab("/p/a.ts")
-      return context
-    }
-
-    it("can keep the tab when cancelled", async () => {
-      const { presenter, store } = await closing()
-
-      await presenter.answerClose("cancel")
-
-      expect(store.tabs).toHaveLength(1)
-      expect(store.closing).toBeNull()
-    })
-
-    it("can drop the edits when discarded", async () => {
-      const { presenter, store, api } = await closing()
-
-      await presenter.answerClose("discard")
-
-      expect(store.tabs).toEqual([])
-      expect(api.writeFile).not.toHaveBeenCalled()
-    })
-
-    it("can save and then close", async () => {
-      const { presenter, store, api } = await closing()
-      vi.mocked(api.writeFile).mockResolvedValue({ ok: true, mtime: 200, size: 6 })
-
-      await presenter.answerClose("save")
-
-      expect(api.writeFile).toHaveBeenCalledWith("/p/a.ts", "edited", 100)
-      expect(store.tabs).toEqual([])
-    })
-
-    it("can keep the tab open when saving fails", async () => {
-      const { presenter, store, api } = await closing()
-      vi.mocked(api.writeFile).mockResolvedValue({ ok: false, reason: "conflict", message: "changed", mtime: 9 })
-
-      await presenter.answerClose("save")
-
-      expect(store.tabs).toHaveLength(1)
-    })
-  })
-
-  describe("theme and prefs reactions", () => {
-    it("can set the matching theme when the app theme flips after the runtime loaded", async () => {
-      const { presenter, themeStore, runtime } = await mounted()
+    it("can share one start between the mode switch and the open", async () => {
+      const { presenter, api } = setup()
       presenter.start()
 
-      themeStore.setPreference("light")
-      await vi.waitFor(() => expect(runtime.setTheme).toHaveBeenLastCalledWith("light", expect.any(String)))
+      await presenter.openFile(file())
+
+      expect(api.getEditorUrl).toHaveBeenCalledTimes(1)
+      presenter.stop()
+    })
+
+    it("can skip opening when the server could not start", async () => {
+      const { presenter, api, store } = setup()
+      vi.mocked(api.getEditorUrl).mockRejectedValue(new Error("The editor server stopped."))
+
+      await presenter.openFile(file())
+
+      expect(store.status).toBe("failed")
+      expect(store.error).toBe("The editor server stopped.")
+      expect(api.openEditorFile).not.toHaveBeenCalled()
+    })
+
+    it("can survive a failed open", async () => {
+      const { presenter, api, store } = setup()
+      vi.mocked(api.openEditorFile).mockRejectedValue(new Error("refused"))
+
+      await expect(presenter.openFile(file())).resolves.toBeUndefined()
+      expect(store.status).not.toBe("failed")
+    })
+  })
+
+  describe("start", () => {
+    it("can leave the server alone while editor mode is off", () => {
+      const { presenter, api } = setup()
+
+      presenter.start()
+
+      expect(api.getEditorUrl).not.toHaveBeenCalled()
+      presenter.stop()
+    })
+
+    it("can start the server when editor mode opens", async () => {
+      const { presenter, api, layoutStore, store } = setup()
+      presenter.start()
+
+      layoutStore.setEditorMode(true)
+      await vi.waitFor(() => expect(store.url).toBe(URL_A))
+
+      expect(api.getEditorUrl).toHaveBeenCalledTimes(1)
+      presenter.stop()
+    })
+
+    it("can reload for another project", async () => {
+      const { presenter, api, layoutStore, metaStore, store } = setup()
+      layoutStore.setEditorMode(true)
+      presenter.start()
+      await vi.waitFor(() => expect(store.url).toBe(URL_A))
+      vi.mocked(api.getEditorUrl).mockResolvedValue("http://127.0.0.1:4000/?tkn=abc&folder=%2Fother")
+
+      metaStore.setMeta({ cwd: "/other" } as AppMeta)
+      await vi.waitFor(() => expect(store.url).toContain("%2Fother"))
 
       presenter.stop()
     })
 
-    it("can leave the runtime alone when the theme flips before it loaded", () => {
-      const { presenter, themeStore, loadRuntime } = setup()
+    it("can drop the page when editor mode closes", async () => {
+      const { presenter, layoutStore, store } = setup()
+      layoutStore.setEditorMode(true)
       presenter.start()
+      await vi.waitFor(() => expect(store.url).toBe(URL_A))
 
-      themeStore.setPreference("light")
+      layoutStore.setEditorMode(false)
 
-      expect(loadRuntime).not.toHaveBeenCalled()
-      presenter.stop()
-    })
-
-    it("can apply new editor options and packs when the settings change", async () => {
-      const { presenter, metaStore, runtime } = await mounted()
-      presenter.start()
-
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, fontSize: 20, packs: ["java"] } } as AppMeta)
-      await vi.waitFor(() => expect(runtime.setOptions).toHaveBeenCalledWith(expect.objectContaining({ fontSize: 20 })))
-
-      expect(runtime.loadPacks).toHaveBeenLastCalledWith(["java"])
+      expect(store.url).toBeNull()
       presenter.stop()
     })
   })
 
-  describe("extensions", () => {
-    const vim = { id: "vscodevim.vim", version: "1.32.4", enabled: true }
-    const payload = (id: string) => ({ id, version: "1.0.0", manifest: { name: id }, files: ["package.json"], baseUrl: `http://localhost:1/${id}` })
-
-    it("can register the enabled extensions when the runtime boots", async () => {
-      const { presenter, api, metaStore, runtime, store } = setup()
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
-      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("ready"))
-
-      expect(api.readEditorExtension).toHaveBeenCalledWith("vscodevim.vim")
-      expect(runtime.setExtensions).toHaveBeenCalledWith([payload("vscodevim.vim")])
-    })
-
-    it("can leave a disabled extension out", async () => {
-      const { presenter, api, metaStore, runtime, store } = setup()
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [{ ...vim, enabled: false }] } } as AppMeta)
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("ready"))
-
-      expect(api.readEditorExtension).not.toHaveBeenCalled()
-      expect(runtime.setExtensions).toHaveBeenCalledWith([])
-    })
-
-    it("can skip an extension that is no longer on disk", async () => {
-      const { presenter, api, metaStore, runtime, store } = setup()
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
-      vi.mocked(api.readEditorExtension).mockResolvedValue(null)
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("ready"))
-
-      expect(runtime.setExtensions).toHaveBeenCalledWith([])
-    })
-
-    it("can keep going when reading one extension fails", async () => {
-      const { presenter, api, metaStore, runtime, store } = setup()
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim, { id: "other.ext", version: "1.0.0", enabled: true }] } } as AppMeta)
-      vi.mocked(api.readEditorExtension).mockRejectedValueOnce(new Error("gone")).mockResolvedValueOnce(payload("other.ext"))
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("ready"))
-
-      expect(runtime.setExtensions).toHaveBeenCalledWith([payload("other.ext")])
-    })
-
-    it("can still mount when an extension fails to start", async () => {
-      const { presenter, api, metaStore, runtime, store } = setup()
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
-      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
-      vi.mocked(runtime.setExtensions).mockResolvedValue([{ id: "vscodevim.vim", message: "bad manifest" }])
-
-      presenter.attachHost(document.createElement("div"))
-      await vi.waitFor(() => expect(store.status).toBe("ready"))
-
-      expect(runtime.mount).toHaveBeenCalled()
-    })
-
-    it("can register a newly installed extension when the settings change", async () => {
-      const { presenter, api, metaStore, runtime } = await mounted()
+  describe("frame messages", () => {
+    it("can send the shape CSS and push the theme once the frame is ready", async () => {
+      const { presenter, api, store } = setup()
       presenter.start()
-      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
+      await presenter.openFile(file())
+      const frame = attachedFrame(presenter)
+      const post = vi.spyOn(frame.contentWindow as Window, "postMessage")
 
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
-      await vi.waitFor(() => expect(runtime.setExtensions).toHaveBeenLastCalledWith([payload("vscodevim.vim")]))
+      announce(frame.contentWindow)
 
+      expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: "slagent-css" }), "http://127.0.0.1:4000")
+      expect(api.setEditorTheme).toHaveBeenCalledWith(expect.objectContaining({ "workbench.colorTheme": expect.any(String) }))
+      expect(store.url).toBe(URL_A)
       presenter.stop()
     })
 
-    it("can drop an extension when it is switched off", async () => {
-      const { presenter, api, metaStore, runtime } = await mounted()
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [vim] } } as AppMeta)
+    it("can ignore a message from another window", async () => {
+      const { presenter, api } = setup()
       presenter.start()
-      vi.mocked(api.readEditorExtension).mockResolvedValue(payload("vscodevim.vim"))
+      await presenter.openFile(file())
+      attachedFrame(presenter)
 
-      metaStore.setMeta({ editor: { ...DEFAULT_EDITOR_PREFS, extensions: [{ ...vim, enabled: false }] } } as AppMeta)
-      await vi.waitFor(() => expect(runtime.setExtensions).toHaveBeenLastCalledWith([]))
+      announce(window)
 
+      expect(api.setEditorTheme).not.toHaveBeenCalled()
+      presenter.stop()
+    })
+
+    it("can ignore a message that is not the ready signal", async () => {
+      const { presenter, api } = setup()
+      presenter.start()
+      await presenter.openFile(file())
+      const frame = attachedFrame(presenter)
+
+      announce(frame.contentWindow, "something-else")
+
+      expect(api.setEditorTheme).not.toHaveBeenCalled()
+      presenter.stop()
+    })
+
+    it("can ignore messages after it stops", async () => {
+      const { presenter, api } = setup()
+      presenter.start()
+      await presenter.openFile(file())
+      const frame = attachedFrame(presenter)
+      presenter.stop()
+
+      announce(frame.contentWindow)
+
+      expect(api.setEditorTheme).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("theme", () => {
+    it("can push the new theme when the app theme flips", async () => {
+      const { presenter, api, themeStore } = setup()
+      presenter.start()
+      await presenter.openFile(file())
+      const rAF = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+        callback(0)
+        return 0
+      })
+
+      themeStore.setPreference("dark")
+
+      expect(api.setEditorTheme).toHaveBeenLastCalledWith(expect.objectContaining({ "workbench.colorTheme": "Dark Modern" }))
+      rAF.mockRestore()
+      presenter.stop()
+    })
+
+    it("can leave the editor alone when it is not running", () => {
+      const { presenter, api, themeStore } = setup()
+      presenter.start()
+
+      themeStore.setPreference("dark")
+
+      expect(api.setEditorTheme).not.toHaveBeenCalled()
       presenter.stop()
     })
   })
 
-  describe("stop", () => {
-    it("can dispose the editor widget", async () => {
-      const { presenter, handle } = await mounted()
-      presenter.start()
+  describe("handleFrameLoad", () => {
+    it("can mark the editor ready", async () => {
+      const { presenter, store } = setup()
+      await presenter.openFile(file())
 
-      presenter.stop()
+      presenter.handleFrameLoad()
 
-      expect(handle.dispose).toHaveBeenCalled()
+      expect(store.status).toBe("ready")
+    })
+  })
+
+  describe("runCommand", () => {
+    it("can run a view command in the editor", async () => {
+      const { presenter, api } = setup()
+
+      await presenter.runCommand("workbench.view.search")
+
+      expect(api.runEditorCommand).toHaveBeenCalledWith("workbench.view.search")
+    })
+
+    it("can survive a refused command", async () => {
+      const { presenter, api } = setup()
+      vi.mocked(api.runEditorCommand).mockRejectedValue(new Error("command not allowed"))
+
+      await expect(presenter.runCommand("x")).resolves.toBeUndefined()
+    })
+  })
+
+  describe("exit and retry", () => {
+    it("can go back to the chat", () => {
+      const { presenter, layoutStore } = setup()
+      layoutStore.setEditorMode(true)
+
+      presenter.exit()
+
+      expect(layoutStore.editorMode).toBe(false)
+    })
+
+    it("can try the start again after a failure", async () => {
+      const { presenter, api, store } = setup()
+      vi.mocked(api.getEditorUrl).mockRejectedValueOnce(new Error("no")).mockResolvedValue(URL_A)
+      await presenter.openFile(file())
+      expect(store.status).toBe("failed")
+
+      presenter.retry()
+      await vi.waitFor(() => expect(store.url).toBe(URL_A))
     })
   })
 })

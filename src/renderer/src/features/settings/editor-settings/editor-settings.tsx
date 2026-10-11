@@ -1,26 +1,21 @@
-import type { ComponentType } from "react"
 import { EDITOR_FONT_SIZE, EDITOR_TAB_SIZE } from "@shared/editor"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SettingSwitch } from "@/features/settings/editor-settings/setting-switch/setting-switch"
-import type { PackRow } from "@/lib/editor-packs"
 
 export type EditorSettingsProps = {
   fontSize: number
   tabSize: number
   wordWrap: boolean
   minimap: boolean
-  packs: PackRow[]
-  Extensions: ComponentType
   error: string | null
   onFontSize: (value: number) => void
   onTabSize: (value: number) => void
   onWordWrap: (value: boolean) => void
   onMinimap: (value: boolean) => void
-  onTogglePack: (id: string) => void
 }
 
-export function EditorSettings({ fontSize, tabSize, wordWrap, minimap, packs, Extensions, error, onFontSize, onTabSize, onWordWrap, onMinimap, onTogglePack }: EditorSettingsProps) {
+export function EditorSettings({ fontSize, tabSize, wordWrap, minimap, error, onFontSize, onTabSize, onWordWrap, onMinimap }: EditorSettingsProps) {
   return (
     <div className="space-y-6">
       <section className="space-y-2">
@@ -63,16 +58,9 @@ export function EditorSettings({ fontSize, tabSize, wordWrap, minimap, packs, Ex
           </p>
         )}
       </section>
-      <Extensions />
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Language packs</h2>
-        <p className="text-sm text-white/60">Syntax highlighting for each language. A pack you switch off stops loading the next time the app starts.</p>
-        <div className="divide-y divide-white/10">
-          {packs.map((pack) => (
-            <SettingSwitch key={pack.id} label={pack.label} description={pack.languages} checked={pack.enabled} onChange={() => onTogglePack(pack.id)} />
-          ))}
-        </div>
-      </section>
+      <p className="text-sm text-white/60">
+        The editor is VS Code. Install extensions, change themes and keybindings, and turn Vim on from its Extensions view (the puzzle icon in the editor's toolbar).
+      </p>
     </div>
   )
 }

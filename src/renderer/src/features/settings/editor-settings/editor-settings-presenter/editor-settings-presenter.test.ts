@@ -81,24 +81,6 @@ describe("EditorSettingsPresenter", () => {
     })
   })
 
-  describe("handleTogglePack", () => {
-    it("can switch a pack on", async () => {
-      const { presenter, api } = setup({ ...DEFAULT_EDITOR_PREFS, packs: ["json"] })
-
-      await presenter.handleTogglePack("java")
-
-      expect(api.setEditorPrefs).toHaveBeenCalledWith(expect.objectContaining({ packs: ["json", "java"] }))
-    })
-
-    it("can switch a pack off", async () => {
-      const { presenter, api } = setup({ ...DEFAULT_EDITOR_PREFS, packs: ["json", "java"] })
-
-      await presenter.handleTogglePack("java")
-
-      expect(api.setEditorPrefs).toHaveBeenCalledWith(expect.objectContaining({ packs: ["json"] }))
-    })
-  })
-
   describe("errors", () => {
     it("can put a failed save on the store", async () => {
       const { presenter, api, store } = setup()

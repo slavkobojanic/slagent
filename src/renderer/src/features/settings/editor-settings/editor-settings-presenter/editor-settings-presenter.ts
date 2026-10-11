@@ -21,11 +21,6 @@ export class EditorSettingsPresenter {
 
   handleMinimap = (minimap: boolean) => this.update("minimap", { minimap })
 
-  handleTogglePack = (id: string) => {
-    const { packs } = this.prefs()
-    return this.update("toggle-pack", { packs: packs.includes(id) ? packs.filter((existing) => existing !== id) : [...packs, id] })
-  }
-
   private prefs = (): EditorPrefs => this.metaStore.meta?.editor ?? DEFAULT_EDITOR_PREFS
 
   // A blank or half typed number arrives as NaN; it keeps the stored value instead of saving junk.

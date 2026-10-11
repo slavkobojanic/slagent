@@ -78,7 +78,6 @@ export function makeFile(overrides: Partial<FileView> = {}): FileView {
     line: null,
     contents: "export {}",
     size: 9,
-    mtime: 1000,
     binary: false,
     truncated: false,
     ...overrides,
