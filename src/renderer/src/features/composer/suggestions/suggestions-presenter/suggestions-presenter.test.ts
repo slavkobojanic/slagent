@@ -415,4 +415,60 @@ describe("SuggestionsPresenter", () => {
       expect(api.searchFiles).not.toHaveBeenCalled()
     })
   })
+
+  describe("attachList", () => {
+    // A list of 30 rows that are 28px tall, showing 224px of them.
+    function scrollerWithRows(count: number): HTMLDivElement {
+      const list = document.createElement("div")
+      for (let index = 0; index < count; index += 1) {
+        const row = document.createElement("button")
+        Object.defineProperty(row, "offsetTop", { value: index * 28, configurable: true })
+        Object.defineProperty(row, "offsetHeight", { value: 28, configurable: true })
+        list.appendChild(row)
+      }
+      Object.defineProperty(list, "clientHeight", { value: 224, configurable: true })
+      return list
+    }
+
+    function openMenu(count: number) {
+      store.setTriggers({ mention: { query: "", start: 0 }, chatMention: null, slash: null })
+      store.setFileMatches(
+        Array.from({ length: count }, (_, index) => ({ path: `src/r${index}.ts`, name: `r${index}.ts` })),
+      )
+    }
+
+    it("can scroll the active row into view when the list attaches", () => {
+      presenter.start()
+      openMenu(30)
+      store.setActive(20)
+      const list = scrollerWithRows(30)
+
+      presenter.attachList(list)
+
+      expect(list.scrollTop).toBe(20 * 28 + 28 - 224)
+    })
+
+    it("can scroll the active row into view when it moves down", () => {
+      presenter.start()
+      openMenu(30)
+      const list = scrollerWithRows(30)
+      presenter.attachList(list)
+
+      store.setActive(20)
+
+      expect(list.scrollTop).toBe(20 * 28 + 28 - 224)
+    })
+
+    it("can scroll the active row back to the top when it moves up", () => {
+      presenter.start()
+      openMenu(30)
+      const list = scrollerWithRows(30)
+      presenter.attachList(list)
+      store.setActive(20)
+
+      store.setActive(0)
+
+      expect(list.scrollTop).toBe(0)
+    })
+  })
 })

@@ -21,6 +21,7 @@ export type ApplyText = (text: string, caret: number) => void
 export class SuggestionsPresenter {
   private attached = false
   private disposers: Array<() => void> = []
+  private list: HTMLDivElement | null = null
   private fileTimer: number | null = null
   private chatTimer: number | null = null
   private fileRequest = 0
@@ -46,6 +47,8 @@ export class SuggestionsPresenter {
       this.log.reaction("mention", () => this.store.mention, this.searchFiles),
       this.log.reaction("chat-mention", () => this.store.chatMention, this.searchChats),
       this.log.reaction("slash-open", () => this.store.slash !== null, this.loadCommands),
+      // Keyboard moves the active row, so every move keeps the row inside the visible list.
+      this.log.reaction("active-row", () => this.store.active, () => this.revealActive()),
       // The history search takes over the box, so the other menus close while it is open.
       this.log.reaction(
         "history-searching",
@@ -74,9 +77,16 @@ export class SuggestionsPresenter {
   }
 
   attachList = (element: HTMLDivElement | null) => {
+    this.list = element
+    this.revealActive()
+  }
+
+  // Keeps the active row inside the visible part of the list: scrolls up when it sits above the
+  // fold and down when it sits below it.
+  private revealActive = () => {
+    const element = this.list
     if (element === null) return
-    const active = this.store.active
-    const row = element.children[active] as HTMLElement | undefined
+    const row = element.children[this.store.active] as HTMLElement | undefined
     if (row === undefined) return
     const top = row.offsetTop
     if (top < element.scrollTop) {
