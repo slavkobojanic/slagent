@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
+import { slot } from "@/storybook/slots"
 import { EditorSettings, type EditorSettingsProps } from "@/features/settings/editor-settings/editor-settings"
 import { viewMarkup } from "@/test/view-markup"
 
@@ -11,6 +12,7 @@ const base: EditorSettingsProps = {
     { id: "json", label: "JSON", languages: "JSON, JSONC", enabled: true },
     { id: "java", label: "Java", languages: "Java", enabled: false },
   ],
+  Extensions: slot("Extensions"),
   error: null,
   onFontSize: vi.fn(),
   onTabSize: vi.fn(),
@@ -47,6 +49,13 @@ describe("EditorSettings", () => {
 
   it("can say a switched off pack takes effect on the next launch", () => {
     expect(viewMarkup(<EditorSettings {...base} />)).toContain("next time the app starts")
+  })
+
+  it("can place the extensions section above the language packs", () => {
+    const markup = viewMarkup(<EditorSettings {...base} />)
+
+    expect(markup.indexOf("Extensions")).toBeGreaterThan(-1)
+    expect(markup.indexOf("Extensions")).toBeLessThan(markup.indexOf("Language packs"))
   })
 
   it("can show a save error", () => {
