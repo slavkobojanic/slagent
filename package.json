@@ -9,6 +9,7 @@
     "dev": "node scripts/brand-electron-mac.mjs && electron-vite dev",
     "build": "electron-vite build",
     "build:mac": "sh scripts/build-mac.sh",
+    "build:mac:fast": "sh scripts/build-mac-fast.sh",
     "preview": "node scripts/brand-electron-mac.mjs && electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.storybook.json",
     "test": "vitest run",

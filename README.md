@@ -111,6 +111,8 @@ pnpm dev
 
 `pnpm dev` runs the app with hot reload. `pnpm typecheck` checks the main, preload and renderer code.
 
+`pnpm build:mac:fast` builds the app for local testing in about a minute: it stops at `dist/mac-arm64/slagent.app` and skips the zip, notarization and the install into `~/Applications`.
+
 `pnpm build:mac` builds the Swift helper and the app, signs it, and installs it to `~/Applications/slagent.app`. Signing is required (`forceCodeSigning`), so you need a code signing identity in your keychain. Releases are built by the [Release macOS app](.github/workflows/release-mac.yml) workflow, which signs and notarizes the app and publishes it with the update feed.
 
 ### Layout

@@ -45,6 +45,13 @@ forceCodeSigning: true
 mac:
   category: public.app-category.developer-tools
   icon: icon.icns
+  # @electron/osx-sign signs every file it walks, not just Mach-O code. The app ships
+  # Electron's ~670 .pak resources plus fonts, images and audio, and giving each one a
+  # secure timestamp costs a TSA round trip (~0.3s). Skipping data files took signing
+  # from ~6.5min to ~45s; the enclosing bundles still seal them, so verification and
+  # notarization are unaffected. Code extensions (.node, .dylib, .bin, ...) are not listed.
+  signIgnore:
+    - "\\.(pak|png|jpe?g|gif|ico|svg|webp|bmp|tiff?|woff2?|ttf|otf|eot|mp3|wav|ogg|m4a|mp4|webm|mov|nib|icns|dat|gz|zip|wasm|so|dll|exe|map|md|txt|html?|css|scss|less|js|mjs|cjs|jsx|ts|tsx|json|xml|yml|yaml|sh|scpt|code-snippets|npmrc|LICENSE|license)$"
   # zip (not just dir) is required for auto-update: electron-builder only emits
   # app-update.yml / latest-mac.yml for zip or dmg targets.
   target:
