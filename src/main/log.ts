@@ -77,7 +77,7 @@ export function createProcessLog(deps: ProcessLogDeps): Log {
 export async function truncateLogFile(path: string, keepBytes: number, deps: { read?: (path: string) => Promise<string>; write?: (path: string, data: string) => Promise<void> } = {}): Promise<void> {
   const read = deps.read ?? readFile
   const write = deps.write ?? writeFile
-  const contents = await read(path)
+  const contents = (await read(path)).toString()
   // Walk backwards from the end, keeping as many whole recent lines as the cap allows.
   const lines = contents.split("\n")
   const trailing = lines.length > 1 && lines[lines.length - 1] === "" ? lines.length - 1 : lines.length
@@ -173,7 +173,7 @@ async function copyLogFiles(
   const copy = deps.copy ?? copyFile
   const names: string[] = []
   const paths: string[] = []
-  const topLevel = await readdirFn(deps.userData, { withFileTypes: true })
+  const topLevel = await deps.readdir(deps.userData, { withFileTypes: true })
   for (const entry of topLevel) {
     if (!entry.name.endsWith(".log")) continue
     const from = join(deps.userData, entry.name)
@@ -182,7 +182,7 @@ async function copyLogFiles(
     paths.push(from)
   }
   const vscodeDir = join(deps.userData, "vscode-server")
-  const entries = await readdirFn(vscodeDir, { withFileTypes: true }).catch(() => [])
+  const entries = await deps.readdir(vscodeDir, { withFileTypes: true }).catch(() => [])
   for (const entry of entries) {
     if (!entry.name.endsWith(".log")) continue
     const from = join(vscodeDir, entry.name)
@@ -230,14 +230,6 @@ export type WatchTarget = { child: { pid?: number }; onData: (chunk: string) => 
 // The editor server writes to its stdout, so the app copies those lines into its own log.
 export function watchEditorProcess(target: WatchTarget): void {
   target.onData(`${JSON.stringify({ when: new Date().toISOString(), level: "info", scope: "vscode-server", event: `pid ${target.child.pid ?? "?"}` })}\n`)
-}
-
-export type MenuTarget = { window: { showItemInFolder: (path: string) => void } | null; bundle: () => Promise<BundleResult> }
-
-export async function saveLogsFromMenu(target: MenuTarget): Promise<void> {
-  const result = await target.bundle()
-  if ("error" in result) return
-  target.window?.showItemInFolder(result.archivePath)
 }
 
 export type NetServerDeps = {

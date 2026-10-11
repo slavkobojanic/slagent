@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events"
 import { describe, expect, it, vi } from "vitest"
 import { createProcessLog, formatLogLines, logPaths, timestampSlug, truncateLogFile, waitForFile } from "./log"
 
