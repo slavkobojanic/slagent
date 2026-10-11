@@ -1,4 +1,4 @@
-import { Loader2, LogIn, LogOut, Power, X } from "lucide-react"
+import { Loader2, LogIn, LogOut, Power, Trash2, X } from "lucide-react"
 import type { McpServerStatus } from "@shared/types"
 import { IconAction } from "./icon-action/icon-action"
 import { McpStateBadge } from "./mcp-state-badge/mcp-state-badge"
@@ -9,9 +9,10 @@ export type McpServerRowProps = {
   onSignIn: () => void
   onSignOut: () => void
   onToggle: () => void
+  onRemove: () => void
 }
 
-export function McpServerRow({ server, busy, onSignIn, onSignOut, onToggle }: McpServerRowProps) {
+export function McpServerRow({ server, busy, onSignIn, onSignOut, onToggle, onRemove }: McpServerRowProps) {
   return (
     <tr className="transition-colors hover:bg-white/3">
       <td className="px-3 py-2.5 align-middle">
@@ -42,6 +43,11 @@ export function McpServerRow({ server, busy, onSignIn, onSignOut, onToggle }: Mc
           <IconAction label={server.enabled ? "Disable" : "Enable"} disabled={busy} onClick={onToggle}>
             {server.enabled ? <X className="size-4" /> : <Power className="size-4" />}
           </IconAction>
+          {!server.enabled ? (
+            <IconAction label="Remove" disabled={busy} onClick={onRemove}>
+              <Trash2 className="size-4" />
+            </IconAction>
+          ) : null}
         </div>
       </td>
     </tr>

@@ -107,6 +107,21 @@ export class McpManager {
     return this.list()
   }
 
+  // Removing also drops any stored OAuth state, so re-adding the same server
+  // starts sign-in from scratch instead of reusing forgotten credentials.
+  async remove(name: string): Promise<McpServerStatus[]> {
+    const config = this.servers[name]
+    if (!config) throw new Error(`No MCP server named "${name}".`)
+    if ("url" in config) {
+      const states = await this.readAuth()
+      if (delete states[this.storeKey(name, config.url)]) await this.writeAuth(states)
+    }
+    const { [name]: _removed, ...rest } = this.servers
+    this.servers = rest
+    await this.writeConfig()
+    return this.list()
+  }
+
   async signIn(name: string): Promise<McpServerStatus[]> {
     const config = this.servers[name]
     if (!config) throw new Error(`No MCP server named "${name}".`)

@@ -62,3 +62,35 @@ describe("McpManager.addServer", () => {
     expect(Object.keys(saved.mcpServers)).toEqual(["docs", "files"])
   })
 })
+
+describe("McpManager.remove", () => {
+  it("deletes a server from the config", async () => {
+    const { manager, configPath } = await managerWith(existing)
+    // Disabling the other server keeps list() from probing it.
+    await manager.setEnabled("files", false)
+    await manager.remove("docs")
+    const saved = JSON.parse(await readFile(configPath, "utf8")) as { mcpServers: Record<string, unknown> }
+    expect(Object.keys(saved.mcpServers)).toEqual(["files"])
+  })
+
+  it("deletes the stored credentials of a remote server", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "slagent-mcp-"))
+    dirs.push(dir)
+    const configPath = join(dir, "mcp.json")
+    const authPath = join(dir, "mcp-auth.json")
+    await writeFile(configPath, JSON.stringify({ mcpServers: { docs: existing.docs } }))
+    await writeFile(authPath, JSON.stringify({ "mcp__docs|https://example.com/mcp": { tokens: { access_token: "t" } } }))
+    const manager = new McpManager({ configPath, authPath, openUrl: () => undefined })
+    await manager.start()
+
+    await manager.remove("docs")
+
+    const auth = JSON.parse(await readFile(authPath, "utf8")) as Record<string, unknown>
+    expect(Object.keys(auth)).toEqual([])
+  })
+
+  it("refuses an unknown server", async () => {
+    const { manager } = await managerWith(existing)
+    await expect(manager.remove("missing")).rejects.toThrow(/No MCP server named/)
+  })
+})

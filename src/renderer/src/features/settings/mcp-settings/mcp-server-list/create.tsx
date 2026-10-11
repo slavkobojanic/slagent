@@ -21,6 +21,7 @@ export function createMcpServerList({
         onSignIn={mcpSettingsPresenter.handleSignIn}
         onSignOut={mcpSettingsPresenter.handleSignOut}
         onSetEnabled={mcpSettingsPresenter.handleSetEnabled}
+        onRemove={mcpSettingsPresenter.handleRemove}
       />
     )
   })

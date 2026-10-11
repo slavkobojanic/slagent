@@ -89,6 +89,11 @@ export class McpSettingsPresenter {
     return this.run(name, () => this.api.mcpSetEnabled(name, enabled))
   }
 
+  handleRemove = (name: string) => {
+    this.log.action("remove", { name })
+    return this.run(name, () => this.api.mcpRemove(name))
+  }
+
   // Background loads keep the list on screen when they fail. A refresh from the dialog reports its error.
   private loadQuietly = async () => {
     try {

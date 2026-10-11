@@ -218,6 +218,8 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return deps.mcp()?.signOut(requireName(params[0]))
       case "mcpSetEnabled":
         return deps.mcp()?.setEnabled(requireName(params[0]), params[1] === true)
+      case "mcpRemove":
+        return deps.mcp()?.remove(requireName(params[0]))
       case "usageStats":
         return host.usageStats()
       case "terminalCreate":

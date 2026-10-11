@@ -6,7 +6,7 @@ import { mcpServer } from "@/storybook/sample"
 const meta = {
   title: "Features/Settings/McpServerRow",
   component: McpServerRow,
-  args: { server: mcpServer(), busy: false, onSignIn: fn(), onSignOut: fn(), onToggle: fn() },
+  args: { server: mcpServer(), busy: false, onSignIn: fn(), onSignOut: fn(), onToggle: fn(), onRemove: fn() },
   render: (args) => (
     <table className="w-full">
       <tbody>

@@ -11,11 +11,13 @@ const meta = {
       mcpServer(),
       mcpServer({ name: "github", state: "needs-auth", oauth: true, description: "Issues and pull requests", tools: 24 }),
       mcpServer({ name: "sentry", state: "error", detail: "connect ECONNREFUSED" }),
+      mcpServer({ name: "mobbin", enabled: false, state: "disabled", description: "Design references" }),
     ],
     busyName: null,
     onSignIn: fn(),
     onSignOut: fn(),
     onSetEnabled: fn(),
+    onRemove: fn(),
   },
 } satisfies Meta<typeof McpServerList>
 

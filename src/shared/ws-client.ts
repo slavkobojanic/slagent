@@ -220,6 +220,7 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     mcpSignIn: (name) => call<Result<"mcpSignIn">>("mcpSignIn", name),
     mcpSignOut: (name) => call<Result<"mcpSignOut">>("mcpSignOut", name),
     mcpSetEnabled: (name, enabled) => call<Result<"mcpSetEnabled">>("mcpSetEnabled", name, enabled),
+    mcpRemove: (name) => call<Result<"mcpRemove">>("mcpRemove", name),
     usageStats: () => call<Result<"usageStats">>("usageStats"),
     onEvent: (listener) => listen(client.eventListeners, listener),
     onReconnect: (listener) => listen(client.reconnectListeners, listener),

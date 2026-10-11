@@ -48,7 +48,7 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
 }
 
 function setup() {
-  const api = createMockInstance<API>(["mcpList", "mcpSignIn", "mcpSignOut", "mcpSetEnabled"])
+  const api = createMockInstance<API>(["mcpList", "mcpSignIn", "mcpSignOut", "mcpSetEnabled", "mcpRemove"])
   api.mcpList.mockResolvedValue([])
   const store = new McpSettingsStore()
   const servers = new McpStore()
@@ -211,6 +211,28 @@ describe("McpSettingsPresenter", () => {
 
       expect(api.mcpSetEnabled).toHaveBeenCalledWith("wiki", false)
       expect(servers.servers).toEqual([{ ...wiki, enabled: false, state: "disabled" }])
+    })
+  })
+
+  describe("handleRemove", () => {
+    it("can remove a server and store the list it returns", async () => {
+      const { api, servers, presenter } = setup()
+      api.mcpRemove.mockResolvedValue([])
+
+      await presenter.handleRemove("wiki")
+
+      expect(api.mcpRemove).toHaveBeenCalledWith("wiki")
+      expect(servers.servers).toEqual([])
+    })
+
+    it("can show the error when removal fails", async () => {
+      const { api, store, presenter } = setup()
+      api.mcpRemove.mockRejectedValue(new Error("Offline"))
+
+      await presenter.handleRemove("wiki")
+
+      expect(store.error).toBe("Offline")
+      expect(store.busyName).toBeNull()
     })
   })
 })

@@ -23,6 +23,7 @@ function props(overrides: Partial<McpServerListProps> = {}): McpServerListProps 
     onSignIn: () => undefined,
     onSignOut: () => undefined,
     onSetEnabled: () => undefined,
+    onRemove: () => undefined,
     ...overrides,
   }
 }
@@ -66,5 +67,11 @@ describe("McpServerList", () => {
     expect(button("Sign in")?.disabled).toBe(true)
     expect(disableButtons[0]?.disabled).toBe(true)
     expect(disableButtons[1]?.disabled).toBe(false)
+  })
+
+  it("can offer to remove only the disabled servers", () => {
+    renderList({ servers: [docs, { ...wiki, enabled: false, state: "disabled" }] })
+
+    expect(button("Remove")).not.toBeNull()
   })
 })

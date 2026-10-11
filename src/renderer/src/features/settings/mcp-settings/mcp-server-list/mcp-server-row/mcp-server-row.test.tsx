@@ -19,7 +19,15 @@ function renderRow(overrides: Partial<McpServerRowProps>) {
     <TooltipProvider>
       <table>
         <tbody>
-          <McpServerRow server={docs} busy={false} onSignIn={() => undefined} onSignOut={() => undefined} onToggle={() => undefined} {...overrides} />
+          <McpServerRow
+            server={docs}
+            busy={false}
+            onSignIn={() => undefined}
+            onSignOut={() => undefined}
+            onToggle={() => undefined}
+            onRemove={() => undefined}
+            {...overrides}
+          />
         </tbody>
       </table>
     </TooltipProvider>,
@@ -44,6 +52,18 @@ describe("McpServerRow", () => {
 
     expect(screen.getByText("Disabled")).not.toBeNull()
     expect(button("Enable")).not.toBeNull()
+  })
+
+  it("can offer to remove a disabled server", () => {
+    renderRow({ server: { ...docs, enabled: false, state: "disabled" } })
+
+    expect(button("Remove")).not.toBeNull()
+  })
+
+  it("can hide the remove action of an enabled server", () => {
+    renderRow({})
+
+    expect(button("Remove")).toBeNull()
   })
 
   it("can show the failure detail of a failing server", () => {

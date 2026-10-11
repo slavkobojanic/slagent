@@ -737,6 +737,7 @@ export type SlagentApi = {
   mcpSignIn: (name: string) => Promise<McpServerStatus[]>
   mcpSignOut: (name: string) => Promise<McpServerStatus[]>
   mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
+  mcpRemove: (name: string) => Promise<McpServerStatus[]>
   usageStats: () => Promise<UsageStats>
   onEvent: (listener: (event: UiEvent) => void) => () => void
   // The socket dropped and came back; the caller re-fetches the snapshot.

@@ -8,9 +8,10 @@ export type McpServerListProps = {
   onSignIn: (name: string) => void
   onSignOut: (name: string) => void
   onSetEnabled: (name: string, enabled: boolean) => void
+  onRemove: (name: string) => void
 }
 
-export function McpServerList({ servers, busyName, onSignIn, onSignOut, onSetEnabled }: McpServerListProps) {
+export function McpServerList({ servers, busyName, onSignIn, onSignOut, onSetEnabled, onRemove }: McpServerListProps) {
   if (servers.length === 0) {
     return (
       <Card>
@@ -44,6 +45,7 @@ export function McpServerList({ servers, busyName, onSignIn, onSignOut, onSetEna
               onSignIn={() => onSignIn(server.name)}
               onSignOut={() => onSignOut(server.name)}
               onToggle={() => onSetEnabled(server.name, !server.enabled)}
+              onRemove={() => onRemove(server.name)}
             />
           ))}
         </tbody>

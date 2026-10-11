@@ -72,6 +72,7 @@ export class API implements SlagentApi {
   readonly mcpSignIn: SlagentApi["mcpSignIn"]
   readonly mcpSignOut: SlagentApi["mcpSignOut"]
   readonly mcpSetEnabled: SlagentApi["mcpSetEnabled"]
+  readonly mcpRemove: SlagentApi["mcpRemove"]
   readonly usageStats: SlagentApi["usageStats"]
   readonly onEvent: SlagentApi["onEvent"]
   readonly appVersion: SlagentApi["appVersion"]
@@ -163,6 +164,7 @@ export class API implements SlagentApi {
     this.mcpSignIn = (name) => bridge.mcpSignIn(name)
     this.mcpSignOut = (name) => bridge.mcpSignOut(name)
     this.mcpSetEnabled = (name, enabled) => bridge.mcpSetEnabled(name, enabled)
+    this.mcpRemove = (name) => bridge.mcpRemove(name)
     this.usageStats = () => bridge.usageStats()
     this.onEvent = (listener) => bridge.onEvent(listener)
     this.onReconnect = (listener) => bridge.onReconnect(listener)
