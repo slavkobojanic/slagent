@@ -73,10 +73,6 @@ export class TasksStore {
   setError(message: string | null) {
     this.error = message
   }
-
-  setNow(value: number) {
-    this.now = value
-  }
 }
 
 function toRow(task: TaskInfo, now: number): TaskRow {

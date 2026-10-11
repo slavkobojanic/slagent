@@ -4,7 +4,7 @@ import type { ProjectRemovalStore } from "@/features/library/project-removal/pro
 import type { ProjectAppearanceStore } from "@/features/library/project-appearance/project-appearance-store/project-appearance-store"
 import type { API } from "@/ipc/api"
 import { modKey } from "@/lib/format"
-import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
+import { NO_PROJECT_ID } from "@/lib/no-project-id"
 import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { ComposerPort } from "@/state/composer-port/composer-port"
