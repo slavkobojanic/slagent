@@ -83,6 +83,83 @@
   }
 }
 
+/* The panel sits after the chat and the editor in the flex row's paint order, so the
+   slots carry explicit orders instead of relying on DOM order. */
+.panel-slot {
+  order: 4;
+}
+
+/* Editor mode swaps the chat and the editor. The chat docks to a fixed column on the
+   right while the editor grows into the centre. A pane resize has no transform equivalent
+   (the same exception as an accordion's height), so the swap animates flex-grow: each
+   pane keeps its flex-basis fixed — the chat at the docked width, the editor at zero —
+   and only the grow factors interpolate. Two numbers, so the panes always meet exactly
+   and no space is left over mid-swap. */
+.chat-slot {
+  position: relative;
+  order: 3;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 var(--chat-docked-width, 35rem);
+  /* The border is laid out in both modes and fades in with the swap, so the chat
+     column does not shift a pixel when it appears. */
+  border-left: 1px solid transparent;
+  transition:
+    flex-grow 250ms var(--ease-drawer),
+    border-color 250ms var(--ease-drawer);
+}
+
+.chat-slot[data-editor-mode] {
+  flex-grow: 0;
+  flex-shrink: 0;
+  border-left-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.editor-slot {
+  order: 2;
+  display: flex;
+  min-width: 0;
+  flex: 0 1 0%;
+  /* Visibility interpolates discretely: shown at once on the way in, held until the
+     fade finishes on the way out, so the editor is never invisible while animating. */
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    flex-grow 250ms var(--ease-drawer),
+    opacity 200ms var(--ease-out),
+    visibility 250ms var(--ease-drawer);
+}
+
+.editor-slot[data-editor-mode] {
+  flex-grow: 1;
+  visibility: visible;
+  opacity: 1;
+}
+
+/* The frame mounts on the first open, already in editor mode: start it from the
+   chat-mode state so the first swap animates like every later one. */
+@starting-style {
+  .editor-slot[data-editor-mode] {
+    flex-grow: 0;
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The layout change lands instantly; the editor keeps only a gentle fade. */
+  .chat-slot {
+    transition: none;
+  }
+
+  .editor-slot {
+    transition:
+      opacity 200ms var(--ease-out),
+      visibility 200ms linear;
+  }
+}
+}
+
 /* While a pane is dragged its width follows the pointer, so its slot and aside drop the
    width transition. */
 .sidebar-slot[data-resizing],

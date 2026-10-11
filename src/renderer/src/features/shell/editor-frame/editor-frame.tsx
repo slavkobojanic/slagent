@@ -1,5 +1,4 @@
 import type { ComponentType } from "react"
-import { cn } from "@/lib/utils"
 
 export type EditorFrameProps = {
   editorMode: boolean
@@ -9,12 +8,14 @@ export type EditorFrameProps = {
   Editor: ComponentType
 }
 
+// .editor-slot in shell.css grows the editor into the centre while the chat docks; the
+// frame only ever unmounts before the first open.
 export function EditorFrame({ editorMode, editorOpened, Editor }: EditorFrameProps) {
   if (!editorOpened) {
     return null
   }
   return (
-    <div className={cn("order-2 flex min-w-0 flex-1", !editorMode && "hidden")}>
+    <div className="editor-slot" data-editor-mode={editorMode ? true : undefined}>
       <Editor />
     </div>
   )

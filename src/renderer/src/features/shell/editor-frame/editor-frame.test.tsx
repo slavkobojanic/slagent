@@ -16,14 +16,15 @@ describe("EditorFrame", () => {
     const markup = viewMarkup(<EditorFrame editorMode editorOpened Editor={Editor} />)
 
     expect(markup).toContain("<section>editor</section>")
-    expect(markup).toContain("order-2")
-    expect(markup).not.toContain("hidden")
+    expect(markup).toContain('class="editor-slot"')
+    expect(markup).toContain('data-editor-mode="true"')
   })
 
   it("can keep the editor mounted but hidden after going back to the chat", () => {
     const markup = viewMarkup(<EditorFrame editorMode={false} editorOpened Editor={Editor} />)
 
     expect(markup).toContain("<section>editor</section>")
-    expect(markup).toContain("hidden")
+    expect(markup).toContain('class="editor-slot"')
+    expect(markup).not.toContain("data-editor-mode")
   })
 })

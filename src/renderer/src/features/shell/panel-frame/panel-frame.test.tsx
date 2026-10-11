@@ -37,6 +37,12 @@ describe("PanelFrame", () => {
     expect(slotTag(markup)).toContain('inert=""')
   })
 
+  it("can collapse the panel slot while the editor hides the panel", () => {
+    const markup = viewMarkup(<PanelFrame {...base} visible={false} />)
+
+    expect(slotTag(markup)).toContain('data-closed="true"')
+  })
+
   it("can set the panel width on the slot", () => {
     const markup = viewMarkup(<PanelFrame {...base} width={600} />)
 

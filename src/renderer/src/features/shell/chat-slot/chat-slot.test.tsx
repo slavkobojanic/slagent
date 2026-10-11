@@ -20,17 +20,17 @@ describe("ChatSlot", () => {
   it("can fill the centre in chat mode with no resize handle", () => {
     const markup = viewMarkup(<ChatSlot {...base} />)
 
-    expect(markup).toContain("flex-1")
+    expect(markup).toContain('class="chat-slot"')
+    expect(markup).not.toContain("data-editor-mode")
     expect(markup).toContain("<main>chat</main>")
     expect(markup).not.toContain('role="separator"')
-    expect(markup).not.toContain("width:")
   })
 
   it("can dock to the right at the panel width in editor mode", () => {
     const markup = viewMarkup(<ChatSlot {...base} editorMode />)
 
-    expect(markup).toContain("order-3")
-    expect(markup).toContain("width: 480px")
+    expect(markup).toContain('data-editor-mode="true"')
+    expect(markup).toContain("--chat-docked-width: 480px")
     expect(markup).toContain("<main>chat</main>")
   })
 

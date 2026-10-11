@@ -1,6 +1,5 @@
 import type { ComponentType, CSSProperties } from "react"
 import { ResizeHandle } from "@/components/resize-handle"
-import { cn } from "@/lib/utils"
 
 export type ChatSlotProps = {
   editorMode: boolean
@@ -11,12 +10,16 @@ export type ChatSlotProps = {
   onResizeReset: () => void
 }
 
-// The chat keeps one place in the tree in both modes, so the transcript and composer are not
-// remounted when the editor opens. Editor mode only changes how the slot is sized and ordered.
+// The chat keeps one place in the tree in both modes, so the transcript and composer are
+// not remounted when the editor opens. Editor mode only swaps which pane takes the space:
+// .chat-slot in shell.css docks the chat by dropping its flex-grow, so the swap animates.
 export function ChatSlot({ editorMode, width, resizing, MainColumn, onResizeStart, onResizeReset }: ChatSlotProps) {
-  const style: CSSProperties | undefined = editorMode ? { width } : undefined
   return (
-    <div className={cn("flex min-w-0", editorMode ? "relative order-3 shrink-0 border-l border-white/10" : "flex-1")} style={style}>
+    <div
+      className="chat-slot"
+      data-editor-mode={editorMode ? true : undefined}
+      style={{ "--chat-docked-width": `${width}px` } as CSSProperties}
+    >
       {editorMode ? <ResizeHandle edge="diff" resizing={resizing} onResizeStart={onResizeStart} onResizeReset={onResizeReset} /> : null}
       <MainColumn />
     </div>
