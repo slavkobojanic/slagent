@@ -22,7 +22,7 @@ export function createPanelFrame({
         open={panelStore.open}
         width={layoutStore.diffWidth}
         resizing={layoutStore.resizing === "diff"}
-        visible={(metaStore.meta?.cwd ?? "") !== ""}
+        visible={(metaStore.meta?.cwd ?? "") !== "" && !layoutStore.editorMode}
         Changes={Changes}
       />
     )

@@ -15,6 +15,20 @@ export type EditorTab = {
   error: string | null
 }
 
+// What sits above the editor, most urgent first.
+export type EditorBanner =
+  | { kind: "closing"; name: string }
+  | { kind: "conflict"; name: string }
+  | { kind: "error"; message: string }
+  | { kind: "notice"; message: string }
+
+export type EditorTabItem = {
+  absolutePath: string
+  path: string
+  name: string
+  dirty: boolean
+}
+
 export class EditorStore {
   status: EditorStatus = "idle"
   error: string | null = null
@@ -30,6 +44,28 @@ export class EditorStore {
 
   get activeTab(): EditorTab | null {
     return this.tabs.find((tab) => tab.absolutePath === this.activePath) ?? null
+  }
+
+  get tabItems(): EditorTabItem[] {
+    return this.tabs.map((tab) => ({ absolutePath: tab.absolutePath, path: tab.path, name: tab.path.split("/").pop() ?? tab.path, dirty: tab.dirty }))
+  }
+
+  get banner(): EditorBanner | null {
+    const closing = this.closing === null ? null : this.tab(this.closing)
+    if (closing) {
+      return { kind: "closing", name: closing.path }
+    }
+    const active = this.activeTab
+    if (active?.conflictMtime != null) {
+      return { kind: "conflict", name: active.path }
+    }
+    if (active?.error) {
+      return { kind: "error", message: active.error }
+    }
+    if (this.notice !== null) {
+      return { kind: "notice", message: this.notice }
+    }
+    return null
   }
 
   get hasDirty(): boolean {

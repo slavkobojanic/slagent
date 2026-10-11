@@ -7,6 +7,7 @@ import { createAppClose } from "@/features/app-close/create"
 import { AppCloseStore } from "@/features/app-close/app-close-store/app-close-store"
 import { createChanges } from "@/features/changes/create"
 import { createComposer } from "@/features/composer/create"
+import { createEditor } from "@/features/editor/create"
 import { createCreateSkill } from "@/features/create-skill/create"
 import { createLinkMenu } from "@/features/link-menu/create"
 import { createLibrary } from "@/features/library/create"
@@ -24,6 +25,7 @@ import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { MirrorPresenter } from "@/mirror/mirror-presenter/mirror-presenter"
 import { RunStore } from "@/mirror/run-store/run-store"
 import { ComposerPort } from "@/state/composer-port/composer-port"
+import { EditorPort } from "@/state/editor-port/editor-port"
 import { JumpPort } from "@/state/jump-port/jump-port"
 import { CommandRegistry } from "@/state/keyboard/command-registry/command-registry"
 import { KeyboardPresenter } from "@/state/keyboard/keyboard-presenter/keyboard-presenter"
@@ -81,6 +83,7 @@ export function createApp(): ComponentType {
   const LinkMenu = createLinkMenu({ store: linkStore, presenter: linkPresenter })
   const composerPort = new ComposerPort()
   const jumpPort = new JumpPort()
+  const editorPort = new EditorPort()
   const navLogPresenter = new NavLogPresenter(libraryStore, panelStore, overlayStore, log.child("nav"))
 
   const Transcript = createTranscript({
@@ -126,7 +129,9 @@ export function createApp(): ComponentType {
     reviewPresenter,
     themeStore,
     commandRegistry,
+    editorPort,
   })
+  const Editor = createEditor({ log: log.child("editor"), api, window, themeStore, metaStore, layoutStore, editorPort })
   const Library = createLibrary({
     log: log.child("library"),
     api,
@@ -187,6 +192,7 @@ export function createApp(): ComponentType {
     Transcript,
     Composer,
     Changes,
+    Editor,
     PlanOverlay,
     TerminalDrawer,
     TerminalBar,

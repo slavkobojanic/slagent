@@ -34,6 +34,22 @@ describe("LayoutStore", () => {
     })
   })
 
+  describe("setEditorMode", () => {
+    it("can start in chat mode", () => {
+      expect(new LayoutStore().editorMode).toBe(false)
+    })
+
+    it("can switch editor mode on and off", () => {
+      const store = new LayoutStore()
+
+      store.setEditorMode(true)
+      expect(store.editorMode).toBe(true)
+
+      store.setEditorMode(false)
+      expect(store.editorMode).toBe(false)
+    })
+  })
+
   describe("sizeOf", () => {
     it("can read back the size of each edge", () => {
       const store = new LayoutStore()

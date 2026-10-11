@@ -4,7 +4,8 @@ export type ShellProps = {
   inert: boolean
   Header: ComponentType
   SidebarFrame: ComponentType
-  MainColumn: ComponentType
+  ChatSlot: ComponentType
+  EditorFrame: ComponentType
   PanelFrame: ComponentType
   TerminalDrawer: ComponentType
   TerminalBar: ComponentType<{ branch?: ReactNode }>
@@ -13,13 +14,14 @@ export type ShellProps = {
   CreateSkill: ComponentType
 }
 
-export function Shell({ inert, Header, SidebarFrame, MainColumn, PanelFrame, TerminalDrawer, TerminalBar, Settings, Models, CreateSkill }: ShellProps) {
+export function Shell({ inert, Header, SidebarFrame, ChatSlot, EditorFrame, PanelFrame, TerminalDrawer, TerminalBar, Settings, Models, CreateSkill }: ShellProps) {
   return (
     <div className="flex h-full flex-col bg-background text-foreground" inert={inert}>
       <Header />
       <div className="flex min-h-0 flex-1">
         <SidebarFrame />
-        <MainColumn />
+        <ChatSlot />
+        <EditorFrame />
         <PanelFrame />
       </div>
       <TerminalDrawer />

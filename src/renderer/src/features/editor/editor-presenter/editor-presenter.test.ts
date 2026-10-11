@@ -322,6 +322,39 @@ describe("EditorPresenter", () => {
     })
   })
 
+  describe("active tab shortcuts", () => {
+    it("can reload the active tab from disk", async () => {
+      const { presenter, api } = await mounted()
+      vi.mocked(api.readFile).mockResolvedValue(file("a.ts", { contents: "from disk", mtime: 300 }))
+
+      await presenter.reloadActive()
+
+      expect(api.readFile).toHaveBeenCalledWith("/p/a.ts")
+    })
+
+    it("can overwrite the active tab", async () => {
+      const { presenter, api, type } = await mounted()
+      vi.mocked(api.writeFile).mockResolvedValueOnce({ ok: false, reason: "conflict", message: "changed", mtime: 555 })
+      type("/p/a.ts", "edited")
+      await presenter.save("/p/a.ts")
+      vi.mocked(api.writeFile).mockResolvedValueOnce({ ok: true, mtime: 600, size: 6 })
+
+      await presenter.overwriteActive()
+
+      expect(api.writeFile).toHaveBeenLastCalledWith("/p/a.ts", "edited", 555)
+    })
+
+    it("can do nothing when no tab is active", async () => {
+      const { presenter, api } = setup()
+
+      await presenter.reloadActive()
+      await presenter.overwriteActive()
+
+      expect(api.readFile).not.toHaveBeenCalled()
+      expect(api.writeFile).not.toHaveBeenCalled()
+    })
+  })
+
   describe("reloadFromDisk", () => {
     it("can replace the editor contents and stay clean", async () => {
       const { presenter, api, store, handle, type } = await mounted()
