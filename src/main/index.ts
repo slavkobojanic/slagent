@@ -112,7 +112,8 @@ function createWindow(): BrowserWindow {
   windowTokens.set(win.id, slagentArgument(args, "window"))
 
   win.once("ready-to-show", () => {
-    win.show()
+    // Maximised by default; this also shows the window.
+    win.maximize()
   })
 
   win.webContents.on("preload-error", (_event, preloadPath, error) => {
