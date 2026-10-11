@@ -23,7 +23,8 @@ export function createFileViewer({
   window: Window
   panelStore: PanelStore
   themeStore: ThemeStore
-  editorPort: EditorPort
+  // Null where there is no editor, so the viewer offers no Edit action.
+  editorPort: EditorPort | null
   log: Log
 }): ComponentType {
   const store = new FileViewerStore()
@@ -42,7 +43,7 @@ export function createFileViewer({
         ready={store.highlighterReady}
         themeType={themeStore.resolved}
         scrollRef={presenter.attachScroller}
-        onEdit={presenter.handleEdit}
+        onEdit={editorPort === null ? null : presenter.handleEdit}
         onOpenInEditor={presenter.handleOpenInEditor}
       />
     )

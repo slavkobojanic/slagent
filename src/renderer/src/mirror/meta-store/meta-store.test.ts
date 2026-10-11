@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import { describe, expect, it } from "vitest"
 import { EMPTY_PERSONALISATION, type AppMeta } from "@shared/types"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
@@ -22,6 +23,7 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
     titleModelId: null,
     titleModels: [],
     personalisation: EMPTY_PERSONALISATION,
+    editor: DEFAULT_EDITOR_PREFS,
     ...overrides,
   }
 }

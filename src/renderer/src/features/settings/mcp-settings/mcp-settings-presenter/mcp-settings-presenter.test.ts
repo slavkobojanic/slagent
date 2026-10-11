@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { EMPTY_PERSONALISATION, type AppMeta, type McpServerStatus } from "@shared/types"
 import { McpSettingsPresenter } from "@/features/settings/mcp-settings/mcp-settings-presenter/mcp-settings-presenter"
@@ -41,6 +42,7 @@ function metaWith(overrides: Partial<AppMeta>): AppMeta {
     titleModelId: null,
     titleModels: [],
     personalisation: EMPTY_PERSONALISATION,
+    editor: DEFAULT_EDITOR_PREFS,
     ...overrides,
   }
 }

@@ -2,8 +2,7 @@ import type { ReactNode } from "react"
 import { MessagesSquareIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EditorBanner } from "@/features/editor/editor-banner/editor-banner"
-import type { CloseChoice } from "@/features/editor/editor-presenter/editor-presenter"
-import type { EditorBanner as Banner, EditorStatus, EditorTabItem } from "@/features/editor/editor-store/editor-store"
+import type { CloseChoice, EditorBanner as Banner, EditorStatus, EditorTabItem } from "@/features/editor/editor-types"
 import { EditorTab } from "@/features/editor/editor-tab/editor-tab"
 
 export type EditorProps = {

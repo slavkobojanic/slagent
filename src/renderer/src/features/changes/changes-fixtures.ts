@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import { EMPTY_PERSONALISATION, type AppMeta, type DiffComment, type FileView, type GitStatus } from "@shared/types"
 import type { RunTranscript } from "@/mirror/run-store/run-store"
 
@@ -34,6 +35,7 @@ export function makeMeta(cwd: string): AppMeta {
     usageTotals: { tokens: 0, cost: 0, chats: 0 },
     server: null,
     personalisation: { ...EMPTY_PERSONALISATION },
+    editor: DEFAULT_EDITOR_PREFS,
   }
 }
 

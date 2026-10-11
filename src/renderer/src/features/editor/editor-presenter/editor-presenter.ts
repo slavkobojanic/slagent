@@ -3,14 +3,13 @@ import { DEFAULT_EDITOR_PREFS, type EditorExtensionPayload, type EditorPrefs } f
 import type { FileView } from "@shared/types"
 import type { EditorEvents, EditorHandle, EditorRuntime, EditorViewOptions, LoadEditorRuntime } from "@/features/editor/editor-runtime"
 import type { EditorStore } from "@/features/editor/editor-store/editor-store"
+import type { CloseChoice } from "@/features/editor/editor-types"
 import type { API } from "@/ipc/api"
 import { editorTheme } from "@/lib/monaco/editor-theme"
 import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
-
-export type CloseChoice = "save" | "discard" | "cancel"
 
 const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error))
 

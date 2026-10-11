@@ -1,5 +1,4 @@
-import type { EditorBanner as Banner } from "@/features/editor/editor-store/editor-store"
-import type { CloseChoice } from "@/features/editor/editor-presenter/editor-presenter"
+import type { CloseChoice, EditorBanner as Banner } from "@/features/editor/editor-types"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 

@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import { describe, expect, it } from "vitest"
 import { EMPTY_PERSONALISATION, type AppMeta, type OpenRouterStatus } from "@shared/types"
 import { authFilePath, canRemoveSavedKey, openRouterStatusOf } from "@/features/settings/openrouter-key/openrouter-key-status"
@@ -58,6 +59,7 @@ describe("openRouterStatusOf", () => {
       titleModelId: null,
       titleModels: [],
       personalisation: EMPTY_PERSONALISATION,
+      editor: DEFAULT_EDITOR_PREFS,
     }
 
     expect(openRouterStatusOf(meta)).toEqual(openRouter)

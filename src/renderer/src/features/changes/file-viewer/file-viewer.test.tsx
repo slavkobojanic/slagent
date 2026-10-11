@@ -23,6 +23,13 @@ describe("FileViewer", () => {
     expect(markup).toContain("Edit")
   })
 
+  it("can leave out the edit action where there is no editor", () => {
+    const markup = viewMarkup(<FileViewer {...viewer({ onEdit: null })} />)
+
+    expect(markup).not.toContain("Edit")
+    expect(markup).toContain("Open in editor")
+  })
+
   it("can show the path with its line, the size, and an open-in-editor action", () => {
     const markup = viewMarkup(<FileViewer {...viewer()} />)
 

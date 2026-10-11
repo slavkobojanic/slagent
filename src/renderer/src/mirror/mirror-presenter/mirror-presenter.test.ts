@@ -1,3 +1,4 @@
+import { DEFAULT_EDITOR_PREFS } from "@shared/editor"
 import type { API } from "@/ipc/api"
 import { describe, expect, it, vi, type Mock } from "vitest"
 import { LibraryStore } from "@/mirror/library-store/library-store"
@@ -36,6 +37,7 @@ function metaState(modelName: string): AppMeta {
     titleModelId: null,
     titleModels: [],
     personalisation: EMPTY_PERSONALISATION,
+    editor: DEFAULT_EDITOR_PREFS,
   }
 }
 
