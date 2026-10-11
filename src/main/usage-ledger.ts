@@ -4,6 +4,10 @@ import type { UsageCumulative, UsageDay, UsageStats } from "../shared/types"
 export type UsageRuntime = "pi" | "claude"
 export type UsageSource = "live" | "backfill"
 
+// What a turn spent its tokens on. "agent" is the coding conversation itself;
+// everything else is a small side call on the naming model.
+export type UsagePurpose = "agent" | "naming" | "labels" | "commit" | "skill"
+
 // One turn's usage. `key` identifies the turn so a rewrite cannot store it twice.
 export type UsageRow = {
   ts: number
@@ -18,6 +22,7 @@ export type UsageRow = {
   cacheWrite: number
   cost: number
   source: UsageSource
+  purpose: UsagePurpose
   key: string
 }
 
@@ -45,7 +50,7 @@ export type ClaudeModelUsage = {
 
 // Migrations are additive. Unlike the search index this database is the only
 // copy of its data, so it is never dropped and rebuilt.
-const SCHEMA_VERSION = 1
+const SCHEMA_VERSION = 2
 
 const MIGRATIONS: string[] = [
   `
@@ -68,6 +73,10 @@ const MIGRATIONS: string[] = [
   CREATE INDEX usage_ts ON usage (ts);
   CREATE INDEX usage_model ON usage (model, provider);
   CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  `,
+  `
+  ALTER TABLE usage ADD COLUMN purpose TEXT NOT NULL DEFAULT 'agent';
+  CREATE INDEX usage_purpose ON usage (purpose);
   `,
 ]
 
@@ -121,8 +130,8 @@ export class UsageLedger {
     this.setMeta("backfill_done", String(Date.now()))
   }
 
-  recordLive(chatId: string, projectId: string, record: UsageRecord): void {
-    this.insert({ ...record, chatId, projectId, runtime: "pi", source: "live" })
+  recordLive(chatId: string, projectId: string, record: UsageRecord, purpose: UsagePurpose = "agent"): void {
+    this.insert({ ...record, chatId, projectId, runtime: "pi", source: "live", purpose })
   }
 
   recordRow(row: UsageRow): void {
@@ -170,6 +179,7 @@ export class UsageLedger {
           cacheWrite,
           cost: costed ? total.costUSD - (last?.costUSD ?? 0) : 0,
           source: "live",
+          purpose: "agent",
           key: `claude:${chatId}:${ts}:${model}`,
         })
       }
@@ -184,9 +194,9 @@ export class UsageLedger {
 
   private insert(row: UsageRow): void {
     this.statement(
-      `INSERT OR IGNORE INTO usage (ts, chat_id, project_id, runtime, model, provider, input, output, cache_read, cache_write, cost, source, dedupe_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(row.ts, row.chatId, row.projectId, row.runtime, row.model, row.provider, row.input, row.output, row.cacheRead, row.cacheWrite, row.cost, row.source, row.key)
+      `INSERT OR IGNORE INTO usage (ts, chat_id, project_id, runtime, model, provider, input, output, cache_read, cache_write, cost, source, purpose, dedupe_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(row.ts, row.chatId, row.projectId, row.runtime, row.model, row.provider, row.input, row.output, row.cacheRead, row.cacheWrite, row.cost, row.source, row.purpose, row.key)
   }
 
   private transaction(work: () => void): void {
@@ -226,6 +236,10 @@ export class UsageLedger {
       `SELECT model, provider, sum(input) AS input, sum(output) AS output, sum(cache_read) AS cacheRead, sum(cache_write) AS cacheWrite, sum(cost) AS cost, count(*) AS turns
        FROM usage GROUP BY model, provider ORDER BY sum(cost) DESC, model`,
     ).all() as { model: string; provider: string; input: number; output: number; cacheRead: number; cacheWrite: number; cost: number; turns: number }[]
+    const purposes = this.statement(
+      `SELECT purpose, sum(input + output + cache_read + cache_write) AS tokens, sum(cost) AS cost, count(*) AS turns
+       FROM usage GROUP BY purpose ORDER BY sum(cost) DESC`,
+    ).all() as { purpose: string; tokens: number; cost: number; turns: number }[]
 
     return {
       days,
@@ -240,6 +254,12 @@ export class UsageLedger {
         output: Number(row.output),
         cacheRead: Number(row.cacheRead),
         cacheWrite: Number(row.cacheWrite),
+        cost: Number(row.cost),
+        turns: Number(row.turns),
+      })),
+      purposes: purposes.map((row) => ({
+        purpose: row.purpose as UsagePurpose,
+        tokens: Number(row.tokens),
         cost: Number(row.cost),
         turns: Number(row.turns),
       })),

@@ -1,3 +1,4 @@
+import type { AssistantMessage } from "@earendil-works/pi-ai"
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent"
 import type { TitleModelOption } from "../shared/types"
 
@@ -57,7 +58,12 @@ const SYSTEM = [
   "Title: Understanding CSS grid areas",
 ].join(" ")
 
-export async function generateTitle(runtime: ModelRuntime, model: Model, user: string): Promise<string | null> {
+export async function generateTitle(
+  runtime: ModelRuntime,
+  model: Model,
+  user: string,
+  onReply?: (message: AssistantMessage) => void,
+): Promise<string | null> {
   const reply = await runtime.completeSimple(
     model,
     {
@@ -66,6 +72,7 @@ export async function generateTitle(runtime: ModelRuntime, model: Model, user: s
     },
     { maxTokens: 400, signal: AbortSignal.timeout(20_000) },
   )
+  onReply?.(reply)
   let text = ""
   for (const part of reply.content) {
     if (part.type === "text") text += part.text
@@ -80,7 +87,12 @@ const COMMIT_SYSTEM = [
   "Reply with the message only. No code fences.",
 ].join(" ")
 
-export async function generateCommitMessage(runtime: ModelRuntime, model: Model, diff: string): Promise<string> {
+export async function generateCommitMessage(
+  runtime: ModelRuntime,
+  model: Model,
+  diff: string,
+  onReply?: (message: AssistantMessage) => void,
+): Promise<string> {
   const reply = await runtime.completeSimple(
     model,
     {
@@ -89,6 +101,7 @@ export async function generateCommitMessage(runtime: ModelRuntime, model: Model,
     },
     { maxTokens: 600, signal: AbortSignal.timeout(30_000) },
   )
+  onReply?.(reply)
   let text = ""
   for (const part of reply.content) {
     if (part.type === "text") text += part.text

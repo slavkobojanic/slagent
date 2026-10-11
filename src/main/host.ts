@@ -61,13 +61,14 @@ import { parseEditorPrefs, parseEffort, parsePersonalisation, parseRouting, read
 import type { EditorPrefs } from "../shared/editor"
 import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
+import type { AssistantMessage } from "@earendil-works/pi-ai"
 import { describeThinking, describeToolCalls, describeWorking, type ToolCallSeed } from "./describe"
 import { createSkillFile, draftSkill } from "./skills-create"
 import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
 import { tailscalePeers, type TailscalePeer } from "./tailscale"
 import { importShellEnv } from "./shell-env"
 import { runUsageBackfill } from "./usage-backfill"
-import { UsageLedger } from "./usage-ledger"
+import { UsageLedger, type UsagePurpose } from "./usage-ledger"
 import { newerWindow, olderWindow, sliceWindow, tailWindow, windowAround, type TranscriptWindow } from "./transcript-window"
 
 const PROVIDER = "openrouter"
@@ -546,7 +547,7 @@ export class AgentHost {
     const runtime = this.modelRuntime
     const model = this.titleModel(this.sessionRuntime(this.requireSession(clientId))?.modelId ?? this.draftModelId ?? "")
     if (!runtime || !model) throw new Error("No model is available.")
-    return generateCommitMessage(runtime, model, diff)
+    return generateCommitMessage(runtime, model, diff, this.recordUtility("commit"))
   }
 
   // The tailnet's machines running slagent, as seen from the connected Mac. A
@@ -563,7 +564,7 @@ export class AgentHost {
     const runtime = this.modelRuntime
     const model = this.titleModel(this.sessionRuntime(this.requireSession(clientId))?.modelId ?? this.draftModelId ?? "")
     if (!runtime || !model) throw new Error("No model is available.")
-    return draftSkill(runtime, model, input)
+    return draftSkill(runtime, model, input, this.recordUtility("skill"))
   }
 
   async createSkill(clientId: string, input: CreateSkillInput): Promise<string> {
@@ -937,11 +938,11 @@ export class AgentHost {
       generateTitle: (user) => {
         const titleModel = this.titleModel()
         if (!titleModel) return Promise.resolve(null)
-        return generateTitle(runtimeModel, titleModel, user)
+        return generateTitle(runtimeModel, titleModel, user, this.recordUtility("naming", chatId, projectId))
       },
-      describeToolCalls: (calls) => this.describeToolCalls(calls),
-      describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt),
-      describeWorkingLabel: (user) => this.describeWorkingLabel(user),
+      describeToolCalls: (calls) => this.describeToolCalls(calls, chatId, projectId),
+      describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt, chatId, projectId),
+      describeWorkingLabel: (user) => this.describeWorkingLabel(user, chatId, projectId),
       describable: () => this.smallModel() !== undefined,
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
@@ -1031,11 +1032,11 @@ export class AgentHost {
         const runtimeModel = this.modelRuntime
         const titleModel = this.titleModel()
         if (!runtimeModel || !titleModel || !this.openRouter.configured) return Promise.resolve(null)
-        return generateTitle(runtimeModel, titleModel, user)
+        return generateTitle(runtimeModel, titleModel, user, this.recordUtility("naming", chatId, projectId))
       },
-      describeToolCalls: (calls) => this.describeToolCalls(calls),
-      describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt),
-      describeWorkingLabel: (user) => this.describeWorkingLabel(user),
+      describeToolCalls: (calls) => this.describeToolCalls(calls, chatId, projectId),
+      describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt, chatId, projectId),
+      describeWorkingLabel: (user) => this.describeWorkingLabel(user, chatId, projectId),
       describable: () => this.smallModel() !== undefined,
       onModel: (modelId) => {
         void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
@@ -1329,22 +1330,54 @@ export class AgentHost {
     return { runtime: this.modelRuntime, model }
   }
 
-  private describeToolCalls(calls: ToolCallSeed[]): Promise<Map<string, string>> | null {
+  // Side calls on the naming model (titles, labels, commit messages, skill
+  // drafts) never show up as agent turns, so the recorder catches their reply
+  // and stores the usage under the call's own purpose.
+  private utilitySeq = 0
+
+  private recordUtility(purpose: UsagePurpose, chatId = "", projectId = ""): (message: AssistantMessage) => void {
+    return (message) => {
+      const usage = message.usage
+      if (!usage || usage.totalTokens === 0) return
+      try {
+        this.usage.recordLive(
+          chatId,
+          projectId,
+          {
+            ts: message.timestamp,
+            model: message.model,
+            provider: message.provider,
+            input: usage.input,
+            output: usage.output,
+            cacheRead: usage.cacheRead,
+            cacheWrite: usage.cacheWrite,
+            cost: usage.cost?.total ?? 0,
+            key: `utility:${purpose}:${Date.now()}:${this.utilitySeq++}`,
+          },
+          purpose,
+        )
+      } catch (error) {
+        console.error("usage record:", error)
+      }
+    }
+  }
+
+  private describeToolCalls(calls: ToolCallSeed[], chatId = "", projectId = ""): Promise<Map<string, string>> | null {
     const small = this.smallModel()
     if (!small) return null
-    return describeToolCalls(small.runtime, small.model, calls)
+    return describeToolCalls(small.runtime, small.model, calls, this.recordUtility("labels", chatId, projectId))
   }
 
-  private describeThinkingLabel(excerpt: string): Promise<string | null> {
+  private describeThinkingLabel(excerpt: string, chatId = "", projectId = ""): Promise<string | null> {
     const small = this.smallModel()
     if (!small) return Promise.resolve(null)
-    return describeThinking(small.runtime, small.model, excerpt)
+    return describeThinking(small.runtime, small.model, excerpt, this.recordUtility("labels", chatId, projectId))
   }
 
-  private describeWorkingLabel(user: string): Promise<string | null> {
+  private describeWorkingLabel(user: string, chatId = "", projectId = ""): Promise<string | null> {
     const small = this.smallModel()
     if (!small) return Promise.resolve(null)
-    return describeWorking(small.runtime, small.model, user)
+    return describeWorking(small.runtime, small.model, user, this.recordUtility("labels", chatId, projectId))
   }
 
   private catalog(): AppMeta["models"] {

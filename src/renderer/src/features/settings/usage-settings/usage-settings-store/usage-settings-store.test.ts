@@ -12,6 +12,7 @@ const stats: UsageStats = {
     { model: "claude-opus-5-5", provider: "anthropic", input: 100, output: 50, cacheRead: 10, cacheWrite: 20, cost: 0.3, turns: 1 },
     { model: "gpt-test", provider: "openrouter", input: 100, output: 50, cacheRead: 10, cacheWrite: 20, cost: 0.1, turns: 1 },
   ],
+  purposes: [{ purpose: "agent", tokens: 5_000, cost: 0.4, turns: 2 }],
   importing: false,
 }
 

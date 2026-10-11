@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { mkdtempSync } from "node:fs"
+import { DatabaseSync } from "node:sqlite"
 import { rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -47,6 +48,7 @@ function row(overrides: Partial<UsageRow> = {}): UsageRow {
     cacheWrite: 30,
     cost: 0.01,
     source: "live",
+    purpose: "agent",
     key: "pi:chat-1:msg-1",
     ...overrides,
   }
@@ -80,6 +82,20 @@ describe("UsageLedger", () => {
       usage.recordLive("chat-2", "project-1", record({ key: "pi:chat-2:msg-1" }))
 
       expect(usage.stats().totalTurns).toBe(2)
+    })
+
+    it("can store a side call under its own purpose", () => {
+      const usage = new UsageLedger(ledgerFile())
+      usage.recordLive("chat-1", "project-1", record(), "agent")
+      usage.recordLive("chat-1", "project-1", record({ key: "utility:naming:1" }), "naming")
+      usage.recordLive("chat-1", "project-1", record({ key: "utility:commit:1" }), "commit")
+
+      const stats = usage.stats()
+      expect(stats.totalTurns).toBe(3)
+      const purposes = new Map(stats.purposes.map((row) => [row.purpose, row]))
+      expect(purposes.get("agent")?.turns).toBe(1)
+      expect(purposes.get("naming")?.turns).toBe(1)
+      expect(purposes.get("commit")?.cost).toBeCloseTo(0.01)
     })
   })
 
@@ -185,6 +201,40 @@ describe("UsageLedger", () => {
       const reopened = new UsageLedger(file)
 
       expect(reopened.liveSince()).toBe(since)
+    })
+
+    it("can add purpose to a database from before it existed", () => {
+      const file = ledgerFile()
+      const db = new DatabaseSync(file)
+      db.exec(
+        `CREATE TABLE usage (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          ts INTEGER NOT NULL,
+          chat_id TEXT NOT NULL,
+          project_id TEXT NOT NULL,
+          runtime TEXT NOT NULL,
+          model TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          input INTEGER NOT NULL,
+          output INTEGER NOT NULL,
+          cache_read INTEGER NOT NULL,
+          cache_write INTEGER NOT NULL,
+          cost REAL NOT NULL,
+          source TEXT NOT NULL,
+          dedupe_key TEXT NOT NULL UNIQUE
+        );
+        CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        PRAGMA user_version = 1;`,
+      )
+      db.close()
+
+      const usage = new UsageLedger(file)
+      usage.recordLive("chat-1", "project-1", record({ ts: Date.now() }))
+      usage.recordLive("chat-1", "project-1", record({ key: "utility:naming:1" }), "naming")
+
+      const purposes = new Map(usage.stats().purposes.map((row) => [row.purpose, row]))
+      expect(purposes.get("agent")?.turns).toBe(1)
+      expect(purposes.get("naming")?.turns).toBe(1)
     })
   })
 })

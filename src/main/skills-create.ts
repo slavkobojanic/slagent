@@ -1,6 +1,7 @@
 import { mkdir, rename, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, sep } from "node:path"
+import type { AssistantMessage } from "@earendil-works/pi-ai"
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent"
 import { getAgentDir } from "@earendil-works/pi-coding-agent"
 import type { CreateSkillInput, DraftSkillInput, SkillDraft } from "../shared/types"
@@ -16,7 +17,12 @@ const SYSTEM = [
 ].join(" ")
 
 // A hidden one-shot model call: the last exchange plus optional guidance becomes a skill draft.
-export async function draftSkill(runtime: ModelRuntime, model: Model, input: DraftSkillInput): Promise<SkillDraft> {
+export async function draftSkill(
+  runtime: ModelRuntime,
+  model: Model,
+  input: DraftSkillInput,
+  onReply?: (message: AssistantMessage) => void,
+): Promise<SkillDraft> {
   const parts: string[] = []
   if (input.guidance && input.guidance.trim() !== "") {
     parts.push(`Guidance from the user: ${input.guidance.trim()}`)
@@ -31,6 +37,7 @@ export async function draftSkill(runtime: ModelRuntime, model: Model, input: Dra
     },
     { maxTokens: 2000, signal: AbortSignal.timeout(60_000) },
   )
+  onReply?.(reply)
   let text = ""
   for (const part of reply.content) {
     if (part.type === "text") text += part.text

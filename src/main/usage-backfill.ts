@@ -75,6 +75,7 @@ export function parsePiEntry(line: string, chatId: string, projectId: string): U
     cacheWrite: message.usage.cacheWrite,
     cost: message.usage.cost?.total ?? 0,
     source: "backfill",
+    purpose: "agent",
     key: `pi:${chatId}:${message.responseId ?? entry.id ?? message.timestamp}`,
   }
 }
@@ -130,6 +131,7 @@ export function parseClaudeEntry(line: string, chatId: string, projectId: string
     cacheWrite: usage.cache_creation_input_tokens ?? 0,
     cost: BACKFILL_CLAUDE_COST,
     source: "backfill",
+    purpose: "agent",
     key: `claude:${chatId}:${id}`,
   }
 }

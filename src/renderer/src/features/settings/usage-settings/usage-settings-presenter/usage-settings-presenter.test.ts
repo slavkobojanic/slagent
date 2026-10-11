@@ -13,6 +13,7 @@ const stats: UsageStats = {
   totalCost: 0.4,
   totalTurns: 2,
   models: [{ model: "gpt-test", provider: "openrouter", input: 100, output: 50, cacheRead: 10, cacheWrite: 20, cost: 0.4, turns: 2 }],
+  purposes: [{ purpose: "agent", tokens: 5_000, cost: 0.4, turns: 2 }],
   importing: true,
 }
 

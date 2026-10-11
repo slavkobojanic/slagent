@@ -525,6 +525,17 @@ export type UsageModelStats = {
   turns: number
 }
 
+// What a turn spent its tokens on: the coding conversation itself, or one of
+// the small side calls on the naming model.
+export type UsagePurpose = "agent" | "naming" | "labels" | "commit" | "skill"
+
+export type UsagePurposeStats = {
+  purpose: UsagePurpose
+  tokens: number
+  cost: number
+  turns: number
+}
+
 export type UsageStats = {
   // The last 365 local days that have rows.
   days: UsageDay[]
@@ -534,6 +545,8 @@ export type UsageStats = {
   totalCost: number
   totalTurns: number
   models: UsageModelStats[]
+  // Cost split by what the tokens were spent on.
+  purposes: UsagePurposeStats[]
   // True while the one-shot backfill is still importing history.
   importing: boolean
 }

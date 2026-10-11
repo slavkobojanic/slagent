@@ -49,6 +49,7 @@ describe("parsePiEntry", () => {
       cacheWrite: 5,
       cost: 0.0025,
       source: "backfill",
+      purpose: "agent",
       key: "pi:chat-1:resp-1",
     })
   })
@@ -107,6 +108,7 @@ describe("parseClaudeEntry", () => {
       cacheWrite: 22_251,
       cost: 0,
       source: "backfill",
+      purpose: "agent",
       key: "claude:chat-1:msg_011CfmxWz5UNUa9QQeUaycbs",
     })
   })

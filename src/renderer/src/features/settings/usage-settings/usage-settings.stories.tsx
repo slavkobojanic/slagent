@@ -10,6 +10,7 @@ const empty: UsageStats = {
   totalCost: 0,
   totalTurns: 0,
   models: [],
+  purposes: [],
   importing: true,
 }
 
@@ -20,6 +21,7 @@ const importing: UsageStats = {
   totalCost: 1.2,
   totalTurns: 3,
   models: [{ model: "claude-sonnet-4-5", provider: "anthropic", input: 90_000, output: 12_000, cacheRead: 120_000, cacheWrite: 18_000, cost: 1.2, turns: 3 }],
+  purposes: [{ purpose: "agent", tokens: 240_000, cost: 1.2, turns: 3 }],
   importing: true,
 }
 
@@ -54,6 +56,12 @@ const full: UsageStats = {
     { model: "z-ai/glm-5.3-flash", provider: "openrouter", input: 1_500_000, output: 160_000, cacheRead: 1_100_000, cacheWrite: 40_000, cost: 21.4, turns: 200 },
     { model: "claude-sonnet-4-5", provider: "anthropic", input: 60_000, output: 30_000, cacheRead: 300_000, cacheWrite: 12_000, cost: 8.9, turns: 26 },
     { model: "gpt-5-codex", provider: "openrouter", input: 90_000, output: 8_000, cacheRead: 20_000, cacheWrite: 5_000, cost: 3.3, turns: 6 },
+  ],
+  purposes: [
+    { purpose: "agent", tokens: 11_700_000, cost: 64.3, turns: 398 },
+    { purpose: "naming", tokens: 42_000, cost: 0.12, turns: 9 },
+    { purpose: "labels", tokens: 24_000, cost: 0.14, turns: 4 },
+    { purpose: "commit", tokens: 4_000, cost: 0.04, turns: 1 },
   ],
   importing: false,
 }

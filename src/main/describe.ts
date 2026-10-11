@@ -1,3 +1,4 @@
+import type { AssistantMessage } from "@earendil-works/pi-ai"
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent"
 
 type Model = NonNullable<ReturnType<ModelRuntime["getModel"]>>
@@ -53,12 +54,19 @@ const WORKING_SYSTEM = [
   "Label: Looking into the docker container exit",
 ].join("\n")
 
-async function complete(runtime: ModelRuntime, model: Model, system: string, user: string): Promise<string> {
+async function complete(
+  runtime: ModelRuntime,
+  model: Model,
+  system: string,
+  user: string,
+  onReply?: (message: AssistantMessage) => void,
+): Promise<string> {
   const reply = await runtime.completeSimple(
     model,
     { systemPrompt: system, messages: [{ role: "user", content: user, timestamp: Date.now() }] },
     { maxTokens: 400, signal: AbortSignal.timeout(10_000) },
   )
+  onReply?.(reply)
   let text = ""
   for (const part of reply.content) {
     if (part.type === "text") text += part.text
@@ -99,11 +107,12 @@ export async function describeToolCalls(
   runtime: ModelRuntime,
   model: Model,
   calls: ToolCallSeed[],
+  onReply?: (message: AssistantMessage) => void,
 ): Promise<Map<string, string>> {
   const body = calls
     .map((call, index) => `${index + 1}. ${call.name}: ${call.args.slice(0, MAX_ARGS)}`)
     .join("\n")
-  const reply = await complete(runtime, model, TOOL_SYSTEM, `Tool calls:\n\n${body}`)
+  const reply = await complete(runtime, model, TOOL_SYSTEM, `Tool calls:\n\n${body}`, onReply)
   const labels = parseLabels(reply, calls.length)
   const described = new Map<string, string>()
   for (let index = 0; index < calls.length; index += 1) {
@@ -113,13 +122,23 @@ export async function describeToolCalls(
   return described
 }
 
-export async function describeThinking(runtime: ModelRuntime, model: Model, excerpt: string): Promise<string | null> {
-  const reply = await complete(runtime, model, THINKING_SYSTEM, `Thinking:\n\n${excerpt.slice(0, MAX_EXCERPT)}`)
+export async function describeThinking(
+  runtime: ModelRuntime,
+  model: Model,
+  excerpt: string,
+  onReply?: (message: AssistantMessage) => void,
+): Promise<string | null> {
+  const reply = await complete(runtime, model, THINKING_SYSTEM, `Thinking:\n\n${excerpt.slice(0, MAX_EXCERPT)}`, onReply)
   return cleanLabel(reply)
 }
 
-export async function describeWorking(runtime: ModelRuntime, model: Model, user: string): Promise<string | null> {
-  const reply = await complete(runtime, model, WORKING_SYSTEM, `Request:\n\n${user.slice(0, MAX_EXCERPT)}`)
+export async function describeWorking(
+  runtime: ModelRuntime,
+  model: Model,
+  user: string,
+  onReply?: (message: AssistantMessage) => void,
+): Promise<string | null> {
+  const reply = await complete(runtime, model, WORKING_SYSTEM, `Request:\n\n${user.slice(0, MAX_EXCERPT)}`, onReply)
   return cleanLabel(reply)
 }
 
