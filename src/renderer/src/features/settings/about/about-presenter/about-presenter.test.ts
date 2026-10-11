@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
-import { AboutStore } from "./about-store/about-store"
+import { AboutStore } from "@/features/settings/about/about-store/about-store"
 import { AboutPresenter } from "./about-presenter"
 
 describe("AboutPresenter", () => {

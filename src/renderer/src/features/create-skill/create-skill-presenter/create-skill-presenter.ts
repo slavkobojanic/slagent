@@ -6,7 +6,7 @@ import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { API } from "@/ipc/api"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
-import type { CreateSkillStore } from "./create-skill-store/create-skill-store"
+import type { CreateSkillStore } from "@/features/create-skill/create-skill-store/create-skill-store"
 
 // The last user message and the reply that followed it, scanning backwards through the transcript.
 export function lastExchange(messages: ChatMessage[]): { userText: string; assistantText: string } | null {

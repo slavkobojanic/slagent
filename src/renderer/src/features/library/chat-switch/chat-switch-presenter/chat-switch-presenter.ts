@@ -1,4 +1,3 @@
-import { when } from "mobx"
 import type { LibraryState } from "@shared/types"
 import { isDraftBecomingChat, libraryContext, samePlace, type LibraryContext } from "@/features/library/library-utils"
 import type { API } from "@/ipc/api"

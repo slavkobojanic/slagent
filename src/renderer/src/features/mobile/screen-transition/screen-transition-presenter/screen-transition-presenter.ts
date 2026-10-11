@@ -1,4 +1,3 @@
-import type { Log } from "@/log/log"
 import type { MobileScreen } from "@/features/mobile/mobile-screen"
 import type { ScreenTransitionStore } from "@/features/mobile/screen-transition/screen-transition-store/screen-transition-store"
 
@@ -11,7 +10,6 @@ export class ScreenTransitionPresenter {
   constructor(
     private readonly store: ScreenTransitionStore,
     private readonly window: Window,
-    private readonly log: Log,
   ) {}
 
   handleScreenChange = (screen: MobileScreen) => {

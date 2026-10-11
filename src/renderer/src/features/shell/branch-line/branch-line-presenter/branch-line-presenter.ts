@@ -2,7 +2,7 @@ import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
 import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
-import type { BranchLineStore } from "./branch-line-store/branch-line-store"
+import type { BranchLineStore } from "@/features/shell/branch-line/branch-line-store/branch-line-store"
 
 export class BranchLinePresenter {
   private disposers: Array<() => void> = []

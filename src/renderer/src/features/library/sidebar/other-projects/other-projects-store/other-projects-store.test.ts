@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { ChatSummary, ProjectSummary } from "@shared/types"
-import { NO_PROJECT_ID, OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
+import { NO_PROJECT_ID } from "@/lib/no-project-id"
+import { OtherProjectsStore } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 
 function project(id: string, overrides: Partial<ProjectSummary> = {}): ProjectSummary {

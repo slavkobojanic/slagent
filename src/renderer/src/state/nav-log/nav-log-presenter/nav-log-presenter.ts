@@ -1,4 +1,3 @@
-import { reaction } from "mobx"
 import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
