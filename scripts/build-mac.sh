@@ -1,4 +1,6 @@
 #!/bin/sh
+# The release build: zips the app and installs it to ~/Applications. This is
+# `pnpm build:mac:release`; build-mac-fast.sh is the local `pnpm build:mac`.
 set -eu
 root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$root"

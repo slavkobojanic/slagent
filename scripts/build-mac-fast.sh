@@ -1,7 +1,7 @@
 #!/bin/sh
-# Local iteration build. Same app as build-mac.sh but stops at the .app: no zip, no
-# notarization, no install into ~/Applications (the ditto there rewrites ~1GB every time).
-# Run the printed bundle directly.
+# The local build: same app as build-mac.sh but stops at the .app, with no zip and no
+# install into ~/Applications (the ditto there rewrites ~1GB every time). Run the printed
+# bundle directly. This is `pnpm build:mac`; build-mac.sh is `pnpm build:mac:release`.
 set -eu
 root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$root"
