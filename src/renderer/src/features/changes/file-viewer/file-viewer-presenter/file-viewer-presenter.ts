@@ -2,6 +2,7 @@ import { compareStructural } from "mobx"
 import type { FileViewerStore } from "@/features/changes/file-viewer/file-viewer-store/file-viewer-store"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
+import type { EditorPort } from "@/state/editor-port/editor-port"
 import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 
 // The target line is re-centred this many times, this far apart, while Pierre fills the file in.
@@ -32,6 +33,7 @@ export class FileViewerPresenter {
     private readonly api: API,
     private readonly window: Window,
     private readonly loadHighlighter: () => Promise<boolean>,
+    private readonly editorPort: EditorPort,
     private readonly log: Log,
   ) {}
 
@@ -64,6 +66,15 @@ export class FileViewerPresenter {
   attachScroller = (element: HTMLDivElement | null) => {
     this.scroller = element
     this.restartFollowing()
+  }
+
+  handleEdit = () => {
+    const file = this.panelStore.viewedFile
+    if (file === null) {
+      return
+    }
+    this.log.action("edit", { path: file.absolutePath })
+    this.editorPort.open(file)
   }
 
   handleOpenInEditor = () => {

@@ -3,6 +3,7 @@ import { makeFile } from "@/features/changes/changes-fixtures"
 import { FileViewerStore } from "@/features/changes/file-viewer/file-viewer-store/file-viewer-store"
 import type { API } from "@/ipc/api"
 import { Log, nullLog, type Sink } from "@/log/log"
+import { EditorPort } from "@/state/editor-port/editor-port"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 import { FileViewerPresenter } from "./file-viewer-presenter"
@@ -35,8 +36,9 @@ function setup(loadHighlighter = vi.fn(async () => true), log: Log = nullLog()) 
   const panel = new PanelStore()
   const store = new FileViewerStore()
   const api = createMockInstance<API>(["openInEditor"])
-  const presenter = new FileViewerPresenter(store, panel, api, window, loadHighlighter, log)
-  return { panel, store, api, loadHighlighter, presenter }
+  const editorPort = new EditorPort()
+  const presenter = new FileViewerPresenter(store, panel, api, window, loadHighlighter, editorPort, log)
+  return { panel, store, api, loadHighlighter, presenter, editorPort }
 }
 
 describe("FileViewerPresenter", () => {
@@ -176,6 +178,30 @@ describe("FileViewerPresenter", () => {
       vi.advanceTimersByTime(500)
 
       expect(scrollTop()).toBe(0)
+    })
+  })
+
+  describe("handleEdit", () => {
+    it("can hand the viewed file to the editor", () => {
+      const { panel, editorPort, presenter } = parts
+      const open = vi.fn()
+      editorPort.attach(open)
+      const file = makeFile({ line: 12 })
+      panel.setViewedFile(file)
+
+      presenter.handleEdit()
+
+      expect(open).toHaveBeenCalledWith(file)
+    })
+
+    it("can do nothing when no file is open", () => {
+      const { editorPort, presenter } = parts
+      const open = vi.fn()
+      editorPort.attach(open)
+
+      presenter.handleEdit()
+
+      expect(open).not.toHaveBeenCalled()
     })
   })
 

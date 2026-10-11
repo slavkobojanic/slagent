@@ -42,6 +42,71 @@ describe("EditorStore", () => {
     })
   })
 
+  describe("tabItems", () => {
+    it("can name each tab after the last segment of its path", () => {
+      const store = new EditorStore()
+      store.addTab({ path: "src/deep/a.ts", absolutePath: "/p/src/deep/a.ts", contents: "", mtime: 1 })
+
+      expect(store.tabItems).toEqual([{ absolutePath: "/p/src/deep/a.ts", path: "src/deep/a.ts", name: "a.ts", dirty: false }])
+    })
+
+    it("can carry the dirty flag", () => {
+      const store = storeWith("a.ts")
+      store.setDirty("/p/a.ts", true)
+
+      expect(store.tabItems[0]?.dirty).toBe(true)
+    })
+  })
+
+  describe("banner", () => {
+    it("can be null when nothing needs attention", () => {
+      expect(storeWith("a.ts").banner).toBeNull()
+    })
+
+    it("can ask about a tab that is closing with unsaved edits", () => {
+      const store = storeWith("a.ts")
+      store.setClosing("/p/a.ts")
+
+      expect(store.banner).toEqual({ kind: "closing", name: "a.ts" })
+    })
+
+    it("can report a conflict on the active tab", () => {
+      const store = storeWith("a.ts")
+      store.setConflict("/p/a.ts", 55)
+
+      expect(store.banner).toEqual({ kind: "conflict", name: "a.ts" })
+    })
+
+    it("can ignore a conflict on a tab that is not active", () => {
+      const store = storeWith("a.ts", "b.ts")
+      store.setConflict("/p/a.ts", 55)
+
+      expect(store.banner).toBeNull()
+    })
+
+    it("can report the active tab's error", () => {
+      const store = storeWith("a.ts")
+      store.setTabError("/p/a.ts", "disk full")
+
+      expect(store.banner).toEqual({ kind: "error", message: "disk full" })
+    })
+
+    it("can report a notice when no tab has a problem", () => {
+      const store = new EditorStore()
+      store.setNotice("logo.png is a binary file.")
+
+      expect(store.banner).toEqual({ kind: "notice", message: "logo.png is a binary file." })
+    })
+
+    it("can put the close question ahead of a conflict", () => {
+      const store = storeWith("a.ts")
+      store.setConflict("/p/a.ts", 55)
+      store.setClosing("/p/a.ts")
+
+      expect(store.banner?.kind).toBe("closing")
+    })
+  })
+
   describe("hasDirty", () => {
     it("can report an unsaved tab", () => {
       const store = storeWith("a.ts", "b.ts")

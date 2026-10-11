@@ -13,7 +13,8 @@ const base: ShellProps = {
   inert: false,
   Header: slot("header"),
   SidebarFrame: slot("sidebar"),
-  MainColumn: slot("main"),
+  ChatSlot: slot("main"),
+  EditorFrame: slot("editor"),
   PanelFrame: slot("panel"),
   TerminalDrawer: slot("terminal"),
   TerminalBar: slot("terminal bar"),
@@ -34,6 +35,13 @@ describe("Shell", () => {
     expect(markup.indexOf("header")).toBeLessThan(markup.indexOf("sidebar"))
     expect(markup.indexOf("sidebar")).toBeLessThan(markup.indexOf("main"))
     expect(markup.indexOf("main")).toBeLessThan(markup.indexOf("panel"))
+  })
+
+  it("can place the editor frame between the main column and the panel", () => {
+    const markup = viewMarkup(<Shell {...base} />)
+
+    expect(markup.indexOf("main")).toBeLessThan(markup.indexOf("editor"))
+    expect(markup.indexOf("editor")).toBeLessThan(markup.indexOf("panel"))
   })
 
   it("can lay the terminal drawer out under the sidebar, the main column and the panel", () => {

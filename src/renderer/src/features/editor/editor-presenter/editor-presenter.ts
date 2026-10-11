@@ -160,6 +160,20 @@ export class EditorPresenter {
 
   overwrite = (absolutePath: string) => this.save(absolutePath, true)
 
+  overwriteActive = async () => {
+    const path = this.store.activePath
+    if (path !== null) {
+      await this.overwrite(path)
+    }
+  }
+
+  reloadActive = async () => {
+    const path = this.store.activePath
+    if (path !== null) {
+      await this.reloadFromDisk(path)
+    }
+  }
+
   reloadFromDisk = async (absolutePath: string) => {
     if (this.store.tab(absolutePath) === null) {
       return
@@ -182,6 +196,15 @@ export class EditorPresenter {
 
   dismissNotice = () => {
     this.store.setNotice(null)
+    const active = this.store.activePath
+    if (active !== null) {
+      this.store.setTabError(active, null)
+    }
+  }
+
+  exit = () => {
+    this.log.action("exit")
+    this.layoutStore.setEditorMode(false)
   }
 
   private discard = (absolutePath: string) => {

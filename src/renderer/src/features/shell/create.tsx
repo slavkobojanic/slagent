@@ -17,6 +17,8 @@ import { ProjectMenuStore } from "@/features/shell/shell-header/project-menu/pro
 import { UpdateButtonStore } from "@/features/shell/shell-header/update-button/update-button-store/update-button-store"
 import { BranchLineStore } from "@/features/shell/branch-line/branch-line-store/branch-line-store"
 import { createBranchLine } from "@/features/shell/branch-line/create"
+import { createChatSlot } from "./chat-slot/create"
+import { createEditorFrame } from "./editor-frame/create"
 import { createMainColumn } from "./main-column/create"
 import { createPanelFrame } from "./panel-frame/create"
 import { Shell } from "./shell"
@@ -30,6 +32,7 @@ export function createShell({
   Transcript,
   Composer,
   Changes,
+  Editor,
   PlanOverlay,
   TerminalDrawer,
   TerminalBar,
@@ -54,6 +57,7 @@ export function createShell({
   Transcript: ComponentType
   Composer: ComponentType
   Changes: ComponentType
+  Editor: ComponentType
   PlanOverlay: ComponentType
   TerminalDrawer: ComponentType
   TerminalBar: ComponentType<{ branch?: ReactNode }>
@@ -96,6 +100,8 @@ export function createShell({
   const branchLineStore = new BranchLineStore()
   const BranchLine = createBranchLine({ api, branchLineStore, metaStore, log })
   const MainColumn = createMainColumn({ Transcript, Composer, PlanOverlay, metaStore, projectMenuStore, updateButtonStore })
+  const ChatSlot = createChatSlot({ MainColumn, layoutStore, layoutPresenter })
+  const EditorFrame = createEditorFrame({ Editor, layoutStore })
   const TerminalBarWithBranch = function TerminalBarWithBranch() {
     return <TerminalBar branch={<BranchLine />} />
   }
@@ -107,7 +113,8 @@ export function createShell({
         inert={permissionsStore.locked}
         Header={Header}
         SidebarFrame={SidebarFrame}
-        MainColumn={MainColumn}
+        ChatSlot={ChatSlot}
+        EditorFrame={EditorFrame}
         PanelFrame={PanelFrame}
         TerminalDrawer={TerminalDrawer}
         TerminalBar={TerminalBarWithBranch}
