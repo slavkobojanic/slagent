@@ -6,6 +6,11 @@ export type MobileShellProps = {
   layout?: MobileLayout
   Tablet?: ComponentType
   screen: MobileScreen
+  current: MobileScreen
+  leaving: MobileScreen | null
+  direction: "push" | "pop"
+  entering: boolean
+  onScreenChange: (screen: MobileScreen) => void
   ChatList: ComponentType
   ChatScreen: ComponentType
   ChangesScreen: ComponentType
@@ -13,7 +18,7 @@ export type MobileShellProps = {
   BackSwipe: ComponentType
 }
 
-export function MobileShell({ layout = "phone", Tablet, screen, ChatList, ChatScreen, ChangesScreen, ConnectionSheet, BackSwipe }: MobileShellProps) {
+export function MobileShell({ layout = "phone", Tablet, screen, current, leaving, direction, entering, onScreenChange, ChatList, ChatScreen, ChangesScreen, ConnectionSheet, BackSwipe }: MobileShellProps) {
   if (layout !== "phone" && Tablet !== undefined) {
     return (
       <div className="h-full bg-background text-foreground">
@@ -23,7 +28,7 @@ export function MobileShell({ layout = "phone", Tablet, screen, ChatList, ChatSc
   }
   return (
     <div className="h-full bg-background text-foreground">
-      <ScreenTransition screen={screen} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} />
+      <ScreenTransition screen={screen} current={current} leaving={leaving} direction={direction} entering={entering} onScreenChange={onScreenChange} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} />
       <ConnectionSheet />
       <BackSwipe />
     </div>

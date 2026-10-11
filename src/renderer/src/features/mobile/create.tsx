@@ -22,7 +22,9 @@ import { MobilePresenter } from "./mobile-presenter/mobile-presenter"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import type { PanelStore } from "@/state/panel/panel-store/panel-store"
-import { MobileShell } from "./mobile-shell"
+import { ScreenTransitionPresenter } from "./screen-transition/screen-transition-presenter/screen-transition-presenter"
+import { ScreenTransitionStore } from "./screen-transition/screen-transition-store/screen-transition-store"
+import { MobileShell } from "./mobile"
 import { MobileStore } from "./mobile-store/mobile-store"
 
 export function createMobile({
@@ -66,6 +68,9 @@ export function createMobile({
   const changesPresenter = new MobileChangesPresenter(changesStore, mobileStore, runStore, api, log.child("changes"))
   changesPresenter.start()
 
+  const transitionStore = new ScreenTransitionStore(mobileStore.screen)
+  const transitionPresenter = new ScreenTransitionPresenter(transitionStore, window)
+
   const Banner = createConnectionBanner({ connectionStore, mobilePresenter })
   const ChatList = createMobileChatList({ libraryStore, metaStore, mobileStore, mobilePresenter, device, connectionStore, log, Banner })
   const ChatScreen = createMobileChatScreen({ metaStore, mobileStore, mobilePresenter, changesStore, changesPresenter, Banner, Transcript, Composer, PlanOverlay })
@@ -96,6 +101,22 @@ export function createMobile({
   })
 
   return observer(function MobileHost() {
-    return <MobileShell layout={mobileStore.layout} Tablet={Tablet} screen={mobileStore.screen} ChatList={ChatList} ChatScreen={ChatScreen} ChangesScreen={ChangesScreen} ConnectionSheet={ConnectionSheet} BackSwipe={BackSwipe} />
+    return (
+      <MobileShell
+        layout={mobileStore.layout}
+        Tablet={Tablet}
+        screen={mobileStore.screen}
+        current={transitionStore.current}
+        leaving={transitionStore.leaving}
+        direction={transitionStore.direction}
+        entering={transitionStore.entering}
+        onScreenChange={transitionPresenter.handleScreenChange}
+        ChatList={ChatList}
+        ChatScreen={ChatScreen}
+        ChangesScreen={ChangesScreen}
+        ConnectionSheet={ConnectionSheet}
+        BackSwipe={BackSwipe}
+      />
+    )
   })
 }
