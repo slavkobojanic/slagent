@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import type { SkillLocation } from "@shared/types"
-import { isValidSkillName } from "./create-skill-presenter/create-skill-presenter"
+import { isValidSkillName } from "@/lib/skill-name"
 
 export type CreateSkillDialogProps = {
   open: boolean

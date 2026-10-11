@@ -1,6 +1,6 @@
 import type { Log } from "@/log/log"
 import type { MobileScreen } from "@/features/mobile/mobile-screen"
-import type { ScreenTransitionStore } from "../screen-transition-store/screen-transition-store"
+import type { ScreenTransitionStore } from "@/features/mobile/screen-transition/screen-transition-store/screen-transition-store"
 
 const PUSH_MS = 250
 const POP_MS = 200

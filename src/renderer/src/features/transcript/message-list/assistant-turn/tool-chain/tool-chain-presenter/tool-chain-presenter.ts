@@ -1,5 +1,5 @@
 import type { Log } from "@/log/log"
-import type { ToolChainStore } from "../tool-chain-store/tool-chain-store"
+import type { ToolChainStore } from "@/features/transcript/message-list/assistant-turn/tool-chain/tool-chain-store/tool-chain-store"
 
 export class ToolChainPresenter {
   private timer: ReturnType<typeof setTimeout> | null = null

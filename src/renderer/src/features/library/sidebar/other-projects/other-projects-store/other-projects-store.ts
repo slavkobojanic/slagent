@@ -1,13 +1,10 @@
 import { makeAutoObservable } from "mobx"
 import type { ChatSummary, ProjectSummary } from "@shared/types"
 import { sortedProjects } from "@/lib/projects"
+import { NO_PROJECT_ID } from "@/lib/no-project-id"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
 
 export type OtherProject = { project: ProjectSummary; active: boolean }
-
-// The id of the fake "No project" group that stands in for chats without a picked folder: every
-// "chat" project contributes its chats to this one row at the top of the sidebar.
-export const NO_PROJECT_ID = "no-project"
 
 export class OtherProjectsStore {
   collapsedIds: Record<string, boolean> = {}

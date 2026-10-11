@@ -4,7 +4,7 @@ import type { ProjectSummary } from "@shared/types"
 import { Button } from "@/components/ui/button"
 import { projectColor, projectIcon } from "@/components/project-appearance"
 import { contrastText } from "@/lib/color"
-import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
+import { NO_PROJECT_ID } from "@/lib/no-project-id"
 import { cn } from "@/lib/utils"
 
 export type ProjectRowProps = {

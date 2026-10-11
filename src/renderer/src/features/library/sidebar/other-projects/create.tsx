@@ -1,5 +1,4 @@
 import { observer } from "mobx-react-lite"
-import { useCallback } from "react"
 import type { ComponentType } from "react"
 import type { ProjectSummary } from "@shared/types"
 import type { ChatSwitchPresenter } from "@/features/library/chat-switch/chat-switch-presenter/chat-switch-presenter"
@@ -49,21 +48,11 @@ export function createOtherProjects({
   const ChatRow = createChatRow({ api, window, libraryStore, chatDeletionStore, chatSwitchPresenter, log: log.child("other-project-chat-row") })
 
   const ProjectChatList = observer(function ProjectChatListHost({ projectId }: { projectId: string }) {
-    // The chat summaries of a project that is not open arrive in `chatsByProject`.
     const chats = orderedChats(store.chatsOf(projectId))
     const showingAll = store.isShowingAll(projectId)
     const visible = visibleChats(chats, showingAll)
-    const Footer = useCallback(
-      () => (
-        <ChatListFooter
-          hiddenCount={chats.length - visible.length}
-          canShowLess={showingAll && chats.length > visible.length}
-          onShowAll={() => presenter.handleShowAll(projectId)}
-          onShowLess={() => presenter.handleShowLess(projectId)}
-        />
-      ),
-      [chats.length, visible.length, showingAll, projectId, presenter],
-    )
+    const hiddenCount = chats.length - visible.length
+    const canShowLess = showingAll && chats.length > visible.length
     return (
       <ChatList
         chats={visible}
@@ -71,7 +60,14 @@ export function createOtherProjects({
         hasHidden={chats.length > visible.length}
         reduceMotion={store.reduceMotion}
         ChatRow={ChatRow}
-        Footer={Footer}
+        Footer={() => (
+          <ChatListFooter
+            hiddenCount={hiddenCount}
+            canShowLess={canShowLess}
+            onShowAll={() => presenter.handleShowAll(projectId)}
+            onShowLess={() => presenter.handleShowLess(projectId)}
+          />
+        )}
       />
     )
   })

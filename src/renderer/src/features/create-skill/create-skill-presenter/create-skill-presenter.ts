@@ -1,16 +1,12 @@
 import { toast } from "sonner"
 import type { ChatMessage, DraftSkillInput, SkillLocation, SlashCommand } from "@shared/types"
 import { errorText } from "@/lib/format"
+import { isValidSkillName } from "@/lib/skill-name"
 import type { Log } from "@/log/log"
 import type { RunStore } from "@/mirror/run-store/run-store"
 import type { API } from "@/ipc/api"
 import type { OverlayStore } from "@/state/overlay/overlay-store/overlay-store"
 import type { CreateSkillStore } from "./create-skill-store/create-skill-store"
-
-// A skill folder name: kebab-case, no dots or slashes, so the path stays inside the skills directory.
-export function isValidSkillName(name: string): boolean {
-  return /^[a-z0-9][a-z0-9-]*$/.test(name)
-}
 
 // The last user message and the reply that followed it, scanning backwards through the transcript.
 export function lastExchange(messages: ChatMessage[]): { userText: string; assistantText: string } | null {

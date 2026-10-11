@@ -1,6 +1,5 @@
-import type { LinkPreference } from "@/state/link/link-store/link-store"
+type LinkPreference = "browser" | "copy"
 
-// Null means ask every time; the other two mirror LinkPreference.
 const OPTIONS = [
   { value: null, label: "Ask every time" },
   { value: "browser", label: "Open in browser" },
