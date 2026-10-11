@@ -92,11 +92,13 @@ export class EditorPresenter {
     void this.ensureUrl()
   }
 
-  private rootKey = (): string => (this.layoutStore.editorMode ? (this.metaStore.meta?.cwd ?? "") : "")
+  // The page is per project and survives leaving editor mode: once the editor has been opened, the
+  // key stays on the project so the frame is kept rather than rebuilt.
+  private rootKey = (): string => (this.layoutStore.editorOpened ? (this.metaStore.meta?.cwd ?? "") : "")
 
   private handleRootChange = (cwd: string) => {
     this.store.reset()
-    if (cwd !== "") {
+    if (cwd !== "" && this.layoutStore.editorMode) {
       void this.ensureUrl()
     }
   }

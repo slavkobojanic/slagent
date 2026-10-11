@@ -54,6 +54,15 @@ exports.activate = (context) => {
       }
     })
   })
-  server.listen(port, "127.0.0.1")
+  // A closed editor frame can leave an older extension host holding the port until the server drops
+  // it, so a refused bind is retried instead of leaving this session without a bridge.
+  let attempts = 0
+  const bind = () => server.listen(port, "127.0.0.1")
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE" && attempts++ < 120) {
+      setTimeout(bind, 500)
+    }
+  })
+  bind()
   context.subscriptions.push({ dispose: () => server.close() })
 }

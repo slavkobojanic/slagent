@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events"
 import type { ChildProcess } from "node:child_process"
 import { describe, expect, it, vi } from "vitest"
 import { DEFAULT_EDITOR_PREFS } from "../shared/editor"
-import { distDir, editorSettings, serverArgs, VscodeServer, withEditorCookie, workbenchUrl } from "./vscode-server"
+import { distDir, EDITOR_PORT, editorSettings, freePort, serverArgs, VscodeServer, withEditorCookie, workbenchUrl } from "./vscode-server"
 
 class FakeChild extends EventEmitter {
   killed = false
@@ -55,6 +55,12 @@ describe("serverArgs", () => {
     expect(args).toContain("--accept-server-license-terms")
   })
 
+  it("can end a closed frame's extension host quickly", () => {
+    const args = serverArgs({ port: 1, token: "t", dataDir: "/data" })
+
+    expect(args[args.indexOf("--reconnection-grace-time") + 1]).toBe("15")
+  })
+
   it("can keep extensions inside the data folder", () => {
     const args = serverArgs({ port: 1, token: "t", dataDir: "/data" })
 
@@ -84,6 +90,31 @@ describe("editorSettings", () => {
 
   it("can turn word wrap off", () => {
     expect(editorSettings(DEFAULT_EDITOR_PREFS)["editor.wordWrap"]).toBe("off")
+  })
+})
+
+describe("freePort", () => {
+  it("can take the preferred port when it is free", async () => {
+    const port = await freePort(0)
+    expect(port).toBeGreaterThan(0)
+
+    expect(await freePort(port)).toBe(port)
+  })
+
+  it("can fall back to another port when the preferred one is taken", async () => {
+    const { createServer } = await import("node:net")
+    const taken = createServer()
+    await new Promise<void>((resolve) => taken.listen(0, "127.0.0.1", () => resolve()))
+    const takenPort = (taken.address() as { port: number }).port
+
+    const port = await freePort(takenPort)
+
+    expect(port).not.toBe(takenPort)
+    taken.close()
+  })
+
+  it("can name a fixed port for the editor", () => {
+    expect(EDITOR_PORT).toBe(47821)
   })
 })
 

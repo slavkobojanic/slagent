@@ -8,14 +8,22 @@ const Editor: ComponentType = function Editor() {
 }
 
 describe("EditorFrame", () => {
-  it("can render nothing in chat mode so the editor is never created", () => {
-    expect(viewMarkup(<EditorFrame editorMode={false} Editor={Editor} />)).toBe("")
+  it("can render nothing until the editor has been opened", () => {
+    expect(viewMarkup(<EditorFrame editorMode={false} editorOpened={false} Editor={Editor} />)).toBe("")
   })
 
   it("can render the editor in the centre in editor mode", () => {
-    const markup = viewMarkup(<EditorFrame editorMode Editor={Editor} />)
+    const markup = viewMarkup(<EditorFrame editorMode editorOpened Editor={Editor} />)
 
     expect(markup).toContain("<section>editor</section>")
     expect(markup).toContain("order-2")
+    expect(markup).not.toContain("hidden")
+  })
+
+  it("can keep the editor mounted but hidden after going back to the chat", () => {
+    const markup = viewMarkup(<EditorFrame editorMode={false} editorOpened Editor={Editor} />)
+
+    expect(markup).toContain("<section>editor</section>")
+    expect(markup).toContain("hidden")
   })
 })

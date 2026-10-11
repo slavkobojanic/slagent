@@ -49,6 +49,8 @@ export class LayoutStore {
   resizing: ResizeEdge | null = null
   // Editor mode puts the editor in the centre and moves the chat to the right.
   editorMode = false
+  // Set the first time the editor opens; from then on its frame stays alive, hidden, when you go back to the chat.
+  editorOpened = false
 
   constructor() {
     makeAutoObservable(this)
@@ -56,6 +58,9 @@ export class LayoutStore {
 
   setEditorMode(on: boolean) {
     this.editorMode = on
+    if (on) {
+      this.editorOpened = true
+    }
   }
 
   setSidebarOpen(open: boolean) {
