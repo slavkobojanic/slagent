@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { watch, type FSWatcher } from "node:fs"
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
-import { basename, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { dialog } from "electron"
 import {
   getAgentDir,
@@ -57,8 +57,9 @@ import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
 import { PROJECT_COLORS, PROJECT_ICONS } from "../shared/project-appearance"
+import { installFromOpenVsx, readInstalled, removeInstalled, searchOpenVsx } from "./editor-extensions"
 import { parseEditorPrefs, parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
-import type { EditorPrefs } from "../shared/editor"
+import { isExtensionId, type EditorExtensionPayload, type EditorExtensionResult, type EditorPrefs } from "../shared/editor"
 import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
 import { describeThinking, describeToolCalls, describeWorking, type ToolCallSeed } from "./describe"
@@ -130,6 +131,8 @@ export class AgentHost {
   private prefs: Prefs = {}
   private personalisation: Personalisation = { ...EMPTY_PERSONALISATION }
   private editor: EditorPrefs = parseEditorPrefs(null)
+  private extensionTail: Promise<void> = Promise.resolve()
+  private extensionServerUrl: string | null = null
   private readonly sessions = new Map<string, Session>()
   // The cwd of the last opened chat, saved to prefs and used for new terminals.
   private cwd = ""
@@ -672,6 +675,52 @@ export class AgentHost {
     this.editor = parseEditorPrefs(value)
     await this.persistPrefs()
     this.publishMeta(null)
+  }
+
+  setExtensionServerUrl(url: string | null): void {
+    this.extensionServerUrl = url
+  }
+
+  // Extensions live beside settings.json, so the app and the daemon share them.
+  editorExtensionsRoot(): string {
+    return join(dirname(this.prefsPath), "editor-extensions")
+  }
+
+  searchEditorExtensions(query: string): Promise<EditorExtensionResult[]> {
+    return searchOpenVsx(query)
+  }
+
+  // Installs run one at a time so two of them never rewrite the prefs from the same starting point.
+  async installEditorExtension(id: string): Promise<void> {
+    const run = this.extensionTail.then(async () => {
+      const installed = await installFromOpenVsx(this.editorExtensionsRoot(), id)
+      const others = this.editor.extensions.filter((extension) => extension.id.toLowerCase() !== installed.id.toLowerCase())
+      const previous = this.editor.extensions.find((extension) => extension.id.toLowerCase() === installed.id.toLowerCase())
+      this.editor = parseEditorPrefs({ ...this.editor, extensions: [...others, { id: installed.id, version: installed.version, enabled: previous?.enabled ?? true }] })
+      await this.persistPrefs()
+      this.publishMeta(null)
+    })
+    this.extensionTail = run.catch(() => undefined)
+    await run
+  }
+
+  async uninstallEditorExtension(id: string): Promise<void> {
+    const run = this.extensionTail.then(async () => {
+      await removeInstalled(this.editorExtensionsRoot(), id)
+      this.editor = parseEditorPrefs({ ...this.editor, extensions: this.editor.extensions.filter((extension) => extension.id.toLowerCase() !== id.toLowerCase()) })
+      await this.persistPrefs()
+      this.publishMeta(null)
+    })
+    this.extensionTail = run.catch(() => undefined)
+    await run
+  }
+
+  async readEditorExtension(id: string): Promise<EditorExtensionPayload | null> {
+    if (!isExtensionId(id)) return null
+    const entry = this.editor.extensions.find((extension) => extension.id.toLowerCase() === id.toLowerCase())
+    if (!entry) return null
+    if (this.extensionServerUrl === null) return null
+    return readInstalled(this.editorExtensionsRoot(), entry.id, entry.version, this.extensionServerUrl)
   }
 
   async pickContextFiles(): Promise<PinnedFile[]> {

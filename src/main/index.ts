@@ -13,6 +13,7 @@ import { createCallHandler, systemOpenExternal } from "./calls"
 import { runDaemon, handoffToApp, waitDaemonPortFree } from "./daemon"
 import { daemonStatus, installDaemon, startDaemon, stopDaemon, uninstallDaemon } from "./daemon-launchd"
 import { attachmentFile } from "./library"
+import { startExtensionServer, type ExtensionServer } from "./extension-server"
 import { rendererFile } from "./renderer-file"
 import { startUpdater } from "./updater"
 import type { DaemonStatus } from "../shared/types"
@@ -29,6 +30,7 @@ let computer: ComputerUse | null = null
 let mcp: McpManager | null = null
 let terminal: TerminalManager | null = null
 let apiServer: ApiServer | null = null
+let extensionServer: ExtensionServer | null = null
 let quitting = false
 let started: Promise<void> | null = null
 // Windows the renderer's close confirmation has approved; a plain Cmd+W has to ask first.
@@ -330,6 +332,14 @@ app.whenReady().then(async () => {
 
   terminal = new TerminalManager((event: TerminalEvent) => apiServer?.hub.publishTerminal(event), () => host?.getCwd() ?? "")
 
+  // The editor's extension host reads installed extensions from here; without it the editor still
+  // works, it just cannot load extensions.
+  extensionServer = await startExtensionServer(host.editorExtensionsRoot()).catch((error) => {
+    console.error("extension server:", error)
+    return null
+  })
+  host.setExtensionServerUrl(extensionServer?.baseUrl ?? null)
+
   try {
     apiServer = await startApiServer({
       statePath: join(app.getPath("userData"), "slagent-server.json"),
@@ -401,6 +411,7 @@ app.on("before-quit", (event) => {
     computer?.stop()
     terminal?.stop()
     apiServer?.close()
+    extensionServer?.close()
     await handOffToDaemon()
     app.quit()
   })
