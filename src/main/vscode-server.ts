@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto"
 import { createServer } from "node:net"
 import { join } from "node:path"
 import type { EditorPrefs } from "../shared/editor"
+import { forgetServer, recordServer, stopStaleServer } from "./stale-server"
 
 export type BridgeRoute = "/open" | "/command" | "/settings"
 
@@ -58,6 +59,8 @@ export type VscodeServerDeps = {
   // Applied by the bridge when it starts, so the first paint already has the user's settings.
   settings?: () => Record<string, unknown>
   spawn?: (command: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv }) => ChildProcess
+  // The port tried first, so the workbench keeps one origin (and its storage) across launches.
+  preferredPort?: number
   // Takes a preferred port, or none for any free one.
   freePort?: (preferred?: number) => Promise<number>
   fetch?: typeof fetch
@@ -149,6 +152,7 @@ export class VscodeServer {
     this.running = null
     this.current = null
     void running?.then(({ child }) => child.kill()).catch(() => undefined)
+    void forgetServer(this.deps.dataDir).catch(() => undefined)
   }
 
   private start(): Promise<Running> {
@@ -163,15 +167,18 @@ export class VscodeServer {
   }
 
   private async launch(): Promise<Running> {
+    // A server from a launch that was killed would still hold the stable port.
+    await stopStaleServer(this.deps.dataDir).catch(() => undefined)
     const pickPort = this.deps.freePort ?? freePort
     const makeToken = this.deps.token ?? (() => randomBytes(24).toString("hex"))
-    const [port, bridgePort] = [await pickPort(EDITOR_PORT), await pickPort()]
+    const [port, bridgePort] = [await pickPort(this.deps.preferredPort ?? EDITOR_PORT), await pickPort()]
     const token = makeToken()
     const bridgeToken = makeToken()
     const child = (this.deps.spawn ?? nodeSpawn)(join(this.deps.dist, "node"), serverArgs({ port, token, dataDir: this.deps.dataDir }), {
       cwd: this.deps.dist,
       env: { ...process.env, SLAGENT_BRIDGE_PORT: String(bridgePort), SLAGENT_BRIDGE_TOKEN: bridgeToken, SLAGENT_SETTINGS: JSON.stringify(this.deps.settings?.() ?? {}) },
     })
+    void recordServer(this.deps.dataDir, child.pid).catch(() => undefined)
     const exited = new Promise<never>((_, reject) => {
       child.once("error", (error) => reject(error))
       child.once("exit", (code) => {
