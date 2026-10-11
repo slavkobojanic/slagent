@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events"
 import type { ChildProcess } from "node:child_process"
 import { describe, expect, it, vi } from "vitest"
 import { DEFAULT_EDITOR_PREFS } from "../shared/editor"
-import { distDir, editorSettings, serverArgs, VscodeServer, workbenchUrl } from "./vscode-server"
+import { distDir, editorSettings, serverArgs, VscodeServer, withEditorCookie, workbenchUrl } from "./vscode-server"
 
 class FakeChild extends EventEmitter {
   killed = false
@@ -84,6 +84,30 @@ describe("editorSettings", () => {
 
   it("can turn word wrap off", () => {
     expect(editorSettings(DEFAULT_EDITOR_PREFS)["editor.wordWrap"]).toBe("off")
+  })
+})
+
+describe("withEditorCookie", () => {
+  const endpoint = { port: 4000, token: "abc" }
+
+  it("can add the token cookie to a request for the editor server", () => {
+    expect(withEditorCookie("http://127.0.0.1:4000/static/a.js", { Accept: "*/*" }, endpoint)).toEqual({ Accept: "*/*", Cookie: "vscode-tkn=abc" })
+  })
+
+  it("can keep a cookie the request already has", () => {
+    expect(withEditorCookie("http://127.0.0.1:4000/", { Cookie: "a=b" }, endpoint).Cookie).toBe("a=b; vscode-tkn=abc")
+  })
+
+  it("can leave a request to another port alone", () => {
+    const headers = { Accept: "*/*" }
+
+    expect(withEditorCookie("http://127.0.0.1:5173/", headers, endpoint)).toBe(headers)
+  })
+
+  it("can leave every request alone while no server runs", () => {
+    const headers = { Accept: "*/*" }
+
+    expect(withEditorCookie("http://127.0.0.1:4000/", headers, null)).toBe(headers)
   })
 })
 
@@ -177,6 +201,17 @@ describe("VscodeServer", () => {
     const server = new VscodeServer({ dist: "/d", dataDir: "/x", spawn: () => child as unknown as ChildProcess, freePort: async () => 1, fetch: fetchFn, bridgeTimeoutMs: 1 })
 
     await expect(server.post("/open", {})).rejects.toThrow("ECONNREFUSED")
+  })
+
+  it("can expose the port and token once running, and forget them on stop", async () => {
+    const { server } = setup()
+    expect(server.endpoint).toBeNull()
+
+    await server.url("/p")
+    expect(server.endpoint).toEqual({ port: 4000, token: "token1" })
+
+    server.stop()
+    expect(server.endpoint).toBeNull()
   })
 
   it("can report whether the server has been started", async () => {

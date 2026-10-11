@@ -72,12 +72,21 @@ export function freePort(): Promise<number> {
   })
 }
 
+// The cookie the workbench expects. The editor frame is cross-site to the app, so the browser
+// would drop the cookie the server sets; the main process adds it to this server's requests instead.
+export function withEditorCookie(url: string, headers: Record<string, string>, endpoint: { port: number; token: string } | null): Record<string, string> {
+  if (endpoint === null || new URL(url).port !== String(endpoint.port)) return headers
+  const cookie = `vscode-tkn=${endpoint.token}`
+  return { ...headers, Cookie: headers.Cookie ? `${headers.Cookie}; ${cookie}` : cookie }
+}
+
 type Running = { port: number; token: string; bridgePort: number; bridgeToken: string; child: ChildProcess }
 
 // Runs the vendored VS Code server for the editor. It starts on first use, listens on loopback only,
 // and every request needs a random token; the bridge extension inside it has its own.
 export class VscodeServer {
   private running: Promise<Running> | null = null
+  private current: { port: number; token: string } | null = null
 
   constructor(private readonly deps: VscodeServerDeps) {}
 
@@ -111,6 +120,10 @@ export class VscodeServer {
     }
   }
 
+  get endpoint(): { port: number; token: string } | null {
+    return this.current
+  }
+
   get started(): boolean {
     return this.running !== null
   }
@@ -118,6 +131,7 @@ export class VscodeServer {
   stop(): void {
     const running = this.running
     this.running = null
+    this.current = null
     void running?.then(({ child }) => child.kill()).catch(() => undefined)
   }
 
@@ -146,6 +160,7 @@ export class VscodeServer {
       child.once("error", (error) => reject(error))
       child.once("exit", (code) => {
         this.running = null
+        this.current = null
         reject(new Error(`The editor server stopped (exit ${code ?? "unknown"}).`))
       })
     })
@@ -153,6 +168,7 @@ export class VscodeServer {
       child.kill()
       throw error
     })
+    this.current = { port, token }
     return { port, token, bridgePort, bridgeToken, child }
   }
 

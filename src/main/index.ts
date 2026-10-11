@@ -1,7 +1,7 @@
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { randomUUID } from "node:crypto"
-import { app, BrowserWindow, nativeImage, net, Notification, protocol, shell } from "electron"
+import { app, BrowserWindow, nativeImage, net, Notification, protocol, session, shell } from "electron"
 import type { TerminalEvent } from "../shared/types"
 import { AgentHost } from "./host"
 import { ComputerUse, computerExecutable } from "./computer"
@@ -13,7 +13,7 @@ import { createCallHandler, systemOpenExternal } from "./calls"
 import { runDaemon, handoffToApp, waitDaemonPortFree } from "./daemon"
 import { daemonStatus, installDaemon, startDaemon, stopDaemon, uninstallDaemon } from "./daemon-launchd"
 import { attachmentFile } from "./library"
-import { distDir, editorSettings, VscodeServer } from "./vscode-server"
+import { distDir, editorSettings, VscodeServer, withEditorCookie } from "./vscode-server"
 import { parseEditorPrefs } from "./prefs"
 import { rendererFile } from "./renderer-file"
 import { startUpdater } from "./updater"
@@ -339,6 +339,9 @@ app.whenReady().then(async () => {
     dist: distDir({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath(), platform: process.platform, arch: process.arch }),
     dataDir: join(app.getPath("userData"), "vscode-server"),
     settings: () => editorSettings(host?.getEditorPrefs() ?? parseEditorPrefs(null)),
+  })
+  session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ["http://127.0.0.1/*"] }, (details, callback) => {
+    callback({ requestHeaders: withEditorCookie(details.url, details.requestHeaders, editorServer?.endpoint ?? null) })
   })
 
   try {
