@@ -18,7 +18,6 @@ export function createQuestionHeader({
     }
     return (
       <QuestionHeader
-        header={question.header}
         question={question.question}
         open={questionCardStore.open}
         busy={questionCardStore.busy}
