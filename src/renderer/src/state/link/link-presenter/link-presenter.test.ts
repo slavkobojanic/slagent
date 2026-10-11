@@ -65,7 +65,7 @@ describe("LinkPresenter", () => {
     openExternal = api.openExternal
     panel = new PanelStore()
     store = new LinkStore()
-    presenter = new LinkPresenter(store, window, new PanelPresenter(panel, api, nullLog()), api, nullLog())
+    presenter = new LinkPresenter(store, window, new PanelPresenter(panel, api, null, nullLog()), api, nullLog())
     presenter.start()
   })
 
@@ -264,7 +264,7 @@ describe("LinkPresenter", () => {
   describe("remembered decision", () => {
     it("is read back from storage on start", () => {
       window.localStorage.setItem("slagent-link", "copy")
-      const restarted = new LinkPresenter(store, window, new PanelPresenter(panel, createMockInstance<API>([]), nullLog()), createMockInstance<API>([]), nullLog())
+      const restarted = new LinkPresenter(store, window, new PanelPresenter(panel, createMockInstance<API>([]), null, nullLog()), createMockInstance<API>([]), nullLog())
 
       restarted.start()
       restarted.stop()
@@ -274,7 +274,7 @@ describe("LinkPresenter", () => {
 
     it("ignores an unknown stored value", () => {
       window.localStorage.setItem("slagent-link", "nope")
-      const restarted = new LinkPresenter(store, window, new PanelPresenter(panel, createMockInstance<API>([]), nullLog()), createMockInstance<API>([]), nullLog())
+      const restarted = new LinkPresenter(store, window, new PanelPresenter(panel, createMockInstance<API>([]), null, nullLog()), createMockInstance<API>([]), nullLog())
 
       restarted.start()
       restarted.stop()

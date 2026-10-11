@@ -2,6 +2,7 @@ import type { FileView } from "@shared/types"
 import type { EditorStore } from "@/features/editor/editor-store/editor-store"
 import type { API } from "@/ipc/api"
 import { EDITOR_FRAME_CSS } from "@/lib/editor-frame-css"
+import type { EditorFont } from "@/lib/editor-fonts"
 import { workbenchTheme } from "@/lib/editor-theme"
 import { errorText } from "@/lib/format"
 import type { Log } from "@/log/log"
@@ -22,6 +23,7 @@ export class EditorPresenter {
     private readonly metaStore: MetaStore,
     private readonly layoutStore: LayoutStore,
     private readonly window: Window,
+    private readonly loadFonts: () => Promise<EditorFont[]>,
     private readonly log: Log,
   ) {}
 
@@ -126,6 +128,7 @@ export class EditorPresenter {
       return
     }
     this.postCss()
+    void this.postFonts()
     this.pushTheme()
   }
 
@@ -137,13 +140,30 @@ export class EditorPresenter {
     this.frame?.contentWindow?.postMessage({ type: "slagent-css", css: EDITOR_FRAME_CSS }, new URL(url).origin)
   }
 
+  private postFonts = async () => {
+    const url = this.store.url
+    if (url === null) {
+      return
+    }
+    try {
+      for (const font of await this.loadFonts()) {
+        // The bytes move to the frame instead of being copied.
+        this.frame?.contentWindow?.postMessage({ type: "slagent-font", family: font.family, weight: font.weight, data: font.data }, new URL(url).origin, [font.data])
+      }
+    } catch (error) {
+      this.log.warn("fonts-failed", { error })
+    }
+  }
+
   private readToken = (token: string): string => {
     const styles = this.window.getComputedStyle(this.window.document.documentElement)
     return styles.getPropertyValue(token).trim()
   }
 
   private pushTheme = () => {
-    this.api.setEditorTheme(workbenchTheme(this.themeStore.resolved, this.readToken)).catch((error: unknown) => {
+    // The editor uses the app's monospace font, which the frame is sent in postFonts.
+    const values = { ...workbenchTheme(this.themeStore.resolved, this.readToken), "editor.fontFamily": this.readToken("--font-mono") }
+    this.api.setEditorTheme(values).catch((error: unknown) => {
       this.log.warn("theme-failed", { error })
     })
   }

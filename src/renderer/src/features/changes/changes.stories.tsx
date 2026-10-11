@@ -12,7 +12,6 @@ const meta = {
     showing: "changes",
     Tabs: slot("Tabs"),
     DiffPanel: slot("DiffPanel"),
-    FileViewer: slot("FileViewer"),
     PlanDocument: slot("PlanDocument"),
     onResizeStart: fn(),
     onResizeReset: fn(),
@@ -23,8 +22,6 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Diff: Story = {}
-
-export const File: Story = { args: { showing: "file" } }
 
 export const Plan: Story = { args: { showing: "plan" } }
 

@@ -93,3 +93,13 @@ describe("workbenchTheme", () => {
     expect(colors["tab.border"]).toBe("#00000000")
   })
 })
+
+describe("workbenchTheme tabs", () => {
+  it("can flatten the connected tab strip so no tab variant stays grey", () => {
+    const colors = workbenchTheme("light", tokenReader)["workbench.colorCustomizations"] as Record<string, string>
+
+    expect(colors["editorGroupHeader.connectedTabsBackground"]).toBe("#000000")
+    expect(colors["tab.unfocusedInactiveBackground"]).toBe("#000000")
+    expect(colors["tab.selectedBackground"]).toBe("value:--muted")
+  })
+})

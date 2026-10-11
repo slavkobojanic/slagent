@@ -19,7 +19,7 @@ function setup() {
   const composerPort = new ComposerPort()
   vi.spyOn(composerPort, "focus")
   const api = createMockInstance<API>(["approvePlan", "setPlanMode"])
-  const presenter = new PlanOverlayPresenter(store, runStore, new PanelPresenter(panelStore, createMockInstance<API>([]), nullLog()), composerPort, api, nullLog())
+  const presenter = new PlanOverlayPresenter(store, runStore, new PanelPresenter(panelStore, createMockInstance<API>([]), null, nullLog()), composerPort, api, nullLog())
   return { panelStore, runStore, store, composerPort, api, presenter }
 }
 

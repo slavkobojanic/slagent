@@ -75,7 +75,7 @@ export function createMobileApp({ window, device, saved }: { window: Window; dev
 
   const overlayStore = new OverlayStore()
   const panelStore = new PanelStore()
-  const panelPresenter = new PanelPresenter(panelStore, api, log.child("panel"))
+  const panelPresenter = new PanelPresenter(panelStore, api, null, log.child("panel"))
   const reviewStore = new ReviewStore()
   const reviewPresenter = new ReviewPresenter(reviewStore, log.child("review"))
   const commandRegistry = new CommandRegistry()

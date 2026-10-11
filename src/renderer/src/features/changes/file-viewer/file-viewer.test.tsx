@@ -10,26 +10,12 @@ function viewer(overrides: Partial<FileViewerProps> = {}): FileViewerProps {
     ready: true,
     themeType: "dark",
     scrollRef: vi.fn(),
-    onEdit: vi.fn(),
     onOpenInEditor: vi.fn(),
     ...overrides,
   }
 }
 
 describe("FileViewer", () => {
-  it("can offer to edit the file in the app's editor", () => {
-    const markup = viewMarkup(<FileViewer {...viewer()} />)
-
-    expect(markup).toContain("Edit")
-  })
-
-  it("can leave out the edit action where there is no editor", () => {
-    const markup = viewMarkup(<FileViewer {...viewer({ onEdit: null })} />)
-
-    expect(markup).not.toContain("Edit")
-    expect(markup).toContain("Open in editor")
-  })
-
   it("can show the path with its line, the size, and an open-in-editor action", () => {
     const markup = viewMarkup(<FileViewer {...viewer()} />)
 

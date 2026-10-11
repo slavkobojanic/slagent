@@ -1,8 +1,8 @@
 diff --git a/src/vs/code/browser/workbench/workbench.html b/src/vs/code/browser/workbench/workbench.html
-index f5ab37af..98b1f7f7 100644
+index f5ab37af..04f4fa04 100644
 --- a/src/vs/code/browser/workbench/workbench.html
 +++ b/src/vs/code/browser/workbench/workbench.html
-@@ -89,6 +89,23 @@
+@@ -89,6 +89,27 @@
  		const baseUrl = new URL(document.getElementById('vscode-workbench-web-base-url').getAttribute('data-settings'), window.location.origin).toString();
  		globalThis._VSCODE_FILE_ROOT = baseUrl + '/out/';
  	</script>
@@ -16,8 +16,12 @@ index f5ab37af..98b1f7f7 100644
 +			document.head.appendChild(style);
 +			window.addEventListener('message', function (event) {
 +				const data = event.data;
-+				if (event.source === window.parent && data && data.type === 'slagent-css' && typeof data.css === 'string') {
++				if (event.source !== window.parent || !data) { return; }
++				if (data.type === 'slagent-css' && typeof data.css === 'string') {
 +					style.textContent = data.css;
++				} else if (data.type === 'slagent-font' && typeof data.family === 'string' && data.data instanceof ArrayBuffer) {
++					// Fonts arrive as bytes: the page's content policy allows no font url from the app.
++					new FontFace(data.family, data.data, { weight: String(data.weight || 'normal') }).load().then(function (face) { document.fonts.add(face); });
 +				}
 +			});
 +			window.parent.postMessage({ type: 'slagent-ready' }, '*');

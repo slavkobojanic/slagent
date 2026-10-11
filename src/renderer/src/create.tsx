@@ -69,7 +69,8 @@ export function createApp(): ComponentType {
   const layoutPresenter = new LayoutPresenter(layoutStore, window, log.child("layout"))
   const overlayStore = new OverlayStore()
   const panelStore = new PanelStore()
-  const panelPresenter = new PanelPresenter(panelStore, api, log.child("panel"))
+  const editorPort = new EditorPort()
+  const panelPresenter = new PanelPresenter(panelStore, api, editorPort, log.child("panel"))
   const themeStore = new ThemeStore()
   const themePresenter = new ThemePresenter(themeStore, window, log.child("theme"))
   const permissionsStore = new PermissionsStore(api.platform)
@@ -83,7 +84,6 @@ export function createApp(): ComponentType {
   const LinkMenu = createLinkMenu({ store: linkStore, presenter: linkPresenter })
   const composerPort = new ComposerPort()
   const jumpPort = new JumpPort()
-  const editorPort = new EditorPort()
   const navLogPresenter = new NavLogPresenter(libraryStore, panelStore, overlayStore, log.child("nav"))
 
   const Transcript = createTranscript({
@@ -129,7 +129,6 @@ export function createApp(): ComponentType {
     reviewPresenter,
     themeStore,
     commandRegistry,
-    editorPort,
   })
   const Editor = createEditor({ log: log.child("editor"), api, window, themeStore, metaStore, layoutStore, editorPort })
   const Library = createLibrary({

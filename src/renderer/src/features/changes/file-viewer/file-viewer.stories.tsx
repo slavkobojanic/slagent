@@ -16,7 +16,7 @@ const meta = {
   title: "Features/Changes/FileViewer",
   component: FileViewer,
   parameters: { layout: "fullscreen" },
-  args: { file, sizeLabel: "4 KB", ready: true, themeType: "dark", scrollRef: fn(), onEdit: fn(), onOpenInEditor: fn() },
+  args: { file, sizeLabel: "4 KB", ready: true, themeType: "dark", scrollRef: fn(), onOpenInEditor: fn() },
 } satisfies Meta<typeof FileViewer>
 
 export default meta

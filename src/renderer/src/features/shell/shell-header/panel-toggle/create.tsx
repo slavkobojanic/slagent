@@ -4,6 +4,7 @@ import type { API } from "@/ipc/api"
 import { modKey } from "@/lib/format"
 import type { Log } from "@/log/log"
 import type { MetaStore } from "@/mirror/meta-store/meta-store"
+import type { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import type { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
 import type { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { PanelToggle } from "./panel-toggle"
@@ -15,12 +16,14 @@ export function createPanelToggle({
   metaStore,
   panelStore,
   panelPresenter,
+  layoutStore,
   log,
 }: {
   api: API
   metaStore: MetaStore
   panelStore: PanelStore
   panelPresenter: PanelPresenter
+  layoutStore: LayoutStore
   log: Log
 }): ComponentType {
   const presenter = new PanelTogglePresenter(panelStore, panelPresenter, log)
@@ -31,8 +34,8 @@ export function createPanelToggle({
     return (
       <PanelToggle
         open={open}
-        title={panelToggleTitle(open, mod)}
-        disabled={(metaStore.meta?.cwd ?? "") === ""}
+        title={panelToggleTitle(open, mod, layoutStore.editorMode)}
+        disabled={(metaStore.meta?.cwd ?? "") === "" || layoutStore.editorMode}
         onToggle={presenter.toggle}
       />
     )

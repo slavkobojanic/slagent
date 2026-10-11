@@ -51,7 +51,7 @@ describe("ChatSwitchPresenter", () => {
     run = new RunStore()
     api = createMockInstance<API>(["openChat"])
     api.openChat.mockResolvedValue(undefined)
-    panel = new PanelPresenter(new PanelStore(), createMockInstance<API>([]), nullLog())
+    panel = new PanelPresenter(new PanelStore(), createMockInstance<API>([]), null, nullLog())
     review = new ReviewPresenter(new ReviewStore(), nullLog())
     vi.spyOn(panel, "reset")
     vi.spyOn(review, "reset")

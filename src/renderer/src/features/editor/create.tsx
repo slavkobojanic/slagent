@@ -6,6 +6,7 @@ import type { MetaStore } from "@/mirror/meta-store/meta-store"
 import type { EditorPort } from "@/state/editor-port/editor-port"
 import type { LayoutStore } from "@/state/layout/layout-store/layout-store"
 import type { ThemeStore } from "@/state/theme/theme-store/theme-store"
+import { loadEditorFonts } from "@/lib/editor-fonts"
 import { Editor } from "./editor"
 import { EditorPresenter } from "./editor-presenter/editor-presenter"
 import { EditorStore } from "./editor-store/editor-store"
@@ -28,7 +29,7 @@ export function createEditor({
   log: Log
 }): ComponentType {
   const store = new EditorStore()
-  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, log)
+  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, loadEditorFonts, log)
   presenter.start()
   editorPort.attach(presenter.openFile)
 

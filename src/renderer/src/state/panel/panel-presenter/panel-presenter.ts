@@ -1,12 +1,15 @@
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { FileView } from "@shared/types"
+import type { EditorPort } from "@/state/editor-port/editor-port"
 import type { PanelStore, RightTab } from "@/state/panel/panel-store/panel-store"
 
 export class PanelPresenter {
   constructor(
     private readonly store: PanelStore,
     private readonly api: API,
+    // Where files open. Null where there is no editor, which shows them in the side panel instead.
+    private readonly editorPort: EditorPort | null,
     private readonly log: Log,
   ) {}
 
@@ -24,6 +27,10 @@ export class PanelPresenter {
     }
     if (file === null) {
       this.log.debug("open-file-missing", { target })
+      return
+    }
+    if (this.editorPort !== null) {
+      this.editorPort.open(file)
       return
     }
     this.showFile(file)

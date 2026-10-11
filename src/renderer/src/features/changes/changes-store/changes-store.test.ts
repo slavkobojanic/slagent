@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { ChangesStore } from "./changes-store"
-import { makeFile, makeMeta, makeTranscript } from "@/features/changes/changes-fixtures"
+import { makeMeta, makeTranscript } from "@/features/changes/changes-fixtures"
 import { MetaStore } from "@/mirror/meta-store/meta-store"
 import { RunStore } from "@/mirror/run-store/run-store"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
@@ -52,21 +52,6 @@ describe("ChangesStore", () => {
       expect(store.showing).toBe("changes")
     })
 
-    it("can show the file tab when a file is open on it", () => {
-      const { panel, store } = setup()
-      panel.setViewedFile(makeFile())
-      panel.setTab("file")
-
-      expect(store.showing).toBe("file")
-    })
-
-    it("can fall back to the changes tab on the file tab when no file is open", () => {
-      const { panel, store } = setup()
-      panel.setTab("file")
-
-      expect(store.showing).toBe("changes")
-    })
-
     it("can show the plan tab when the run has a plan", () => {
       const { panel, run, store } = setup()
       run.setTranscript(makeTranscript({ planProposal: "Plan" }))
@@ -95,38 +80,6 @@ describe("ChangesStore", () => {
       panel.setOpen(true)
 
       expect(store.changesShown).toBe(true)
-    })
-
-    it("can be false while the panel is open on the file tab", () => {
-      const { panel, store } = setup()
-      panel.setViewedFile(makeFile())
-      panel.setTab("file")
-      panel.setOpen(true)
-
-      expect(store.changesShown).toBe(false)
-    })
-
-    it("can be true on a file tab with no file, because that tab shows the changes", () => {
-      const { panel, store } = setup()
-      panel.setTab("file")
-      panel.setOpen(true)
-
-      expect(store.changesShown).toBe(true)
-    })
-  })
-
-  describe("fileTab", () => {
-    it("can be null when no file is open", () => {
-      const { store } = setup()
-
-      expect(store.fileTab).toBeNull()
-    })
-
-    it("can name the open file by its last path segment and keep its full path", () => {
-      const { panel, store } = setup()
-      panel.setViewedFile(makeFile({ path: "src/features/app.ts" }))
-
-      expect(store.fileTab).toEqual({ name: "app.ts", path: "src/features/app.ts" })
     })
   })
 

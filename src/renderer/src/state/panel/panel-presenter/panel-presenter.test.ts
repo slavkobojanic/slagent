@@ -1,7 +1,8 @@
 import type { API } from "@/ipc/api"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { FileView } from "@shared/types"
 import { PanelPresenter } from "@/state/panel/panel-presenter/panel-presenter"
+import { EditorPort } from "@/state/editor-port/editor-port"
 import { PanelStore } from "@/state/panel/panel-store/panel-store"
 import { createMockInstance } from "@/test/create-mock-instance"
 import { nullLog } from "@/log/log"
@@ -19,9 +20,41 @@ const file: FileView = {
 function setup() {
   const files = createMockInstance<API>(["readFile"])
   const store = new PanelStore()
-  const presenter = new PanelPresenter(store, files, nullLog())
+  const presenter = new PanelPresenter(store, files, null, nullLog())
   return { files, store, presenter }
 }
+
+describe("PanelPresenter with an editor", () => {
+  function withEditor() {
+    const files = createMockInstance<API>(["readFile"])
+    const store = new PanelStore()
+    const editorPort = new EditorPort()
+    const open = vi.fn()
+    editorPort.attach(open)
+    return { files, store, open, presenter: new PanelPresenter(store, files, editorPort, nullLog()) }
+  }
+
+  it("can open the file in the editor instead of the side panel", async () => {
+    const { files, store, open, presenter } = withEditor()
+    files.readFile.mockResolvedValue(file)
+
+    await presenter.openFile("src/app.ts", 3)
+
+    expect(files.readFile).toHaveBeenCalledWith("src/app.ts:3")
+    expect(open).toHaveBeenCalledWith(file)
+    expect(store.viewedFile).toBeNull()
+    expect(store.open).toBe(false)
+  })
+
+  it("can ignore a path that is not a file", async () => {
+    const { files, open, presenter } = withEditor()
+    files.readFile.mockResolvedValue(null)
+
+    await presenter.openFile("nope")
+
+    expect(open).not.toHaveBeenCalled()
+  })
+})
 
 describe("PanelPresenter", () => {
   describe("showPlan", () => {

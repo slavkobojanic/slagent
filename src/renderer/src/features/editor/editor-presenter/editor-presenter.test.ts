@@ -33,8 +33,9 @@ function setup(cwd = "/p") {
   const metaStore = new MetaStore()
   metaStore.setMeta({ cwd } as AppMeta)
   const layoutStore = new LayoutStore()
-  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, nullLog())
-  return { store, api, themeStore, metaStore, layoutStore, presenter }
+  const loadFonts = vi.fn(async () => [{ family: "Monaspace Neon Var", weight: "100 800", data: new ArrayBuffer(4) }])
+  const presenter = new EditorPresenter(store, api, themeStore, metaStore, layoutStore, window, loadFonts, nullLog())
+  return { store, api, themeStore, metaStore, layoutStore, presenter, loadFonts }
 }
 
 function attachedFrame(presenter: EditorPresenter): HTMLIFrameElement {
@@ -172,6 +173,45 @@ describe("EditorPresenter", () => {
       expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: "slagent-css" }), "http://127.0.0.1:4000")
       expect(api.setEditorTheme).toHaveBeenCalledWith(expect.objectContaining({ "workbench.colorTheme": expect.any(String) }))
       expect(store.url).toBe(URL_A)
+      presenter.stop()
+    })
+
+    it("can send the app's fonts to the frame as bytes", async () => {
+      const { presenter, loadFonts } = setup()
+      presenter.start()
+      await presenter.openFile(file())
+      const frame = attachedFrame(presenter)
+      const post = vi.spyOn(frame.contentWindow as Window, "postMessage")
+
+      announce(frame.contentWindow)
+      await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: "slagent-font", family: "Monaspace Neon Var" }), "http://127.0.0.1:4000", expect.any(Array)))
+
+      expect(loadFonts).toHaveBeenCalledTimes(1)
+      presenter.stop()
+    })
+
+    it("can carry on when the fonts cannot be loaded", async () => {
+      const { presenter, api, loadFonts } = setup()
+      loadFonts.mockRejectedValue(new Error("offline"))
+      presenter.start()
+      await presenter.openFile(file())
+      const frame = attachedFrame(presenter)
+
+      announce(frame.contentWindow)
+
+      await vi.waitFor(() => expect(api.setEditorTheme).toHaveBeenCalled())
+      presenter.stop()
+    })
+
+    it("can ask the editor to use the app's monospace font", async () => {
+      const { presenter, api } = setup()
+      presenter.start()
+      await presenter.openFile(file())
+      const frame = attachedFrame(presenter)
+
+      announce(frame.contentWindow)
+
+      expect(api.setEditorTheme).toHaveBeenCalledWith(expect.objectContaining({ "editor.fontFamily": expect.any(String) }))
       presenter.stop()
     })
 
