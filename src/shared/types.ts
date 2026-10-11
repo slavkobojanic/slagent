@@ -231,6 +231,9 @@ export type ToolMessage = {
   isError: boolean
   answers?: AnsweredQuestion[]
   subagent?: SubagentRunState[]
+  // The model's own words for this call, written just before it. Shown as the
+  // step's label in place of a small-model description that would repeat it.
+  narration?: string
   // A small model is writing this step's label: the renderer holds the label
   // line and fades the description in when it lands.
   labelPending?: boolean
