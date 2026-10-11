@@ -60,6 +60,18 @@ export function openRouterLabel(status: OpenRouterStatus): string {
   return "Connected"
 }
 
+// Keeps the last `count` turns, where a turn starts at each user message.
+// When there are no user messages it keeps everything.
+export function lastTurns(messages: ChatMessage[], count: number): ChatMessage[] {
+  const starts: number[] = []
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index]
+    if (message.role === "user" && message.text.trim()) starts.push(index)
+  }
+  if (starts.length === 0) return messages
+  return messages.slice(starts[Math.max(0, starts.length - count)])
+}
+
 export function formatTranscript(title: string, messages: ChatMessage[]): string {
   const blocks: string[] = []
   for (const message of messages) {

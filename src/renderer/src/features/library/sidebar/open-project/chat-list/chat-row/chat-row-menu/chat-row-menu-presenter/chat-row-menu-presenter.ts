@@ -8,7 +8,7 @@ import { toastFailure } from "@/features/library/toast-failure"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
-import { errorText, formatTranscript } from "@/lib/format"
+import { errorText, formatTranscript, lastTurns } from "@/lib/format"
 
 export class ChatRowMenuPresenter {
   constructor(
@@ -48,18 +48,19 @@ export class ChatRowMenuPresenter {
     this.chatDeletionStore.setTarget(chat, projectOfChat(this.libraryStore.library, chat.id))
   }
 
-  handleCopy = async (chat: ChatSummary) => {
+  handleCopy = async (chat: ChatSummary, turnLimit?: number) => {
     const projectId = projectOfChat(this.libraryStore.library, chat.id)
-    this.log.action("copy-transcript", { chatId: chat.id, projectId })
+    const turns = turnLimit ?? undefined
+    this.log.action(turns ? "copy-last-turns" : "copy-transcript", { chatId: chat.id, projectId, turns })
     try {
       const stored = await this.api.readTranscript(chat.id, projectId)
-      const text = formatTranscript(chat.title, stored)
+      const text = formatTranscript(chat.title, turns ? lastTurns(stored, turns) : stored)
       if (text === "") {
         toast.error("This chat is empty.")
         return
       }
       await this.window.navigator.clipboard.writeText(text)
-      toast.success("Transcript copied")
+      toast.success(turns ? `Last ${turns} turns copied` : "Transcript copied")
     } catch (error) {
       this.log.warn("copy-transcript-failed", { chatId: chat.id, error })
       toast.error(errorText(error))

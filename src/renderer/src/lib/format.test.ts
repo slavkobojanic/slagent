@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ChatMessage, OpenRouterStatus } from "@shared/types"
-import { errorText, folderName, formatContext, formatTranscript, looksLikePath, modKey, openRouterLabel } from "@/lib/format"
+import { errorText, folderName, formatContext, formatTranscript, lastTurns, looksLikePath, modKey, openRouterLabel } from "@/lib/format"
 
 const unconfigured: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
 
@@ -88,5 +88,39 @@ describe("formatTranscript", () => {
     ]
 
     expect(formatTranscript("Bug fix", messages)).toBe("# Bug fix\n\nYou\nfix the bug\n\nAssistant\ndone")
+  })
+})
+
+describe("lastTurns", () => {
+  function user(text: string, id: string): ChatMessage {
+    return { id, role: "user", text, attachments: [] }
+  }
+
+  function assistant(text: string, id: string): ChatMessage {
+    return { id, role: "assistant", text, thinking: "", streaming: false, error: null }
+  }
+
+  it("can keep the last turn", () => {
+    const messages = [user("one", "1"), assistant("a", "2"), user("two", "3"), assistant("b", "4")]
+
+    expect(lastTurns(messages, 1)).toEqual([user("two", "3"), assistant("b", "4")])
+  })
+
+  it("can keep everything when the chat has fewer turns than asked for", () => {
+    const messages = [user("one", "1"), assistant("a", "2")]
+
+    expect(lastTurns(messages, 10)).toEqual(messages)
+  })
+
+  it("can keep everything when there are no user messages", () => {
+    const messages = [assistant("a", "1")]
+
+    expect(lastTurns(messages, 10)).toEqual(messages)
+  })
+
+  it("can skip empty user messages when counting turns", () => {
+    const messages = [user("one", "1"), user("   ", "2"), assistant("a", "3"), user("two", "4"), assistant("b", "5")]
+
+    expect(lastTurns(messages, 1)).toEqual([user("two", "4"), assistant("b", "5")])
   })
 })
