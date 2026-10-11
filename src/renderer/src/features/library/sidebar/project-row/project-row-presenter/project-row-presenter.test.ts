@@ -41,9 +41,10 @@ describe("ProjectRowPresenter", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    api = createMockInstance<API>(["openProject", "newChat", "pinProject"])
+    api = createMockInstance<API>(["openProject", "newChat", "createChatProject", "pinProject"])
     api.openProject.mockResolvedValue(undefined)
     api.newChat.mockResolvedValue(undefined)
+    api.createChatProject.mockResolvedValue(undefined)
     api.pinProject.mockResolvedValue(undefined)
     libraryStore = new LibraryStore()
     composer = new ComposerPort()
@@ -117,6 +118,13 @@ describe("ProjectRowPresenter", () => {
       await presenter.handleNewChat(project("p1"))
 
       expect(api.newChat).toHaveBeenCalledWith("p1")
+    })
+
+    it("can make a chat project for the fake No project row", async () => {
+      await presenter.handleNewChat(project("no-project", { name: "No project", path: "", mode: "chat" }))
+
+      expect(api.createChatProject).toHaveBeenCalledTimes(1)
+      expect(api.newChat).not.toHaveBeenCalled()
     })
 
     it("can focus the composer once the draft starts", async () => {

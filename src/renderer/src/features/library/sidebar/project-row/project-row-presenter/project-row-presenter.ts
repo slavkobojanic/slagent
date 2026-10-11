@@ -2,6 +2,7 @@ import type { ProjectSummary } from "@shared/types"
 import type { ProjectRemovalStore } from "@/features/library/project-removal/project-removal-store/project-removal-store"
 import type { ProjectAppearanceStore } from "@/features/library/project-appearance/project-appearance-store/project-appearance-store"
 import { toastFailure } from "@/features/library/toast-failure"
+import { NO_PROJECT_ID } from "@/features/library/sidebar/other-projects/other-projects-store/other-projects-store"
 import type { API } from "@/ipc/api"
 import type { Log } from "@/log/log"
 import type { LibraryStore } from "@/mirror/library-store/library-store"
@@ -34,7 +35,7 @@ export class ProjectRowPresenter {
       enabled: () => this.libraryStore.openProjectId !== null,
       run: () => {
         this.log.action("new-chat", { projectId: this.libraryStore.openProjectId })
-        void this.newChat()
+        void this.newChat(() => this.api.newChat())
       },
     })
   }
@@ -46,7 +47,10 @@ export class ProjectRowPresenter {
 
   handleNewChat = (project: ProjectSummary) => {
     this.log.action("new-chat", { projectId: project.id })
-    return this.newChat(project.id)
+    // The fake "No project" row has no real project id, so a new chat there makes a chat
+    // project instead, like the "New chat" button at the top of the mobile chat list.
+    if (project.id === NO_PROJECT_ID) return this.newChat(() => this.api.createChatProject())
+    return this.newChat(() => this.api.newChat(project.id))
   }
 
   handlePin = (project: ProjectSummary) => {
@@ -65,8 +69,8 @@ export class ProjectRowPresenter {
   }
 
   // The composer gets focus even when the draft fails to start, so the user can type straight away.
-  private newChat = async (projectId?: string) => {
-    await toastFailure(() => this.api.newChat(projectId))
+  private newChat = async (start: () => Promise<unknown>) => {
+    await toastFailure(start)
     this.window.requestAnimationFrame(() => {
       this.composerPort.focus()
     })
