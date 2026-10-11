@@ -66,7 +66,7 @@ export function toolResultImages(result: unknown): { data: string; mimeType: str
   return images
 }
 
-type ContentPart = { type?: string; text?: string; thinking?: string }
+type ContentPart = { type?: string; text?: string; thinking?: string; toolCall?: unknown }
 
 export function assistantParts(content: readonly ContentPart[]): { text: string; thinking: string } {
   const text: string[] = []
@@ -76,4 +76,25 @@ export function assistantParts(content: readonly ContentPart[]): { text: string;
     if (part.type === "thinking" && part.thinking) thinking.push(part.thinking)
   }
   return { text: text.join(""), thinking: thinking.join("\n\n") }
+}
+
+// Splits an assistant message's text into the run before each tool call and the
+// prose that follows the last one. The runs become those tool calls' labels, so
+// the model's own narration names the step instead of a second-guessed
+// description repeating it. Narrations keep their positions: entry i belongs to
+// the i-th tool call, empty when the model said nothing before it.
+export function narrationParts(content: readonly ContentPart[]): { narrations: string[]; text: string } {
+  const narrations: string[] = []
+  let run = ""
+  for (const part of content) {
+    if (part.type === "text" && part.text) {
+      run += part.text
+      continue
+    }
+    if (part.type === "toolCall") {
+      narrations.push(run.trim())
+      run = ""
+    }
+  }
+  return { narrations, text: run.trim() }
 }

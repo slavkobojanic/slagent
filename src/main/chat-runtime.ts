@@ -44,7 +44,7 @@ import { sessionCommands } from "./commands"
 import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
-import { assistantParts, errorMessage, formatValue, toolLabel, toolResultImages, toolResultText } from "./format"
+import { assistantParts, errorMessage, formatValue, narrationParts, toolLabel, toolResultImages, toolResultText } from "./format"
 import { ToolDescriber, type ToolCallSeed } from "./describe"
 import { CheckpointStore } from "./checkpoints"
 import { checkpointBefore, checkpointExtension } from "./extensions/checkpoints"
@@ -234,6 +234,9 @@ export class ChatRuntime {
   private thinkingAsked = false
   private readonly describer: ToolDescriber
   private pendingModel: AgentModel | null = null
+  // Narration the last assistant message wrote before its tool calls, in call
+  // order. Consumed by tool_execution_start; never carries across messages.
+  private pendingNarrations: string[] = []
   private pendingEffort: EffortLevel | null = null
   private effort: EffortLevel
   private lastRunning = false
@@ -869,6 +872,9 @@ export class ChatRuntime {
     }
 
     if (event.type === "message_start" && event.message.role === "assistant") {
+      // Narrations left over from a cancelled tool call would mislabel this
+      // message's tools, so they never carry over.
+      this.pendingNarrations = []
       this.ensureAssistant()
       this.emit(false)
       return
@@ -890,7 +896,11 @@ export class ChatRuntime {
     if (event.type === "message_end" && event.message.role === "assistant") {
       const bubble = this.ensureAssistant()
       const parts = assistantParts(event.message.content)
-      if (parts.text) bubble.text = parts.text
+      const narration = narrationParts(event.message.content)
+      // Text the model wrote before its tool calls is those calls' narration;
+      // only prose after the last call stays reply text.
+      this.pendingNarrations = narration.narrations
+      bubble.text = narration.text
       if (parts.thinking) bubble.thinking = parts.thinking
       bubble.streaming = false
       bubble.error = event.message.errorMessage ?? null
@@ -906,6 +916,9 @@ export class ChatRuntime {
     }
 
     if (event.type === "tool_execution_start") {
+      // The model's own narration for this call, in order, or nothing when it
+      // went straight to the tool.
+      const narration = this.pendingNarrations.shift() || undefined
       const tool: ToolMessage = {
         id: event.toolCallId,
         role: "tool",
@@ -916,10 +929,13 @@ export class ChatRuntime {
         images: [],
         running: true,
         isError: false,
+        narration,
       }
       this.messages.push(tool)
-      if (this.options.describable?.()) tool.labelPending = true
-      this.describer.add({ id: event.toolCallId, name: event.toolName, args: this.toolArgs(event.args) })
+      if (!narration && this.options.describable?.()) {
+        tool.labelPending = true
+        this.describer.add({ id: event.toolCallId, name: event.toolName, args: this.toolArgs(event.args) })
+      }
       this.emit(false)
       return
     }
@@ -1094,6 +1110,7 @@ export class ChatRuntime {
       if (message.role === "tool") message.running = false
     }
     this.currentAssistantId = null
+    this.pendingNarrations = []
   }
 
   private async deliverPendingSteers(): Promise<void> {

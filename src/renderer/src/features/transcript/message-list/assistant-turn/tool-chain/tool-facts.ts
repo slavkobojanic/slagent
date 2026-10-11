@@ -105,12 +105,19 @@ export function toolLabel(tool: ToolMessage): StepLabel {
   return { kind: "file", name: tool.name, path }
 }
 
-// The raw fallback label a runtime builds before the small model describes
-// the step: the tool name alone, or the name, two spaces and a raw argument.
-// Anything else is a model-written description.
+// The raw fallback label a runtime builds before a description lands: the tool
+// name alone, or the name, two spaces and a raw argument.
+function rawLabel(tool: ToolMessage): boolean {
+  return tool.label === tool.name || tool.label.startsWith(`${tool.name}  `)
+}
+
+// The model-written description of one step: its own narration for the call
+// when it wrote one, else the small model's label, or null while it is still
+// the raw fallback: the collapsed chain header summarizes these.
 function described(tool: ToolMessage): string | null {
-  if (tool.label === tool.name) return null
-  if (tool.label.startsWith(`${tool.name}  `)) return null
+  const narration = narrationLabel(tool)
+  if (narration) return narration
+  if (rawLabel(tool)) return null
   return tool.label
 }
 
@@ -123,8 +130,17 @@ function describedLabel(tool: ToolMessage, fallback: string): StepLabel {
   return { kind: "text", text: fallback }
 }
 
-// The model-written description of one step, or null while it is still the
-// raw fallback: the collapsed chain header summarizes these.
+// The model's own narration for one step, shortened to its first line so it
+// reads as a step label, or null when the model said nothing before the call.
+function narrationLabel(tool: ToolMessage): string | null {
+  const line = tool.narration?.split("\n").find((entry) => entry.trim())?.trim()
+  if (!line) return null
+  if (line.length <= 100) return line
+  const cut = line.slice(0, 100)
+  return `${cut.slice(0, cut.lastIndexOf(" "))}\u2026`
+}
+
+// The model-written description of one step, for the collapsed chain header.
 export function toolDescription(tool: ToolMessage): string | null {
   return described(tool)
 }

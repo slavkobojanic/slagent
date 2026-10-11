@@ -666,7 +666,15 @@ export class ClaudeRuntime {
     for (const block of api.content ?? []) {
       if (!streamed && block.type === "text" && block.text) this.bubbleFor(api.id).text += block.text
       if (!streamed && block.type === "thinking" && block.thinking) this.bubbleFor(api.id).thinking += block.thinking
-      if (block.type === "tool_use" && block.id) this.startTool(block)
+      if (block.type === "tool_use" && block.id) {
+        // Text the model wrote before this call is the call's narration: it
+        // becomes the step's label instead of a second-guessed description
+        // repeating it. Prose after the last call stays reply text.
+        const bubble = this.bubbleFor(api.id)
+        const narration = bubble.text.trim()
+        bubble.text = ""
+        this.startTool(block, narration || undefined)
+      }
     }
     if (error) this.bubbleFor(api.id).error = typeof error === "string" ? error : "Claude Code reported an error."
     const usage = api.usage
@@ -677,7 +685,7 @@ export class ClaudeRuntime {
     this.emit(false)
   }
 
-  private startTool(block: ContentBlock): void {
+  private startTool(block: ContentBlock, narration?: string): void {
     if (!block.id || this.findTool(block.id)) return
     const rawName = block.name ?? "tool"
     const name = TOOL_NAMES[rawName] ?? rawName
@@ -696,10 +704,15 @@ export class ClaudeRuntime {
       images: [],
       running: true,
       isError: false,
+      narration,
     }
     this.messages.push(tool)
-    if (this.options.describable?.()) tool.labelPending = true
-    this.describer.add({ id: block.id, name, args: this.toolArgs(block.input) })
+    // A narrated call already carries the model's words as its label, so the
+    // small model would only write the same thing twice.
+    if (!narration && this.options.describable?.()) {
+      tool.labelPending = true
+      this.describer.add({ id: block.id, name, args: this.toolArgs(block.input) })
+    }
     // Text after a tool call belongs in a new bubble below it. The bubbles before it are done,
     // so they stop showing the working label.
     for (const id of this.bubbles.values()) {

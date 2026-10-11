@@ -71,6 +71,13 @@ describe("toolLabel", () => {
     expect(toolLabel(tool({ label: "Running tests in src/main" }))).toEqual({ kind: "text", text: "Ran shell command" })
   })
 
+  it("never repeats the model's narration on a bash step either", () => {
+    expect(toolLabel(tool({ narration: "Running the test suite for the changed module" }))).toEqual({
+      kind: "text",
+      text: "Ran shell command",
+    })
+  })
+
   it("shows the model-written description when the label has one", () => {
     expect(toolLabel(tool({ name: "ask_user", label: "Asked about the database choice" }))).toEqual({
       kind: "text",
@@ -134,6 +141,18 @@ describe("toolLabel", () => {
 
   it("can show the tool's own label for anything else", () => {
     expect(toolLabel(tool({ name: "grep", label: "grep foo" }))).toEqual({ kind: "text", text: "grep foo" })
+  })
+
+  it("prefers the model's narration over the small model's description", () => {
+    expect(toolLabel(tool({ name: "grep", label: "Searching for duplication-related code", narration: "Searching the renderer for thinking-related code" })))
+      .toEqual({ kind: "text", text: "Searching the renderer for thinking-related code" })
+  })
+
+  it("shortens a long narration to its first line", () => {
+    const long = `${"A very long sentence about the search. ".repeat(5)}\nSecond line`
+    const label = toolLabel(tool({ name: "grep", label: "grep  foo", narration: long }))
+    expect(label).toEqual({ kind: "text", text: expect.stringMatching(/^A very long sentence/) })
+    expect((label as { text: string }).text.length).toBeLessThanOrEqual(101)
   })
 
   it("can name the agent a subagent task was handed to", () => {
