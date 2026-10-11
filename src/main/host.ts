@@ -57,7 +57,8 @@ import { searchProjectFiles } from "./files"
 import { errorMessage } from "./format"
 import { assertDirectory, Library, type StoredChat } from "./library"
 import { PROJECT_COLORS, PROJECT_ICONS } from "../shared/project-appearance"
-import { parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
+import { parseEditorPrefs, parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
+import type { EditorPrefs } from "../shared/editor"
 import { routeModel } from "./routing"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
 import { describeThinking, describeToolCalls, describeWorking, type ToolCallSeed } from "./describe"
@@ -128,6 +129,7 @@ export class AgentHost {
   private readonly gitWatchers = new Map<string, { watcher: FSWatcher; head: string; tree: FSWatcher | null }>()
   private prefs: Prefs = {}
   private personalisation: Personalisation = { ...EMPTY_PERSONALISATION }
+  private editor: EditorPrefs = parseEditorPrefs(null)
   private readonly sessions = new Map<string, Session>()
   // The cwd of the last opened chat, saved to prefs and used for new terminals.
   private cwd = ""
@@ -218,6 +220,7 @@ export class AgentHost {
       this.routing = this.prefs.routing ?? "balance"
       this.effort = parseEffort(this.prefs.effort)
       this.personalisation = this.prefs.personalisation ?? { ...EMPTY_PERSONALISATION }
+      this.editor = this.prefs.editor ?? parseEditorPrefs(null)
       await this.library.load()
       void runUsageBackfill({ ledger: this.usage, library: this.library }).catch((error) => console.error("usage backfill:", error))
       void this.library.indexMissingChats().catch((error) => console.error("search index:", error))
@@ -661,6 +664,12 @@ export class AgentHost {
 
   async setPersonalisation(value: Personalisation): Promise<void> {
     this.personalisation = parsePersonalisation(value)
+    await this.persistPrefs()
+    this.publishMeta(null)
+  }
+
+  async setEditorPrefs(value: EditorPrefs): Promise<void> {
+    this.editor = parseEditorPrefs(value)
     await this.persistPrefs()
     this.publishMeta(null)
   }
@@ -1375,6 +1384,7 @@ export class AgentHost {
       routing: this.routing,
       effort: this.effort,
       personalisation: this.personalisation,
+      editor: this.editor,
     }
     await writePrefs(this.prefsPath, this.prefs)
   }
@@ -1406,6 +1416,7 @@ export class AgentHost {
       extensionErrors: cached?.errors ?? [],
       usageTotals: this.usageTotals(),
       personalisation: this.personalisation,
+      editor: this.editor,
       server: this.getServerInfo(),
     }
   }

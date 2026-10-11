@@ -1,3 +1,5 @@
+import type { EditorPrefs } from "./editor"
+
 // Transport contract for the websocket server in the main process. Every client
 // (Electron window, the future mobile app) speaks it over one socket.
 export type WsCall = {
@@ -172,6 +174,7 @@ export type AppMeta = {
   extensionErrors: string[]
   usageTotals: UsageTotals
   personalisation: Personalisation
+  editor: EditorPrefs
   // The websocket server other devices connect through, or null before it starts.
   server: ServerInfo | null
 }
@@ -740,6 +743,7 @@ export type SlagentApi = {
   enableDaemon: () => Promise<DaemonStatus>
   disableDaemon: () => Promise<DaemonStatus>
   setPersonalisation: (value: Personalisation) => Promise<void>
+  setEditorPrefs: (value: EditorPrefs) => Promise<void>
   // Opens a file picker and returns the picked text files with their contents.
   pickContextFiles: () => Promise<PinnedFile[]>
   // Spawns a shell in the project folder and returns its session.

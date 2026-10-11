@@ -7,6 +7,7 @@ import type {
   Personalisation,
   ProjectAppearance,
 } from "../shared/types"
+import type { EditorPrefs } from "../shared/editor"
 import type { AgentHost } from "./host"
 import { cliStatus, installCli, uninstallCli } from "./cli"
 import type { ComputerUse } from "./computer"
@@ -234,6 +235,8 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return uninstallCli()
       case "setPersonalisation":
         return host.setPersonalisation(params[0] as Personalisation)
+      case "setEditorPrefs":
+        return host.setEditorPrefs(params[0] as EditorPrefs)
       case "pickContextFiles": {
         needDesktop()
         return host.pickContextFiles()

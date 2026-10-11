@@ -84,6 +84,7 @@ export class API implements SlagentApi {
   readonly enableDaemon: SlagentApi["enableDaemon"]
   readonly disableDaemon: SlagentApi["disableDaemon"]
   readonly setPersonalisation: SlagentApi["setPersonalisation"]
+  readonly setEditorPrefs: SlagentApi["setEditorPrefs"]
   readonly pickContextFiles: SlagentApi["pickContextFiles"]
   readonly createTerminal: SlagentApi["createTerminal"]
   readonly writeTerminal: SlagentApi["writeTerminal"]
@@ -170,6 +171,7 @@ export class API implements SlagentApi {
     this.enableDaemon = () => bridge.enableDaemon()
     this.disableDaemon = () => bridge.disableDaemon()
     this.setPersonalisation = (value) => bridge.setPersonalisation(plain(value))
+    this.setEditorPrefs = (value) => bridge.setEditorPrefs(plain(value))
     this.pickContextFiles = () => bridge.pickContextFiles()
     this.createTerminal = () => bridge.createTerminal()
     this.writeTerminal = (id, data) => bridge.writeTerminal(id, data)
