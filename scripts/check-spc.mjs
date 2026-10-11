@@ -93,6 +93,8 @@ function check(node, file, area, report) {
     checkConsole(node, area, report)
   } else if (isLiteral(node)) {
     checkClass(node, area, report)
+  } else if (ts.isFunctionDeclaration(node) && node.name && area.viewHome) {
+    checkViewOnly(node, area, report)
   }
 }
 
@@ -238,6 +240,21 @@ function checkClass(node, area, report) {
   const match = ARBITRARY.exec(node.text)
   if (match) {
     report(node, "no-arbitrary-tailwind", `arbitrary value ${match[0]}; use a spacing scale or token class`)
+  }
+}
+
+function checkViewOnly(node, area, report) {
+  if (!node.name || !area.viewHome) {
+    return
+  }
+  // Only the exported component should be a function
+  if (node.modifiers && node.modifiers.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
+    return
+  }
+  // Non-exported helper functions are OK, but warn about extra components
+  const name = node.name.text
+  if (name.charAt(0) === name.charAt(0).toUpperCase()) {
+    report(node, "one-component-per-view", `extra component ${name}; views should have one exported component per file`)
   }
 }
 
