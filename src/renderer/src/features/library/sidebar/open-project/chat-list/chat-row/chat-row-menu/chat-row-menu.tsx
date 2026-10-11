@@ -8,7 +8,7 @@ export type ChatRowMenuProps = {
   onOpenChange: (chat: ChatSummary, open: boolean) => void
   onPin: (chat: ChatSummary) => void
   onRename: (chat: ChatSummary) => void
-  onCopy: (chat: ChatSummary) => void
+  onCopy: (chat: ChatSummary, turnLimit?: number) => void
   onDelete: (chat: ChatSummary) => void
 }
 
@@ -18,6 +18,7 @@ export function ChatRowMenu({ chat, open, onOpenChange, onPin, onRename, onCopy,
       <DropdownMenuItem onSelect={() => onPin(chat)}>{chat.pinned ? "Unpin" : "Pin"}</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onRename(chat)}>Rename</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onCopy(chat)}>Copy transcript</DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => onCopy(chat, 10)}>Copy last 10 turns</DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" onSelect={() => onDelete(chat)}>
         Delete

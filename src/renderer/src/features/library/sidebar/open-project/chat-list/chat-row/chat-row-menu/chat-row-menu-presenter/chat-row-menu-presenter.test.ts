@@ -141,5 +141,29 @@ describe("ChatRowMenuPresenter", () => {
 
       expect(toast.error).toHaveBeenCalledWith("disk")
     })
+
+    it("can copy only the last turn and confirm", async () => {
+      const writeText = stubClipboard()
+      api.readTranscript.mockResolvedValue([
+        userMessage("one"),
+        { id: "m2", role: "assistant", text: "a", thinking: "", streaming: false, error: null },
+        userMessage("two"),
+        { id: "m4", role: "assistant", text: "b", thinking: "", streaming: false, error: null },
+      ])
+
+      await presenter.handleCopy(chat("c1", { title: "Plan" }), 1)
+
+      expect(writeText).toHaveBeenCalledWith("# Plan\n\nYou\ntwo\n\nAssistant\nb")
+      expect(toast.success).toHaveBeenCalledWith("Last 1 turns copied")
+    })
+
+    it("can say the chat is empty when the requested turns hold no text", async () => {
+      stubClipboard()
+      api.readTranscript.mockResolvedValue([])
+
+      await presenter.handleCopy(chat("c1"), 10)
+
+      expect(toast.error).toHaveBeenCalledWith("This chat is empty.")
+    })
   })
 })
