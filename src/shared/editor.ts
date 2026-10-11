@@ -62,3 +62,36 @@ export const DEFAULT_EDITOR_PREFS: EditorPrefs = {
   packs: EDITOR_PACKS.filter((pack) => pack.defaultOn).map((pack) => pack.id),
   extensions: [],
 }
+
+// publisher.name, as on Open VSX. The id becomes a folder name, so nothing else gets through.
+const EXTENSION_ID = /^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9._-]*$/i
+const EXTENSION_VERSION = /^[0-9][0-9a-z.+-]*$/i
+
+export function isExtensionId(value: unknown): value is string {
+  return typeof value === "string" && EXTENSION_ID.test(value)
+}
+
+export function isExtensionVersion(value: unknown): value is string {
+  return typeof value === "string" && EXTENSION_VERSION.test(value)
+}
+
+// One Open VSX search hit.
+export type EditorExtensionResult = {
+  id: string
+  version: string
+  name: string
+  description: string
+  downloads: number
+  verified: boolean
+  iconUrl: string | null
+}
+
+// What the editor needs to register an installed extension: its manifest, every file in it
+// (relative to the extension root) and the base url the files are served from.
+export type EditorExtensionPayload = {
+  id: string
+  version: string
+  manifest: Record<string, unknown>
+  files: string[]
+  baseUrl: string
+}
