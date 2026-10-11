@@ -13,6 +13,7 @@ import { createCallHandler, systemOpenExternal } from "./calls"
 import { runDaemon, handoffToApp, waitDaemonPortFree } from "./daemon"
 import { daemonStatus, installDaemon, startDaemon, stopDaemon, uninstallDaemon } from "./daemon-launchd"
 import { attachmentFile } from "./library"
+import { rendererFile } from "./renderer-file"
 import { startUpdater } from "./updater"
 import type { DaemonStatus } from "../shared/types"
 
@@ -50,6 +51,8 @@ app.on("open-file", (event, path) => {
   if (started) void openFolderFromSystem(path)
   else pendingFolders.push(path)
 })
+
+const RENDERER_ORIGIN = "slagent://app"
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -125,7 +128,7 @@ function createWindow(): BrowserWindow {
   if (devServerUrl) {
     void win.loadURL(devServerUrl)
   } else {
-    void win.loadFile(join(__dirname, "../renderer/index.html"))
+    void win.loadURL(`${RENDERER_ORIGIN}/index.html`)
   }
 
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -411,8 +414,15 @@ async function handOffToDaemon(): Promise<void> {
   if (status?.installed) await startDaemon().catch((error) => console.error("daemon:", error))
 }
 
+function serveRenderer(request: Request): Promise<Response> {
+  const file = rendererFile(join(__dirname, "../renderer"), new URL(request.url).pathname)
+  if (!file) return Promise.resolve(new Response("Not found", { status: 404 }))
+  return net.fetch(pathToFileURL(file).href).catch(() => new Response("Not found", { status: 404 }))
+}
+
 function serveAttachment(libraryRoot: string, request: Request): Promise<Response> {
   const url = new URL(request.url)
+  if (url.hostname === "app") return serveRenderer(request)
   if (url.hostname !== "attachment") return Promise.resolve(new Response("Not found", { status: 404 }))
   let parts: string[]
   try {
