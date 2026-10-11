@@ -16,6 +16,7 @@ const meta = {
     TitleModel: slot("TitleModel"),
     ProviderRouting: slot("ProviderRouting"),
     PersonalisationSettings: slot("PersonalisationSettings"),
+    EditorSettings: slot("EditorSettings"),
     McpSettings: slot("McpSettings"),
     CliSettings: slot("CliSettings"),
     Usage: slot("Usage"),
@@ -33,6 +34,8 @@ export const General: Story = {}
 export const Personalisation: Story = { args: { tab: "personalisation" } }
 
 export const Connect: Story = { args: { tab: "connect" } }
+
+export const Editor: Story = { args: { tab: "editor" } }
 
 export const Mcp: Story = { args: { tab: "mcp" } }
 
