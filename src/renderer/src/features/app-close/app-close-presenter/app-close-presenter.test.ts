@@ -10,18 +10,20 @@ describe("AppClosePresenter", () => {
   let api: MockInstance<API>
   let presenter: AppClosePresenter
   let askClose: () => void
-  let stopAsking: () => void
 
   beforeEach(() => {
     vi.clearAllMocks()
     store = new AppCloseStore()
     api = createMockInstance<API>(["onCloseRequest", "closeApp"])
     api.closeApp.mockResolvedValue(undefined)
-    askClose = () => undefined
-    stopAsking = () => undefined
+    let stopped = false
     api.onCloseRequest.mockImplementation((listener: () => void) => {
-      askClose = listener
-      return stopAsking
+      askClose = () => {
+        if (!stopped) listener()
+      }
+      return () => {
+        stopped = true
+      }
     })
     presenter = new AppClosePresenter(store, api, nullLog())
   })
@@ -36,7 +38,12 @@ describe("AppClosePresenter", () => {
     })
 
     it("can stop listening again", () => {
-      expect(presenter.start()).toBe(stopAsking)
+      presenter.start()
+      presenter.stop()
+
+      askClose()
+
+      expect(store.open).toBe(false)
     })
   })
 
