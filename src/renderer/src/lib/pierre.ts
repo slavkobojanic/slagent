@@ -5,8 +5,14 @@ export const PIERRE_THEME = { dark: "github-dark-default", light: "github-light-
 // Pierre's styles live in its shadow root, so its background is set from inside it.
 // Its own font variables fall back to hardcoded stacks, so both the diff body and
 // its header inherit the app's mono/sans fonts through the shadow boundary.
+//
+// Pierre marks a comment's line data-selected-line and mixes the theme's yellow
+// selection colour into the row, the gutter and the comment area. Override the
+// selection base with the app background so the comment row stays a neutral grey,
+// lighter than the comment box drawn on top of it.
 export const PIERRE_CSS = `
 :host { --diffs-bg: var(--background); --diffs-font-family: var(--font-mono); --diffs-header-font-family: var(--font-sans); }
+[data-selected-line] { --diffs-selection-base: var(--background); }
 `
 
 // The mobile diff list draws its own file header (path and counts), so Pierre's
