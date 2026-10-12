@@ -58,6 +58,7 @@ export class API implements SlagentApi {
   readonly stopTask: SlagentApi["stopTask"]
   readonly gitStatus: SlagentApi["gitStatus"]
   readonly gitDiff: SlagentApi["gitDiff"]
+  readonly gitLog: SlagentApi["gitLog"]
   readonly gitCommit: SlagentApi["gitCommit"]
   readonly gitPush: SlagentApi["gitPush"]
   readonly gitPullRequest: SlagentApi["gitPullRequest"]
@@ -150,6 +151,7 @@ export class API implements SlagentApi {
     this.stopTask = (id) => bridge.stopTask(id)
     this.gitStatus = () => bridge.gitStatus()
     this.gitDiff = (scope) => bridge.gitDiff(scope)
+    this.gitLog = () => bridge.gitLog()
     this.gitCommit = (message) => bridge.gitCommit(message)
     this.gitPush = () => bridge.gitPush()
     this.gitPullRequest = () => bridge.gitPullRequest()

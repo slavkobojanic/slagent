@@ -16,6 +16,7 @@ import type {
   CreateSkillInput,
   DiffScope,
   DraftSkillInput,
+  GitCommit,
   GitStatus,
   ChatStatus,
   ChatSummary,
@@ -65,7 +66,7 @@ import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel
 import type { AssistantMessage } from "@earendil-works/pi-ai"
 import { describeThinking, describeToolCalls, describeWorking, type ToolCallSeed } from "./describe"
 import { createSkillFile, draftSkill } from "./skills-create"
-import { createPullRequest, gitCommit, gitDiff, gitPush, gitStatus } from "./git"
+import { createPullRequest, gitCommit, gitDiff, gitDiffBranch, gitDiffCommit, gitLog, gitPush, gitStatus } from "./git"
 import { tailscalePeers, type TailscalePeer } from "./tailscale"
 import { importShellEnv } from "./shell-env"
 import { runUsageBackfill } from "./usage-backfill"
@@ -525,7 +526,14 @@ export class AgentHost {
 
   async gitDiff(clientId: string, scope: DiffScope): Promise<string> {
     if (scope === "turn") return (await this.sessionRuntime(this.requireSession(clientId))?.turnDiff()) ?? ""
-    return gitDiff(this.requireCwd(clientId))
+    const cwd = this.requireCwd(clientId)
+    if (scope === "branch") return gitDiffBranch(cwd)
+    if (scope.startsWith("commit:")) return gitDiffCommit(cwd, scope.slice("commit:".length))
+    return gitDiff(cwd)
+  }
+
+  gitLog(clientId: string): Promise<GitCommit[]> {
+    return gitLog(this.requireCwd(clientId))
   }
 
   async gitCommit(clientId: string, message: string): Promise<string> {

@@ -50,6 +50,33 @@ describe("DiffPanelStore", () => {
     })
   })
 
+  describe("scopeLabel", () => {
+    it("can name the built-in scopes", () => {
+      const store = new DiffPanelStore()
+
+      expect(store.scopeLabel).toBe("Uncommitted")
+      store.setScope("turn")
+      expect(store.scopeLabel).toBe("Last turn")
+      store.setScope("branch")
+      expect(store.scopeLabel).toBe("Since branch start")
+    })
+
+    it("can name a commit by its subject", () => {
+      const store = new DiffPanelStore()
+      store.setCommits([{ sha: "abc123def", subject: "fix(diff): keep the draft", date: "2 hours ago" }])
+      store.setScope("commit:abc123def")
+
+      expect(store.scopeLabel).toBe("fix(diff): keep the draft")
+    })
+
+    it("can fall back to the short sha of an unknown commit", () => {
+      const store = new DiffPanelStore()
+      store.setScope("commit:abc123def")
+
+      expect(store.scopeLabel).toBe("abc123d")
+    })
+  })
+
   describe("emptyText", () => {
     it("can explain the last-turn scope when there is no checkpoint diff", () => {
       const store = new DiffPanelStore()
@@ -67,6 +94,22 @@ describe("DiffPanelStore", () => {
 
     it("can say the folder is not a git repository otherwise", () => {
       expect(new DiffPanelStore().emptyText).toBe("This folder is not a git repository.")
+    })
+
+    it("can explain the branch scope when it is empty", () => {
+      const store = new DiffPanelStore()
+      store.setStatus(makeStatus({ repo: true }))
+      store.setScope("branch")
+
+      expect(store.emptyText).toBe("No changes since the branch started.")
+    })
+
+    it("can explain the commit scope when it is empty", () => {
+      const store = new DiffPanelStore()
+      store.setStatus(makeStatus({ repo: true }))
+      store.setScope("commit:abc123")
+
+      expect(store.emptyText).toBe("No changes in this commit.")
     })
   })
 

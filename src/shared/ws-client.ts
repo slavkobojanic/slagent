@@ -1,4 +1,4 @@
-import type { SlagentApi, TerminalEvent, UiEvent, WsClientMessage, WsServerMessage } from "./types"
+import type { GitCommit, SlagentApi, TerminalEvent, UiEvent, WsClientMessage, WsServerMessage } from "./types"
 
 // Where the socket is: "connecting" before the first open and while it
 // retries, "open" once calls can go out.
@@ -206,6 +206,7 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     stopTask: (id) => call<void>("stopTask", id),
     gitStatus: () => call<Result<"gitStatus">>("gitStatus"),
     gitDiff: (scope) => call<string>("gitDiff", scope),
+    gitLog: () => call<GitCommit[]>("gitLog"),
     gitCommit: (message) => call<string>("gitCommit", message),
     gitPush: () => call<void>("gitPush"),
     gitPullRequest: () => call<string>("gitPullRequest"),

@@ -1,5 +1,5 @@
 import { makeAutoObservable } from "mobx"
-import type { DiffScope, GitStatus } from "@shared/types"
+import type { DiffScope, GitCommit, GitStatus } from "@shared/types"
 import type { DiffDraft } from "@/features/changes/diff-panel/diff-draft"
 import type { FileDiff } from "@/lib/diff"
 
@@ -7,6 +7,7 @@ export type DiffBusy = "commit" | "message" | "push" | "pr"
 
 export class DiffPanelStore {
   scope: DiffScope = "uncommitted"
+  commits: GitCommit[] = []
   status: GitStatus | null = null
   files: FileDiff[] = []
   loading = false
@@ -37,14 +38,30 @@ export class DiffPanelStore {
     return "Changes"
   }
 
+  get scopeLabel(): string {
+    const scope = this.scope
+    if (scope === "uncommitted") return "Uncommitted"
+    if (scope === "turn") return "Last turn"
+    if (scope === "branch") return "Since branch start"
+    const sha = scope.slice("commit:".length)
+    const commit = this.commits.find((item) => item.sha === sha)
+    return commit?.subject ?? sha.slice(0, 7)
+  }
+
   get emptyText(): string {
     if (this.scope === "turn") {
       return "No changes since the last message with a checkpoint."
     }
-    if (this.repo) {
-      return "No uncommitted changes."
+    if (!this.repo) {
+      return "This folder is not a git repository."
     }
-    return "This folder is not a git repository."
+    if (this.scope === "branch") {
+      return "No changes since the branch started."
+    }
+    if (this.scope.startsWith("commit:")) {
+      return "No changes in this commit."
+    }
+    return "No uncommitted changes."
   }
 
   get commitPlaceholder(): string {
@@ -96,6 +113,10 @@ export class DiffPanelStore {
 
   setScope(scope: DiffScope) {
     this.scope = scope
+  }
+
+  setCommits(commits: GitCommit[]) {
+    this.commits = commits
   }
 
   setLoading(value: boolean) {

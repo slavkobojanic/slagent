@@ -631,7 +631,14 @@ export type GitStatus = {
   files: GitFile[]
 }
 
-export type DiffScope = "uncommitted" | "turn"
+// A commit scope carries the full sha as "commit:<sha>".
+export type DiffScope = "uncommitted" | "turn" | "branch" | `commit:${string}`
+
+export type GitCommit = {
+  sha: string
+  subject: string
+  date: string
+}
 
 export type FileView = {
   path: string
@@ -722,6 +729,7 @@ export type SlagentApi = {
   stopTask: (id: string) => Promise<void>
   gitStatus: () => Promise<GitStatus>
   gitDiff: (scope: DiffScope) => Promise<string>
+  gitLog: () => Promise<GitCommit[]>
   gitCommit: (message: string) => Promise<string>
   gitPush: () => Promise<void>
   gitPullRequest: () => Promise<string>

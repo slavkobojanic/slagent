@@ -2,6 +2,7 @@ import { dialog, nativeTheme, shell } from "electron"
 import type {
   CreateSkillInput,
   DraftSkillInput,
+  DiffScope,
   EffortLevel,
   ModelRouting,
   Personalisation,
@@ -54,6 +55,11 @@ export function createCallHandler(deps: CallDeps): CallHandler {
   }
   const optStr = (value: unknown): string | undefined =>
     typeof value === "string" && value ? value : undefined
+  const diffScope = (value: unknown): DiffScope => {
+    const text = str(value)
+    if (text === "turn" || text === "branch" || text.startsWith("commit:")) return text as DiffScope
+    return "uncommitted"
+  }
   const requireName = (name: unknown): string => {
     if (typeof name !== "string" || !name) throw new Error("Unknown MCP server.")
     return name
@@ -171,7 +177,9 @@ export function createCallHandler(deps: CallDeps): CallHandler {
       case "gitStatus":
         return host.gitStatus(clientId)
       case "gitDiff":
-        return host.gitDiff(clientId, params[0] === "turn" ? "turn" : "uncommitted")
+        return host.gitDiff(clientId, diffScope(params[0]))
+      case "gitLog":
+        return host.gitLog(clientId)
       case "gitCommit":
         return host.gitCommit(clientId, String(params[0] ?? ""))
       case "gitPush":

@@ -47,6 +47,8 @@ export function createDiffPanel({
       <DiffPanel
         branch={diffPanelStore.branchLabel}
         scope={diffPanelStore.scope}
+        scopeLabel={diffPanelStore.scopeLabel}
+        commits={diffPanelStore.commits}
         loading={diffPanelStore.loading}
         DiffFiles={DiffFiles}
         DiffFooter={DiffFooter}

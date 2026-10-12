@@ -24,7 +24,7 @@ function setup(log: Log = nullLog()) {
   const run = new RunStore()
   const changesStore = new ChangesStore(panel, run, new MetaStore())
   const store = new DiffPanelStore()
-  const api = createMockInstance<API>(["gitStatus", "gitDiff", "gitCommit", "gitPush", "gitPullRequest", "gitCommitMessage", "openExternal", "onEvent"])
+  const api = createMockInstance<API>(["gitStatus", "gitDiff", "gitLog", "gitCommit", "gitPush", "gitPullRequest", "gitCommitMessage", "openExternal", "onEvent"])
   api.onEvent.mockReturnValue(() => undefined)
   const panelPresenter = new PanelPresenter(panel, createMockInstance<API>([]), null, nullLog())
   vi.spyOn(panelPresenter, "openFile").mockResolvedValue(undefined)
@@ -35,6 +35,7 @@ function setup(log: Log = nullLog()) {
   const presenter = new DiffPanelPresenter(store, changesStore, run, api, panelPresenter, review, window, log)
   api.gitStatus.mockResolvedValue(makeStatus())
   api.gitDiff.mockResolvedValue(SAMPLE_DIFF)
+  api.gitLog.mockResolvedValue([])
   return { panel, run, store, api, panelPresenter, review, newId, presenter }
 }
 

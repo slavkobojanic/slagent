@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process"
 import { delimiter } from "node:path"
-import type { GitFile, GitStatus } from "../shared/types"
+import type { GitCommit, GitFile, GitStatus } from "../shared/types"
 
 // Apps opened from the Dock get a bare PATH, so gh from Homebrew is not found
 // unless the usual install folders are added.
@@ -122,6 +122,46 @@ async function untrackedDiff(cwd: string, path: string): Promise<string> {
     if (message.startsWith("diff --git")) return message
     return ""
   }
+}
+
+// The changes a single commit introduced, in the same shape as the working-tree diff.
+export async function gitDiffCommit(cwd: string, sha: string): Promise<string> {
+  return clip(await git(cwd, ["show", "--format=", "--no-color", "--no-ext-diff", sha]))
+}
+
+// Everything on the branch since it split from the main line, untracked files
+// included, all the way to the current working tree.
+export async function gitDiffBranch(cwd: string): Promise<string> {
+  const base = await branchBase(cwd)
+  const parts = [await git(cwd, ["diff", base, "--no-color", "--no-ext-diff"])]
+  for (const file of (await gitStatus(cwd)).files) {
+    if (file.status !== "added" || file.staged) continue
+    parts.push(await untrackedDiff(cwd, file.path))
+  }
+  return clip(parts.filter(Boolean).join("\n"))
+}
+
+async function branchBase(cwd: string): Promise<string> {
+  for (const ref of ["main", "master", "origin/main", "origin/master"]) {
+    try {
+      return (await git(cwd, ["merge-base", "HEAD", ref])).trim()
+    } catch {
+      continue
+    }
+  }
+  throw new Error("No main or master branch to compare against.")
+}
+
+// Recent commits for the diff panel's commit picker, newest first.
+export async function gitLog(cwd: string, limit = 30): Promise<GitCommit[]> {
+  const raw = await git(cwd, ["log", `--max-count=${limit}`, "--format=%H%x1f%s%x1f%cr"])
+  return raw
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [sha, subject, date] = line.split("\x1f")
+      return { sha: sha ?? "", subject: subject ?? "", date: date ?? "" }
+    })
 }
 
 export function clip(diff: string): string {

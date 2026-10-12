@@ -78,9 +78,15 @@ export class DiffPanelPresenter {
       await this.log.span(
         "load-diff",
         async () => {
-          const [status, diff] = await Promise.all([this.api.gitStatus(), this.api.gitDiff(scope)])
+          const status = await this.api.gitStatus()
+          // The commit picker needs the log, so it loads alongside the diff whenever
+          // the folder is a repository.
+          const [diff, commits] = status.repo
+            ? await Promise.all([this.api.gitDiff(scope), this.api.gitLog()])
+            : ["", []]
           this.store.setStatus(status)
           this.store.setFiles(parseDiff(diff))
+          this.store.setCommits(commits)
           this.dropDraftWithoutFile()
         },
         { scope },
