@@ -67,7 +67,7 @@ export const OtherProjects = observer(function OtherProjects({ noProject, others
       {noProject ? renderProject(noProject) : null}
       {others.length === 0 ? null : (
         <>
-          <h2 className="px-2 text-xs font-medium text-foreground/40">Projects</h2>
+          <h2 className="mt-5 px-2 text-xs font-medium text-foreground/40">Projects</h2>
           {others.map(renderProject)}
         </>
       )}
