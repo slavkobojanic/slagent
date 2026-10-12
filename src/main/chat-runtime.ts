@@ -627,16 +627,24 @@ export class ChatRuntime {
   }
 
   // Changes since the checkpoint before the latest user message that has one.
+  // When that diff is empty the newest turn changed nothing, so fall back to the
+  // previous turn's own changes instead of showing an empty panel.
   async turnDiff(): Promise<string> {
     const session = this.session
     if (!session) return ""
+    const commits: string[] = []
     for (let index = this.messages.length - 1; index >= 0; index -= 1) {
       const message = this.messages[index]
       if (message?.role !== "user" || !message.entryId || !message.checkpoint) continue
       const commit = checkpointBefore(session.sessionManager, message.entryId)
-      if (commit) return this.checkpoints.diff(commit)
+      if (commit) commits.push(commit)
+      if (commits.length === 2) break
     }
-    return ""
+    if (commits.length === 0) return ""
+    const latest = await this.checkpoints.diff(commits[0])
+    if (latest.trim()) return latest
+    if (commits.length < 2) return ""
+    return this.checkpoints.diff(commits[0], commits[1])
   }
 
   async undoRewind(commit: string): Promise<void> {

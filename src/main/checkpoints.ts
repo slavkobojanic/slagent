@@ -76,12 +76,14 @@ export class CheckpointStore {
     })
   }
 
-  // Everything that changed in the folder since the snapshot, as a unified diff.
-  diff(commit: string): Promise<string> {
+  // Everything that changed between two snapshots, as a unified diff. Without a
+  // base the diff runs against a snapshot of the folder taken right now.
+  diff(commit: string, base?: string): Promise<string> {
     return this.serial(async () => {
       if (!(await this.init())) return ""
-      const now = await this.commit("diff")
-      return this.git(["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", commit, now])
+      const from = base ?? commit
+      const to = base ? commit : await this.commit("diff")
+      return this.git(["-c", "core.quotepath=off", "diff", "--no-color", "--no-ext-diff", from, to])
     })
   }
 
