@@ -14,7 +14,11 @@ describe("tool allowlists", () => {
   it.each([
     ["coding", CODING_TOOLS],
     ["chat", CHAT_TOOLS],
-  ])("%s projects allow MCP server tools", (_mode, tools) => {
+  ])("%s projects allow MCP server tools, including web search", (_mode, tools) => {
     expect(tools).toContain("mcp__*")
+  })
+
+  it("chat projects can submit a plan", () => {
+    expect(CHAT_TOOLS).toContain("propose_plan")
   })
 })
