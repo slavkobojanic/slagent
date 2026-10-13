@@ -119,7 +119,8 @@ function harness(meta: AppMeta = openMeta, log: Log = nullLog(), touch = false) 
   const review = new ReviewStore()
   const reviewPresenter = new ReviewPresenter(review, nullLog())
   const store = new ComposerStore(mirror.library, mirror.meta, mirror.run, touch)
-  const api = createMockInstance<API>(["prompt", "abort", "setPlanMode", "pathForFile"])
+  const api = createMockInstance<API>(["prompt", "abort", "setPlanMode", "pathForFile", "onEvent"])
+  api.onEvent.mockReturnValue(() => undefined)
   const attachmentStore = new AttachmentsStore()
   const attachments = new AttachmentsPresenter(attachmentStore, api, window, nullLog())
   vi.spyOn(attachments, "removeLast")
@@ -730,6 +731,32 @@ describe("ComposerPresenter", () => {
       await presenter.handleStop()
 
       expect(toast.error).toHaveBeenCalledWith("stuck")
+    })
+  })
+
+  describe("editor questions", () => {
+    const comment: DiffComment = { id: "e1", path: "src/a.ts", line: 2, endLine: 4, side: "new", code: "a\nb\nc", text: "Why?" }
+
+    it("can queue a question asked in the editor as a comment and focus the composer", () => {
+      const { api, review, port, presenter } = harness()
+      const focus = vi.spyOn(port, "focus")
+      presenter.start()
+
+      api.onEvent.mock.calls[0][0]({ type: "editor-comment", comment })
+
+      expect(review.diffComments).toEqual([comment])
+      expect(focus).toHaveBeenCalled()
+      presenter.stop()
+    })
+
+    it("can ignore other events", () => {
+      const { api, review, presenter } = harness()
+      presenter.start()
+
+      api.onEvent.mock.calls[0][0]({ type: "git", revision: 1 })
+
+      expect(review.diffComments).toEqual([])
+      presenter.stop()
     })
   })
 

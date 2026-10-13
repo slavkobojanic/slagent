@@ -47,5 +47,9 @@ describe("PendingCommentsStore", () => {
     it("can locate each comment by file name and line", () => {
       expect(setup([diff("d1", "src/app/main.ts", 12)], []).diffs).toEqual([{ id: "d1", location: "main.ts:12", text: "rename" }])
     })
+
+    it("can show the line range of a question asked in the editor", () => {
+      expect(setup([{ ...diff("d1", "src/a.ts", 3), endLine: 7 }], []).diffs[0].location).toBe("a.ts:3–7")
+    })
   })
 })

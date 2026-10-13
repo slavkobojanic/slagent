@@ -1,5 +1,5 @@
 import { toast } from "sonner"
-import type { PromptFile, PromptRequest, SlashCommand } from "@shared/types"
+import type { PromptFile, PromptRequest, SlashCommand, UiEvent } from "@shared/types"
 import { builtinAtStart } from "@/features/composer/builtins"
 import type { API } from "@/ipc/api"
 import { errorText } from "@/lib/format"
@@ -179,6 +179,8 @@ export class ComposerPresenter {
     this.disposers = [
       this.log.reaction("draft-key", () => this.store.draftKey, this.switchChat),
       this.composerPort.attach({ focus: this.focus, fill: this.fill }),
+      // A question asked in the editor about selected code waits above the composer like a diff comment.
+      this.api.onEvent(this.handleEvent),
       this.commandRegistry.register({
         id: "composer.abort",
         label: "Stop the run",
@@ -199,6 +201,14 @@ export class ComposerPresenter {
         },
       }),
     ]
+  }
+
+  private handleEvent = (event: UiEvent) => {
+    if (event.type !== "editor-comment") {
+      return
+    }
+    this.reviewPresenter.addDiffComment(event.comment)
+    this.composerPort.focus()
   }
 
   stop = () => {
