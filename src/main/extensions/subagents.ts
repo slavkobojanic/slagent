@@ -1,4 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
+import { app } from "electron"
 import { dirname, join } from "node:path"
 import {
   type AgentSession,
@@ -16,6 +17,7 @@ import {
 import type { Usage } from "@earendil-works/pi-ai"
 import { Type } from "typebox"
 import { isReadOnlyCommand } from "./plan-mode"
+import { builtinSkillPath } from "../builtin-resources"
 
 // Pi's subagent example runs each agent as a separate pi process. Inside the
 // app the agents run in-process with the SDK instead: each gets a fresh
@@ -249,6 +251,7 @@ async function runAgent(deps: SubagentDeps, agent: AgentConfig, run: Run, signal
     cwd: deps.cwd,
     agentDir,
     settingsManager,
+    additionalSkillPaths: [builtinSkillPath(app.getAppPath())],
     noExtensions: true,
     noPromptTemplates: true,
     noThemes: true,

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { app } from "electron"
 import { mkdir, readFile, stat } from "node:fs/promises"
 import { homedir } from "node:os"
 import { basename, dirname, extname, join, resolve } from "node:path"
@@ -42,6 +43,8 @@ import type {
   UserMessage,
 } from "../shared/types"
 import { sessionCommands } from "./commands"
+import { builtinPromptPath, builtinSkillPath } from "./builtin-resources"
+import { expandSkillAlias } from "./skill-command"
 import { COMPUTER_TOOL_NAMES, computerTools } from "./computer-tools"
 import type { ComputerGate } from "./computer-gate"
 import type { ComputerUse } from "./computer"
@@ -474,6 +477,8 @@ export class ChatRuntime {
       cwd: this.options.cwd,
       agentDir,
       settingsManager,
+      additionalSkillPaths: [builtinSkillPath(app.getAppPath())],
+      additionalPromptTemplatePaths: [builtinPromptPath(app.getAppPath())],
       extensionFactories,
       ...(chatMode
         ? {
@@ -778,7 +783,13 @@ export class ChatRuntime {
     this.todos = []
     this.emit(true)
     try {
-      await session.prompt(prepared.text, { images: promptImages(prepared.images) })
+      const skills = session.resourceLoader.getSkills().skills
+      const reservedNames = new Set([
+        ...session.promptTemplates.map(({ name }) => name),
+        ...session.extensionRunner.getRegisteredCommands().map(({ invocationName }) => invocationName),
+      ])
+      const text = expandSkillAlias(prepared.text, new Set(skills.map(({ name }) => name)), reservedNames)
+      await session.prompt(text, { images: promptImages(prepared.images) })
     } catch (error) {
       const last = this.messages[this.messages.length - 1]
       if (last?.id === message.id) this.messages = this.messages.filter((item) => item.id !== message.id)

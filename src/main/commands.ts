@@ -1,5 +1,8 @@
 import { type AgentSession, DefaultResourceLoader, getAgentDir, SettingsManager } from "@earendil-works/pi-coding-agent"
+import { app } from "electron"
 import type { SlashCommand } from "../shared/types"
+import { builtinPromptPath, builtinSkillPath } from "./builtin-resources"
+import { skillCommandInsert } from "./skill-command"
 
 type Skill = { name: string; description: string }
 type Template = { name: string; description: string }
@@ -22,6 +25,8 @@ export async function draftCommands(cwd: string): Promise<SlashCommand[]> {
     cwd,
     agentDir,
     settingsManager: SettingsManager.create(cwd, agentDir),
+    additionalSkillPaths: [builtinSkillPath(app.getAppPath())],
+    additionalPromptTemplatePaths: [builtinPromptPath(app.getAppPath())],
     noExtensions: true,
     noThemes: true,
   })
@@ -31,6 +36,7 @@ export async function draftCommands(cwd: string): Promise<SlashCommand[]> {
 
 function buildCommands(skills: readonly Skill[], templates: readonly Template[], commands: readonly Command[]): SlashCommand[] {
   const result: SlashCommand[] = []
+  const reservedNames = new Set([...templates.map(({ name }) => name), ...commands.map(({ invocationName }) => invocationName)])
   const seen = new Set<string>()
   function add(command: SlashCommand) {
     if (seen.has(command.insert)) return
@@ -38,7 +44,7 @@ function buildCommands(skills: readonly Skill[], templates: readonly Template[],
     result.push(command)
   }
   for (const skill of skills) {
-    add({ name: skill.name, insert: `/skill:${skill.name}`, description: skill.description, kind: "skill" })
+    add({ name: skill.name, insert: skillCommandInsert(skill.name, reservedNames), description: skill.description, kind: "skill" })
   }
   for (const template of templates) {
     add({ name: template.name, insert: `/${template.name}`, description: template.description, kind: "prompt" })
