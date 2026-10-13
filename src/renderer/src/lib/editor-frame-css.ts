@@ -12,4 +12,24 @@ export const EDITOR_FRAME_CSS = `
 .monaco-workbench .monaco-list .monaco-list-row { border-radius: 6px; }
 .monaco-workbench .monaco-button { border-radius: 6px; }
 .monaco-workbench .monaco-inputbox, .monaco-workbench .monaco-editor .suggest-widget, .monaco-workbench .monaco-menu-container { border-radius: 6px; }
+.monaco-editor .review-widget .head .review-title { font-weight: 500; }
+.monaco-editor .review-widget .body .comment-form-container .monaco-editor {
+  border-radius: 16px !important;
+  padding: 12px 0 12px 14px !important;
+  outline: none !important;
+  overflow: hidden;
+}
+.monaco-editor .review-widget .body .comment-form-container .monaco-editor .monaco-editor-background,
+.monaco-editor .review-widget .body .comment-form-container .monaco-editor .margin { background-color: transparent !important; }
+.monaco-editor .review-widget .body .comment-form-container .monaco-editor .decorationsOverviewRuler { display: none !important; }
+.monaco-editor .review-widget .body .form-actions { padding-top: 4px; }
+.monaco-editor .review-widget .body .form-actions .monaco-button {
+  height: 32px !important;
+  padding: 0 12px !important;
+  margin: 0 0 0 8px !important;
+  font-size: 13px !important;
+  font-weight: 500;
+  line-height: 32px !important;
+  border: 0 !important;
+}
 `
