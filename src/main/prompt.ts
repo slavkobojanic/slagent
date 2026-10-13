@@ -138,17 +138,20 @@ function pushReference(
   attachments.push({ id: randomUUID(), name, kind, path })
 }
 
-// Comments left on lines of the diff panel, quoted so the agent knows which
-// line each one is about.
-function withComments(text: string, comments: DiffComment[]): string {
+// Comments left on lines of the diff panel or on code selected in the editor,
+// quoted so the agent knows which lines each one is about.
+export function withComments(text: string, comments: DiffComment[]): string {
   if (comments.length === 0) return text
-  const lines = ["Comments on the diff:"]
+  const lines = ["Comments on the code:"]
   for (const comment of comments) {
     let where = `${comment.path}:${comment.line}`
+    if (comment.endLine && comment.endLine > comment.line) where = `${where}-${comment.endLine}`
     if (comment.side === "old") where = `${where} (removed line)`
     lines.push(`- ${where}`)
     const code = comment.code.trim()
-    if (code) lines.push(`  > ${code.slice(0, 300)}`)
+    // A range keeps its line breaks; a single diff line stays short.
+    const quoted = comment.endLine ? code.slice(0, 2000) : code.slice(0, 300)
+    for (const line of quoted ? quoted.split("\n") : []) lines.push(`  > ${line}`.trimEnd())
     lines.push(`  ${comment.text.trim().replace(/\n/g, "\n  ")}`)
   }
   if (!text) return lines.join("\n")
@@ -248,12 +251,15 @@ function parseComments(value: unknown): DiffComment[] {
     if (typeof record.path !== "string" || typeof record.text !== "string" || !record.text.trim()) continue
     const line = Number(record.line)
     if (!Number.isFinite(line)) continue
+    const endLine = Number(record.endLine)
+    const range = Number.isFinite(endLine) && endLine >= line
     comments.push({
       id: typeof record.id === "string" ? record.id : randomUUID(),
       path: record.path,
       line,
+      ...(range ? { endLine } : {}),
       side: record.side === "old" ? "old" : "new",
-      code: typeof record.code === "string" ? record.code.slice(0, 500) : "",
+      code: typeof record.code === "string" ? record.code.slice(0, range ? 2000 : 500) : "",
       text: record.text.slice(0, 4000),
     })
   }

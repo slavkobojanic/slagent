@@ -39,6 +39,8 @@ export type CallDeps = {
   desktop: boolean
   openExternal: (url: string) => Promise<void>
   closeWindow: (clientId: string) => void
+  // The client whose editor frame loaded last, which gets the questions asked in the editor.
+  onEditorShown?: (clientId: string) => void
 }
 
 export type CallHandler = {
@@ -258,6 +260,7 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return
       }
       case "getEditorUrl":
+        deps.onEditorShown?.(clientId)
         return requireEditor().url(host.getCwd())
       case "openEditorFile": {
         const target = await resolveEditorFile(host.getCwd(), str(params[0]))

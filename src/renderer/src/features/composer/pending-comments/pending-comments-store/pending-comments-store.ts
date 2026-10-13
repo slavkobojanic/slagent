@@ -40,7 +40,7 @@ export class PendingCommentsStore {
   get diffs(): PendingDiff[] {
     return this.reviewStore.diffComments.map((comment) => ({
       id: comment.id,
-      location: `${comment.path.split("/").pop() ?? comment.path}:${comment.line}`,
+      location: `${comment.path.split("/").pop() ?? comment.path}:${comment.line}${comment.endLine && comment.endLine > comment.line ? `–${comment.endLine}` : ""}`,
       text: comment.text,
     }))
   }

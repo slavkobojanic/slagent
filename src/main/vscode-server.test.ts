@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events"
 import type { ChildProcess } from "node:child_process"
 import { describe, expect, it, vi } from "vitest"
 import { DEFAULT_EDITOR_PREFS } from "../shared/editor"
-import { distDir, EDITOR_PORT, editorSettings, freePort, serverArgs, VscodeServer, withEditorCookie, workbenchUrl } from "./vscode-server"
+import { distDir, EDITOR_PORT, editorSettings, freePort, parseEditorComment, serverArgs, VscodeServer, withEditorCookie, workbenchUrl } from "./vscode-server"
 
 class FakeChild extends EventEmitter {
   killed = false
@@ -12,7 +12,7 @@ class FakeChild extends EventEmitter {
   }
 }
 
-function setup(overrides: { ready?: boolean[]; post?: number } = {}) {
+function setup(overrides: { ready?: boolean[]; post?: number; onComment?: (comment: unknown) => void } = {}) {
   const child = new FakeChild()
   const spawn = vi.fn(() => child as unknown as ChildProcess)
   let tokens = 0
@@ -31,6 +31,7 @@ function setup(overrides: { ready?: boolean[]; post?: number } = {}) {
     fetch: fetchFn,
     token: () => `token${++tokens}`,
     timeoutMs: 1000,
+    onComment: overrides.onComment,
   })
   return { server, child, spawn, fetchFn }
 }
@@ -291,5 +292,66 @@ describe("VscodeServer", () => {
 
   it("can ignore a stop before anything started", () => {
     expect(() => setup().server.stop()).not.toThrow()
+  })
+})
+
+describe("parseEditorComment", () => {
+  it("can keep a question about a range of lines", () => {
+    expect(parseEditorComment({ path: "src/a.ts", line: 2, endLine: 4, code: "a\nb\nc", text: "Why?" })).toMatchObject({
+      path: "src/a.ts",
+      line: 2,
+      endLine: 4,
+      side: "new",
+      code: "a\nb\nc",
+      text: "Why?",
+    })
+  })
+
+  it("can leave out an end line that is not after the start", () => {
+    expect(parseEditorComment({ path: "a.ts", line: 3, endLine: 3, text: "?" })?.endLine).toBeUndefined()
+  })
+
+  it("can refuse a comment without a question or a line", () => {
+    expect(parseEditorComment({ path: "a.ts", line: 1, text: "  " })).toBeNull()
+    expect(parseEditorComment({ path: "a.ts", line: 0, text: "?" })).toBeNull()
+    expect(parseEditorComment(null)).toBeNull()
+  })
+})
+
+describe("VscodeServer bridge callback", () => {
+  async function started(onComment = vi.fn()) {
+    const { server, spawn } = setup({ onComment })
+    await server.url("/p")
+    const [, , options] = spawn.mock.calls[0] as unknown as [string, string[], { env: NodeJS.ProcessEnv }]
+    const send = (body: unknown, token = String(options.env.SLAGENT_BRIDGE_TOKEN), route = "/comment") =>
+      fetch(`http://127.0.0.1:${options.env.SLAGENT_HOST_PORT}${route}`, { method: "POST", headers: { "x-slagent-token": token }, body: JSON.stringify(body) })
+    return { server, onComment, send }
+  }
+
+  it("can pass a question from the bridge to the app", async () => {
+    const { server, onComment, send } = await started()
+
+    const response = await send({ path: "a.ts", line: 1, endLine: 2, code: "x\ny", text: "What is x?" })
+
+    expect(response.status).toBe(204)
+    expect(onComment).toHaveBeenCalledWith(expect.objectContaining({ path: "a.ts", line: 1, endLine: 2, text: "What is x?" }))
+    server.stop()
+  })
+
+  it("can refuse a request without the bridge's token", async () => {
+    const { server, onComment, send } = await started()
+
+    expect((await send({ path: "a.ts", line: 1, text: "?" }, "wrong")).status).toBe(404)
+    expect((await send({ path: "a.ts", line: 1, text: "?" }, undefined, "/other")).status).toBe(404)
+    expect(onComment).not.toHaveBeenCalled()
+    server.stop()
+  })
+
+  it("can refuse a malformed comment", async () => {
+    const { server, onComment, send } = await started()
+
+    expect((await send({ path: "a.ts" })).status).toBe(400)
+    expect(onComment).not.toHaveBeenCalled()
+    server.stop()
   })
 })

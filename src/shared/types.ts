@@ -269,6 +269,8 @@ export type DiffComment = {
   id: string
   path: string
   line: number
+  // The last line, for a comment on a range of lines selected in the editor.
+  endLine?: number
   side: "old" | "new"
   code: string
   text: string
@@ -585,6 +587,8 @@ export type UiEvent =
   | { type: "library"; revision: number; library: LibraryState }
   | ({ type: "transcript"; revision: number; projectId: string | null; chatId: string | null } & TranscriptState)
   | { type: "git"; revision: number }
+  // A question asked about code selected in the editor, to be queued as a comment.
+  | { type: "editor-comment"; comment: DiffComment }
 
 export type ComputerPermissions = {
   accessibility: boolean

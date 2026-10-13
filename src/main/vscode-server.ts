@@ -1,8 +1,10 @@
 import { spawn as nodeSpawn, type ChildProcess } from "node:child_process"
-import { randomBytes } from "node:crypto"
-import { createServer } from "node:net"
+import { randomBytes, randomUUID } from "node:crypto"
+import { createServer as createHttpServer, type Server as HttpServer } from "node:http"
+import { createServer, type AddressInfo } from "node:net"
 import { join } from "node:path"
 import type { EditorPrefs } from "../shared/editor"
+import type { DiffComment } from "../shared/types"
 import { errorData } from "./app-log"
 import { forgetServer, recordServer, stopStaleServer } from "./stale-server"
 
@@ -56,6 +58,25 @@ export function editorSettings(prefs: EditorPrefs): Record<string, unknown> {
   }
 }
 
+// A question the bridge sends about code selected in the editor, checked before it reaches the app.
+export function parseEditorComment(input: unknown): DiffComment | null {
+  if (typeof input !== "object" || input === null) return null
+  const record = input as Record<string, unknown>
+  const line = Number(record.line)
+  const endLine = Number(record.endLine)
+  if (typeof record.path !== "string" || !record.path || typeof record.text !== "string" || !record.text.trim()) return null
+  if (!Number.isInteger(line) || line < 1) return null
+  return {
+    id: randomUUID(),
+    path: record.path,
+    line,
+    ...(Number.isInteger(endLine) && endLine > line ? { endLine } : {}),
+    side: "new",
+    code: typeof record.code === "string" ? record.code.slice(0, 2000) : "",
+    text: record.text.slice(0, 4000),
+  }
+}
+
 export type VscodeServerDeps = {
   dist: string
   dataDir: string
@@ -70,6 +91,8 @@ export type VscodeServerDeps = {
   token?: () => string
   timeoutMs?: number
   bridgeTimeoutMs?: number
+  // A question the user asked in the editor about the code they selected.
+  onComment?: (comment: DiffComment) => void
   // Every diagnostic from the server lifecycle: start, exit, and its own output.
   onEvent?: (level: "info" | "warn", event: string, data: Record<string, unknown>) => void
 }
@@ -104,7 +127,7 @@ export function withEditorCookie(url: string, headers: Record<string, string>, e
   return { ...headers, Cookie: headers.Cookie ? `${headers.Cookie}; ${cookie}` : cookie }
 }
 
-type Running = { port: number; token: string; bridgePort: number; bridgeToken: string; child: ChildProcess }
+type Running = { port: number; token: string; bridgePort: number; bridgeToken: string; child: ChildProcess; host: HttpServer }
 
 // Runs the vendored VS Code server for the editor. It starts on first use, listens on loopback only,
 // and every request needs a random token; the bridge extension inside it has its own.
@@ -156,7 +179,12 @@ export class VscodeServer {
     const running = this.running
     this.running = null
     this.current = null
-    void running?.then(({ child }) => child.kill()).catch(() => undefined)
+    void running
+      ?.then(({ child, host }) => {
+        child.kill()
+        host.close()
+      })
+      .catch(() => undefined)
     void forgetServer(this.deps.dataDir).catch(() => undefined)
   }
 
@@ -180,10 +208,18 @@ export class VscodeServer {
     const [port, bridgePort] = [await pickPort(this.deps.preferredPort ?? EDITOR_PORT), await pickPort()]
     const token = makeToken()
     const bridgeToken = makeToken()
-    log("info", "start", { dist: this.deps.dist, port, bridgePort, dataDir: this.deps.dataDir })
+    const host = await this.listenForBridge(bridgeToken)
+    const hostPort = (host.address() as AddressInfo).port
+    log("info", "start", { dist: this.deps.dist, port, bridgePort, hostPort, dataDir: this.deps.dataDir })
     const child = (this.deps.spawn ?? nodeSpawn)(join(this.deps.dist, "node"), serverArgs({ port, token, dataDir: this.deps.dataDir }), {
       cwd: this.deps.dist,
-      env: { ...process.env, SLAGENT_BRIDGE_PORT: String(bridgePort), SLAGENT_BRIDGE_TOKEN: bridgeToken, SLAGENT_SETTINGS: JSON.stringify(this.deps.settings?.() ?? {}) },
+      env: {
+        ...process.env,
+        SLAGENT_BRIDGE_PORT: String(bridgePort),
+        SLAGENT_BRIDGE_TOKEN: bridgeToken,
+        SLAGENT_HOST_PORT: String(hostPort),
+        SLAGENT_SETTINGS: JSON.stringify(this.deps.settings?.() ?? {}),
+      },
     })
     // Reading the output both feeds the log and keeps the pipes drained; a
     // server blocked on a full stdout buffer would never become ready.
@@ -193,10 +229,12 @@ export class VscodeServer {
     void recordServer(this.deps.dataDir, child.pid).catch(() => undefined)
     const exited = new Promise<never>((_, reject) => {
       child.once("error", (error) => {
+        host.close()
         log("warn", "spawn-failed", errorData(error))
         reject(error)
       })
       child.once("exit", (code, signal) => {
+        host.close()
         this.running = null
         this.current = null
         log("warn", "exit", { code, signal, tail: tail.join("\n") })
@@ -205,11 +243,47 @@ export class VscodeServer {
     })
     await Promise.race([this.waitUntilReady(port), exited]).catch((error: unknown) => {
       child.kill()
+      host.close()
       throw error
     })
     log("info", "ready", { port })
     this.current = { port, token }
-    return { port, token, bridgePort, bridgeToken, child }
+    return { port, token, bridgePort, bridgeToken, child, host }
+  }
+
+  // The way back from the bridge: a loopback endpoint on any free port that takes the bridge's
+  // token, so only the extension host this server started can reach the app.
+  private listenForBridge(token: string): Promise<HttpServer> {
+    const server = createHttpServer((request, response) => {
+      if (request.method !== "POST" || request.url !== "/comment" || request.headers["x-slagent-token"] !== token) {
+        response.writeHead(404).end()
+        return
+      }
+      let body = ""
+      request.setEncoding("utf8")
+      request.on("data", (chunk: string) => {
+        body += chunk
+        if (body.length > 64_000) request.destroy()
+      })
+      request.on("end", () => {
+        let comment: DiffComment | null = null
+        try {
+          comment = parseEditorComment(JSON.parse(body || "{}"))
+        } catch {
+          // Not JSON; refused below.
+        }
+        if (!comment) {
+          response.writeHead(400).end()
+          return
+        }
+        this.deps.onComment?.(comment)
+        response.writeHead(204).end()
+      })
+    })
+    return new Promise((resolve, reject) => {
+      server.once("error", reject)
+      server.listen(0, "127.0.0.1", () => resolve(server))
+    })
   }
 
   // Splits a stream into lines, keeps the last few for the exit report, and
