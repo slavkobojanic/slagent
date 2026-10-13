@@ -489,6 +489,13 @@ export class ClaudeRuntime {
         abortController,
         includePartialMessages: true,
         permissionMode: this.planEnabled ? "plan" : "default",
+        ...(this.planEnabled
+          ? {
+              planModeInstructions:
+                "Research the codebase and relevant pull requests before proposing a plan. Use only read-only commands; gh pr list/view/diff/status, gh search prs/issues, git ls-remote, and glab mr list/view/diff are available for research. Do not change files or remote state.",
+              settings: { sandbox: { network: { allowedDomains: ["github.com", "api.github.com", "gitlab.com"] } } },
+            }
+          : {}),
         canUseTool: this.canUseTool,
         hooks: this.diagnosticsHooks(),
         // Render fresh on every request, so a recreated process picks up the

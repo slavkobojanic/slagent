@@ -24,7 +24,7 @@ const WRITE_TOOLS = new Set([
 const PROMPT = `[PLAN MODE]
 You are in plan mode. Research and plan, but change nothing.
 - edit, write and the computer tools that act on apps are off.
-- bash only runs read-only commands such as ls, cat, grep, git status, git diff and git log.
+- bash only runs read-only commands such as ls, cat, grep, git status/diff/log/ls-remote, GitHub CLI reads like gh pr/search, and GitLab CLI reads like glab mr list/view/diff.
 - Ask the user when something important is unclear.
 When the plan is ready, call ${PROPOSE} once with the whole plan as markdown: the goal, numbered steps that name the files to change, and how to check the result. Then stop and wait.`
 
@@ -56,8 +56,10 @@ const DESTRUCTIVE = [
 const SAFE = [
   /^\s*(cat|head|tail|less|grep|egrep|rg|find|fd|ls|eza|tree|pwd|echo|printf|wc|sort|uniq|diff|file|stat|du|df|which|whereis|type|env|printenv|uname|whoami|id|date|uptime|ps|jq|awk|bat|basename|dirname|realpath|readlink|cut|tr|nl|column|xxd|od|md5|shasum)\b/,
   /^\s*sed\s+-n\b/,
-  /^\s*git\s+(status|log|diff|show|branch|remote|config\s+--get|ls-files|ls-tree|blame|rev-parse|describe|shortlog)\b/i,
+  /^\s*git\s+(status|log|diff|show|branch|remote|config\s+--get|ls-files|ls-tree|ls-remote|blame|rev-parse|describe|shortlog)\b/i,
   /^\s*(npm|pnpm|yarn)\s+(list|ls|view|info|why|outdated|audit)\b/i,
+  /^\s*gh\s+(pr\s+(list|view|diff|status|checks)|search\s+(prs|issues)|repo\s+view|issue\s+(list|view)|run\s+(list|view)|release\s+(list|view))\b/i,
+  /^\s*glab\s+mr\s+(list|view|diff)\b/i,
   /^\s*(node|python3?|ruby|go|cargo|rustc|swift)\s+(--version|-v|version)\b/i,
   /^\s*curl\s/i,
 ]
