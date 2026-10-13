@@ -51,6 +51,15 @@ describe("editorTheme", () => {
     expect(editorTheme("dark", tokenReader).colors["editorWidget.border"]).toBe("#ffffff24")
   })
 
+  it("can frame the comment box in the primary colour with a composer-like input", () => {
+    const colors = editorTheme("dark", tokenReader).colors
+
+    expect(colors["editorCommentsWidget.unresolvedBorder"]).toBe("value:--primary")
+    expect(colors["peekView.border"]).toBe("value:--primary")
+    expect(colors["peekViewResult.background"]).toBe("#000000")
+    expect(colors["editorCommentsWidget.replyInputBackground"]).toBe("#ffffff14")
+  })
+
   it("can take syntax colours from the terminal palette", () => {
     const { tokenColors } = editorTheme("dark", tokenReader)
     const keyword = tokenColors.find((rule) => rule.scope.includes("keyword"))

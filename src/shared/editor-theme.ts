@@ -137,6 +137,21 @@ export function editorTheme(type: EditorThemeType, read: (token: string) => stri
       "button.background": read("--primary"),
       "button.foreground": read("--background"),
       "button.hoverBackground": withAlpha(read("--primary"), 0.85),
+      "button.secondaryBackground": read("--secondary"),
+      "button.secondaryForeground": foreground,
+      "button.secondaryHoverBackground": accent,
+      "button.border": "#00000000",
+      // The "ask slagent" box: framed in the primary colour rather than the info blue, on the page
+      // surface, with its input filled like the composer. A new thread has no state, so its frame
+      // takes the peek view border.
+      "peekView.border": read("--primary"),
+      "peekViewResult.background": background,
+      "editorCommentsWidget.unresolvedBorder": read("--primary"),
+      "editorCommentsWidget.resolvedBorder": border,
+      "editorCommentsWidget.rangeBackground": soft,
+      "editorCommentsWidget.rangeActiveBackground": soft,
+      "editorCommentsWidget.replyInputBackground": withAlpha(foreground, 0.08),
+      "commentsView.unresolvedIcon": read("--primary"),
       "textLink.foreground": read("--info"),
       "badge.background": read("--primary"),
       "badge.foreground": read("--background"),
