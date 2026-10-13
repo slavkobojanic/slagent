@@ -1,11 +1,30 @@
 {
   "name": "slagent-bridge",
   "displayName": "Slagent bridge",
-  "description": "Lets the slagent app drive this workbench over a token-protected loopback endpoint.",
+  "description": "Lets the slagent app drive this workbench over a token-protected loopback endpoint, and lets the user ask slagent about selected code.",
   "publisher": "slagent",
   "version": "0.0.1",
   "engines": { "vscode": "^1.100.0" },
   "main": "./extension.js",
   "activationEvents": ["onStartupFinished"],
-  "extensionKind": ["workspace"]
+  "extensionKind": ["workspace"],
+  "contributes": {
+    "commands": [
+      { "command": "slagent.ask", "title": "Ask Slagent", "category": "Slagent" },
+      { "command": "slagent.submitQuestion", "title": "Add to Slagent", "enablement": "!commentIsEmpty" },
+      { "command": "slagent.cancelQuestion", "title": "Cancel" }
+    ],
+    "keybindings": [{ "command": "slagent.ask", "key": "ctrl+i", "mac": "cmd+i", "when": "editorTextFocus" }],
+    "menus": {
+      "editor/context": [{ "command": "slagent.ask", "when": "editorHasSelection", "group": "navigation@100" }],
+      "comments/commentThread/context": [
+        { "command": "slagent.submitQuestion", "when": "commentController == slagent", "group": "inline@1" },
+        { "command": "slagent.cancelQuestion", "when": "commentController == slagent", "group": "inline@2" }
+      ],
+      "commandPalette": [
+        { "command": "slagent.submitQuestion", "when": "false" },
+        { "command": "slagent.cancelQuestion", "when": "false" }
+      ]
+    }
+  }
 }
