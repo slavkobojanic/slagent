@@ -33,6 +33,8 @@ let mcp: McpManager | null = null
 let terminal: TerminalManager | null = null
 let apiServer: ApiServer | null = null
 let editorServer: VscodeServer | null = null
+// The client showing the editor, so a question asked there becomes a comment in its composer.
+let editorClient: string | null = null
 let quitting = false
 let started: Promise<void> | null = null
 // Windows the renderer's close confirmation has approved; a plain Cmd+W has to ask first.
@@ -228,6 +230,9 @@ const calls = createCallHandler({
   editor: () => editorServer,
   terminal: () => terminal,
   desktop: true,
+  onEditorShown: (clientId) => {
+    editorClient = clientId
+  },
   openExternal: systemOpenExternal,
   closeWindow: (clientId) => {
     const win = windowOfClient(clientId)
@@ -344,6 +349,9 @@ app.whenReady().then(async () => {
     dataDir: join(app.getPath("userData"), "vscode-server"),
     preferredPort: Number(process.env.SLAGENT_EDITOR_PORT) || undefined,
     settings: () => editorSettings(host?.getEditorPrefs() ?? parseEditorPrefs(null)),
+    onComment: (comment) => {
+      if (editorClient) apiServer?.hub.publish(editorClient, { type: "editor-comment", comment })
+    },
     onEvent: (level, event, data) => appLog()[level]("vscode-server", event, data),
   })
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ["http://127.0.0.1/*"] }, (details, callback) => {
@@ -362,6 +370,7 @@ app.whenReady().then(async () => {
       },
       onClientGone: (sessionId) => {
         host?.detach(sessionId)
+        if (editorClient === sessionId) editorClient = null
         for (const [token, id] of clientByToken) {
           if (id === sessionId) clientByToken.delete(token)
         }
