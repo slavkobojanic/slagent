@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launch window: the artwork's navy with the app mark centred, which
+     draws while the WebView boots. The mark is the adaptive icon foreground, so
+     splash and launcher agree. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item android:gravity="center" android:drawable="@drawable/splash_icon" />
+</layer-list>

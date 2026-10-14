@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">slagent</string>
+    <string name="title_activity_main">slagent</string>
+    <string name="package_name">com.slagent.mobile</string>
+    <string name="custom_url_scheme">com.slagent.mobile</string>
+</resources>

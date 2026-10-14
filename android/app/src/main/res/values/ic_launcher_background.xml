@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The navy at the edge of the artwork in resources/icon.png, so the adaptive
+     icon's backdrop and the launch screen sit on the same colour. -->
+<resources>
+    <color name="ic_launcher_background">#01091E</color>
+</resources>
