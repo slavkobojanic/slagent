@@ -77,6 +77,18 @@ pnpm mobile:open
 
 The simulator runs on the Mac itself, so connect it to `ws://127.0.0.1:<port>?token=…`: it cannot reach the Mac's own Tailscale address.
 
+### Building the Android app
+
+Requirements: a JDK 21 (Gradle 8.14.3 rejects the Java 25 the system JVM defaults to), the Android SDK in `~/Library/Android/sdk`, and an Android phone. No Android Studio.
+
+```bash
+pnpm build:android
+```
+
+`scripts/build-android.sh` picks the JDK, syncs the same web bundle into `android/` and runs `gradlew assembleDebug`, then prints the APK at `android/app/build/outputs/apk/debug/app-debug.apk`. Install it on the phone with `~/Library/Android/sdk/platform-tools/adb install -r <apk>` while the phone is plugged in with USB debugging on. `pnpm mobile:sync:android` is the sync on its own, and `scripts/make-android-icon.sh` regenerates the launcher icons and the splash mark from `resources/icon.png`.
+
+The Android build shares the manifest's `usesCleartextTraffic` and the `slagent://` intent filter with the Tailscale connection, so scanning the same QR code from the desktop's Connect settings opens the app there too.
+
 ## How slagent works with Pi
 
 Pi is a coding agent toolkit: an agent loop, tools, sessions, extensions and model providers, with its own terminal UI. slagent replaces that terminal UI with a desktop app.
@@ -122,7 +134,8 @@ pnpm dev
 | `src/main` | Electron main process: the agent host, Pi and Claude runtimes, git, MCP, the CLI installer and the updater |
 | `src/main/extensions` | Pi extensions slagent adds (plan mode, subagents, checkpoints and more) |
 | `src/preload` | The bridge that exposes the `window.slagent` API to the UI |
-| `src/renderer` | React UI, for the desktop (`index.html`) and the iOS app (`mobile.html`) |
-| `src/shared` | Types and the websocket client shared by every process and the iOS app |
+| `src/renderer` | React UI, for the desktop (`index.html`) and the phone apps (`mobile.html`) |
+| `src/shared` | Types and the websocket client shared by every process and the phone apps |
 | `ios` | The Capacitor Xcode project for the iOS app |
+| `android` | The Capacitor Gradle project for the Android app |
 | `native/computer` | Swift helper that reads and drives other apps for computer use |
