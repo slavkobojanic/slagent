@@ -45,6 +45,7 @@ export function createMobileChatList({
         onNewChat={mobilePresenter.newChat}
         onOpenConnection={mobilePresenter.openConnection}
         onDismissError={mobilePresenter.dismissError}
+        onToggleShowAll={(groupId) => store.toggleShowAll(groupId)}
         MacPicker={MacPicker}
         Banner={Banner}
       />

@@ -2,12 +2,12 @@ import { Plus, Server } from "lucide-react"
 import { cloneElement } from "react"
 import type { ComponentType } from "react"
 import { Button } from "@/components/ui/button"
-import type { ChatGroup } from "@/features/mobile/chat-list/chat-list-items"
+import type { ChatGroupView } from "@/features/mobile/chat-list/chat-list-items"
 import { createMobileChatRow } from "./mobile-chat-row/create"
 import "@/features/mobile/mobile.css"
 
 export type MobileChatListProps = {
-  groups: ChatGroup[]
+  groups: ChatGroupView[]
   empty: boolean
   ready: boolean
   opening: string | null
@@ -18,10 +18,12 @@ export type MobileChatListProps = {
   onNewChat: (projectId: string | null) => void
   onOpenConnection: () => void
   onDismissError: () => void
+  // Reveals and hides the chats past the cap, per group.
+  onToggleShowAll: (groupId: string) => void
   Banner: ComponentType
 }
 
-export function MobileChatList({ groups, empty, ready, opening, error, MacPicker, onOpenChat, onNewChat, onOpenConnection, onDismissError, Banner }: MobileChatListProps) {
+export function MobileChatList({ groups, empty, ready, opening, error, MacPicker, onOpenChat, onNewChat, onOpenConnection, onDismissError, onToggleShowAll, Banner }: MobileChatListProps) {
   return (
     <div className="mobile-safe-x flex h-full flex-col bg-background text-foreground">
       <header className="mobile-safe-top shrink-0 border-b border-border">
@@ -45,7 +47,7 @@ export function MobileChatList({ groups, empty, ready, opening, error, MacPicker
         </button>
       ) : null}
       <div className="mobile-safe-bottom min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <Body groups={groups} empty={empty} ready={ready} opening={opening} onOpenChat={onOpenChat} onNewChat={onNewChat} />
+        <Body groups={groups} empty={empty} ready={ready} opening={opening} onOpenChat={onOpenChat} onNewChat={onNewChat} onToggleShowAll={onToggleShowAll} />
       </div>
     </div>
   )
@@ -58,7 +60,8 @@ function Body({
   opening,
   onOpenChat,
   onNewChat,
-}: Pick<MobileChatListProps, "groups" | "empty" | "ready" | "opening" | "onOpenChat" | "onNewChat">) {
+  onToggleShowAll,
+}: Pick<MobileChatListProps, "groups" | "empty" | "ready" | "opening" | "onOpenChat" | "onNewChat" | "onToggleShowAll">) {
   if (!ready) {
     return <p className="px-4 py-8 text-center text-sm text-foreground/50">Loading chats…</p>
   }
@@ -87,17 +90,32 @@ function Body({
           {group.items.length === 0 ? (
             <p className="px-4 py-2 text-sm text-foreground/40">No chats yet</p>
           ) : (
-            <ul className="divide-y divide-border">
-              {group.items.map((item) =>
-                cloneElement(
-                  createMobileChatRow({ item, opening: opening === item.chat.id, onOpen: onOpenChat }),
-                  { key: item.chat.id }
-                )
-              )}
-            </ul>
+            <>
+              <ul className="divide-y divide-border">
+                {group.items.map((item) =>
+                  cloneElement(
+                    createMobileChatRow({ item, opening: opening === item.chat.id, onOpen: onOpenChat }),
+                    { key: item.chat.id }
+                  )
+                )}
+              </ul>
+              <ShowAllToggle group={group} onToggle={() => onToggleShowAll(group.id)} />
+            </>
           )}
         </section>
       ))}
     </div>
+  )
+}
+
+function ShowAllToggle({ group, onToggle }: { group: ChatGroupView; onToggle: () => void }) {
+  const label = group.showAll ? "Show less" : `Show ${group.hiddenCount} more`
+  if (group.hiddenCount === 0 && !group.canShowLess) {
+    return null
+  }
+  return (
+    <button type="button" className="mobile-press px-4 py-2 text-xs text-foreground/50" onClick={onToggle}>
+      {label}
+    </button>
   )
 }

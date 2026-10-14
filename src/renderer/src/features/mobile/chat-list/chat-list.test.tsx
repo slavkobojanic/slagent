@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { MobileChatList, type MobileChatListProps } from "@/features/mobile/chat-list/chat-list"
+import type { ChatGroupView } from "@/features/mobile/chat-list/chat-list-items"
 import { chat } from "@/storybook/sample"
 
 const noop = () => undefined
@@ -13,11 +14,15 @@ function MacPickerSlot() {
   return <p>MacPicker</p>
 }
 
+function group(overrides: Partial<ChatGroupView> = {}): ChatGroupView {
+  return { id: "chats", name: "Chats", newChatProjectId: null, items: [], hiddenCount: 0, showAll: false, canShowLess: false, ...overrides }
+}
+
 function props(overrides: Partial<MobileChatListProps> = {}): MobileChatListProps {
   return {
     groups: [
-      { id: "chats", name: "Chats", newChatProjectId: null, items: [{ chat: chat({ id: "c1", title: "Plan the trip" }), projectId: "p0", status: "idle" }] },
-      { id: "p1", name: "slagent", newChatProjectId: "p1", items: [] },
+      group({ items: [{ chat: chat({ id: "c1", title: "Plan the trip" }), projectId: "p0", status: "idle" }] }),
+      group({ id: "p1", name: "slagent", newChatProjectId: "p1" }),
     ],
     empty: false,
     ready: true,
@@ -27,6 +32,7 @@ function props(overrides: Partial<MobileChatListProps> = {}): MobileChatListProp
     onNewChat: noop,
     onOpenConnection: noop,
     onDismissError: noop,
+    onToggleShowAll: noop,
     MacPicker: MacPickerSlot,
     Banner: BannerSlot,
     ...overrides,
@@ -61,5 +67,27 @@ describe("MobileChatList", () => {
     render(<MobileChatList {...props({ error: "Chat not found" })} />)
 
     expect(screen.getByRole("alert").textContent).toBe("Chat not found")
+  })
+
+  it("can offer the chats past the cap under their group", () => {
+    render(<MobileChatList {...props({ groups: [group({ items: [{ chat: chat({ id: "c1" }), projectId: "p0", status: "idle" }], hiddenCount: 3 })], onToggleShowAll: noop })} />)
+
+    expect(screen.getByRole("button", { name: "Show 3 more" })).not.toBeNull()
+  })
+
+  it("can reveal the rest of a group when Show more is tapped", () => {
+    const onToggleShowAll = vi.fn()
+    render(<MobileChatList {...props({ groups: [group({ items: [{ chat: chat({ id: "c1" }), projectId: "p0", status: "idle" }], hiddenCount: 3 })], onToggleShowAll })} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Show 3 more" }))
+
+    expect(onToggleShowAll).toHaveBeenCalledWith("chats")
+  })
+
+  it("can hide the group again once its whole list is showing", () => {
+    render(<MobileChatList {...props({ groups: [group({ items: [{ chat: chat({ id: "c1" }), projectId: "p0", status: "idle" }], showAll: true, canShowLess: true })], onToggleShowAll: noop })} />)
+
+    expect(screen.getByRole("button", { name: "Show less" })).not.toBeNull()
+    expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull()
   })
 })

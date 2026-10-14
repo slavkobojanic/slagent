@@ -13,3 +13,11 @@ export type ChatGroup = {
   newChatProjectId: string | null
   items: ChatListItem[]
 }
+
+// A group as the list shows it: `items` holds only the chats before "Show N more",
+// the same cap the desktop sidebar applies.
+export type ChatGroupView = ChatGroup & {
+  hiddenCount: number
+  showAll: boolean
+  canShowLess: boolean
+}

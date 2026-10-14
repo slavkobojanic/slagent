@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { LibraryState } from "@shared/types"
+import { CHAT_LIMIT } from "@/features/library/sidebar/open-project/chat-list/chat-list-utils"
 import { MobileChatListStore } from "@/features/mobile/chat-list/chat-list-store/chat-list-store"
 import { LibraryStore } from "@/mirror/library-store/library-store"
 import { chat, project } from "@/storybook/sample"
@@ -51,6 +52,42 @@ describe("MobileChatListStore", () => {
 
     it("can be non-empty when a project exists", () => {
       expect(withLibrary({ projects: [project()] }).empty).toBe(false)
+    })
+  })
+
+  describe("the chat cap", () => {
+    const chats = Array.from({ length: CHAT_LIMIT + 2 }, (_, index) => chat({ id: `c${index}`, updatedAt: index }))
+
+    it("can cap each group at the sidebar's limit", () => {
+      const store = withLibrary({ projects: [project({ id: "p1" })], chatsByProject: { p1: chats } })
+      const [group] = store.groups
+      expect(group?.items).toHaveLength(CHAT_LIMIT)
+      expect(group?.hiddenCount).toBe(2)
+      expect(group?.canShowLess).toBe(false)
+    })
+
+    it("can leave a short group alone", () => {
+      const store = withLibrary({ projects: [project({ id: "p1" })], chatsByProject: { p1: chats.slice(0, 3) } })
+      const [group] = store.groups
+      expect(group?.items).toHaveLength(3)
+      expect(group?.hiddenCount).toBe(0)
+    })
+
+    it("can reveal and hide the rest of one group without touching the others", () => {
+      const store = withLibrary({ projects: [project({ id: "p1", name: "app" }), project({ id: "p2", name: "other" })], chatsByProject: { p1: chats, p2: chats.slice(0, 2) } })
+
+      store.toggleShowAll("p1")
+
+      const [first, second] = store.groups
+      expect(store.showAllOf("p1")).toBe(true)
+      expect(first?.items).toHaveLength(chats.length)
+      expect(first?.hiddenCount).toBe(0)
+      expect(first?.canShowLess).toBe(true)
+      expect(second?.items).toHaveLength(2)
+
+      store.toggleShowAll("p1")
+
+      expect(store.groups[0]?.items).toHaveLength(CHAT_LIMIT)
     })
   })
 })
