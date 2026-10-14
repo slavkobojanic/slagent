@@ -23,6 +23,10 @@ export type SavedConnection = {
 // Methods close over the plugins, so a test mock satisfies the type.
 export class Device {
   readonly native: boolean
+  // Which Capacitor platform this build is running on: "ios", "android" or
+  // "web" (the dev server). Platform gaps are handled here rather than in the
+  // screens, so the UI stays the same on both phones.
+  readonly platform: string
   readonly loadConnection: () => Promise<SavedConnection>
   // Saves the active Mac and keeps it in the roster, so the phone remembers
   // every machine it has connected to and can switch between them.
@@ -48,6 +52,7 @@ export class Device {
 
   constructor(window: Window) {
     this.native = Capacitor.isNativePlatform()
+    this.platform = Capacitor.getPlatform()
     this.loadConnection = async () => {
       const [address, clientId] = await Promise.all([Preferences.get({ key: ADDRESS_KEY }), Preferences.get({ key: CLIENT_KEY })])
       let id = clientId.value ?? ""
@@ -135,16 +140,22 @@ export class Device {
       if (!this.native) return
       void StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(() => undefined)
     }
+    // The accessory bar above the keyboard is an iOS affordance; Android has no
+    // equivalent and rejects the call.
     this.hideKeyboardBar = () => {
-      if (!this.native) return
+      if (this.platform !== "ios") return
       void Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => undefined)
     }
+    // Android sizes the webview for the keyboard itself (Capacitor's SystemBars
+    // pads the window for the IME), so the composer already rides the keyboard
+    // and the transform the phone shell applies on iOS would move it twice.
+    // Only iOS needs these two, to drive mobile-keyboard-shift.
     this.onKeyboardShow = (listener) => {
-      if (!this.native) return noop
+      if (this.platform !== "ios") return noop
       return handle(Keyboard.addListener("keyboardWillShow", (info) => listener(info.keyboardHeight)))
     }
     this.onKeyboardHide = (listener) => {
-      if (!this.native) return noop
+      if (this.platform !== "ios") return noop
       return handle(Keyboard.addListener("keyboardWillHide", () => listener()))
     }
     this.reload = () => window.location.reload()

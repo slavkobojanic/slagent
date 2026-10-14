@@ -1,11 +1,14 @@
 /* The phone's notch, home indicator and rounded corners. Tailwind has no
-   utility for env(), so the safe areas live here. */
+   utility for these, so the safe areas live here. iOS reports them through
+   env(); Capacitor's SystemBars plugin sets the same insets as custom
+   properties on Android, where env() does not reach the system bars. The var
+   fallback keeps both platforms on one rule. */
 .mobile-safe-top {
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top));
 }
 
 .mobile-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom));
 }
 
 /* The keyboard (Keyboard resize: none, so the webview never snaps): everything
@@ -16,7 +19,7 @@
    keyboard's top with no layout change at all. Duration and curve match the
    iOS keyboard, so the two move as one. */
 .mobile-keyboard-shift {
-  transform: translateY(calc(-1 * max(var(--kb-height, 0px) - env(safe-area-inset-bottom), 0px)));
+  transform: translateY(calc(-1 * max(var(--kb-height, 0px) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom)), 0px)));
   transition: transform 250ms var(--ease-keyboard);
 }
 
@@ -74,8 +77,8 @@
 }
 
 .mobile-safe-x {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  padding-left: var(--safe-area-inset-left, env(safe-area-inset-left));
+  padding-right: var(--safe-area-inset-right, env(safe-area-inset-right));
 }
 
 /* Portrait's tab strip owns the status bar clearance, so the page beneath it (the chat's own
