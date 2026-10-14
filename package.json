@@ -10,6 +10,7 @@
     "build": "electron-vite build",
     "build:mac": "sh scripts/build-mac-fast.sh",
     "build:mac:release": "sh scripts/build-mac.sh",
+    "build:android": "sh scripts/build-android.sh",
     "preview": "node scripts/brand-electron-mac.mjs && electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.storybook.json",
     "test": "vitest run",
@@ -20,7 +21,9 @@
     "mobile:dev": "vite --config vite.mobile.config.ts",
     "mobile:build": "vite build --config vite.mobile.config.ts",
     "mobile:sync": "pnpm mobile:build && cap sync ios",
-    "mobile:open": "cap open ios"
+    "mobile:open": "cap open ios",
+    "mobile:sync:android": "pnpm mobile:build && cap sync android",
+    "mobile:open:android": "cap open android"
   },
   "engines": {
     "node": ">=22.19.0"
@@ -46,6 +49,7 @@
     "ws": "^8.22.0"
   },
   "devDependencies": {
+    "@capacitor/android": "8.5.2",
     "@capacitor/app": "8.1.1",
     "@capacitor/cli": "8.5.2",
     "@capacitor/core": "8.5.2",
