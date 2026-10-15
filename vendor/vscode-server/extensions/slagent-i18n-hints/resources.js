@@ -1,8 +1,11 @@
 const fs = require("node:fs/promises")
 const path = require("node:path")
 const ts = require("typescript")
+const YAML = require("./yaml")
 
 const COMMON_RESOURCE_PATHS = [
+  "config/locales/{{lng}}.yml",
+  "config/locales/{{lng}}.yaml",
   "public/locales/{{lng}}/{{ns}}.json",
   "locales/{{lng}}/{{ns}}.json",
   "src/locales/{{lng}}/{{ns}}.json",
@@ -90,17 +93,33 @@ function expandResourcePath(root, template, locale, namespace) {
   return path.resolve(root, expanded)
 }
 
-async function readJson(filePath, cache) {
+async function readResource(filePath, cache) {
   try {
     const stat = await fs.stat(filePath)
     const cached = cache.get(filePath)
     if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached.value
-    const value = JSON.parse(await fs.readFile(filePath, "utf8"))
+    const text = await fs.readFile(filePath, "utf8")
+    const value = /\.ya?ml$/i.test(filePath) ? YAML.parse(text, { uniqueKeys: false }) : JSON.parse(text)
     cache.set(filePath, { mtimeMs: stat.mtimeMs, size: stat.size, value })
     return value
   } catch {
     return undefined
   }
+}
+
+function localeCandidates(locale) {
+  const candidates = [locale]
+  if (locale.toLowerCase() === "en") candidates.push("en-GB", "en-US")
+  else if (/^en-/i.test(locale)) candidates.push("en")
+  return [...new Set(candidates)]
+}
+
+function localeResource(resource, locale, filePath) {
+  if (!resource || typeof resource !== "object") return undefined
+  if (!/\.ya?ml$/i.test(filePath)) return resource
+  const filenameLocale = path.basename(filePath).replace(/\.ya?ml$/i, "")
+  const value = resource[locale] ?? resource[filenameLocale]
+  return value && typeof value === "object" ? value : resource
 }
 
 function nestedValue(resource, key, separator) {
@@ -131,15 +150,18 @@ async function resolveTranslation({ root, call, locale, templates, defaultNamesp
   let foundAmbiguousValue = false
 
   for (const namespace of namespaces) {
-    for (const template of templates) {
-      const filePath = expandResourcePath(root, template, locale, namespace)
-      if (!filePath) continue
-      const resource = await readJson(filePath, cache)
-      if (resource === undefined) continue
-      foundResource = true
-      const result = findTranslation(resource, namespaced.key, call.keyPrefix, call.keySeparator)
-      if (result?.kind === "translation") return { ...result, filePath, namespace }
-      if (result?.kind === "ambiguous") foundAmbiguousValue = true
+    for (const candidateLocale of localeCandidates(locale)) {
+      for (const template of templates) {
+        const filePath = expandResourcePath(root, template, candidateLocale, namespace)
+        if (!filePath) continue
+        const storedResource = await readResource(filePath, cache)
+        if (storedResource === undefined) continue
+        foundResource = true
+        const resource = localeResource(storedResource, candidateLocale, filePath)
+        const result = findTranslation(resource, namespaced.key, call.keyPrefix, call.keySeparator)
+        if (result?.kind === "translation") return { ...result, filePath, namespace }
+        if (result?.kind === "ambiguous") foundAmbiguousValue = true
+      }
     }
   }
 
@@ -151,7 +173,9 @@ module.exports = {
   COMMON_RESOURCE_PATHS,
   expandResourcePath,
   parseI18nextConfig,
-  readJson,
+  readResource,
   resolveTranslation,
   resourceTemplates,
+  localeCandidates,
+  localeResource,
 }

@@ -1,7 +1,7 @@
 {
   "name": "slagent-i18n-hints",
   "displayName": "Slagent i18n hints",
-  "description": "Shows English react-i18next translations as inline editor hints.",
+  "description": "Shows react-i18next translations as inline editor hints from JSON or Rails YAML resources.",
   "publisher": "slagent",
   "version": "0.0.1",
   "engines": { "vscode": "^1.100.0" },
@@ -27,13 +27,13 @@
           "type": "string",
           "default": "en",
           "scope": "window",
-          "description": "Locale used to read translation JSON files. Workspace settings can set this for the whole project."
+          "description": "Locale used to read translation resources. Workspace settings can set this for the whole project."
         },
         "slagent.i18nHints.resourcePath": {
           "type": "string",
           "default": "",
           "scope": "window",
-          "description": "Repository translation JSON path template. Supports {{lng}} and {{ns}}, for example public/locales/{{lng}}/{{ns}}.json."
+          "description": "Repository translation path template. Supports {{lng}} and {{ns}}, for example public/locales/{{lng}}/{{ns}}.json or config/locales/{{lng}}.yml."
         },
         "slagent.i18nHints.defaultNamespace": {
           "type": "string",

@@ -28,6 +28,8 @@ test("uses repo path template before discovered config and conventional paths", 
   assert.deepEqual(resourceTemplates(".vscode/locales/{{lng}}/{{ns}}.json", "public/locales/{{lng}}/{{ns}}.json"), [
     ".vscode/locales/{{lng}}/{{ns}}.json",
     "public/locales/{{lng}}/{{ns}}.json",
+    "config/locales/{{lng}}.yml",
+    "config/locales/{{lng}}.yaml",
     "locales/{{lng}}/{{ns}}.json",
     "src/locales/{{lng}}/{{ns}}.json",
     "public/locales/{{lng}}.json",
@@ -60,6 +62,30 @@ test("resolves namespaced nested JSON strings and preserves raw interpolation te
     })
     assert.equal(result.kind, "translation")
     assert.equal(result.value, "Hello {{name}}")
+  })
+})
+
+test("resolves Rails locale YAML and falls back from en to the available en-GB locale", async () => {
+  await withWorkspace(async (root) => {
+    const file = path.join(root, "config/locales/en-GB.yml")
+    await fs.mkdir(path.dirname(file), { recursive: true })
+    await fs.writeFile(file, [
+      "en-GB:",
+      "  magic_notes:",
+      "    table_editor:",
+      '      title: "Edit table"',
+    ].join("\n"))
+    const result = await resolveTranslation({
+      root,
+      call: { key: "magic_notes.table_editor.title", namespaces: ["translation"], keyPrefix: "", keySeparator: ".", namespaceSeparator: ":" },
+      locale: "en",
+      templates: resourceTemplates("", undefined),
+      defaultNamespace: "translation",
+      cache: new Map(),
+    })
+    assert.equal(result.kind, "translation")
+    assert.equal(result.value, "Edit table")
+    assert.equal(result.filePath, file)
   })
 })
 
