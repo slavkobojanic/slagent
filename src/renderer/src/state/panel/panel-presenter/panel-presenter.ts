@@ -15,7 +15,7 @@ export class PanelPresenter {
 
   // The main process parses a line as a :line suffix on the path. A path that is not a file
   // does nothing, so inline code that only looks like a path stays inert.
-  openFile = async (path: string, line?: number) => {
+  openFile = async (path: string, line?: number, showBranchChanges = false) => {
     const target = line === undefined ? path : `${path}:${line}`
     this.log.debug("open-file", { target })
     let file: FileView | null
@@ -30,7 +30,7 @@ export class PanelPresenter {
       return
     }
     if (this.editorPort !== null) {
-      this.editorPort.open(file)
+      this.editorPort.open(file, showBranchChanges)
       return
     }
     this.showFile(file)

@@ -191,8 +191,10 @@ export class DiffPanelPresenter {
   }
 
   handleViewFile = (path: string) => {
-    this.log.action("view-file", { path })
-    void this.panelPresenter.openFile(path)
+    const showBranchChanges = this.store.scope === "branch"
+    this.log.action("view-file", { path, showBranchChanges })
+    if (showBranchChanges) void this.panelPresenter.openFile(path, undefined, true)
+    else void this.panelPresenter.openFile(path)
   }
 
   private act = async (name: DiffBusy, task: () => Promise<void>) => {

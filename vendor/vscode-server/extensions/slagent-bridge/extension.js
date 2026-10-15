@@ -11,12 +11,41 @@ const SETTING = /^(editor|workbench|files|window)\.[A-Za-z0-9.]+$/
 // theme, and a colour that is not #hex is read as pure red, so none is accepted.
 const THEME_SETTINGS = new Set(["workbench.colorTheme", "workbench.colorCustomizations", "editor.tokenColorCustomizations"])
 
+let addedLineDecoration
+let removedLineDecoration
+let lastDecoratedEditor = null
+
+function clearBranchDecorations() {
+  if (lastDecoratedEditor) {
+    lastDecoratedEditor.setDecorations(addedLineDecoration, [])
+    lastDecoratedEditor.setDecorations(removedLineDecoration, [])
+    lastDecoratedEditor = null
+  }
+}
+
+function validLines(value, lineCount) {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.filter((line) => Number.isInteger(line) && line >= 1 && line <= lineCount))]
+}
+
+function lineRanges(lines, editor) {
+  return lines.map((line) => new vscode.Range(line - 1, 0, line - 1, editor.document.lineAt(line - 1).range.end.character))
+}
+
 const routes = {
-  // { path, line? }: shows a file, optionally on a line.
-  "/open": async ({ path, line }) => {
+  // { path, line?, branchChanges? }: shows a file and optionally highlights its branch diff.
+  "/open": async ({ path, line, branchChanges }) => {
     if (typeof path !== "string") throw new Error("path is required")
+    clearBranchDecorations()
     const at = new vscode.Position(Math.max(0, (Number(line) || 1) - 1), 0)
-    await vscode.window.showTextDocument(vscode.Uri.file(path), { selection: new vscode.Range(at, at), preview: false })
+    const editor = await vscode.window.showTextDocument(vscode.Uri.file(path), { selection: new vscode.Range(at, at), preview: false })
+    if (!branchChanges || typeof branchChanges !== "object") return
+    const added = validLines(branchChanges.added, editor.document.lineCount)
+    const addedSet = new Set(added)
+    const removed = validLines(branchChanges.removed, editor.document.lineCount).filter((line) => !addedSet.has(line))
+    editor.setDecorations(addedLineDecoration, lineRanges(added, editor))
+    editor.setDecorations(removedLineDecoration, lineRanges(removed, editor))
+    lastDecoratedEditor = editor
   },
   // { id }: runs one of the workbench's own view or action commands.
   "/command": async ({ id }) => {
@@ -97,6 +126,21 @@ function registerQuestions(context) {
 }
 
 exports.activate = (context) => {
+  addedLineDecoration = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: "rgba(46, 160, 67, 0.16)",
+    borderColor: "rgba(46, 160, 67, 0.38)",
+    borderStyle: "solid",
+    borderWidth: "0 0 0 2px",
+  })
+  removedLineDecoration = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: "rgba(248, 81, 73, 0.13)",
+    borderColor: "rgba(248, 81, 73, 0.35)",
+    borderStyle: "solid",
+    borderWidth: "0 0 0 2px",
+  })
+  context.subscriptions.push(addedLineDecoration, removedLineDecoration, { dispose: clearBranchDecorations })
   void clearOldThemeOverrides(context).catch(() => undefined)
   registerQuestions(context)
   const port = Number(process.env.SLAGENT_BRIDGE_PORT)

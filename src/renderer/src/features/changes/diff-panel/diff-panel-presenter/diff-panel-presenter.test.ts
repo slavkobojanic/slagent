@@ -484,5 +484,14 @@ describe("DiffPanelPresenter", () => {
 
       expect(panelPresenter.openFile).toHaveBeenCalledWith("src/app.ts")
     })
+
+    it("requests branch-change highlights when opening a file from the branch diff", () => {
+      const { panelPresenter, presenter, store } = parts
+      store.setScope("branch")
+
+      presenter.handleViewFile("src/app.ts")
+
+      expect(panelPresenter.openFile).toHaveBeenCalledWith("src/app.ts", undefined, true)
+    })
   })
 })

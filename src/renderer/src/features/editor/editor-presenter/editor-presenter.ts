@@ -58,7 +58,7 @@ export class EditorPresenter {
     this.store.setReady()
   }
 
-  openFile = async (file: FileView) => {
+  openFile = async (file: FileView, showBranchChanges = false) => {
     this.log.action("open-file", { path: file.path })
     this.layoutStore.setEditorMode(true)
     await this.ensureUrl()
@@ -66,7 +66,9 @@ export class EditorPresenter {
       return
     }
     try {
-      await this.api.openEditorFile(file.line ? `${file.absolutePath}:${file.line}` : file.absolutePath)
+      const path = file.line ? `${file.absolutePath}:${file.line}` : file.absolutePath
+      if (showBranchChanges) await this.api.openEditorFile(path, true)
+      else await this.api.openEditorFile(path)
     } catch (error) {
       this.log.warn("open-file-failed", { path: file.path, error })
     }

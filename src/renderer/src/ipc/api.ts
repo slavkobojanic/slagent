@@ -136,7 +136,7 @@ export class API implements SlagentApi {
     this.openInEditor = (path) => bridge.openInEditor(path)
     this.readFile = (path) => bridge.readFile(path)
     this.getEditorUrl = () => bridge.getEditorUrl()
-    this.openEditorFile = (path) => bridge.openEditorFile(path)
+    this.openEditorFile = (path, showBranchChanges) => bridge.openEditorFile(path, showBranchChanges)
     this.runEditorCommand = (id) => bridge.runEditorCommand(id)
     this.setColorScheme = (scheme) => bridge.setColorScheme(scheme)
     this.setQueueMode = (id, mode) => bridge.setQueueMode(id, mode)

@@ -717,7 +717,7 @@ export type SlagentApi = {
   openInEditor: (path: string) => Promise<boolean>
   readFile: (path: string) => Promise<FileView | null>
   getEditorUrl: () => Promise<string>
-  openEditorFile: (path: string) => Promise<boolean>
+  openEditorFile: (path: string, showBranchChanges?: boolean) => Promise<boolean>
   runEditorCommand: (id: string) => Promise<void>
   // Sets the window's colour scheme, which the editor's auto-detected theme follows.
   setColorScheme: (scheme: "system" | "light" | "dark") => Promise<void>

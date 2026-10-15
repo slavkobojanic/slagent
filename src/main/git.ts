@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { delimiter } from "node:path"
+import { delimiter, relative, resolve, sep } from "node:path"
 import type { GitCommit, GitFile, GitStatus } from "../shared/types"
 
 // Apps opened from the Dock get a bare PATH, so gh from Homebrew is not found
@@ -139,6 +139,50 @@ export async function gitDiffBranch(cwd: string): Promise<string> {
     parts.push(await untrackedDiff(cwd, file.path))
   }
   return clip(parts.filter(Boolean).join("\n"))
+}
+
+export type BranchLineChanges = { added: number[]; removed: number[] }
+
+// Maps unified-diff changes to the current file's line numbers. Removed lines anchor to the
+// insertion point in the new file; the editor lets additions take precedence at that line.
+export function parseBranchLineChanges(diff: string): BranchLineChanges {
+  const added = new Set<number>()
+  const removed = new Set<number>()
+  let newLine = 0
+  let inHunk = false
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("@@")) {
+      const match = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line)
+      newLine = Number(match?.[1] ?? 0)
+      inHunk = true
+      continue
+    }
+    if (!inHunk || line.startsWith("\\")) continue
+    if (line.startsWith("+")) {
+      added.add(newLine)
+      newLine += 1
+    } else if (line.startsWith("-")) {
+      removed.add(Math.max(1, newLine))
+    } else if (line.startsWith(" ")) {
+      newLine += 1
+    }
+  }
+  return { added: [...added], removed: [...removed].filter((line) => !added.has(line)) }
+}
+
+// Changed lines for one current file, including untracked files, for editor decorations.
+export async function gitBranchLineChanges(cwd: string, filePath: string): Promise<BranchLineChanges> {
+  const root = resolve(cwd)
+  const relativePath = relative(root, resolve(root, filePath))
+  if (!relativePath || relativePath === ".." || relativePath.startsWith(`..${sep}`)) return { added: [], removed: [] }
+  const gitPath = relativePath.split(sep).join("/")
+  const status = await gitStatus(cwd)
+  if (!status.repo) return { added: [], removed: [] }
+  const fileStatus = status.files.find((file) => file.path === gitPath)
+  const diff = fileStatus?.status === "added" && !fileStatus.staged
+    ? await untrackedDiff(cwd, gitPath)
+    : await git(cwd, ["diff", await branchBase(cwd), "--no-color", "--no-ext-diff", "--unified=0", "--", `:(literal)${gitPath}`])
+  return parseBranchLineChanges(diff)
 }
 
 async function branchBase(cwd: string): Promise<string> {
