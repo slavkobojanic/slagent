@@ -163,7 +163,8 @@ describe("VscodeServer", () => {
     const source = join(root, "source")
     const dist = join(root, "dist")
     await mkdir(source, { recursive: true })
-    await mkdir(join(dist, "extensions"), { recursive: true })
+    await mkdir(join(dist, "extensions", "slagent-bridge"), { recursive: true })
+    await writeFile(join(dist, "extensions", "slagent-bridge", "extension.js"), "stale bridge")
     await writeFile(join(source, "extension.js"), "latest bridge")
     const server = new VscodeServer({
       dist,
