@@ -191,7 +191,9 @@ export function createSlagentApi(client: WsClient, local: LocalApi): SlagentApi 
     openInEditor: (path) => call<boolean>("openInEditor", path),
     readFile: (path) => call<Result<"readFile">>("readFile", path),
     getEditorUrl: () => call<string>("getEditorUrl"),
-    openEditorFile: (path) => call<boolean>("openEditorFile", path),
+    openEditorFile: (path, showBranchChanges) => showBranchChanges === undefined
+      ? call<boolean>("openEditorFile", path)
+      : call<boolean>("openEditorFile", path, showBranchChanges),
     runEditorCommand: (id) => call<void>("runEditorCommand", id),
     setColorScheme: (scheme) => call<void>("setColorScheme", scheme),
     setQueueMode: (id, mode) => call<void>("setQueueMode", id, mode),

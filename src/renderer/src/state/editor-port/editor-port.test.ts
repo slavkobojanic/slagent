@@ -15,6 +15,16 @@ describe("EditorPort", () => {
     expect(handler).toHaveBeenCalledWith(file)
   })
 
+  it("can pass a branch-change highlight flag with the file", () => {
+    const port = new EditorPort()
+    const handler = vi.fn()
+    port.attach(handler)
+
+    port.open(file, true)
+
+    expect(handler).toHaveBeenCalledWith(file, true)
+  })
+
   it("can ignore a file when nothing is attached", () => {
     expect(() => new EditorPort().open(file)).not.toThrow()
   })

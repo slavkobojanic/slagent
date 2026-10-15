@@ -73,6 +73,14 @@ describe("EditorPresenter", () => {
       expect(api.openEditorFile).toHaveBeenCalledWith("/p/src/a.ts:12")
     })
 
+    it("can request branch-change highlights when opening a file", async () => {
+      const { presenter, api } = setup()
+
+      await presenter.openFile(file(), true)
+
+      expect(api.openEditorFile).toHaveBeenCalledWith("/p/src/a.ts", true)
+    })
+
     it("can start the server only once for several files", async () => {
       const { presenter, api } = setup()
 

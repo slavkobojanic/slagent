@@ -13,6 +13,7 @@ import type { AgentHost } from "./host"
 import { cliStatus, installCli, uninstallCli } from "./cli"
 import type { ComputerUse } from "./computer"
 import { openInEditor, readFileView, resolveEditorFile } from "./editor"
+import { gitBranchLineChanges } from "./git"
 import { editorSettings, type VscodeServer } from "./vscode-server"
 import type { McpManager } from "./mcp"
 import { parsePrompt } from "./prompt"
@@ -263,9 +264,14 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         deps.onEditorShown?.(clientId)
         return requireEditor().url(host.getCwd())
       case "openEditorFile": {
-        const target = await resolveEditorFile(host.getCwd(), str(params[0]))
+        const cwd = host.getCwd()
+        const target = await resolveEditorFile(cwd, str(params[0]))
         if (!target) return false
-        await requireEditor().post("/open", target)
+        const showBranchChanges = params[1] === true
+        const branchChanges = showBranchChanges
+          ? await gitBranchLineChanges(cwd, target.path).catch(() => ({ added: [], removed: [] }))
+          : undefined
+        await requireEditor().post("/open", { ...target, ...(branchChanges ? { branchChanges } : {}) })
         return true
       }
       case "runEditorCommand":
