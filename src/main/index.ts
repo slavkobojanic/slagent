@@ -347,6 +347,7 @@ app.whenReady().then(async () => {
   editorServer = new VscodeServer({
     dist: distDir({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath(), platform: process.platform, arch: process.arch }),
     dataDir: join(app.getPath("userData"), "vscode-server"),
+    bridgeExtensionDir: app.isPackaged ? undefined : join(app.getAppPath(), "vendor", "vscode-server", "extensions", "slagent-bridge"),
     preferredPort: Number(process.env.SLAGENT_EDITOR_PORT) || undefined,
     settings: () => editorSettings(host?.getEditorPrefs() ?? parseEditorPrefs(null)),
     onComment: (comment) => {

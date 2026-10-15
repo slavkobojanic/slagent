@@ -1,5 +1,6 @@
 import { spawn as nodeSpawn, type ChildProcess } from "node:child_process"
 import { randomBytes, randomUUID } from "node:crypto"
+import { cp } from "node:fs/promises"
 import { createServer as createHttpServer, type Server as HttpServer } from "node:http"
 import { createServer, type AddressInfo } from "node:net"
 import { join } from "node:path"
@@ -80,6 +81,8 @@ export function parseEditorComment(input: unknown): DiffComment | null {
 export type VscodeServerDeps = {
   dist: string
   dataDir: string
+  // In development, copy the checked-in bridge into the generated server build before launch.
+  bridgeExtensionDir?: string
   // Applied by the bridge when it starts, so the first paint already has the user's settings.
   settings?: () => Record<string, unknown>
   spawn?: (command: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv }) => ChildProcess
@@ -203,6 +206,9 @@ export class VscodeServer {
     const log = this.deps.onEvent ?? (() => undefined)
     // A server from a launch that was killed would still hold the stable port.
     await stopStaleServer(this.deps.dataDir).catch((error) => log("warn", "stale-server", errorData(error)))
+    if (this.deps.bridgeExtensionDir) {
+      await cp(this.deps.bridgeExtensionDir, join(this.deps.dist, "extensions", "slagent-bridge"), { recursive: true })
+    }
     const pickPort = this.deps.freePort ?? freePort
     const makeToken = this.deps.token ?? (() => randomBytes(24).toString("hex"))
     const [port, bridgePort] = [await pickPort(this.deps.preferredPort ?? EDITOR_PORT), await pickPort()]

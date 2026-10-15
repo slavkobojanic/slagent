@@ -1,5 +1,8 @@
 import { EventEmitter } from "node:events"
 import type { ChildProcess } from "node:child_process"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
 import { DEFAULT_EDITOR_PREFS } from "../shared/editor"
 import { distDir, EDITOR_PORT, editorSettings, freePort, parseEditorComment, serverArgs, VscodeServer, withEditorCookie, workbenchUrl } from "./vscode-server"
@@ -153,6 +156,32 @@ describe("VscodeServer", () => {
     expect(first).toBe("http://127.0.0.1:4000/?tkn=token1&folder=%2Fp")
     expect(second).toBe(first)
     expect(spawn).toHaveBeenCalledTimes(1)
+  })
+
+  it("copies the current bridge extension into the generated server before launch", async () => {
+    const root = await mkdtemp(join(tmpdir(), "slagent-vscode-bridge-"))
+    const source = join(root, "source")
+    const dist = join(root, "dist")
+    await mkdir(source, { recursive: true })
+    await mkdir(join(dist, "extensions"), { recursive: true })
+    await writeFile(join(source, "extension.js"), "latest bridge")
+    const server = new VscodeServer({
+      dist,
+      dataDir: join(root, "data"),
+      bridgeExtensionDir: source,
+      spawn: () => new FakeChild() as unknown as ChildProcess,
+      fetch: (async () => new Response("ready")) as unknown as typeof fetch,
+      freePort: async () => freePort(0),
+      timeoutMs: 1000,
+    })
+
+    try {
+      await server.url("/p")
+      await expect(readFile(join(dist, "extensions", "slagent-bridge", "extension.js"), "utf8")).resolves.toBe("latest bridge")
+    } finally {
+      server.stop()
+      await rm(root, { recursive: true, force: true })
+    }
   })
 
   it("can try the preferred port first", async () => {
