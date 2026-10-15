@@ -1,6 +1,6 @@
 // Turns the raw gulp output into the distribution slagent ships: merges product.overrides.json,
 // drops built-in extensions we do not want, and adds the bridge extension.
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -37,6 +37,18 @@ const REMOVE = [
 for (const name of REMOVE) await rm(join(dist, "extensions", name), { recursive: true, force: true })
 
 await cp(join(here, "extensions", "slagent-bridge"), join(dist, "extensions", "slagent-bridge"), { recursive: true })
+const i18nExtensionSource = join(here, "extensions", "slagent-i18n-hints")
+const i18nExtensionDist = join(dist, "extensions", "slagent-i18n-hints")
+await rm(i18nExtensionDist, { recursive: true, force: true })
+await mkdir(i18nExtensionDist, { recursive: true })
+for (const file of ["package.json", "extension.js", "analysis.js", "configuration.js", "resources.js"]) {
+  await cp(join(i18nExtensionSource, file), join(i18nExtensionDist, file))
+}
+try {
+  await access(join(dist, "extensions", "node_modules", "typescript", "lib", "typescript.js"))
+} catch {
+  throw new Error("The VS Code bundle must include its TypeScript compiler for Slagent i18n hints")
+}
 console.log(`finished ${dist}`)
 
 // The Slagent themes, generated from the app's own tokens so the editor matches the interface. They

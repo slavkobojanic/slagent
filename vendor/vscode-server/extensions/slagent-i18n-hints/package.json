@@ -1,0 +1,54 @@
+{
+  "name": "slagent-i18n-hints",
+  "displayName": "Slagent i18n hints",
+  "description": "Shows English react-i18next translations as inline editor hints.",
+  "publisher": "slagent",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.100.0" },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "extensionKind": ["workspace"],
+  "contributes": {
+    "configuration": {
+      "title": "Slagent i18n hints",
+      "properties": {
+        "slagent.i18nHints.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "Show inline English translation hints for react-i18next calls."
+        },
+        "slagent.i18nHints.locale": {
+          "type": "string",
+          "default": "en",
+          "scope": "window",
+          "description": "Locale used to read translation JSON files. Workspace settings can set this for the whole project."
+        },
+        "slagent.i18nHints.resourcePath": {
+          "type": "string",
+          "default": "",
+          "scope": "window",
+          "description": "Repository translation JSON path template. Supports {{lng}} and {{ns}}, for example public/locales/{{lng}}/{{ns}}.json."
+        },
+        "slagent.i18nHints.defaultNamespace": {
+          "type": "string",
+          "default": "",
+          "scope": "window",
+          "description": "Default translation namespace. If empty, the extension uses the i18next config or translation."
+        },
+        "slagent.i18nHints.namespaces": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "scope": "window",
+          "description": "Fallback namespaces when the i18next config does not declare them."
+        }
+      }
+    }
+  }
+}
