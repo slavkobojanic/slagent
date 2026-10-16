@@ -23,6 +23,7 @@ import type {
   ExtensionInfo,
   EffortLevel,
   LibraryState,
+  ModelProvider,
   ModelChange,
   ModelRouting,
   OpenRouterStatus,
@@ -50,6 +51,7 @@ import { EMPTY_PERSONALISATION } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import type { TaskTerminalSpawner } from "./extensions/background-tasks"
 import { CLAUDE_MODELS, ClaudeRuntime, claudeModel, isClaudeModel } from "./claude-runtime"
+import { MUSE_MODELS, MuseRuntime, isMuseModel, museCatalog, museInstalled } from "./muse-runtime"
 import type { ComputerUse } from "./computer"
 import { draftCommands } from "./commands"
 import { searchChats } from "./search"
@@ -62,6 +64,7 @@ import { PROJECT_COLORS, PROJECT_ICONS } from "../shared/project-appearance"
 import { parseEditorPrefs, parseEffort, parsePersonalisation, parseRouting, readPrefs, writePrefs, type Prefs } from "./prefs"
 import type { EditorPrefs } from "../shared/editor"
 import { routeModel } from "./routing"
+import { isOpenRouterModelId, resolveOpenRouterModel } from "./openrouter-model"
 import { DEFAULT_TITLE_MODEL, generateCommitMessage, generateTitle, isTitleModel, parseTitleModelId, TITLE_MODELS } from "./titles"
 import type { AssistantMessage } from "@earendil-works/pi-ai"
 import { describeThinking, describeToolCalls, describeWorking, type ToolCallSeed } from "./describe"
@@ -88,7 +91,20 @@ const PREFERRED_MODELS = [
 
 type Emit = (clientId: string | null, event: UiEvent) => void
 
-type Runtime = ChatRuntime | ClaudeRuntime
+type Runtime = ChatRuntime | ClaudeRuntime | MuseRuntime
+
+// The provider a chat runs on. A chat stays on the provider it started with,
+// so switching providers starts a new chat.
+function runtimeProviderOf(runtime: Runtime): ModelProvider {
+  return runtime instanceof ChatRuntime ? "openrouter" : runtime.provider
+}
+
+function modelProviderOf(modelId: string | null | undefined): ModelProvider | null {
+  if (!modelId) return null
+  if (isClaudeModel(modelId)) return "claude-code"
+  if (isMuseModel(modelId)) return "muse"
+  return "openrouter"
+}
 
 // Everything a connected client sees on its own: its open project and chat,
 // and where it has scrolled the transcript. Library, meta and settings are
@@ -144,6 +160,9 @@ export class AgentHost {
   private effort: EffortLevel = "medium"
   private draftPlanMode = false
   private models: AppMeta["models"] = []
+  // The Muse catalog, probed from the user's own Muse Code install; the static
+  // default until the probe answers, and hidden when it fails.
+  private museModels: AppMeta["models"] = MUSE_MODELS
   private openRouter: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
   private ready = false
   private startupError: string | null = null
@@ -232,6 +251,7 @@ export class AgentHost {
       this.models = this.catalog()
       this.openRouter = await this.readAuth()
       this.applyDraftModel()
+      void this.refreshMuseModels()
     } catch (error) {
       this.startupError = errorMessage(error)
     } finally {
@@ -708,22 +728,26 @@ export class AgentHost {
 
   async setModel(clientId: string, modelId: string): Promise<ModelChange> {
     const claude = claudeModel(modelId)
+    const muse = this.museOption(modelId)
     let piModel: AgentModel | undefined
-    if (!claude) {
+    if (!claude && !muse) {
       const runtimeModel = this.modelRuntime
       if (!runtimeModel) throw new Error("Pi is not ready.")
-      const found = runtimeModel.getModel(PROVIDER, modelId)
-      if (!found || found.id.includes(":batch")) throw new Error("That model is not available.")
+      if (!runtimeModel.getModel(PROVIDER, modelId) && !isOpenRouterModelId(modelId)) {
+        throw new Error("Enter a valid OpenRouter model tag, such as google/gemini-4-argon.")
+      }
+      const found = resolveOpenRouterModel(runtimeModel, modelId)
+      if (!found) throw new Error("That model is not available.")
       piModel = routeModel(found, this.routing)
     }
-    const option = claude ?? piModel!
+    const option = claude ?? muse ?? piModel!
     this.draftModelId = option.id
     this.draftModelName = option.name
     await this.persistPrefs()
     const runtime = this.sessionRuntime(this.requireSession(clientId))
     // A chat stays on the provider it started with, so switching providers
     // starts a new chat.
-    if (runtime && runtime instanceof ClaudeRuntime !== Boolean(claude)) {
+    if (runtime && runtimeProviderOf(runtime) !== option.provider) {
       await this.newChat(clientId)
       this.publishMeta(null)
       return { applied: true }
@@ -732,7 +756,7 @@ export class AgentHost {
       this.publishMeta(null)
       return { applied: true }
     }
-    const applied = runtime instanceof ClaudeRuntime ? await runtime.setModel(option.id) : await runtime.setModel(piModel!)
+    const applied = runtime instanceof ChatRuntime ? await runtime.setModel(piModel!) : await runtime.setModel(option.id)
     if (applied) {
       await this.library.updateChat(runtime.projectId, runtime.chatId, { modelId: option.id })
       this.publishMeta(null)
@@ -771,6 +795,7 @@ export class AgentHost {
     for (const runtime of this.runtimes.values()) {
       if (runtime instanceof ChatRuntime) runtime.setEffort(this.effort)
       else if (runtime instanceof ClaudeRuntime) runtime.setEffort(this.effort)
+      else if (runtime instanceof MuseRuntime) runtime.setEffort(this.effort)
     }
   }
 
@@ -869,7 +894,9 @@ export class AgentHost {
   private async ensureRuntime(session: Session): Promise<Runtime> {
     if (!session.projectId) throw new Error("Choose a folder first.")
     const modelId = session.chatId ? this.library.chat(session.projectId, session.chatId)?.modelId : this.draftModelId
-    if (!isClaudeModel(modelId) && !this.openRouter.configured) throw new Error("Add an OpenRouter API key in settings.")
+    const provider = modelProviderOf(modelId)
+    if (provider === "openrouter" && !this.openRouter.configured) throw new Error("Add an OpenRouter API key in settings.")
+    if (provider === "muse" && !museInstalled()) throw new Error("Install Muse Code and sign in with `muse` first.")
     if (session.chatId) {
       const existing = this.runtimeFor(session.projectId, session.chatId)
       if (existing) return existing
@@ -879,7 +906,7 @@ export class AgentHost {
       return loaded
     }
     let chatModelId = this.draftModelId
-    if (!isClaudeModel(chatModelId)) chatModelId = this.selectModel(null)?.id ?? this.draftModelId
+    if (provider !== "muse" && !isClaudeModel(chatModelId)) chatModelId = this.selectModel(null)?.id ?? this.draftModelId
     const chat = await this.library.createChat(session.projectId, chatModelId)
     session.chatId = chat.id
     await this.loadChat(session, session.projectId, chat.id)
@@ -910,6 +937,10 @@ export class AgentHost {
     if (existing) return
     if (isClaudeModel(chat.modelId)) {
       await this.loadClaudeChat(project.path, projectId, chat, project.mode)
+      return
+    }
+    if (isMuseModel(chat.modelId)) {
+      await this.loadMuseChat(project.path, projectId, chat, project.mode)
       return
     }
     const runtimeModel = this.modelRuntime
@@ -1060,6 +1091,78 @@ export class AgentHost {
       },
       onModelUsage: (modelUsage, costed) => {
         this.usage.recordClaude(chatId, projectId, Date.now(), modelUsage, costed)
+      },
+      onSettled: () => {
+        const open = this.isViewed(projectId, chatId)
+        if (!open || !this.notifier.focused(projectId, chatId)) {
+          let body = "Finished"
+          if (runtime.waiting) body = "A plan is ready for review"
+          else if (runtime.failed) body = "Stopped with an error"
+          this.notify(projectId, chatId, body)
+        }
+        const patch: Partial<StoredChat> = {}
+        if (!runtime.waiting && !runtime.failed) patch.finishedAt = Date.now()
+        if (!open) patch.unread = true
+        if (Object.keys(patch).length === 0) return
+        void this.library.updateChat(projectId, chatId, patch).then(() => this.publishLibrary(null))
+      },
+      onQuestion: (request) => {
+        const open = this.isViewed(projectId, chatId)
+        if (open && this.notifier.focused(projectId, chatId)) return
+        const first = request.questions[0]?.question ?? "A question is waiting"
+        this.notify(projectId, chatId, first)
+      },
+      planProposal: chat.planProposal ?? null,
+      onPlanProposal: (plan) => this.savePlanProposal(projectId, chatId, plan),
+      saveBytes: (name, mimeType, bytes) => this.saveBytes(projectId, chatId, name, mimeType, bytes),
+    })
+    runtime.load(messages)
+    this.runtimes.set(runtime.key, runtime)
+  }
+
+  private async loadMuseChat(cwd: string, projectId: string, chat: StoredChat, mode?: "chat"): Promise<void> {
+    const chatId = chat.id
+    const messages = await this.library.readTranscript(projectId, chatId)
+    const runtime: MuseRuntime = new MuseRuntime({
+      projectId,
+      chatId,
+      cwd,
+      mode,
+      sessionId: chat.museSessionId ?? null,
+      modelId: chat.modelId ?? MUSE_MODELS[0]!.id,
+      effort: this.effort,
+      named: chat.named || chat.titleCustom,
+      titleGenerated: chat.titleCustom || (chat.titleGenerated ?? chat.named),
+      onChange: (runningChanged) => {
+        this.onRuntimeChange(runtime, runningChanged)
+      },
+      onSession: (sessionId) => {
+        void this.library.updateChat(projectId, chatId, { museSessionId: sessionId })
+      },
+      onTitle: (title, generated) => this.handleChatTitle(projectId, chatId, title, generated),
+      personalisation: () => this.personalisation,
+      // Titles come from a small OpenRouter model, so without a key the
+      // first line of the message stays as the title.
+      generateTitle: (user) => {
+        const runtimeModel = this.modelRuntime
+        const titleModel = this.titleModel()
+        if (!runtimeModel || !titleModel || !this.openRouter.configured) return Promise.resolve(null)
+        return generateTitle(runtimeModel, titleModel, user, this.recordUtility("naming", chatId, projectId))
+      },
+      describeToolCalls: (calls) => this.describeToolCalls(calls, chatId, projectId),
+      describeThinkingLabel: (excerpt) => this.describeThinkingLabel(excerpt, chatId, projectId),
+      describeWorkingLabel: (user) => this.describeWorkingLabel(user, chatId, projectId),
+      describable: () => this.smallModel() !== undefined,
+      onModel: (modelId) => {
+        void this.library.updateChat(projectId, chatId, { modelId }).then(() => this.publishMetaForChat(projectId, chatId))
+      },
+      onUsage: (usage) => {
+        const stored = this.library.chat(projectId, chatId)
+        if (!stored) return
+        if (stored.tokens === usage.totalTokens && stored.cost === usage.cost) return
+        stored.tokens = usage.totalTokens
+        stored.cost = usage.cost
+        this.scheduleUsageSave(projectId)
       },
       onSettled: () => {
         const open = this.isViewed(projectId, chatId)
@@ -1275,10 +1378,31 @@ export class AgentHost {
     return null
   }
 
+  // The Muse model an id names, from the probed catalog. Unprobed or unknown
+  // ids are rejected, so a mistyped tag never reaches the host.
+  private museOption(modelId: string | null | undefined): AppMeta["models"][number] | undefined {
+    if (!isMuseModel(modelId)) return undefined
+    return this.museModels.find((model) => model.id === modelId)
+  }
+
+  // The real Muse catalog, probed once at boot and again when the app refreshes
+  // models; the picker hides the section when Muse Code is missing.
+  private async refreshMuseModels(): Promise<void> {
+    const found = await museCatalog()
+    if (found.length > 0) this.museModels = found
+    this.models = this.catalog()
+    this.publishMeta(null)
+  }
+
   private applyDraftModel(): void {
     const claude = claudeModel(this.draftModelId)
     if (claude) {
       this.draftModelName = claude.name
+      return
+    }
+    const muse = this.museOption(this.draftModelId)
+    if (muse) {
+      this.draftModelName = muse.name
       return
     }
     const model = this.selectModel(this.draftModelId)
@@ -1293,8 +1417,8 @@ export class AgentHost {
     const ids = [preferred, this.draftModelId, ...PREFERRED_MODELS]
     for (const id of ids) {
       if (!id) continue
-      const model = runtime.getModel(PROVIDER, id)
-      if (model && !model.id.includes(":batch")) return routeModel(model, this.routing)
+      const model = resolveOpenRouterModel(runtime, id)
+      if (model) return routeModel(model, this.routing)
     }
     const first = this.models[0]
     if (!first) return undefined
@@ -1309,7 +1433,7 @@ export class AgentHost {
     if (!runtime) return
     for (const chat of this.runtimes.values()) {
       if (!(chat instanceof ChatRuntime)) continue
-      const model = runtime.getModel(PROVIDER, chat.modelId)
+      const model = resolveOpenRouterModel(runtime, chat.modelId)
       if (!model) continue
       void chat.setModel(routeModel(model, this.routing))
     }
@@ -1321,12 +1445,13 @@ export class AgentHost {
   private titleModel(fallbackId = ""): AgentModel | undefined {
     const runtime = this.modelRuntime
     if (!runtime) return undefined
-    for (const id of [this.titleModelId, ...TITLE_MODELS.map((model) => model.id), fallbackId]) {
+    for (const id of [this.titleModelId, ...TITLE_MODELS.map((model) => model.id)]) {
       if (!id) continue
       const model = runtime.getModel(PROVIDER, id)
-      if (model) return routeModel(model, this.routing)
+      if (model && !model.id.includes(":batch")) return routeModel(model, this.routing)
     }
-    return undefined
+    const fallback = fallbackId ? resolveOpenRouterModel(runtime, fallbackId) : undefined
+    return fallback ? routeModel(fallback, this.routing) : undefined
   }
 
   // Descriptions for tool steps, thinking and the working shimmer come from
@@ -1391,7 +1516,7 @@ export class AgentHost {
 
   private catalog(): AppMeta["models"] {
     const runtime = this.modelRuntime
-    if (!runtime) return CLAUDE_MODELS
+    if (!runtime) return [...CLAUDE_MODELS, ...this.museModels]
     const models = runtime.getModels(PROVIDER)
     const options: AppMeta["models"] = []
     for (const model of models) {
@@ -1405,7 +1530,7 @@ export class AgentHost {
       })
     }
     options.sort((left, right) => left.name.localeCompare(right.name))
-    return [...CLAUDE_MODELS, ...options]
+    return [...CLAUDE_MODELS, ...this.museModels, ...options]
   }
 
   private async readAuth(): Promise<OpenRouterStatus> {
@@ -1451,7 +1576,7 @@ export class AgentHost {
       agentDir: this.agentDir,
       modelId: model.id,
       modelName: model.name,
-      modelProvider: model.id ? (isClaudeModel(model.id) ? "claude-code" : "openrouter") : null,
+      modelProvider: modelProviderOf(model.id),
       models: this.models,
       routing: this.routing,
       effort: this.effort,

@@ -20,6 +20,9 @@ importers:
       '@earendil-works/pi-mcp':
         specifier: ^1.0.4
         version: 1.0.4
+      '@muse-code/sdk':
+        specifier: ^1.4.10
+        version: 1.4.10(@types/node@26.6.4)
       electron-updater:
         specifier: ^6.8.9
         version: 6.8.9
@@ -235,498 +238,6 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@26.6.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(vite@7.3.7(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
 
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/bat: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/clojure: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/coffeescript: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/configuration-editing: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/cpp: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/csharp: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/css: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/css-language-features: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/css-language-features/server:
-    dependencies:
-      '@vscode/l10n':
-        specifier: ^0.0.18
-        version: 0.0.18
-      vscode-css-languageservice:
-        specifier: ^7.0.0-next.2
-        version: 7.0.0-next.2
-      vscode-languageserver:
-        specifier: ^10.1.1
-        version: 10.1.2
-      vscode-uri:
-        specifier: ^3.2.0
-        version: 3.2.0
-    devDependencies:
-      '@types/node':
-        specifier: 24.x
-        version: 24.19.1
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/dart: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/debug-auto-launch: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/debug-server-ready: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/diff: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/docker: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/dotenv: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/emmet: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/extension-editing: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/fsharp: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/git: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/git-base: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/go: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/groovy: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/grunt: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/gulp: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/handlebars: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/hlsl: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/html: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/html-language-features: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/html-language-features/server:
-    dependencies:
-      '@vscode/l10n':
-        specifier: ^0.0.18
-        version: 0.0.18
-      vscode-css-languageservice:
-        specifier: ^7.0.0-next.2
-        version: 7.0.0-next.2
-      vscode-html-languageservice:
-        specifier: ^6.0.0-next.2
-        version: 6.0.0-next.2
-      vscode-languageserver:
-        specifier: ^10.1.1
-        version: 10.1.2
-      vscode-languageserver-textdocument:
-        specifier: ^1.0.14
-        version: 1.0.15
-      vscode-uri:
-        specifier: ^3.2.0
-        version: 3.2.0
-    devDependencies:
-      '@types/node':
-        specifier: 24.x
-        version: 24.19.1
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/ini: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/jake: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/java: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/javascript: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/json: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/json-language-features: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/json-language-features/server:
-    dependencies:
-      '@vscode/l10n':
-        specifier: ^0.0.18
-        version: 0.0.18
-      request-light:
-        specifier: ^0.8.0
-        version: 0.8.0
-      vscode-json-languageservice:
-        specifier: ^6.0.0-next.4
-        version: 6.0.0-next.4
-      vscode-languageserver:
-        specifier: ^10.1.1
-        version: 10.1.2
-      vscode-uri:
-        specifier: ^3.1.0
-        version: 3.2.0
-    devDependencies:
-      '@types/node':
-        specifier: 24.x
-        version: 24.19.1
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/julia: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/latex: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/less: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/log: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/lua: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/make: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/markdown-basics: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/markdown-language-features: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/markdown-math: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/media-preview: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/merge-conflict: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/mermaid-markdown-features: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/ms-vscode.js-debug: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/ms-vscode.js-debug-companion: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/ms-vscode.vscode-js-profile-table: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/npm: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/objective-c: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/perl: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/php: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/php-language-features: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/powershell: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/prompt-basics: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/pug: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/python: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/r: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/razor: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/references-view: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/restructuredtext: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/ruby: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/rust: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/scss: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/search-result: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/shaderlab: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/shellscript: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/slagent-bridge: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/slagent-theme: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/sql: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/swift: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-abyss: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-defaults: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-kimbie-dark: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-modern-icons: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-monokai: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-monokai-dimmed: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-quietlight: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-red: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-seti: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-solarized-dark: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-solarized-light: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/theme-tomorrow-night-blue: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/typescript-basics: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/typescript-language-features: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/vb: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/xml: {}
-
-  dist/mac-arm64/slagent.app/Contents/Resources/vscode-server/extensions/yaml: {}
-
-  vendor/vscode-server/dist/darwin-arm64: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/bat: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/clojure: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/coffeescript: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/configuration-editing: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/cpp: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/csharp: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/css: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/css-language-features: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/css-language-features/server:
-    dependencies:
-      '@vscode/l10n':
-        specifier: ^0.0.18
-        version: 0.0.18
-      vscode-css-languageservice:
-        specifier: ^7.0.0-next.2
-        version: 7.0.0-next.2
-      vscode-languageserver:
-        specifier: ^10.1.1
-        version: 10.1.2
-      vscode-uri:
-        specifier: ^3.2.0
-        version: 3.2.0
-    devDependencies:
-      '@types/node':
-        specifier: 24.x
-        version: 24.19.1
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/dart: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/debug-auto-launch: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/debug-server-ready: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/diff: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/docker: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/dotenv: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/emmet: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/extension-editing: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/fsharp: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/git: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/git-base: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/go: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/groovy: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/grunt: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/gulp: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/handlebars: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/hlsl: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/html: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/html-language-features: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/html-language-features/server:
-    dependencies:
-      '@vscode/l10n':
-        specifier: ^0.0.18
-        version: 0.0.18
-      vscode-css-languageservice:
-        specifier: ^7.0.0-next.2
-        version: 7.0.0-next.2
-      vscode-html-languageservice:
-        specifier: ^6.0.0-next.2
-        version: 6.0.0-next.2
-      vscode-languageserver:
-        specifier: ^10.1.1
-        version: 10.1.2
-      vscode-languageserver-textdocument:
-        specifier: ^1.0.14
-        version: 1.0.15
-      vscode-uri:
-        specifier: ^3.2.0
-        version: 3.2.0
-    devDependencies:
-      '@types/node':
-        specifier: 24.x
-        version: 24.19.1
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/ini: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/jake: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/java: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/javascript: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/json: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/json-language-features: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/json-language-features/server:
-    dependencies:
-      '@vscode/l10n':
-        specifier: ^0.0.18
-        version: 0.0.18
-      request-light:
-        specifier: ^0.8.0
-        version: 0.8.0
-      vscode-json-languageservice:
-        specifier: ^6.0.0-next.4
-        version: 6.0.0-next.4
-      vscode-languageserver:
-        specifier: ^10.1.1
-        version: 10.1.2
-      vscode-uri:
-        specifier: ^3.1.0
-        version: 3.2.0
-    devDependencies:
-      '@types/node':
-        specifier: 24.x
-        version: 24.19.1
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/julia: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/latex: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/less: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/log: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/lua: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/make: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/markdown-basics: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/markdown-language-features: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/markdown-math: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/media-preview: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/merge-conflict: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/mermaid-markdown-features: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/ms-vscode.js-debug: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/ms-vscode.js-debug-companion: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/ms-vscode.vscode-js-profile-table: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/npm: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/objective-c: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/perl: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/php: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/php-language-features: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/powershell: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/prompt-basics: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/pug: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/python: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/r: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/razor: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/references-view: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/restructuredtext: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/ruby: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/rust: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/scss: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/search-result: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/shaderlab: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/shellscript: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/slagent-bridge: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/slagent-theme: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/sql: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/swift: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-abyss: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-defaults: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-kimbie-dark: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-modern-icons: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-monokai: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-monokai-dimmed: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-quietlight: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-red: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-seti: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-solarized-dark: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-solarized-light: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/theme-tomorrow-night-blue: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/typescript-basics: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/typescript-language-features: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/vb: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/xml: {}
-
-  vendor/vscode-server/dist/darwin-arm64/extensions/yaml: {}
-
-  vendor/vscode-server/extensions/slagent-bridge: {}
-
-  vendor/vscode-server/extensions/slagent-theme: {}
-
 packages:
 
   '@adobe/css-tools@4.5.0':
@@ -765,25 +276,21 @@ packages:
     resolution: {integrity: sha512-6UIxxeHsQQcHheip8P+6q1kf5UQ1D7RJgso423IZeMjyBX1pMlX6LII8b59/1sBfaO1Q5YZ8JKDGr7f4+GtE0A==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@anthropic-ai/claude-agent-sdk-linux-arm64@0.3.292':
     resolution: {integrity: sha512-ziGXVP0Kjjg531fUNZh/1lkT8MQKc77qFinqvQ7N7ZbR7Kr/wVRhs3kSb2s7A1+z/3TNsPiQJManEmbw61U+Hw==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@anthropic-ai/claude-agent-sdk-linux-x64-musl@0.3.292':
     resolution: {integrity: sha512-5XA1nW1/OAUBxaJNFmttfJov9CrqYanOqlmP6yvXWx+iSEWKICNv2ghnnipYEJXUeof6JjZlarS8IHaJol1trA==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@anthropic-ai/claude-agent-sdk-linux-x64@0.3.292':
     resolution: {integrity: sha512-dnMVyLxpg8mUzEqAtxhv+5oBxdiYjCLIBHLPFM4z7cuk+Se6SwgyHPRGipp8rOociJBS8yyB7QXJh+RO41y+Kg==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@anthropic-ai/claude-agent-sdk-win32-arm64@0.3.292':
     resolution: {integrity: sha512-feA6NlAVnbGBGgnJ6VkYldofuCwW5H6wt+6sWuLDVIasn013X3sWrCSS4awseN3tyey4/0UKG/+ElNATaZaN4w==}
@@ -1631,12 +1138,20 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
+  '@muse-code/sdk@1.4.10':
+    resolution: {integrity: sha512-J4/rcbNPFnvn8fo4wm1FAwKzInzbkKcLe9gJk5xeq6pGjk5Q4LrqRz7k/F0G3g6a6ilpegVL/11InJysYUAMWQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@types/node': '>=20'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
     engines: {node: ^22.20 || ^24.12 || >=25}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@napi-rs/wasm-runtime@1.2.5':
     resolution: {integrity: sha512-HshSvXzmBxNzqejd3k/KemgQ3hdREUYFRRrgxOZ+gPljDIsO2SDZrVZMd4Z/HsxudQbE62OVyVFE8z9BCurfjA==}
@@ -1700,56 +1215,48 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-parser/binding-linux-arm64-musl@0.127.0':
     resolution: {integrity: sha512-EoTCZneNFU/P2qrpEM+RHmQwt+CvDkyGESG6qhr7KaegXLZwePfbrkCDfAk8/rhxbDUVGsZILX+2tqPzFtoFWA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@oxc-parser/binding-linux-ppc64-gnu@0.127.0':
     resolution: {integrity: sha512-zALjmZYgxFLHjXeudcDF0xFGNydTAtkAeXAr2EuC17ywCyFxcmQra4w0BMde0Yi/re4Bi4iwEoEXtYN7l6eBLQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-parser/binding-linux-riscv64-gnu@0.127.0':
     resolution: {integrity: sha512-fPP8M6zQLS7Jz7o9d5ArUSuAuSK3e+WCYVrCpdzeCOejidtZExJ9tjhDrAd3HEPqARBCPmdpqxESPFqy44vkBQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-parser/binding-linux-riscv64-musl@0.127.0':
     resolution: {integrity: sha512-7IcC4Ao02oGpfnjt+X/oF4U2mllo2qoSkw5xxiXNKL9MCTsTiAC6616beOuehdxGcnz1bRoPC1RQ2f1GQDdN+g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@oxc-parser/binding-linux-s390x-gnu@0.127.0':
     resolution: {integrity: sha512-pbXIhiNFHoqWeqDNLiJ9JkpHz1IM9k4DXa66x+1GTWMG7iLxtkXgE53iiuKSXwmk3zIYmaPVfBvgcAhS583K4Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-parser/binding-linux-x64-gnu@0.127.0':
     resolution: {integrity: sha512-MYCguB9RvBvlSd6gbuNI7QwiLoCCAlGnlRJFPrzLI6U1/9wkC/WK6LtBAUln55H1Ctqw45PWmqrobKoMhsYQzQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-parser/binding-linux-x64-musl@0.127.0':
     resolution: {integrity: sha512-5eY0B/bxf1xIUxb4NOTvOI3KWtBQfPWYyKAzgcrCt0mDibSZygVpO1Pz8bkeiSZ5Jj9+M09dkggG3H8I5d0Uyg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@oxc-parser/binding-openharmony-arm64@0.127.0':
     resolution: {integrity: sha512-Gld0ajrFTUXNtdw20fVBuTQx66FA75nIVg+//pPfR3sXkuABB4mTBhl3r9JNzrJpgW//qiwxf0nWXUWGJSL3UQ==}
@@ -1822,49 +1329,41 @@ packages:
     resolution: {integrity: sha512-CUEYvlX1Fk7E9kUMzuswru1J9HLxMwnpDeQGjQuI4ZH+iNCoa2X9T+pvyzrbsgl7WnIeTFTlNlHsRfVdf5g9/g==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-resolver/binding-linux-arm64-musl@11.21.2':
     resolution: {integrity: sha512-ViN1ZibQyxwC67GpoP33oo+S9UyUnkog13vzQb9+v9bCNvrVzJuk0MRdacjtv/9xfRMVF/eqHFyl8YOeykI10Q==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@oxc-resolver/binding-linux-ppc64-gnu@11.21.2':
     resolution: {integrity: sha512-CU1sCqWnhGqYD5I1HedHk5pujrn7ssDkNB/AEQd/pd3D/EojVSgJUlpbafwIbyhia3PgIfkvdFpRPWSALzVumA==}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-resolver/binding-linux-riscv64-gnu@11.21.2':
     resolution: {integrity: sha512-jWVyZtIHca4Gb96x7dag+y69vlei7ffjrsveLkmf2ZhqEAz6ZSBnY1GWvgZUaZlwZP62A3xD092BW97Q5VGc+g==}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-resolver/binding-linux-riscv64-musl@11.21.2':
     resolution: {integrity: sha512-LF29obFqNgBUgDX7rmUK7M4D0JQG5LxhYzn3xXmECcHU9aQAdWG7NiY052qybtesEdwHQXKNTWYQ7mTsybNvWg==}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@oxc-resolver/binding-linux-s390x-gnu@11.21.2':
     resolution: {integrity: sha512-+NYcm+cCHBbtdQQ3A4phQTSuVRYnNHz7wrl9XRAPEovcdoqi0mb1K5ZOl+jN54ZD+q1zz3V0vltbFJmzecJKmw==}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-resolver/binding-linux-x64-gnu@11.21.2':
     resolution: {integrity: sha512-UQqZDdG2r2HhAOsZEgufkIWHPQ886IUyuJQkoZByvzhW8j51R4UNzGBJFkTiTnLhQnggwJRdJgFWK4uY6ZVIMw==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@oxc-resolver/binding-linux-x64-musl@11.21.2':
     resolution: {integrity: sha512-3Q9PMRjalWkT6NZ4jfujuqTCFwoWErg3y3BnOgb544B8IMw4PktiwWOigMfOHNRLMghZeJ7hpfpZf4CP7rV7Og==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@oxc-resolver/binding-openharmony-arm64@11.21.2':
     resolution: {integrity: sha512-Eljeq3ndtyKhM+Es8LITi4Zl2htzuRZcrPMF3kMCsrILztvU6AjZ3FuEhHHKobPUB9rMpzLpJP5bDqXI7r+iog==}
@@ -2710,79 +2209,66 @@ packages:
     resolution: {integrity: sha512-J/6xhutJPtFyIkmHdf4olOdHHKH5kOJNumojdWn+Elv5ICEYTVOa362Vw27TxsK0BLzb1le3EDlO3UbvFK1lnQ==}
     cpu: [arm]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.64.0':
     resolution: {integrity: sha512-G4L/Nnx59d2LvDoV/P4S5lZ7oVLT6hodOHMacqjiq2LL2gts86KbkEBTYL53+fBt0odhf7XPIbIATGoYiJctxg==}
     cpu: [arm]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.64.0':
     resolution: {integrity: sha512-zF16pvJDEUksGYRbfnXne7pdklAyj2XDmJeYKgP93oq0cUyX9Y8O7lUo1R+IY1GagP/YBvCEDCe7eEcAKpw//g==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.64.0':
     resolution: {integrity: sha512-nIggWn8n+w12+R5lsV+PYYoUY8vuObxPAQqJI7WES+9v0qspYuAHoZMfYM0yLxlipasT5BY9ht5W8t5c/rSCkg==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.64.0':
     resolution: {integrity: sha512-WLOTiHPzszP0dxIMsHpFeDSOSB5I49Mj8K4+yKE3H1X/D0JRG5XZ5jrctJLMjnUc/LUzaKiwq6EHWNJ8pup8PA==}
     cpu: [loong64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-loong64-musl@4.64.0':
     resolution: {integrity: sha512-35RK9aRhh7g7Pmeu5gQ01aCvrhXzj9LoBE6xtUcEH1ns+nyTaSzxSpADmBQINu4QiTDGvmQYwo1j5hlg1rRXFw==}
     cpu: [loong64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-ppc64-gnu@4.64.0':
     resolution: {integrity: sha512-RqTfnpoTjuWfPAmqK5p2edt2AMCDJWm6oTn7sKfmyx+6tRga0ip05SJ977o6udTcIiDeF/CJMUfkaN4gtWt6Aw==}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-musl@4.64.0':
     resolution: {integrity: sha512-RQjZPigjxFvFZDijG6rjlSXxhRaTf9zLYVpGK+lVcga64oMqP1GbgVqCb46eHTTceSIgp89Ja0y5aPe3GFBYHg==}
     cpu: [ppc64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-riscv64-gnu@4.64.0':
     resolution: {integrity: sha512-tjL58mgQcTRnDRpeky+Sth1MKQeYi2Ct6r3Luq9E5aTSjnM/i/JbozqZkKqp9thM5+oDSZxo+05f9kdQedfTGA==}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.64.0':
     resolution: {integrity: sha512-ictoRyVaoZ8C67myHef+8hhCa6IplXJJ/xUCkVCxziV4zxMZh+jvhkhGsPBLqj1S72fnqD0QH5zL4lcaa4X7DQ==}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.64.0':
     resolution: {integrity: sha512-8aVvZ2hfr9RLFzBQkQNmYeHLDja8fLeQAmLt757zdKN/B+8L809KlLJKctQjS22wZotptV8G6o7fVPuAs8S1tQ==}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.64.0':
     resolution: {integrity: sha512-2dEF8GAcDKwshUfydD+GhosppNyBzhVUHkdFF3CXd3FpOkzj/RZzF5aoEtzklujklT5qFVRU2GK/cFeLaTNKVg==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.64.0':
     resolution: {integrity: sha512-3XHTvoo2hKkh0MiOfS7SkhHjMaaWF7P4F3drocZZaho/Z8w7h/jpnuBHm91BOQLfvrKHs1yR+zir4E8RI3XzTQ==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-openbsd-x64@4.64.0':
     resolution: {integrity: sha512-HKtkzodL4a3KFWDXDoO61cRynAWTR3LnAE0oGtfG9lcNFpNuVYUFOByxDgNqEvic9rvaQbAj+SFwTEWDptRaIw==}
@@ -3028,28 +2514,24 @@ packages:
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-arm64-musl@4.3.3':
     resolution: {integrity: sha512-Md44bD6veX/PC5iyF8cDVnw4HBIANZepRZZ7a8DQOvkfo5WUBwcp6iAuCUz23u+4SUkhJlD3eL7hNdW8ezd/kA==}
     engines: {node: '>= 20'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-linux-x64-gnu@4.3.3':
     resolution: {integrity: sha512-tx7us1muwOKAKWao2v/GaafFeQboE6aj88vC6ziN2NCGcRm8gWUhwjzg+YdVB1e4boAtdtma4L43onunI6NS4w==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@tailwindcss/oxide-linux-x64-musl@4.3.3':
     resolution: {integrity: sha512-SJxX60smvHgasZoBy11dX6YRjXJFovwWBoedhbQPOBzgFWBHGB+TVPWB9BxzR7TTxU8FQZAI2AyiNCMzFm8Img==}
     engines: {node: '>= 20'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@tailwindcss/oxide-wasm32-wasi@4.3.3':
     resolution: {integrity: sha512-jx1+rPhY/5Ympkktd656HBWEBLxP7dH06losBLjjf5vgCODXvi9KhtftWcMIwTFIDqBr7cRnQkdLnAG+IOlGvQ==}
@@ -3357,9 +2839,6 @@ packages:
 
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
-
-  '@vscode/l10n@0.0.18':
-    resolution: {integrity: sha512-KYSIHVmslkaCDyw013pphY+d7x1qV8IZupYfeIfzNA+nsaWHbn5uPuQRvdRFsa9zFzGeudPuoGoZ1Op4jrJXIQ==}
 
   '@webcontainer/env@1.1.1':
     resolution: {integrity: sha512-6aN99yL695Hi9SuIk1oC88l9o0gmxL1nGWWQ/kNy81HigJ0FoaoTXpytCj6ItzgyCEwA9kF1wixsTuv5cjsgng==}
@@ -4767,9 +4246,6 @@ packages:
   jsonc-parser@3.3.1:
     resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
 
-  jsonc-parser@4.0.0-next.1:
-    resolution: {integrity: sha512-hHbZBY6wf/jvnF9bGTJ0VN3c73ch4VEHalHBPlKVnga5hnYOPNz8RDGS2lLivA8a0HAlfCJiJ9NEbbpKz6+zgg==}
-
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
 
@@ -4844,28 +4320,24 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-arm64-musl@1.32.0:
     resolution: {integrity: sha512-UpQkoenr4UJEzgVIYpI80lDFvRmPVg6oqboNHfoH4CQIfNA+HOrZ7Mo7KZP02dC6LjghPQJeBsvXhJod/wnIBg==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-linux-x64-gnu@1.32.0:
     resolution: {integrity: sha512-V7Qr52IhZmdKPVr+Vtw8o+WLsQJYCTd8loIfpDaMRWGUZfBOYEJeyJIkqGIDMZPwPx24pUMfwSxxI8phr/MbOA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-x64-musl@1.32.0:
     resolution: {integrity: sha512-bYcLp+Vb0awsiXg/80uCRezCYHNg1/l3mt0gzHnWV9XP1W5sKa5/TCdGWaR/zBM2PeF/HbsQv/j2URNOiVuxWg==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   lightningcss-win32-arm64-msvc@1.32.0:
     resolution: {integrity: sha512-8SbC8BR40pS6baCM8sbtYDSwEVQd4JlFTOlaD3gWGHfThTcABnNDBda6eTZeqbofalIJhFx0qKzgHJmcPTnGdw==}
@@ -5768,9 +5240,6 @@ packages:
   remend@1.4.0:
     resolution: {integrity: sha512-mHiYhhwphs1IgIZmkToKLwJn0U99IjPXuutkA2acrNcG0vlEq2G4TGnd2eT0saIHwh2KjaCpvleHcsd5SAz96A==}
 
-  request-light@0.8.0:
-    resolution: {integrity: sha512-bH6E4PMmsEXYrLX6Kr1vu+xI3HproB1vECAwaPSJeroLE1kpWE3HR27uB4icx+6YORu1ajqBJXxuedv8ZQg5Lw==}
-
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
     engines: {node: '>=0.10.0'}
@@ -6426,35 +5895,6 @@ packages:
         optional: true
       jsdom:
         optional: true
-
-  vscode-css-languageservice@7.0.0-next.2:
-    resolution: {integrity: sha512-fC+0QQhQInm8UWBRN6LVhQ7C6eb+bpvdyMGsj2fOzIh4YatGjwS/GaAP3NHz9HKiZH3IltfWv6shRQriqDEDJg==}
-
-  vscode-html-languageservice@6.0.0-next.2:
-    resolution: {integrity: sha512-qIDd+QA2GaChyABgR1chw9CQAdUVebl9jOPlxqt+pKnJo1+Xj9BMlJZXQ8gS6ZqaRi8Z/Boz7cQkG/gIP7h0xw==}
-
-  vscode-json-languageservice@6.0.0-next.4:
-    resolution: {integrity: sha512-r65oYpzysoBz2J7/eyP7rU8bApUxvbBkLxvdkxdtbTnvmxO8Jv5Ls2+dqejXduRXU0Pue4XMl1wnypzvJbHi4g==}
-
-  vscode-jsonrpc@9.0.3:
-    resolution: {integrity: sha512-qETYf9PCl1lVfwR+oBmMfc4vP2nqLNA35ABxorw3j06+xlKRgDVxbLgKm4Y/xPL0YWdeDjLoI4ImICIT3nB0zQ==}
-    engines: {node: '>=14.0.0'}
-
-  vscode-languageserver-protocol@3.18.4:
-    resolution: {integrity: sha512-CCXbyr99dafRJzJH/0Ryk7ly5T8XPmSR0//OuF2w4m+9JiOin7zcAT5iET8GRE7Z9taFBejb3GbM0a0mbjdbrg==}
-
-  vscode-languageserver-textdocument@1.0.15:
-    resolution: {integrity: sha512-Gsfr9S8LU3S6885cS+NaleasJ0n3V5y/SOTqHCifQiXWFw3G9w9/YItDfwHrlCz+dSZWWZ8ilYVMcJe7Sz7Sxw==}
-
-  vscode-languageserver-types@3.18.4:
-    resolution: {integrity: sha512-nQsacoiijvl0fRf2q28uFDrAVwRhdCa3QveiF7/CX0r18mLR5FU/1WskSsCKOjmEbtteKUnY8x8Yzxop+k0zwg==}
-
-  vscode-languageserver@10.1.2:
-    resolution: {integrity: sha512-pXPWde3RytdeBVEs6PulOOT5OpeXC5GkWRpcT11f5rNn41jviQsAYPyAqJ/0oVGETQLKPJtYbHNiMPlfLb0NTQ==}
-    hasBin: true
-
-  vscode-uri@3.2.0:
-    resolution: {integrity: sha512-m2gXo3bn0G1kT9InzMf07fTbqMbGtyckj3bH5ktLO+1Ssv+yiATZ4dhwaQv9UZWxJh6E9IFGnQyjgWVDWVBDrg==}
 
   w3c-xmlserializer@5.0.0:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
@@ -7674,6 +7114,10 @@ snapshots:
       zod-to-json-schema: 3.25.2(zod@4.6.5)
     transitivePeerDependencies:
       - supports-color
+
+  '@muse-code/sdk@1.4.10(@types/node@26.6.4)':
+    optionalDependencies:
+      '@types/node': 26.6.4
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
@@ -9345,8 +8789,6 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@vscode/l10n@0.0.18': {}
-
   '@webcontainer/env@1.1.1': {}
 
   '@workflow/serde@4.1.0': {}
@@ -10968,8 +10410,6 @@ snapshots:
 
   jsonc-parser@3.3.1: {}
 
-  jsonc-parser@4.0.0-next.1: {}
-
   jsonfile@4.0.0:
     optionalDependencies:
       graceful-fs: 4.2.11
@@ -12309,8 +11749,6 @@ snapshots:
 
   remend@1.4.0: {}
 
-  request-light@0.8.0: {}
-
   require-directory@2.1.1: {}
 
   require-from-string@2.0.2: {}
@@ -12976,45 +12414,6 @@ snapshots:
       jsdom: 29.1.1(@noble/hashes@2.4.0)
     transitivePeerDependencies:
       - msw
-
-  vscode-css-languageservice@7.0.0-next.2:
-    dependencies:
-      '@vscode/l10n': 0.0.18
-      vscode-languageserver-textdocument: 1.0.15
-      vscode-languageserver-types: 3.18.4
-      vscode-uri: 3.2.0
-
-  vscode-html-languageservice@6.0.0-next.2:
-    dependencies:
-      '@vscode/l10n': 0.0.18
-      vscode-languageserver-textdocument: 1.0.15
-      vscode-languageserver-types: 3.18.4
-      vscode-uri: 3.2.0
-
-  vscode-json-languageservice@6.0.0-next.4:
-    dependencies:
-      '@vscode/l10n': 0.0.18
-      jsonc-parser: 4.0.0-next.1
-      vscode-languageserver-textdocument: 1.0.15
-      vscode-languageserver-types: 3.18.4
-      vscode-uri: 3.2.0
-
-  vscode-jsonrpc@9.0.3: {}
-
-  vscode-languageserver-protocol@3.18.4:
-    dependencies:
-      vscode-jsonrpc: 9.0.3
-      vscode-languageserver-types: 3.18.4
-
-  vscode-languageserver-textdocument@1.0.15: {}
-
-  vscode-languageserver-types@3.18.4: {}
-
-  vscode-languageserver@10.1.2:
-    dependencies:
-      vscode-languageserver-protocol: 3.18.4
-
-  vscode-uri@3.2.0: {}
 
   w3c-xmlserializer@5.0.0:
     dependencies:

@@ -33,6 +33,8 @@ export type StoredChat = {
   sessionFile: string | null
   // The Claude Code session a Claude Code chat resumes.
   claudeSessionId?: string
+  // The Muse session a Muse chat resumes.
+  museSessionId?: string
   named: boolean
   titleCustom: boolean
   titleGenerated?: boolean

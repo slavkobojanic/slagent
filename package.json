@@ -40,6 +40,7 @@
     "@earendil-works/pi-ai": "1.0.4",
     "@earendil-works/pi-coding-agent": "^1.0.4",
     "@earendil-works/pi-mcp": "^1.0.4",
+    "@muse-code/sdk": "^1.4.10",
     "electron-updater": "^6.8.9",
     "node-pty": "1.1.0",
     "react-is": "^19.3.0",

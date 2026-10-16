@@ -111,7 +111,7 @@ export const EMPTY_PERSONALISATION: Personalisation = {
   pinnedFiles: null,
 }
 
-export type ModelProvider = "openrouter" | "claude-code"
+export type ModelProvider = "openrouter" | "claude-code" | "muse"
 
 // Which OpenRouter providers to favour when several serve the same model.
 export type ModelRouting = "speed" | "cost" | "balance"
@@ -211,6 +211,9 @@ export type AssistantMessage = {
   // works and in place of "Thinking...". Absent when no small model is set.
   workingLabel?: string
   thinkingLabel?: string
+  // Locally measured generation speed. Historical Pi messages don't include timing data.
+  model?: string
+  tokensPerSecond?: number
 }
 
 // Live state of one subagent run inside the subagent tool, streamed via the tool's details.
