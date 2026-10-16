@@ -37,7 +37,7 @@ import type {
 import { CHAT_SYSTEM_PROMPT } from "./chat-prompt"
 import { answered, parseQuestions } from "./extensions/ask-user"
 import { appLog } from "./app-log"
-import { personalisationPrompt } from "./extensions/personalisation"
+import { systemPromptAppend } from "./extensions/personalisation"
 import { errorMessage, formatValue, toolLabel, truncate } from "./format"
 import { ToolDescriber, type ToolCallSeed } from "./describe"
 import { preparePrompt, type PreparedPrompt, queueDetail } from "./prompt"
@@ -465,7 +465,7 @@ export class ClaudeRuntime {
   // One Claude Code process per chat, fed through a queue so follow-ups and
   // mid-turn messages reach the same session.
   private ensureSession(): InputQueue {
-    const append = personalisationPrompt(this.options.personalisation())
+    const append = systemPromptAppend(this.options.personalisation())
     if (this.input && this.session && !this.streaming && this.sessionPersonalisation !== append) {
       // The recorded system prompt would ignore a changed append on resume, so
       // start a fresh process; resume keeps the conversation. Happens only

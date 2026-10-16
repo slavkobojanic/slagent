@@ -85,17 +85,35 @@ export function pinnedFilesPrompt(files: PinnedFile[]): string | null {
   return `[PINNED CONTEXT]\nFiles the user pinned. They are always in context and never compacted. Follow them like personal instructions; they override your defaults.\n${sections}`
 }
 
+// Harness behavior, not a preference: agents default to stopping at the next
+// milestone to verify direction, which defeats "do everything" style asks.
+// This is always present, independent of the personalisation settings.
+export function workModePrompt(): string {
+  return [
+    "[WORK MODE]",
+    "Long jobs. When the user asks for the whole job in one go (\"do everything\", \"keep going\", \"finish it all\"), don't stop at the next milestone.",
+    "Work through every remaining milestone of the todo list in a single run, making reasonable decisions yourself; note any assumptions in the final summary.",
+    "Stop early only for hard blockers: missing credentials, choices that would change the data model, or tooling that fails and can't be fixed from the repo.",
+  ].join("\n")
+}
+
+// Everything the harness appends to the base system prompt on every run, in
+// both runtimes. Kept in one place so the two stay identical.
+export function systemPromptAppend(p: Personalisation): string | null {
+  const parts = [personalisationPrompt(p), pinnedFilesPrompt(p.pinnedFiles ?? []), workModePrompt()].filter(
+    (part): part is string => part !== null,
+  )
+  return parts.length === 0 ? null : parts.join("\n\n")
+}
+
 export function personalisationExtension(get: () => Personalisation): ExtensionFactory {
   return (pi) => {
     pi.on("before_agent_start", (event) => {
-      const prefs = get()
-      const parts = [personalisationPrompt(prefs), pinnedFilesPrompt(prefs.pinnedFiles ?? [])].filter(
-        (part): part is string => part !== null,
-      )
-      if (parts.length === 0) return
+      const append = systemPromptAppend(get())
+      if (!append) return
       // The result replaces the prompt for this turn, so keep everything the
       // session already has and append ours at the end.
-      return { systemPrompt: `${event.systemPrompt}\n\n${parts.join("\n\n")}` }
+      return { systemPrompt: `${event.systemPrompt}\n\n${append}` }
     })
   }
 }
