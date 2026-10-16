@@ -28,8 +28,10 @@ export function museProvider(): Provider<MuseApi> {
     auth: { apiKey: museAuth },
     getModels: () => models,
     async refreshModels(context) {
-      // The catalog is provider-owned in-memory state; nothing persists.
-      if (!context.allowNetwork) return
+      // The catalog is provider-owned in-memory state; nothing persists. The
+      // probe is a local host read (muse serve serves its on-disk catalog
+      // cache), so it also runs during cache-only startup.
+      if (context.signal.aborted) return
       const found = await museCatalog()
       if (found.length === 0) return
       models = found
