@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { fireEvent, render, screen } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
 import type { ModelSection } from "@/features/models/model-groups"
 import { ModelList, type ModelListProps } from "@/features/models/model-list/model-list"
 
@@ -50,5 +50,26 @@ describe("ModelList", () => {
     render(<ModelList {...defaults} canSelect={false} />)
 
     expect((screen.getByRole("button", { name: /Claude Sonnet/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole("button", { name: "Custom" }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it("reveals a custom OpenRouter model field and submits its tag", () => {
+    const onSelect = vi.fn()
+    render(<ModelList {...defaults} onSelect={onSelect} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }))
+    fireEvent.change(screen.getByRole("textbox", { name: "OpenRouter model tag" }), {
+      target: { value: "google/gemini-4-argon" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Use model" }))
+
+    expect(onSelect).toHaveBeenCalledWith("google/gemini-4-argon")
+  })
+
+  it("shows Custom even when the search has no matching models", () => {
+    render(<ModelList {...defaults} sections={[]} />)
+
+    expect(screen.getByText("No matching models")).toBeDefined()
+    expect(screen.getByRole("button", { name: "Custom" })).toBeDefined()
   })
 })
