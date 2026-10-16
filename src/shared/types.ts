@@ -190,7 +190,8 @@ export type AppMeta = {
   extensions: ExtensionInfo[]
   extensionErrors: string[]
   usageTotals: UsageTotals
-  museUsage: MuseSubscriptionUsage | null
+  // A main process from before Muse existed sends metas without one.
+  museUsage?: MuseSubscriptionUsage | null
   personalisation: Personalisation
   editor: EditorPrefs
   // The websocket server other devices connect through, or null before it starts.
