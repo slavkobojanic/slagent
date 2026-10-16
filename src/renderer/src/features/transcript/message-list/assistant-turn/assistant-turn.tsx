@@ -5,6 +5,8 @@ import { Shimmer } from "@/components/ai-elements/shimmer"
 
 export type AssistantTurnProps = {
   messageId: string
+  model: string | null
+  tokensPerSecond: number | null
   thinking: string | null
   thinkingStreaming: boolean
   // Short model-written phrases for the working and thinking shimmers, absent
@@ -20,6 +22,8 @@ export type AssistantTurnProps = {
 
 export function AssistantTurn({
   messageId,
+  model,
+  tokensPerSecond,
   thinking,
   thinkingStreaming,
   workingLabel,
@@ -41,6 +45,11 @@ export function AssistantTurn({
       {waiting ? (workingLabel ? <WorkingLabel label={workingLabel} /> : <Shimmer>Working</Shimmer>) : null}
       {text}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {tokensPerSecond !== null ? (
+        <p className="text-xs tabular-nums text-muted-foreground" title={model ?? undefined}>
+          {tokensPerSecond.toFixed(1)} tok/s{model ? ` · ${model}` : ""}
+        </p>
+      ) : null}
     </Message>
   )
 }

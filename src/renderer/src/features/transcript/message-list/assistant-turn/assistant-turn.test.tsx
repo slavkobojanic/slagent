@@ -5,6 +5,8 @@ import { viewMarkup } from "@/test/view-markup"
 function props(overrides: Partial<AssistantTurnProps> = {}): AssistantTurnProps {
   return {
     messageId: "a1",
+    model: null,
+    tokensPerSecond: null,
     thinking: null,
     thinkingStreaming: false,
     workingLabel: null,
@@ -43,6 +45,19 @@ describe("AssistantTurn", () => {
     const markup = viewMarkup(<AssistantTurn {...props({ thinking: "Considering the options", thinkingStreaming: true })} />)
 
     expect(markup).toContain("Thinking...")
+  })
+
+  it("shows locally measured TPS with the model that generated the reply", () => {
+    const markup = viewMarkup(<AssistantTurn {...props({ model: "openai/gpt-4.1", tokensPerSecond: 32.45 })} />)
+
+    expect(markup).toContain("32.5 tok/s · openai/gpt-4.1")
+    expect(markup).toContain('title="openai/gpt-4.1"')
+  })
+
+  it("hides TPS when generation timing is unavailable", () => {
+    const markup = viewMarkup(<AssistantTurn {...props()} />)
+
+    expect(markup).not.toContain("tok/s")
   })
 
   it("shows the error in the destructive colour", () => {

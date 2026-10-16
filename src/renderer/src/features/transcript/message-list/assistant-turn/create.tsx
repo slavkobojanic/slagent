@@ -31,6 +31,8 @@ export function createAssistantTurn({
     return (
       <AssistantTurn
         messageId={turn.id}
+        model={assistant?.model ?? null}
+        tokensPerSecond={assistant?.tokensPerSecond ?? null}
         thinking={assistant?.thinking || null}
         thinkingStreaming={assistant?.streaming ?? false}
         workingLabel={assistant?.workingLabel ?? null}

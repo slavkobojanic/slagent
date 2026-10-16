@@ -236,6 +236,7 @@ export class ChatRuntime {
   private unsubscribe: (() => void) | null = null
   private sessionToken: object | null = null
   private currentAssistantId: string | null = null
+  private assistantFirstTokenAt: number | null = null
   private thinkingAsked = false
   private readonly describer: ToolDescriber
   private pendingModel: AgentModel | null = null
@@ -897,6 +898,7 @@ export class ChatRuntime {
       // Narrations left over from a cancelled tool call would mislabel this
       // message's tools, so they never carry over.
       this.pendingNarrations = []
+      this.assistantFirstTokenAt = null
       this.ensureAssistant()
       this.emit(false)
       return
@@ -905,6 +907,9 @@ export class ChatRuntime {
     if (event.type === "message_update" && event.message.role === "assistant") {
       const bubble = this.ensureAssistant()
       const update = event.assistantMessageEvent
+      if ((update.type === "text_delta" || update.type === "thinking_delta") && update.delta && this.assistantFirstTokenAt === null) {
+        this.assistantFirstTokenAt = Date.now()
+      }
       if (update.type === "text_delta") bubble.text += update.delta
       if (update.type === "thinking_delta") {
         if (bubble.thinking) bubble.thinking += update.delta
@@ -926,6 +931,10 @@ export class ChatRuntime {
       if (parts.thinking) bubble.thinking = parts.thinking
       bubble.streaming = false
       bubble.error = event.message.errorMessage ?? null
+      bubble.model = event.message.model
+      const elapsedMs = this.assistantFirstTokenAt === null ? 0 : Date.now() - this.assistantFirstTokenAt
+      bubble.tokensPerSecond = calculateTokensPerSecond(event.message.usage.output, elapsedMs) ?? undefined
+      this.assistantFirstTokenAt = null
       this.currentAssistantId = null
       this.recordUsage(event.message)
       // Pi saves the message, and its usage, right after this event.
@@ -1231,6 +1240,11 @@ function imageName(mimeType: string): string {
   if (mimeType === "image/gif") return "snapshot.gif"
   if (mimeType === "image/webp") return "snapshot.webp"
   return "snapshot.png"
+}
+
+export function calculateTokensPerSecond(outputTokens: number, durationMs: number): number | null {
+  if (!Number.isFinite(outputTokens) || outputTokens <= 0 || !Number.isFinite(durationMs) || durationMs <= 0) return null
+  return outputTokens / (durationMs / 1000)
 }
 
 function normalizeMessage(message: ChatMessage): ChatMessage {

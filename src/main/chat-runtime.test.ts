@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest"
 import { CHAT_TOOLS } from "./chat-prompt"
-import { CODING_TOOLS } from "./chat-runtime"
+import { calculateTokensPerSecond, CODING_TOOLS } from "./chat-runtime"
+
+describe("generation speed", () => {
+  it("computes output tokens per second", () => {
+    expect(calculateTokensPerSecond(120, 4_000)).toBe(30)
+  })
+
+  it("omits a speed when token count or duration is unavailable", () => {
+    expect(calculateTokensPerSecond(0, 1_000)).toBeNull()
+    expect(calculateTokensPerSecond(20, 0)).toBeNull()
+  })
+})
 
 describe("tool allowlists", () => {
   // Pi hides any tool missing from the allowlist, so each mode must name it.
