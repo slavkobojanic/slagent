@@ -1,0 +1,26 @@
+{
+  "name": "pi-muse-bridge",
+  "version": "0.1.0",
+  "description": "Pi extension that runs Meta's Muse Code (via @muse-code/sdk) as a model provider",
+  "keywords": ["pi-package"],
+  "type": "module",
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./src/index.ts"]
+  },
+  "dependencies": {
+    "@muse-code/sdk": "^1.4.10"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  }
+}
