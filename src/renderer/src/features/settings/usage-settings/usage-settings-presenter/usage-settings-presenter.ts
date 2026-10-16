@@ -23,6 +23,11 @@ export class UsageSettingsPresenter {
     } catch (error) {
       this.log.warn("usage-stats-failed", { error })
     }
+    try {
+      this.store.setMuseUsage(await this.api.museUsage())
+    } catch (error) {
+      this.log.warn("muse-usage-failed", { error })
+    }
   }
 
   handleMetric = () => {

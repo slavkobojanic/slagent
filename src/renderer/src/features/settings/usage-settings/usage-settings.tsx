@@ -1,6 +1,7 @@
-import type { UsageModelStats, UsageStats } from "@shared/types"
+import type { MuseSubscriptionUsage, UsageModelStats, UsageStats } from "@shared/types"
 import { formatCost, formatTokens } from "@/lib/format"
 import { ModelTable } from "./model-table"
+import { MuseUsage } from "./muse-usage"
 import { SpendChart } from "./spend-chart"
 import { UsageHeatmap } from "./usage-heatmap"
 import { PurposeTable } from "./purpose-table"
@@ -10,6 +11,7 @@ import type { UsageSort } from "./usage-grid"
 
 export type UsageSettingsProps = {
   stats: UsageStats | null
+  museUsage?: MuseSubscriptionUsage | null
   metric: "tokens" | "dollars"
   cells: HeatCell[]
   sortedModels: UsageModelStats[]
@@ -18,7 +20,7 @@ export type UsageSettingsProps = {
   onSort: (key: "model" | "input" | "output" | "cache" | "cost" | "share") => void
 }
 
-export function UsageSettings({ stats, metric, cells, sortedModels, sort, onMetric, onSort }: UsageSettingsProps) {
+export function UsageSettings({ stats, museUsage, metric, cells, sortedModels, sort, onMetric, onSort }: UsageSettingsProps) {
   if (stats === null) {
     return (
       <div className="space-y-4">
@@ -50,6 +52,7 @@ export function UsageSettings({ stats, metric, cells, sortedModels, sort, onMetr
         </button>
       </div>
       {stats.importing ? <ImportingNote /> : null}
+      {museUsage ? <MuseUsage usage={museUsage} /> : null}
       <section className="space-y-2">
         <p className="text-base font-medium text-white">
           {formatTokens(stats.totalTokens)} tokens · {formatCost(stats.totalCost)} across {stats.totalTurns} turns

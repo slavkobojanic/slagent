@@ -26,6 +26,7 @@ import type {
   ModelProvider,
   ModelChange,
   ModelRouting,
+  MuseSubscriptionUsage,
   OpenRouterStatus,
   Personalisation,
   PinnedFile,
@@ -51,7 +52,7 @@ import { EMPTY_PERSONALISATION } from "../shared/types"
 import { ChatRuntime, type AgentModel } from "./chat-runtime"
 import type { TaskTerminalSpawner } from "./extensions/background-tasks"
 import { CLAUDE_MODELS, ClaudeRuntime, claudeModel, isClaudeModel } from "./claude-runtime"
-import { MUSE_MODELS, MuseRuntime, isMuseModel, museCatalog, museInstalled } from "./muse-runtime"
+import { MUSE_MODELS, MuseRuntime, isMuseModel, museCatalog, museInstalled, museSubscriptionUsage } from "./muse-runtime"
 import type { ComputerUse } from "./computer"
 import { draftCommands } from "./commands"
 import { searchChats } from "./search"
@@ -163,6 +164,9 @@ export class AgentHost {
   // The Muse catalog, probed from the user's own Muse Code install; the static
   // default until the probe answers, and hidden when it fails.
   private museModels: AppMeta["models"] = MUSE_MODELS
+  // The subscription's rolling usage windows, from the boot probe and every
+  // live Muse chat that reports one.
+  private museUsage: MuseSubscriptionUsage | null = null
   private openRouter: OpenRouterStatus = { configured: false, source: null, type: null, envKey: false }
   private ready = false
   private startupError: string | null = null
@@ -1164,6 +1168,14 @@ export class AgentHost {
         stored.cost = usage.cost
         this.scheduleUsageSave(projectId)
       },
+      onUsageRecord: (record) => {
+        if (!record.model || !record.usage) return
+        this.usage.recordMuse(chatId, projectId, Date.now(), record.model, record.usage)
+      },
+      onSubscriptionUsage: (usage) => {
+        this.museUsage = usage
+        this.publishMeta(null)
+      },
       onSettled: () => {
         const open = this.isViewed(projectId, chatId)
         if (!open || !this.notifier.focused(projectId, chatId)) {
@@ -1390,8 +1402,13 @@ export class AgentHost {
   private async refreshMuseModels(): Promise<void> {
     const found = await museCatalog()
     if (found.length > 0) this.museModels = found
+    this.museUsage = (await museSubscriptionUsage()) ?? this.museUsage
     this.models = this.catalog()
     this.publishMeta(null)
+  }
+
+  async museUsageState(): Promise<MuseSubscriptionUsage | null> {
+    return this.museUsage
   }
 
   private applyDraftModel(): void {
@@ -1586,6 +1603,7 @@ export class AgentHost {
       extensions: cached?.extensions ?? [],
       extensionErrors: cached?.errors ?? [],
       usageTotals: this.usageTotals(),
+      museUsage: this.museUsage,
       personalisation: this.personalisation,
       editor: this.editor,
       server: this.getServerInfo(),

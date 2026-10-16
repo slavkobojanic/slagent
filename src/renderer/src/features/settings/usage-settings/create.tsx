@@ -20,6 +20,7 @@ export function createUsageSettings({ api, log }: { api: API; log: Log }): Compo
     return (
       <UsageSettings
         stats={store.stats}
+        museUsage={store.museUsage}
         metric={store.metric}
         cells={store.cells}
         sortedModels={store.sortedModels}

@@ -233,6 +233,8 @@ export function createCallHandler(deps: CallDeps): CallHandler {
         return deps.mcp()?.remove(requireName(params[0]))
       case "usageStats":
         return host.usageStats()
+      case "museUsage":
+        return host.museUsageState()
       case "terminalCreate":
         return deps.terminal()?.create()
       case "updateStatus":

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { MUSE_DEFAULT_ID, MUSE_MODELS, isMuseModel, museModel, museModelId } from "./muse-runtime"
+import { MUSE_DEFAULT_ID, MUSE_MODELS, isMuseModel, museModel, museModelId, subscriptionUsage } from "./muse-runtime"
 
 describe("muse model ids", () => {
   it("can recognize Muse model ids", () => {
@@ -18,5 +18,33 @@ describe("muse model ids", () => {
   it("can keep the host default as its own model", () => {
     expect(museModel(MUSE_DEFAULT_ID)).toEqual(MUSE_MODELS[0])
     expect(MUSE_MODELS[0]?.provider).toBe("muse")
+  })
+})
+
+describe("subscriptionUsage", () => {
+  it("can map the wire's windows to the shared shape", () => {
+    expect(
+      subscriptionUsage({
+        observedAtMs: 1_700_000_000_000,
+        tier: "power",
+        weekly: { usedPercent: 40, resetsAtMs: 1_700_060_000_000 },
+        window: { usedPercent: 12, resetsAtMs: 1_700_030_000_000, windowDurationMins: 300 },
+      }),
+    ).toEqual({
+      tier: "power",
+      weekly: { usedPercent: 40, resetsAtMs: 1_700_060_000_000 },
+      window: { usedPercent: 12, resetsAtMs: 1_700_030_000_000, windowDurationMins: 300 },
+      observedAtMs: 1_700_000_000_000,
+    })
+  })
+
+  it("can keep the window's length", () => {
+    const mapped = subscriptionUsage({
+      observedAtMs: 1,
+      tier: "t",
+      weekly: { usedPercent: 0, resetsAtMs: 2 },
+      window: { usedPercent: 0, resetsAtMs: 3, windowDurationMins: 300 },
+    })
+    expect(mapped.window.windowDurationMins).toBe(300)
   })
 })

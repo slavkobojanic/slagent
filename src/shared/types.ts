@@ -135,6 +135,23 @@ export type TitleModelOption = {
   name: string
 }
 
+// The Muse subscription's rolling usage windows, as of the last observation.
+// Percentages come verbatim from Meta; over-quota values above 100 are valid.
+export type MuseUsageWindow = {
+  usedPercent: number
+  resetsAtMs: number
+  // The per-block window (the 5-hour-class block) carries its length in
+  // minutes; the weekly window omits it.
+  windowDurationMins?: number
+}
+
+export type MuseSubscriptionUsage = {
+  tier: string
+  weekly: MuseUsageWindow
+  window: MuseUsageWindow
+  observedAtMs: number
+}
+
 export type OpenRouterStatus = {
   configured: boolean
   source: string | null
@@ -173,6 +190,7 @@ export type AppMeta = {
   extensions: ExtensionInfo[]
   extensionErrors: string[]
   usageTotals: UsageTotals
+  museUsage: MuseSubscriptionUsage | null
   personalisation: Personalisation
   editor: EditorPrefs
   // The websocket server other devices connect through, or null before it starts.
@@ -754,6 +772,7 @@ export type SlagentApi = {
   mcpSetEnabled: (name: string, enabled: boolean) => Promise<McpServerStatus[]>
   mcpRemove: (name: string) => Promise<McpServerStatus[]>
   usageStats: () => Promise<UsageStats>
+  museUsage: () => Promise<MuseSubscriptionUsage | null>
   onEvent: (listener: (event: UiEvent) => void) => () => void
   // The socket dropped and came back; the caller re-fetches the snapshot.
   onReconnect: (listener: () => void) => () => void

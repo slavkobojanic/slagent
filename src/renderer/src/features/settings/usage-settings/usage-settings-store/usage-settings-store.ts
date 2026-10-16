@@ -1,10 +1,11 @@
 import { makeAutoObservable } from "mobx"
-import type { UsageModelStats, UsageStats } from "@shared/types"
+import type { MuseSubscriptionUsage, UsageModelStats, UsageStats } from "@shared/types"
 import { heatCells, type HeatCell, type UsageSort, type UsageSortKey } from "@/features/settings/usage-settings/usage-grid"
 
 // Everything the usage tab shows, plus the two choices the user makes there.
 export class UsageSettingsStore {
   stats: UsageStats | null = null
+  museUsage: MuseSubscriptionUsage | null = null
   metric: "tokens" | "dollars" = "tokens"
   sort: UsageSort = { key: "cost", dir: "desc" }
 
@@ -14,6 +15,10 @@ export class UsageSettingsStore {
 
   setStats(stats: UsageStats) {
     this.stats = stats
+  }
+
+  setMuseUsage(usage: MuseSubscriptionUsage | null) {
+    this.museUsage = usage
   }
 
   setMetric(metric: "tokens" | "dollars") {

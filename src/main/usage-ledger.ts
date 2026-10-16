@@ -1,7 +1,7 @@
 import { DatabaseSync, type StatementSync } from "node:sqlite"
 import type { UsageCumulative, UsageDay, UsageStats } from "../shared/types"
 
-export type UsageRuntime = "pi" | "claude"
+export type UsageRuntime = "pi" | "claude" | "muse"
 export type UsageSource = "live" | "backfill"
 
 // What a turn spent its tokens on. "agent" is the coding conversation itself;
@@ -195,6 +195,36 @@ export class UsageLedger {
     }
     this.claudeSnapshots.set(chatId, new Map(Object.entries(modelUsage)))
     if (rows.length > 0) this.recordBackfill(rows)
+  }
+
+  // A Muse model completion reports its own usage. The subscription pays, so
+  // the row's cost stays 0; only tokens are meaningful.
+  recordMuse(
+    chatId: string,
+    projectId: string,
+    ts: number,
+    model: string,
+    usage: { inputTokens?: number; outputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number },
+  ): void {
+    const input = usage.inputTokens ?? 0
+    const output = usage.outputTokens ?? 0
+    if (input === 0 && output === 0) return
+    this.insert({
+      ts,
+      chatId,
+      projectId,
+      runtime: "muse",
+      model,
+      provider: "meta",
+      input,
+      output,
+      cacheRead: usage.cacheReadTokens ?? 0,
+      cacheWrite: usage.cacheWriteTokens ?? 0,
+      cost: 0,
+      source: "live",
+      purpose: "agent",
+      key: `muse:${chatId}:${ts}:${model}`,
+    })
   }
 
   forgetChat(chatId: string): void {

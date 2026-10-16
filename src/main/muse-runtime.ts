@@ -14,6 +14,7 @@ import {
 import type {
   ApprovalRequestParams,
   Item,
+  SubscriptionUsage,
   ItemDeltaParams,
   ModelCatalogEntry,
   SessionContextUsageParams,
@@ -30,6 +31,7 @@ import type {
   ChatMessage,
   EffortLevel,
   ModelOption,
+  MuseSubscriptionUsage,
   Personalisation,
   PromptRequest,
   QueueMode,
@@ -173,6 +175,13 @@ export type MuseRuntimeOptions = {
   onModel: (modelId: string) => void
   onSettled: () => void
   onUsage: (usage: UsageState) => void
+  // Per-model completion usage, so the usage log gets Muse rows.
+  onUsageRecord?: (record: {
+    model: string | null
+    usage?: { inputTokens?: number; outputTokens?: number; cacheReadTokens?: number; cacheWriteTokens?: number }
+  }) => void
+  // The subscription's rolling usage windows, as of each observation.
+  onSubscriptionUsage?: (usage: MuseSubscriptionUsage) => void
   onQuestion: (request: QuestionRequest) => void
   // Keeps a proposed plan across restarts, so a crash shows it again.
   planProposal?: string | null
@@ -649,7 +658,13 @@ export class MuseRuntime {
         this.settleQuestion(null)
         return
       case "session/tokenUsage":
-        if (isTokenUsage(params)) this.onTokenUsage(params.cumulative)
+        if (isTokenUsage(params)) {
+          this.onTokenUsage(params.cumulative)
+          if (params.usage && params.modelId) this.options.onUsageRecord?.({ model: params.modelId, usage: params.usage })
+        }
+        return
+      case "usage/changed":
+        if (isSubscriptionUsage(params)) this.options.onSubscriptionUsage?.(subscriptionUsage(params))
         return
       case "session/contextUsage":
         if (isContextUsage(params)) this.onContextUsage(params)
@@ -1089,8 +1104,49 @@ function isUserInput(params: unknown): params is UserInputRequestParams {
   return typeof params === "object" && params !== null && "userInputId" in params && "questions" in params
 }
 
-function isTokenUsage(params: unknown): params is { cumulative: SessionTokenUsageParams["cumulative"] } {
+function isTokenUsage(params: unknown): params is SessionTokenUsageParams {
   return typeof params === "object" && params !== null && "cumulative" in params
+}
+
+function isSubscriptionUsage(params: unknown): params is SubscriptionUsage {
+  return typeof params === "object" && params !== null && "tier" in params && "weekly" in params
+}
+
+// Maps the wire's subscription usage to the shared shape the settings show.
+export function subscriptionUsage(usage: SubscriptionUsage): MuseSubscriptionUsage {
+  return {
+    tier: usage.tier,
+    weekly: { usedPercent: usage.weekly.usedPercent, resetsAtMs: usage.weekly.resetsAtMs },
+    window: {
+      usedPercent: usage.window.usedPercent,
+      resetsAtMs: usage.window.resetsAtMs,
+      windowDurationMins: usage.window.windowDurationMins,
+    },
+    observedAtMs: usage.observedAtMs,
+  }
+}
+
+// The subscription's last-observed usage windows, read from a short-lived
+// host. Null until some turn has been observed on the user's install.
+export async function museSubscriptionUsage(): Promise<MuseSubscriptionUsage | null> {
+  const muse = findMuse()
+  if (!muse) return null
+  let connection: SpawnedMspConnection | null = null
+  try {
+    connection = await spawnMspConnection({
+      command: muse,
+      args: ["serve"],
+      cwd: homedir(),
+      env: museEnv(),
+      onStderr: () => {},
+    }).initialize({ clientInfo: MUSE_CLIENT })
+    const result = await connection.connection.command("usage/read", {})
+    return isSubscriptionUsage(result.usage) ? subscriptionUsage(result.usage) : null
+  } catch {
+    return null
+  } finally {
+    await connection?.close().catch(() => undefined)
+  }
 }
 
 function isContextUsage(params: unknown): params is SessionContextUsageParams {

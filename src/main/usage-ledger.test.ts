@@ -144,6 +144,31 @@ describe("UsageLedger", () => {
     })
   })
 
+  describe("recordMuse", () => {
+    it("can store a model completion with a zero cost", () => {
+      const usage = new UsageLedger(ledgerFile())
+      usage.recordMuse("chat-1", "project-1", 1_000, "muse-wonder-1.0", {
+        inputTokens: 100,
+        outputTokens: 50,
+        cacheReadTokens: 20,
+        cacheWriteTokens: 30,
+      })
+
+      const stats = usage.stats()
+      expect(stats.totalTokens).toBe(200)
+      expect(stats.totalCost).toBe(0)
+      expect(stats.models[0]?.model).toBe("muse-wonder-1.0")
+      expect(stats.models[0]?.input).toBe(100)
+    })
+
+    it("can store nothing for a completion without tokens", () => {
+      const usage = new UsageLedger(ledgerFile())
+      usage.recordMuse("chat-1", "project-1", 1_000, "muse-wonder-1.0", {})
+
+      expect(usage.stats().totalTurns).toBe(0)
+    })
+  })
+
   describe("recordBackfill", () => {
     it("can store backfill rows and dedupe by key", () => {
       const usage = new UsageLedger(ledgerFile())
