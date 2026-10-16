@@ -3,6 +3,7 @@ import type { ModelOption, ModelProvider } from "@shared/types"
 import { groupModels, OPENROUTER_LIMIT, providerOf } from "@/features/models/model-groups"
 
 const sonnet: ModelOption = { id: "claude-sonnet", name: "Claude Sonnet", contextWindow: 200000, reasoning: true, provider: "claude-code" }
+const muse: ModelOption = { id: "muse/muse-wonder-1.0", name: "Muse Wonder", contextWindow: 1007997, reasoning: true, provider: "muse" }
 const gpt: ModelOption = { id: "openai/gpt-x", name: "GPT X", contextWindow: 128000, reasoning: false, provider: "openrouter" }
 const llama: ModelOption = { id: "meta/llama", name: "Llama", contextWindow: 8000, reasoning: false, provider: "openrouter" }
 
@@ -29,6 +30,12 @@ describe("groupModels", () => {
       expect(sections.map((section) => section.provider)).toEqual(["claude-code", "openrouter"])
     })
 
+    it("can list the Muse section between Claude Code and OpenRouter", () => {
+      const { sections } = groupModels([gpt, sonnet, muse], null, "")
+
+      expect(sections.map((section) => section.provider)).toEqual(["claude-code", "muse", "openrouter"])
+    })
+
     it("can leave out a provider that has no models", () => {
       const { sections } = groupModels([gpt], null, "")
 
@@ -46,6 +53,13 @@ describe("groupModels", () => {
 
       expect(sections[0]?.label).toBe("Claude Code")
       expect(sections[0]?.summary).toBe("Runs your Claude Code install with its login, such as a Claude subscription.")
+    })
+
+    it("can label a Muse section with its hint alone", () => {
+      const { sections } = groupModels([muse], null, "")
+
+      expect(sections[0]?.label).toBe("Muse")
+      expect(sections[0]?.summary).toBe("Runs your Muse Code install with its login, such as a Meta Muse subscription.")
     })
 
     it("can count every OpenRouter model in the OpenRouter summary", () => {
@@ -79,6 +93,12 @@ describe("groupModels", () => {
       const { sections } = groupModels([gpt, llama, sonnet], null, "CLAUDE")
 
       expect(sections.map((section) => section.provider)).toEqual(["claude-code"])
+    })
+
+    it("can match the Muse label, ignoring case", () => {
+      const { sections } = groupModels([gpt, muse], null, "muse")
+
+      expect(sections.map((section) => section.provider)).toEqual(["muse"])
     })
 
     it("can match the model id", () => {

@@ -11,6 +11,12 @@ const sections: ModelSection[] = [
     rows: [{ id: "claude-sonnet", name: "Claude Sonnet", provider: "claude-code", detail: "claude-sonnet · 200k", selected: false }],
   },
   {
+    provider: "muse",
+    label: "Muse",
+    summary: "Runs your Muse Code install with its login.",
+    rows: [{ id: "muse/muse-wonder-1.0", name: "Muse Wonder", provider: "muse", detail: "muse/muse-wonder-1.0 · 1M", selected: false }],
+  },
+  {
     provider: "openrouter",
     label: "OpenRouter",
     summary: "Billed per token to your OpenRouter key. 2 models.",

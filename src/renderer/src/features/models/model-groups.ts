@@ -8,6 +8,10 @@ const PROVIDERS: Record<ModelProvider, { label: string; hint: string }> = {
     label: "Claude Code",
     hint: "Runs your Claude Code install with its login, such as a Claude subscription.",
   },
+  muse: {
+    label: "Muse",
+    hint: "Runs your Muse Code install with its login, such as a Meta Muse subscription.",
+  },
   openrouter: {
     label: "OpenRouter",
     hint: "Billed per token to your OpenRouter key.",
@@ -36,8 +40,8 @@ export type ModelGroups = {
 
 // A main process from before providers existed sends models without one.
 export function providerOf(model: { provider?: ModelProvider }): ModelProvider {
-  if (model.provider === "claude-code") {
-    return "claude-code"
+  if (model.provider === "claude-code" || model.provider === "muse") {
+    return model.provider
   }
   return "openrouter"
 }
@@ -45,12 +49,14 @@ export function providerOf(model: { provider?: ModelProvider }): ModelProvider {
 export function groupModels(models: ModelOption[], modelId: string | null, query: string): ModelGroups {
   const visible = filterModels(models, modelId, query)
   const claude = visible.filter((model) => providerOf(model) === "claude-code")
+  const muse = visible.filter((model) => providerOf(model) === "muse")
   const openRouter = visible.filter((model) => providerOf(model) === "openrouter")
   const openRouterShown = openRouter.slice(0, OPENROUTER_LIMIT)
   const openRouterTotal = models.filter((model) => providerOf(model) === "openrouter").length
 
   const sections = [
     toSection("claude-code", claude, modelId, ""),
+    toSection("muse", muse, modelId, ""),
     toSection("openrouter", openRouterShown, modelId, `${openRouterTotal} models.`),
   ].filter((section): section is ModelSection => section !== null)
 

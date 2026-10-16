@@ -17,6 +17,13 @@ describe("ProviderLogo", () => {
     expect(markup).not.toContain("claude-brand")
   })
 
+  it("can draw the Muse mark in its brand colour", () => {
+    const markup = viewMarkup(<ProviderLogo provider="muse" />)
+
+    expect(markup).toContain('aria-label="Muse"')
+    expect(markup).toContain("muse-brand")
+  })
+
   it("can draw nothing without a provider", () => {
     expect(viewMarkup(<ProviderLogo provider={null} />)).toBe("")
   })

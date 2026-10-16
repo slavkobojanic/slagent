@@ -46,6 +46,7 @@
   --color-info: var(--info);
   --color-border: var(--border);
   --color-claude-brand: #d97757;
+  --color-muse-brand: #0467df;
   --color-input: var(--input);
   --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) - 2px);

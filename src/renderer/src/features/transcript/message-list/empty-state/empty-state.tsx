@@ -33,8 +33,8 @@ export function EmptyState({ configured, cwd, onConnect, onChoose, onNewChat }: 
       <ConversationEmptyState>
         <h1 className="text-xl font-medium tracking-tight">Connect OpenRouter</h1>
         <p className="max-w-md text-sm text-muted-foreground">
-          Add an API key, or sign in with the Pi CLI. slagent uses the same credentials. To use your Claude subscription instead,
-          pick a Claude Code model from the model menu.
+          Add an API key, or sign in with the Pi CLI. slagent uses the same credentials. To use your Claude or Meta Muse
+          subscription instead, pick a Claude Code or Muse model from the model menu.
         </p>
         <Button type="button" className="mt-2" onClick={onConnect}>
           Add API key

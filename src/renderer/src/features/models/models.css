@@ -2,3 +2,8 @@
 .claude-brand {
   color: var(--color-claude-brand);
 }
+
+/* Meta's brand colour for the Muse mark. */
+.muse-brand {
+  color: var(--color-muse-brand);
+}
